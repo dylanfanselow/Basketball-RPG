@@ -43,7 +43,7 @@ export class PostGameScene extends Phaser.Scene {
       for (const p of t.roster.filter((p) => p.box.secs > 0)) lines.push(`    ${(p.isUser || p.id === 'USER' ? '★ ' : '  ') + p.name.padEnd(20)} ${p.pos.padEnd(3)} ${String(p.box.pts).padStart(3)} pts ${String(p.box.reb).padStart(2)} reb ${String(p.box.ast).padStart(2)} ast  ${p.box.fgm}/${p.box.fga}`);
     }
     this.add.text(60, 130, lines.join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
-    this.add.text(1220, 690, 'A / Enter: continue', { fontFamily: FONT, fontSize: '14px', color: COL.dim }).setOrigin(1, 0);
+    this.add.text(1220, 690, '✕ / Enter: continue', { fontFamily: FONT, fontSize: '14px', color: COL.dim }).setOrigin(1, 0);
   }
   update() { this.inp.poll(); if (this.inp.confirm()) this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu'); }
 }

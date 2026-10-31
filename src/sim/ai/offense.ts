@@ -7,15 +7,34 @@ import { passFactor, callBonus } from './trust';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
 
+/** A teammate is "ahead" when he's closer to the rim than every defender (a leak-out / beat-everyone runner). */
+export function aheadOfDefense(sim: GameSim, m: Player): boolean {
+  const rim = sim.rim(m.team);
+  const md = dist(m.p, rim);
+  return sim.opp(m.team).every((d) => dist(d.p, rim) > md + 2);
+}
+
+/** How free a teammate is: distance to his own defender and to the nearest help. */
+export function separation(sim: GameSim, m: Player): { own: number; help: number } {
+  const own = sim.defenderOf(m);
+  return { own: own ? dist(own.p, m.p) : 99, help: sim.nearestDefender(m).dist };
+}
+
 export function offBallTarget(sim: GameSim, p: Player): { pos: Vec; act: string; urgent: boolean } {
   const side = sim.side(p.team);
   const h = sim.holder();
+  // fast break: fill the lanes - wings run the sidelines, bigs trail, anyone ahead of the defense goes to the rim
+  if (sim.inTransition(p.team) && h && h !== p) {
+    if (aheadOfDefense(sim, p)) return { pos: spot(side, 'rim'), act: 'cut', urgent: true };
+    const lane = p.role === '2' ? hc(side, 7, -18) : p.role === '3' ? hc(side, 7, 18) : p.role === '1' ? hc(side, 24, 0) : hc(side, 22, p.role === '4' ? -7 : 7);
+    return { pos: lane, act: 'move', urgent: true };
+  }
   if (h && !inFrontcourt(side, h.p)) {
     const s = FREELANCE[p.role]?.[0] ?? 'top';
     return { pos: spot(side, s), act: 'move', urgent: true };
   }
   if (sim.time < p.cutUntil) return { pos: spot(side, 'rim'), act: 'cut', urgent: true };
-  const a = sim.runner.roleAssignment(p.role);
+  const a = sim.runner.roleAssignment(sim.playRole(p));
   if (a && !sim.runner.done) return { pos: sim.assignmentPos(p, a), act: a.act, urgent: a.act === 'cut' || a.act === 'screen' };
   // freelance 5-out-ish spacing: take the first preferred spot nobody is standing near
   const prefs = FREELANCE[p.role] ?? ['top'];
@@ -44,6 +63,9 @@ export function thinkOffense(sim: GameSim, p: Player, dt: number) {
   }
 }
 
+/** Trust the AI uses for passes to the user. While testing (feature me), there's a floor of 70. */
+const userTrust = (sim: GameSim) => (sim.featureUser ? Math.max(70, sim.trust.team) : sim.trust.team);
+
 function laneRisk(sim: GameSim, from: Player, to: Player): number {
   let r = 0;
   for (const d of sim.opp(from.team)) {
@@ -65,9 +87,35 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const rim = sim.rim(p.team);
   const d = dist(p.p, rim);
   if (p.state === 'dribbleMove' || p.state === 'shoot') return;
+  // dribble picked up: pass to the best option, or shoot if nobody is open
+  if (p.deadDribble) {
+    p.want = v();
+    if (sim.time - p.deadDribbleAt < 0.35) return;
+    let best: Player | null = null, bv = -1;
+    for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+    if (best && bv > 0.15) sim.pass(p, best); else sim.startShot(p, selectShotType(p, side, v(), sim.time));
+    return;
+  }
+
+  // ---- transition: read the break before walking it up ----
+  if (sim.inTransition(p.team) && p.aiMode !== 'drive') {
+    const sinceCatchT = sim.time - p.receivedAt;
+    const mates = sim.mates(p);
+    const leaders = mates.filter((m) => aheadOfDefense(sim, m) && dist(m.p, rim) < d - 4 && laneRisk(sim, p, m) < 0.5)
+      .sort((a, b) => dist(a.p, rim) - dist(b.p, rim));
+    if (leaders.length && sinceCatchT > 0.15) { sim.pass(p, leaders[0]); return; }
+    // rebounding big: outlet to the point guard
+    const pg = sim.byRole(p.team, '1');
+    if ((p.role === '4' || p.role === '5') && pg && pg !== p && sim.openness(pg) > 0.4 && laneRisk(sim, p, pg) < 0.4 && sinceCatchT > 0.25) { sim.pass(p, pg); return; }
+    // numbers: attackers vs defenders between the ball and the rim
+    const offAhead = mates.filter((m) => dist(m.p, rim) < d + 3).length + 1;
+    const defBack = sim.opp(p.team).filter((o) => dist(o.p, rim) < d).length;
+    if (offAhead > defBack) { sim.steer(p, rim, true); if (d < 22) { p.aiMode = 'drive'; p.aiModeUntil = sim.time + 1.8; } return; }
+    sim.transitionUntil = 0; // no advantage: walk it up and run something
+  }
 
   if (!inFrontcourt(side, p.p) || toHc(side, p.p).hx > 40) {
-    sim.steer(p, hc(side, 30, clamp01(0.5) * 0), false);
+    sim.steer(p, hc(side, 30, 0), false);
     p.aiMode = 'none';
     return;
   }
@@ -107,11 +155,11 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   }
 
   // the play wants the ball somewhere else this phase
-  if (phase?.ball && phase.ball !== p.role && sim.runner.ballCalledAt !== sim.runner.phase) {
+  if (phase?.ball && phase.ball !== sim.playRole(p) && sim.runner.ballCalledAt !== sim.runner.phase) {
     sim.runner.ballCalledAt = sim.runner.phase;
-    const tgt = sim.byRole(p.team, phase.ball);
+    const tgt = sim.byPlayRole(p.team, phase.ball);
     if (tgt && laneRisk(sim, p, tgt) < 0.5) {
-      const f = tgt.isUser ? 0.35 + 0.65 * sim.trust.team / 100 : 1;
+      const f = tgt.isUser ? 0.35 + 0.65 * userTrust(sim) / 100 : 1;
       if (sim.rng.chance(0.9 * f)) { sim.pass(p, tgt); return; }
     }
   }
@@ -130,7 +178,11 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     if (m.state === 'fallen') continue;
     const open = sim.openness(m);
     let val = catchEV(sim, m) * (0.5 + 0.6 * open);
-    if (phase?.options?.includes(m.role)) val += 0.22;
+    if (phase?.options?.includes(sim.playRole(m))) val += 0.22;
+    // open man first: a teammate whose defender is far away gets the ball over the play
+    const sep = separation(sim, m);
+    if (sep.own > 7.5 && sep.help > 6) val += 0.4;
+    if (aheadOfDefense(sim, m) && dist(m.p, rim) < 16) val += 0.7;
     if (avgTouch > 3) val += clamp01((avgTouch - m.box.touches) / avgTouch) * 0.2;
     val -= Math.max(0, m.box.usage - avgUse) * 0.05;
     const toRimM = norm(sub(rim, m.p));
@@ -139,8 +191,8 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     if (dist(p.p, m.p) > p.safePassDist) val -= 0.25;
     if (m === sim.lastPasser && sim.time - sim.lastPassAt < 1.5) val -= 0.3;
     if (m.isUser) {
-      val *= passFactor(sim.trust.team);
-      if (m.callForBallUntil > sim.time) val += callBonus(sim.trust.team, open);
+      val *= passFactor(userTrust(sim));
+      if (m.callForBallUntil > sim.time) val += callBonus(userTrust(sim), open);
       if (sim.time - m.lastScreenAt < 2) val *= m.mods.pMult('rollTrust');
     }
     val += sim.rng.next() * 0.08;
@@ -158,12 +210,16 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   }
   const driveVal = d < 26 ? (blockers === 0 ? 1.15 : blockers < 1 ? 0.9 : 0.3) * (0.7 + p.sub.layup / 99 * 0.5) : 0;
 
+  // a wide-open teammate (or one behind the defense) beats a contested look and the play
+  if (best && sinceCatch > 0.3 && bestVal > holdVal + 0.45 && bestVal > myEV * 1.1 && laneRisk(sim, p, best) < 0.35) { sim.pass(p, best); return; }
   if (sinceCatch > 0.12 && myEV > shootT && (ev.contest < 0.35 || urgency > 0.7)) { sim.startShot(p, type); return; }
   if (urgency > 0.93) { sim.startShot(p, type); return; }
-  if (best && bestVal > holdVal + 0.05 && sinceCatch > 0.45) { sim.pass(p, best); return; }
+  if (best && bestVal > holdVal + 0.12 && sinceCatch > 0.7) { sim.pass(p, best); return; }
   if (driveVal > holdVal && driveVal > bestVal) { p.aiMode = 'drive'; p.aiModeUntil = sim.time + 1.6; return; }
 
   const nd = sim.nearestDefender(p);
+  // side drive, then snap it back the other way when the defender recovers
+  if (p.flickDir && sim.time < p.flickUntil && nd.d && nd.dist < 4 && sim.rng.chance(0.5)) { sim.flickCross(p, -p.flickDir); return; }
   if (nd.d && nd.dist < 4.2 && sim.rng.chance(0.14 * (p.sub.ankleBreak / 70))) {
     // change direction up/down the screen if we're already moving that way, otherwise attack the rim
     const goingY = Math.abs(p.vel.y) > 3 ? Math.sign(p.vel.y) : 0;
@@ -172,7 +228,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     return;
   }
   // otherwise run the handler's spot in the play / probe
-  const a = sim.runner.roleAssignment(p.role);
+  const a = sim.runner.roleAssignment(sim.playRole(p));
   const pos = a && a.act === 'handle' ? sim.assignmentPos(p, a) : add(p.p, scale(norm(sub(spot(side, 'top'), p.p)), Math.min(3, dist(p.p, spot(side, 'top')))));
   sim.steer(p, pos, false, 0.8);
   void len; void dt;

@@ -164,11 +164,12 @@ export const CLIPS: Clip[] = [
     { t: 0.25, pose: P({ head: [-2, 88], hB: [5, 62], hF: [10, 34], ball: [11, 24] }, jogA) },
     { t: 0.5, pose: runDrib(mirrorLegsArms(jogB), [10, 40], [11, 4]) },
     { t: 1, pose: runDrib(jogB, [11, 45], [12, 40]) }] },
-  { name: 'move_lateral', frames: 8, bounce: [0.5], keys: [
-    { t: 0, pose: dribHigh },
-    { t: 0.25, pose: P({ kF: [6, 23], fF: [8, 0], kB: [-6, 23], fB: [-8, 0], hip: [0, 45], hF: [11, 40], ball: [12, 30] }, athletic) },
-    { t: 0.5, pose: P({ kF: [10, 22], fF: [13, 0], kB: [-9, 22], fB: [-12, 0], hip: [0, 43], hF: [11, 30], ball: [12, 4] }, athletic) },
-    { t: 1, pose: dribHigh }] },
+  { name: 'move_lateral', frames: 9, bounce: [0.3, 0.75], keys: [
+    { t: 0, pose: P({ hip: [0, 44], head: [4, 85], neck: [3, 76], hF: [11, 42], ball: [12, 36], kF: [8, 22], fF: [11, 0] }, athletic) },
+    { t: 0.3, pose: P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3], hF: [16, 20], eF: [12, 46], ball: [17, 4] }) },
+    { t: 0.55, pose: P({ hip: [0, 43], head: [8, 82], neck: [6, 74], sF: [7, 71], sB: [3, 71], kF: [3, 30], fF: [1, 10], kB: [9, 24], fB: [15, 1], hF: [15, 38], eF: [11, 54], ball: [16, 32] }) },
+    { t: 0.75, pose: P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3], hF: [16, 20], eF: [12, 46], ball: [17, 4] }) },
+    { t: 1, pose: P({ hip: [0, 44], head: [5, 84], neck: [4, 75], hF: [12, 42], ball: [13, 36], kF: [8, 22], fF: [11, 0] }, athletic) }] },
 
   // ---------- shots ----------
   { name: 'shot_jumper', frames: 12, release: 0.58, post: 0.55, keys: [
@@ -257,6 +258,28 @@ export const CLIPS: Clip[] = [
   { name: 'catch', frames: 3, keys: [
     { t: 0, pose: P({ hF: [12, 66], eF: [8, 68], hB: [10, 65], eB: [5, 67], ball: [14, 66] }) },
     { t: 1, pose: chest }] },
+
+  // ---------- dead ball / inbounds / sideline ----------
+  { name: 'hold', frames: 4, loop: true, keys: [
+    { t: 0, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) },
+    { t: 0.5, pose: P({ hip: [1, 47], kF: [7, 23], fF: [10, 0], kB: [-6, 23], fB: [-8, 1], hF: [6, 66], hB: [4, 65], eF: [8, 60], eB: [4, 60], ball: [7, 67], head: [3, 89] }) },
+    { t: 1, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) }] },
+  { name: 'inbound', frames: 4, loop: true, keys: [
+    { t: 0, pose: P({ hF: [3, 104], hB: [1, 103], eF: [5, 92], eB: [-2, 92], ball: [3, 109], kF: [5, 26], fF: [7, 0], kB: [-4, 26], fB: [-6, 0] }) },
+    { t: 0.5, pose: P({ hF: [5, 103], hB: [3, 102], eF: [6, 91], eB: [0, 91], ball: [5, 108], head: [2, 91], kF: [5, 26], fF: [7, 0], kB: [-4, 26], fB: [-6, 0] }) },
+    { t: 1, pose: P({ hF: [3, 104], hB: [1, 103], eF: [5, 92], eB: [-2, 92], ball: [3, 109], kF: [5, 26], fF: [7, 0], kB: [-4, 26], fB: [-6, 0] }) }] },
+  { name: 'sit', frames: 4, loop: true, keys: [
+    { t: 0, pose: P({ head: [3, 63], neck: [2, 55], sF: [3, 52], sB: [-1, 52], eF: [8, 40], eB: [4, 40], hF: [12, 34], hB: [9, 34], hip: [0, 26], kF: [14, 28], kB: [13, 27], fF: [14, 0], fB: [12, 0] }) },
+    { t: 0.5, pose: P({ head: [4, 63], neck: [3, 55], sF: [4, 52], sB: [0, 52], eF: [8, 39], eB: [4, 39], hF: [12, 33], hB: [9, 33], hip: [0, 26], kF: [14, 28], kB: [13, 27], fF: [14, 0], fB: [12, 0] }) },
+    { t: 1, pose: P({ head: [3, 63], neck: [2, 55], sF: [3, 52], sB: [-1, 52], eF: [8, 40], eB: [4, 40], hF: [12, 34], hB: [9, 34], hip: [0, 26], kF: [14, 28], kB: [13, 27], fF: [14, 0], fB: [12, 0] }) }] },
+  { name: 'cheer', frames: 6, loop: true, keys: [
+    { t: 0, pose: P({ hF: [6, 112], eF: [5, 96], hB: [-4, 110], eB: [-3, 95] }) },
+    { t: 0.5, pose: P({ hF: [10, 108], eF: [6, 95], hB: [-8, 107], eB: [-4, 94], hip: [0, 53], head: [1, 93], neck: [0, 84], sF: [2, 81], sB: [-2, 81], kF: [3, 29], kB: [-2, 29] }) },
+    { t: 1, pose: P({ hF: [6, 112], eF: [5, 96], hB: [-4, 110], eB: [-3, 95] }) }] },
+  { name: 'point', frames: 4, keys: [
+    { t: 0, pose: BASE },
+    { t: 0.5, pose: P({ hF: [20, 78], eF: [12, 76], head: [3, 91] }) },
+    { t: 1, pose: P({ hF: [21, 80], eF: [12, 77], head: [3, 91] }) }] },
 ];
 
 export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c.name, c]));

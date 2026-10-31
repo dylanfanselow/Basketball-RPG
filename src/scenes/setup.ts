@@ -35,6 +35,7 @@ export function createSim(mode: Mode): GameSim {
     trust: mode === 'career' ? c.trust : { team: 60, coach: 60 },
     ult: careerUlt(c),
     practice: app.settings.practice,
+    featureUser: mode !== 'career',
     rotation: mode === 'career' ? planRotation(c.trust.coach, app.settings.quarterLen, c.forceStarter) : undefined,
   });
   return sim;

@@ -38,6 +38,12 @@ export class Player {
   /** current animation clip for the renderer (shots, moves, falls) */
   anim: { name: string; start: number; release?: number; dur?: number } | null = null;
   movePlantAt = 0.3; movePlanted = false;
+  allowOobUntil = 0;
+  burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
+  /** pump fake picked up the dribble: can only pass or shoot */
+  deadDribble = false; deadDribbleAt = 0; deadWarned = false;
+  /** side-drive direction (screen up/down) the flick-cross watches for, and until when */
+  flickDir = 0; flickUntil = 0;
   bufferedMove: { stick: Vec; at: number } | null = null;
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
 
@@ -66,6 +72,14 @@ export class Player {
 
   get walkSpeed() { return rmap(this.sub.speed, 10.5, 14.5); }
   get sprintSpeed() { return rmap(this.sub.speed, 15.5, 21); }
+  /** default top speed (no burst) */
+  get runSpeed() { return this.sprintSpeed * 0.88; }
+  /** sprint-burst top speed */
+  get burstSpeed() { return this.sprintSpeed * 1.12; }
+  /** seconds a sprint burst lasts (stamina rating) */
+  get burstDur() { return rmap(this.sub.stamina, 1.2, 2.2) * (0.75 + 0.25 * this.stamina); }
+  /** cooldown after a burst (speed rating, perks, fatigue) */
+  get burstCd() { return rmap(this.sub.speed, 6.0, 3.5) * this.mods.pMult('burstCd') * (1.3 - 0.3 * this.stamina); }
   get ballSpeedMult() { return rmap(this.sub.ballSpeed, 0.82, 0.97); }
   get jumpVel() { return rmap(this.sub.jump, 11, 16.5); }
   get passSpeed() { return rmap(this.sub.passSpeed, 34, 62); }

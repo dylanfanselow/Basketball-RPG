@@ -22,7 +22,7 @@ export class PerkTreeScene extends Phaser.Scene {
     this.header = this.add.text(40, 20, '', { fontFamily: FONT, fontSize: '30px', color: COL.accent, fontStyle: 'bold' });
     this.tabs = this.add.text(40, 70, '', { fontFamily: FONT, fontSize: '14px', color: COL.text });
     this.info = this.add.text(910, 150, '', { fontFamily: FONT, fontSize: '15px', color: COL.text, wordWrap: { width: 340 }, lineSpacing: 5 });
-    this.add.text(40, 690, 'LB/RB or Q/E: switch tree   Stick/WASD: select   A/Enter: unlock   B/Esc: back   (mouse works too)', { fontFamily: FONT, fontSize: '13px', color: COL.dim });
+    this.add.text(40, 690, 'L1/R1 or Q/E: switch tree   Stick/WASD: select   ✕/Enter: unlock   ○/Esc: back   (mouse works too)', { fontFamily: FONT, fontSize: '13px', color: COL.dim });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const n = this.nodeAt(p.x, p.y);
       if (n >= 0) { if (n === this.sel) this.tryUnlock(); else this.sel = n; }
@@ -97,7 +97,7 @@ export class PerkTreeScene extends Phaser.Scene {
     const owned = c.nodes.includes(n.id);
     this.info.setText([
       tree.desc, '', `▶ ${n.name}`, `${n.type === 'passive' ? '● Passive' : n.type === 'move' ? '◆ Move' : '◆ Ability'}   cost ${n.cost}`, '', n.desc, '',
-      owned ? '✓ UNLOCKED' : chk.ok ? 'Press A to unlock' : `✗ ${chk.reason}`,
+      owned ? '✓ UNLOCKED' : chk.ok ? 'Press ✕ to unlock' : `✗ ${chk.reason}`,
       '', '● passive   ◆ move / ability',
     ].join('\n'));
   }

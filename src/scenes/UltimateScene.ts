@@ -13,7 +13,7 @@ export class UltimateScene extends Phaser.Scene {
     this.g = this.add.graphics();
     this.body = this.add.text(80, 150, '', { fontFamily: FONT, fontSize: '17px', color: COL.text, lineSpacing: 6, wordWrap: { width: 1120 } });
     if (!app.career.flags.ult_unlocked) [0, 1, 2].forEach((i) => this.add.text(160 + i * 340 + 140, 350, '?', { fontFamily: FONT, fontSize: '80px', color: '#44445e' }).setOrigin(0.5).setDepth(1));
-    title(this, app.career.flags.ult_unlocked ? 'ULTIMATE' : '???', app.career.flags.ult_unlocked ? 'A: equip   Y: evolve (milestone points)   B: back' : 'B: back');
+    title(this, app.career.flags.ult_unlocked ? 'ULTIMATE' : '???', app.career.flags.ult_unlocked ? '✕: equip   △: evolve (milestone points)   ○: back' : '○: back');
   }
   ids() {
     const c = app.career;

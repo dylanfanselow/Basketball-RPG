@@ -9,7 +9,7 @@ import { REAL_ROSTERS } from '../career/roster';
 import { withDefaults } from '../render/appearance';
 
 /**
- * Developer tools overlay (F1 / ` / Back+Start). Everything applies live: to the career save
+ * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
  * AND to the player currently on the court.
  */
 const PRESET_KEY = 'hoopcareer.presets';
@@ -88,7 +88,7 @@ export function initDevPanel() {
     const c = app.career;
     const s = app.sim;
     root.innerHTML = '';
-    root.append(el('div', { class: 'hdr' }, el('b', {}, 'DEV TOOLS'), el('span', {}, '  F1 / ` / Back+Start to close'), btn('×', toggle)));
+    root.append(el('div', { class: 'hdr' }, el('b', {}, 'DEV TOOLS'), el('span', {}, '  F1 / ` / Create+Options to close'), btn('×', toggle)));
 
     liveBox = el('pre', { class: 'live' });
     root.append(section('Live readout', liveBox));
@@ -211,6 +211,7 @@ export function initDevPanel() {
       gc.append(check('Freeze AI', s.freezeAI, (v) => { s.freezeAI = v; }));
       gc.append(check('Force clutch time', s.forceClutch, (v) => { s.forceClutch = v; }));
       gc.append(check('Defense switches everything', s.switchAll, (v) => { s.switchAll = v; }));
+      gc.append(check('Feature me equally (testing)', s.featureUser, (v) => { s.featureUser = v; s.focusQueue = []; }));
       gc.append(slider('shot clock', 1, 24, 1, Math.ceil(s.shotClock), (v) => { s.shotClock = v; }));
       gc.append(slider('game clock (s)', 1, s.cfg.quarterLen, 1, Math.ceil(s.clock), (v) => { s.clock = v; }));
       gc.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'call play'),

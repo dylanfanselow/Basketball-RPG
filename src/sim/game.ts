@@ -1,4 +1,4 @@
-import { TeamDef, SHOT_TYPES, MOVES } from './data';
+import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross } from './math';
@@ -13,7 +13,7 @@ import { UltState, UltRuntime, tryActivateUlt, tickUlt, ULT_GAINS } from './ulti
 import { PlayRole } from './data';
 
 export interface UserInput {
-  move: Vec; sprint: boolean;
+  move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
   a: boolean; b: boolean; x: boolean; y: boolean; // edge-triggered this tick
   aHeld: boolean; bHeld: boolean;
 }
@@ -35,11 +35,12 @@ export interface GameConfig {
   autopilotUser?: boolean;
   switchAll?: boolean;
   allowedPlays?: string[];
+  featureUser?: boolean;
 }
 
 export type BallState =
   | { kind: 'held'; holder: Player }
-  | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string> }
+  | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string>; inbound?: boolean }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean }
   | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1 }
   | { kind: 'dead' };
@@ -81,6 +82,9 @@ export class GameSim {
   freezeAI = false;
   forceClutch = false;
   switchAll: boolean;
+  /** testing: coach features the user as often as anyone else, and teammates trust them */
+  featureUser: boolean;
+  focusQueue: string[] = [];
   /** user's last stick for previews */
   stick: Vec = v();
 
@@ -90,6 +94,7 @@ export class GameSim {
     this.clock = cfg.quarterLen;
     this.trust = cfg.trust;
     this.switchAll = !!cfg.switchAll;
+    this.featureUser = !!cfg.featureUser;
     this.ult = { state: cfg.ult, active: null };
     this.teams = [0, 1].map((i) => ({
       def: cfg.teams[i], side: (i === 0 ? 1 : -1) as Side, score: 0,
@@ -125,6 +130,13 @@ export class GameSim {
   mates(p: Player): Player[] { return this.teams[p.team].onCourt.filter((q) => q !== p); }
   holder(): Player | null { return this.ball.st.kind === 'held' ? this.ball.st.holder : null; }
   byRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => p.role === role) ?? null; }
+  /** The role a player has in the current play (roles can be swapped so a set is run for someone). */
+  playRole(p: Player): string {
+    const sw = this.runner.roleSwap;
+    if (!sw || p.team !== this.possession) return p.role;
+    return p.role === sw[0] ? sw[1] : p.role === sw[1] ? sw[0] : p.role;
+  }
+  byPlayRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => this.playRole(p) === role) ?? null; }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(4, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
   isAI(p: Player) { return !(p === this.user && this.user.isUser); }
@@ -185,10 +197,13 @@ export class GameSim {
       const side = this.side(t);
       this.teams[t].onCourt.forEach((p, i) => { p.p = hc(side, 52 + i * 2, (i - 2) * 6); p.vel = v(); });
     }
-    this.inbound(0);
+    this.ball.p = v(47, 25);
+    this.deadBall(0, 1.0, 'mid');
   }
 
+  /** Instant inbound (practice resets, tests). Games use the walk-out inbound from deadBall(). */
   inbound(team: 0 | 1) {
+    this.inb = null;
     this.possession = team;
     this.shotClock = 24;
     this.runner.reset();
@@ -224,17 +239,104 @@ export class GameSim {
   }
 
   giveBall(p: Player) {
+    for (const q of this.players) { q.deadDribble = false; q.flickDir = 0; }
     this.ball.st = { kind: 'held', holder: p };
     p.receivedAt = this.time; p.dribbledSinceCatch = false; p.box.touches++;
   }
 
-  deadBall(next: 0 | 1, delay = 1.1) {
+  /**
+   * Dead ball. In games nobody teleports: an inbounder walks out of bounds (baseline after a make,
+   * otherwise the sideline where the ball went out) and passes it in to the point guard.
+   */
+  deadBall(next: 0 | 1, delay = 1.1, where: 'baseline' | 'sideline' | 'mid' = 'sideline') {
     this.live = false;
     this.deadUntil = this.time + delay;
     this.pendingInbound = next;
     this.runner.reset();
+    this.transitionUntil = 0;
+    const ballAt = { ...this.ball.p };
     this.ball.st = { kind: 'dead' };
+    if (this.cfg.mode !== 'practice') this.startInbound(next, delay, where, ballAt);
   }
+
+  inb: { team: 0 | 1; inbounder: Player; receiver: Player; spot: Vec; recv: Vec; minPassAt: number; start: number; hasBall: boolean } | null = null;
+  transitionUntil = 0;
+
+  private startInbound(team: 0 | 1, delay: number, where: 'baseline' | 'sideline' | 'mid', ballAt: Vec) {
+    // substitutions happen at dead balls
+    if (this.user && this.cfg.rotation) {
+      const on = shouldBeOn(this.cfg.rotation, this.elapsed);
+      if (on && !this.userOnCourt) this.putUserOnCourt();
+      else if (!on && this.userOnCourt) this.benchUser();
+      this.refreshOnCourt();
+    }
+    this.possession = team;
+    this.shotClock = 24;
+    this.assignMatchups();
+    const side = this.side(team);
+    const crew = this.teams[team].onCourt;
+    let spot: Vec, recv: Vec, inbounder: Player;
+    if (where === 'baseline') {
+      // under the basket that was just scored on = this team's own baseline
+      spot = hc(side, 94 + 2.5, 4);
+      recv = hc(side, 82, 9);
+      const bigs = crew.filter((p) => p.role === '5' || p.role === '4');
+      inbounder = (bigs.length ? bigs : crew).slice().sort((a, b) => dist(a.p, spot) - dist(b.p, spot))[0];
+      this.ball.p = { ...rimPos(-side as Side) }; this.ball.z = 9; // drops through the net
+    } else {
+      const x = where === 'mid' ? 47 : clamp(ballAt.x, 6, 88);
+      const top = where === 'mid' ? true : ballAt.y < 25;
+      spot = v(x, top ? -2.5 : 52.5);
+      recv = v(clamp(x + (side === 1 ? 6 : -6), 4, 90), top ? 9 : 41);
+      inbounder = crew.filter((p) => p.role !== '1').slice().sort((a, b) => dist(a.p, spot) - dist(b.p, spot))[0] ?? crew[0];
+      this.ball.p = { ...spot }; this.ball.z = 3;
+    }
+    const receiver = crew.find((p) => p.role === '1' && p !== inbounder) ?? crew.find((p) => p !== inbounder) ?? inbounder;
+    this.inb = { team, inbounder, receiver, spot, recv, minPassAt: this.time + Math.max(0.6, delay), start: this.time, hasBall: false };
+  }
+
+  /** Walk out, pick up the ball, wait for the PG, pass it in. */
+  private updateInbound() {
+    const s = this.inb;
+    if (!s) return;
+    const b = this.ball;
+    if (b.z > 0.4) { b.z = Math.max(0.4, b.z - 20 * (1 / 60)); }
+    if (!s.hasBall && dist(s.inbounder.p, b.p) < 2.6 && b.z < 5) s.hasBall = true;
+    if (s.hasBall) { b.p = add(s.inbounder.p, scale(s.inbounder.face, 0.6)); b.z = 6.2; }
+    const atSpot = dist(s.inbounder.p, s.spot) < 1.3;
+    const recvReady = dist(s.receiver.p, s.recv) < 3.5 || this.time - s.start > 4.5;
+    if (s.hasBall && atSpot && recvReady && this.time >= s.minPassAt) {
+      this.inb = null;
+      this.live = true;
+      this.pendingInbound = null;
+      this.shotClock = 24;
+      s.inbounder.allowOobUntil = this.time + 2.5;
+      s.inbounder.face = norm(sub(s.receiver.p, s.inbounder.p));
+      this.ball.st = { kind: 'held', holder: s.inbounder };
+      this.pass(s.inbounder, s.receiver);
+      const bs = this.ball.st as BallState;
+      if (bs.kind === 'pass') bs.inbound = true;
+    }
+  }
+
+  /** Position targets while the ball is being inbounded. */
+  private thinkInbound(p: Player) {
+    const s = this.inb!;
+    if (p === s.inbounder) { this.steer(p, s.hasBall ? s.spot : this.ball.p, false, 0.8); p.face = norm(sub(s.recv, p.p)); return; }
+    if (p === s.receiver) { this.steer(p, s.recv, false, 0.9); return; }
+    if (p.team === s.team) {
+      const t = offBallTarget(this, p);
+      this.steer(p, t.pos, false, 0.75);
+    } else thinkDefense(this, p, 1 / 60);
+  }
+
+  /** Inbounders (and players just stepping back in) may stand out of bounds. */
+  clampFor(p: Player, pos: Vec): Vec {
+    if (this.inb?.inbounder === p || this.time < p.allowOobUntil) return v(clamp(pos.x, -8, 102), clamp(pos.y, -5, 55));
+    return clampToCourt(pos);
+  }
+
+  inTransition(team: 0 | 1) { return this.possession === team && this.time < this.transitionUntil && !this.runner.playId; }
 
   changePossessionLive(newTeam: 0 | 1) {
     this.possession = newTeam;
@@ -242,11 +344,27 @@ export class GameSim {
     this.runner.reset();
     this.assignMatchups();
     if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
+    else this.transitionUntil = this.time + 5; // live turnover / defensive board: read the break
   }
 
   callPlay() {
-    const id = PlayRunner.pick(this.rng, this.cfg.allowedPlays, this.runner.lastPlayId);
-    this.runner.call(id);
+    // "feature me equally" (testing): rotate who the set is run for across all five, including the user
+    const off = this.offense();
+    let id = PlayRunner.pick(this.rng, this.cfg.allowedPlays, this.runner.lastPlayId);
+    let swap: [string, string] | null = null;
+    let focus: Player | null = null;
+    if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length === 5) {
+      if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
+      const fid = this.focusQueue.shift()!;
+      focus = off.find((p) => p.id === fid) ?? null;
+      if (focus) {
+        const fits = Object.keys(PLAYS).filter((pid) => PLAYS[pid].focus === focus!.role && pid !== this.runner.lastPlayId && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid)));
+        if (fits.length) id = this.rng.pick(fits);
+        else if (focus === this.user && PLAYS[id].focus) swap = [PLAYS[id].focus!, focus.role]; // run any set for the user by swapping roles
+        else if (focus !== this.user) focus = null;
+      }
+    }
+    this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
     this.emit({ kind: 'play', text: `Coach: "${this.runner.play!.name}"`, team: this.possession });
   }
@@ -258,7 +376,9 @@ export class GameSim {
     for (const p of this.players) p.mods.expire(this.time);
 
     if (!this.live) {
-      if (this.time >= this.deadUntil) this.resume();
+      if (this.cfg.mode === 'practice') { if (this.time >= this.deadUntil) this.resume(); }
+      else if (this.inb) this.updateInbound();
+      else if (this.time >= this.deadUntil) this.resume();
     } else {
       if (this.cfg.mode === 'game' && this.ball.st.kind !== 'shot') this.clock -= dt;
       if (this.ball.st.kind !== 'shot' && this.ball.st.kind !== 'loose') this.shotClock -= dt;
@@ -266,8 +386,9 @@ export class GameSim {
     }
 
     if (this.user && this.userOnCourt && this.user.isUser) this.handleUser(input);
-    if (!this.freezeAI) for (const p of this.players) if (this.isAI(p)) this.think(p, dt);
-    else for (const p of this.players) if (this.isAI(p)) p.target = { ...p.p };
+    if (!this.freezeAI) {
+      for (const p of this.players) if (this.isAI(p) || this.inb?.inbounder === p) this.think(p, dt);
+    } else for (const p of this.players) if (this.isAI(p)) p.target = { ...p.p };
 
     tickUlt(this, dt);
     this.physics(dt);
@@ -292,6 +413,14 @@ export class GameSim {
 
   private rules() {
     if (!this.live) return;
+    const hd = this.holder();
+    if (hd && hd.deadDribble && this.time - hd.deadDribbleAt > 5 && hd.state !== 'shoot') {
+      hd.box.tov++; hd.deadDribble = false;
+      this.emit({ kind: 'violation', text: '5-second violation (held the ball)', team: this.possession });
+      if (hd === this.user) applyTrust(this.trust, 'turnover');
+      this.deadBall((1 - this.possession) as 0 | 1);
+      return;
+    }
     if (this.shotClock <= 0 && this.ball.st.kind !== 'shot' && this.ball.st.kind !== 'loose') {
       const h = this.holder(); if (h) h.box.tov++;
       this.emit({ kind: 'violation', text: 'Shot clock violation', team: this.possession });
@@ -307,7 +436,7 @@ export class GameSim {
     if (this.quarter >= 4 && a !== b) { this.finish(); return; }
     this.quarter++;
     this.clock = this.quarter > 4 ? this.cfg.quarterLen / 2 : this.cfg.quarterLen;
-    this.deadBall((this.quarter % 2 === 0 ? 1 : 0) as 0 | 1, 2.0);
+    this.deadBall((this.quarter % 2 === 0 ? 1 : 0) as 0 | 1, 2.0, 'mid');
   }
 
   private finish() {
@@ -357,7 +486,7 @@ export class GameSim {
   private gradeUserPhase(roles: Record<string, PlayRole>) {
     const u = this.user;
     if (!u || !this.userOnCourt || u.team !== this.possession || !u.isUser) return;
-    const a = roles[u.role];
+    const a = roles[this.playRole(u)];
     if (!a) return;
     let ok: boolean;
     if (a.act === 'screen') ok = u.lastScreenAt >= this.phaseStartedAt;
@@ -379,7 +508,7 @@ export class GameSim {
   assignmentPos(p: Player, a: PlayRole): Vec {
     const side = this.side(p.team);
     if (a.to.startsWith('screen:')) {
-      const target = this.byRole(p.team, a.to.split(':')[1]);
+      const target = this.byPlayRole(p.team, a.to.split(':')[1]);
       if (!target) return p.p;
       const d = this.defenderOf(target);
       const anchor = d ?? target;
@@ -396,7 +525,10 @@ export class GameSim {
     if (p.state === 'fallen' || p.state === 'shoot') return;
     const bs = this.ball.st;
     if (bs.kind === 'loose' || (bs.kind === 'shot' && bs.t > bs.dur * 0.6)) { this.chaseBall(p); return; }
-    if (!this.live) { p.target = { ...p.p }; this.steer(p, p.target, false); return; }
+    if (!this.live) {
+      if (this.inb) { this.thinkInbound(p); return; }
+      p.target = { ...p.p }; this.steer(p, p.target, false); return;
+    }
     if (p.team === this.possession) thinkOffense(this, p, dt);
     else thinkDefense(this, p, dt);
   }
@@ -424,7 +556,8 @@ export class GameSim {
     const d = len(to);
     if (d < 0.35) { p.want = v(); return; }
     const hasBall = this.holder() === p;
-    const max = (urgent || d > 6 ? p.sprintSpeed : p.walkSpeed) * (hasBall ? p.ballSpeedMult : 1) * speedMult;
+    if (urgent && d > 12 && this.live) this.startBurst(p); // AI uses the same burst + cooldown rules
+    const max = (urgent || d > 6 ? this.topSpeed(p) : p.walkSpeed) * (hasBall ? p.ballSpeedMult : 1) * speedMult;
     const sp = Math.min(max, d * 3.2);
     p.want = scale(norm(to), sp);
   }
@@ -432,13 +565,19 @@ export class GameSim {
   // ---------- user ----------
   private handleUser(inp: UserInput) {
     const u = this.user!;
+    if (this.inb?.inbounder === u) return; // walking it out of bounds is automatic
     this.stick = inp.move;
     const hasBall = this.holder() === u;
     const onO = u.team === this.possession;
-    const sprint = inp.sprint && u.stamina > 0.05;
-    const base = sprint ? u.sprintSpeed * (0.7 + 0.3 * u.stamina) : u.walkSpeed;
-    u.want = scale(inp.move, base * (hasBall ? u.ballSpeedMult : 1));
-    u.sprinting = sprint && len(inp.move) > 0.2;
+    if (inp.sprint && this.live) {
+      if (!this.startBurst(u) && this.time - this.lastRechargeMsg > 1) { this.lastRechargeMsg = this.time; this.emit({ kind: 'sprint', text: `Sprint recharging… ${(u.burstCdUntil - this.time).toFixed(1)}s`, pid: u.id }); }
+    }
+    u.want = scale(inp.move, this.topSpeed(u) * (hasBall ? u.ballSpeedMult : 1));
+    u.sprinting = this.time < u.burstUntil && len(inp.move) > 0.2;
+    // dribble picked up after a pump fake: planted
+    if (hasBall && u.deadDribble) u.want = v();
+    // flick-cross: while side-driving (and just after), snapping the stick the other way crosses over, no button
+    if (hasBall && this.live && u.flickDir && this.time < u.flickUntil && inp.move.y * u.flickDir < -0.6) this.flickCross(u, Math.sign(inp.move.y));
 
     this.passTarget = hasBall ? this.pickPassTarget(u, inp.move) : null;
     if (!this.live) return;
@@ -504,6 +643,7 @@ export class GameSim {
   private releaseShot(p: Player) {
     const ps = p.pendingShot!;
     p.pendingShot = null;
+    p.deadDribble = false;
     p.state = 'idle';
     const side = this.side(p.team);
     const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override });
@@ -567,13 +707,38 @@ export class GameSim {
     const dur = (d / speed) * (lob ? 1.6 : 1) + 0.06;
     this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > from.safePassDist, checked: new Set() };
     this.lastPasser = from; this.lastPassAt = this.time;
+    from.deadDribble = false;
     this.quiet('pass', { lob, dist: d }, from.id);
     from.state = from.state === 'dribbleMove' ? from.state : 'idle';
     from.face = norm(sub(lead, from.p));
   }
 
+  /** Tap sprint: a timed speed burst, then a cooldown. Returns false while recharging. */
+  startBurst(p: Player): boolean {
+    if (this.time < p.burstCdUntil || p.stamina < 0.05) return false;
+    p.burstUntil = this.time + p.burstDur;
+    p.burstCdUntil = p.burstUntil + p.burstCd;
+    p.burstStartAt = this.time;
+    this.quiet('burst', {}, p.id);
+    return true;
+  }
+  topSpeed(p: Player) { return this.time < p.burstUntil ? p.burstSpeed : p.runSpeed; }
+  lastRechargeMsg = -9;
+
+  /** Crossover fired by flicking the stick the other way during a side drive. */
+  flickCross(p: Player, dirY: number) {
+    p.flickDir = 0;
+    if (p.state === 'dribbleMove' && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.state = 'idle'; }
+    p.vel = { x: p.vel.x, y: -dirY * Math.max(4, Math.abs(p.vel.y)) }; // still moving the old way, so the stick reads as a change of direction
+    this.dribbleMove(p, { x: 0, y: dirY });
+  }
+
   dribbleMove(p: Player, stick: Vec) {
     if (this.holder() !== p || p.busy) return;
+    if (p.deadDribble) {
+      if (!p.deadWarned) { p.deadWarned = true; this.emit({ kind: 'dead', text: 'Dribble picked up — pass or shoot', pid: p.id }); }
+      return;
+    }
     // input buffer: pressing during a move queues the next one (makes chains feel responsive)
     if (p.state === 'dribbleMove') { p.bufferedMove = { stick: { ...stick }, at: this.time }; return; }
     const rim = this.rim(p.team);
@@ -590,7 +755,8 @@ export class GameSim {
     const isCross = id === 'crossover' || id === 'doubleCross';
     p.moveVel = scale(dir, m.burst * towardMult * (isCross ? p.mods.pMult('crossBurst') : 1) * (0.85 + 0.15 * p.ballSpeedMult));
     p.movePlantAt = m.plantAt ?? 0.3; p.movePlanted = false;
-    if (m.pumpFake) p.pumpFakeAt = this.time;
+    if (m.pumpFake) { p.pumpFakeAt = this.time; p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
+    if (id === 'lateral') { p.flickDir = Math.sign(dir.y) || 0; p.flickUntil = this.time + m.dur + 0.3; } else p.flickDir = 0;
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
     this.emit({ kind: 'move', text: m.name, pid: p.id });
 
@@ -688,6 +854,7 @@ export class GameSim {
       if (p.jumpAt && this.time >= p.jumpAt) { p.jumpAt = 0; this.jump(p, 0.9); }
 
       let want = p.want;
+      if (p.deadDribble && this.holder() === p && p.state !== 'shoot') want = v();
       if (this.time < p.staggerUntil) want = scale(want, 0.25);
       if (this.time < p.screenedUntil) want = scale(want, 0.15);
       if (p.boxedOut) { want = scale(want, p.boxedOut); p.boxedOut = 0; }
@@ -705,7 +872,7 @@ export class GameSim {
           p.vel = add(p.vel, scale(sub(want, p.vel), Math.min(1, dt * accel)));
         }
       }
-      p.p = clampToCourt(add(p.p, scale(p.vel, dt)));
+      p.p = this.clampFor(p, add(p.p, scale(p.vel, dt)));
       if (p.z > 0 || p.vz > 0) {
         p.vz -= 32 * dt; p.z += p.vz * dt;
         if (p.z <= 0) { p.z = 0; p.vz = 0; if (p.state === 'jump') p.state = 'idle'; }
@@ -714,7 +881,7 @@ export class GameSim {
       if (sp > 1.5 && p.state !== 'shoot') p.face = norm(p.vel);
       if (this.holder() === p && sp > 2) p.dribbledSinceCatch = p.dribbledSinceCatch || this.time - p.receivedAt > 0.5;
       // stamina
-      const sprinting = sp > p.walkSpeed * 1.05;
+      const sprinting = this.time < p.burstUntil && sp > p.runSpeed * 0.9;
       const stamMult = 1 - p.sub.stamina / 99 * 0.5;
       p.stamina = clamp(p.stamina + (sprinting ? -0.07 * stamMult : 0.04) * dt, 0, 1);
     }
@@ -743,8 +910,8 @@ export class GameSim {
       const ma = fixedA ? 1e6 : 1 + a.sub.driveStability / 99;
       const mb = fixedB ? 1e6 : 1 + b.sub.driveStability / 99;
       const overlap = minD - d;
-      a.p = clampToCourt(sub(a.p, scale(n, overlap * mb / (ma + mb))));
-      b.p = clampToCourt(add(b.p, scale(n, overlap * ma / (ma + mb))));
+      a.p = this.clampFor(a, sub(a.p, scale(n, overlap * mb / (ma + mb))));
+      b.p = this.clampFor(b, add(b.p, scale(n, overlap * ma / (ma + mb))));
       // drive contact: ball handler bumped by a defender
       if (h && (a === h || b === h) && a.team !== b.team && len(h.vel) > 8) {
         const def = a === h ? b : a;
@@ -826,7 +993,7 @@ export class GameSim {
           const r = 1.3 * d.mods.pMult('deflect') + (swiping ? 1.4 : 0);
           if (dist(d.p, b.p) < r && b.z < d.reach + d.z + 0.5) {
             st.checked.add(d.id);
-            const chance = (0.04 + 0.16 * d.sub.steal / 99) * (st.risky ? 1.8 : 1) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
+            const chance = (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.risky ? 1.8 : 1) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
             if (this.rng.chance(chance)) {
               d.box.stl++; st.from.box.tov++;
               this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true });
@@ -844,7 +1011,7 @@ export class GameSim {
             this.giveBall(st.to);
             this.quiet('catch', {}, st.to.id);
             this.assistCand = { passer: st.from, receiver: st.to, at: this.time };
-            if (this.runner.cur?.options?.includes(st.to.role)) st.to.receivedAt = this.time;
+            if (this.runner.cur?.options?.includes(this.playRole(st.to))) st.to.receivedAt = this.time;
           } else {
             b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 8), vz: 0, lastTeam: st.from.team };
           }
@@ -937,11 +1104,11 @@ export class GameSim {
       this.checkLeftMan(s);
       this.assistCand = null;
       if (st.foul) { this.emit({ kind: 'foul', text: 'And-one!', team, big: true }); this.freeThrows(s, 1); }
-      this.deadBall((1 - team) as 0 | 1);
+      this.deadBall((1 - team) as 0 | 1, 1.1, 'baseline');
     } else if (st.foul) {
       this.emit({ kind: 'foul', text: `Shooting foul — ${st.pts} free throws`, team });
       const made = this.freeThrows(s, st.pts);
-      this.deadBall((1 - team) as 0 | 1, made ? 1.1 : 1.4);
+      this.deadBall((1 - team) as 0 | 1, made ? 1.1 : 1.4, 'baseline');
     } else {
       const rim = this.rim(team);
       const out = norm(add(sub(s.p, rim), v(this.rng.range(-8, 8), this.rng.range(-8, 8))));
@@ -984,7 +1151,7 @@ export class GameSim {
   userAssignment(): { pos: Vec; act: string; play: string } | null {
     const u = this.user;
     if (!u || !this.userOnCourt || u.team !== this.possession) return null;
-    const a = this.runner.roleAssignment(u.role);
+    const a = this.runner.roleAssignment(this.playRole(u));
     if (!a || !this.runner.play) return null;
     return { pos: this.assignmentPos(u, a), act: a.act, play: this.runner.play.name };
   }

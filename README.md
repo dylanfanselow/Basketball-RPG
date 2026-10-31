@@ -14,18 +14,26 @@ npm run dev      # http://localhost:5173
 npm test         # sim unit tests + a headless AI-vs-AI game
 ```
 
-## Controls (gamepad, Xbox layout)
+## Controls (gamepad, PlayStation layout)
 
 | Button | With ball | Offense, off ball | Defense |
 |---|---|---|---|
-| **A** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater, **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
-| **Y** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
-| **B** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
-| **X** (left) | Ultimate | Ultimate | Ultimate |
-| Left stick / RT | Move / sprint | | |
+| **✕** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater, **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
+| **△** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
+| **○** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
+| **□** (left) | Ultimate | Ultimate | Ultimate |
+| Left stick / R2 | Move / tap for a sprint burst (then a cooldown) | | |
 
-Keyboard: WASD move, **K**=A, **L**=B, **J**=X, **I**=Y, Shift sprint, Enter pause, **M** mute. **F1** or **`** toggles dev tools
-(gamepad: Back+Start).
+Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, Enter pause, **M** mute. **F1** or **`** toggles dev tools
+(gamepad: Create+Options).
+
+## Things to know while testing
+
+- **Sprint** is a tap: R2 (or Shift) gives a short burst, shown by speed lines and the ring next to the trust bars, then it recharges. Mobility and stamina change both.
+- **Side Drive**: ○ + stick up or down while dribbling. While you're driving, flick the stick the other way (no button) to cross over.
+- **Pump fake** (○ with no stick) picks up your dribble: you can only pass or shoot.
+- **Feature me equally** (on in Practice and Quick Game, toggle in the dev panel): the coach rotates who each set is run for, including you, even when you're not the position the play was written for.
+- After a make, a big walks the ball out of bounds and inbounds it to the point guard. Steals and defensive boards can turn into fast breaks.
 
 ## How it's built
 

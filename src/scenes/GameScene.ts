@@ -9,7 +9,10 @@ import { buildSheet, Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, PIXEL, fra
 import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
-import { CONE_HALF } from '../sim/shooting';
+import { CONE_HALF, contestReach } from '../sim/shooting';
+import { Crowd } from '../render/crowd';
+import { randomAppearance } from '../render/appearance';
+import { Rng } from '../sim/math';
 import { norm, sub, dist, len, segDist } from '../sim/math';
 import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
@@ -44,6 +47,11 @@ export class GameScene extends Phaser.Scene {
   animMem = new Map<string, { clip: string; u: number }>();
   lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
   heldBall: { x: number; y: number } | null = null;
+  crowd!: Crowd;
+  shotClockTexts: Phaser.GameObjects.Text[] = [];
+  tableText!: Phaser.GameObjects.Text;
+  coaches: { team: 0 | 1; sprite: Phaser.GameObjects.Sprite; sheet: Sheet; home: number; x: number; act: string; actUntil: number }[] = [];
+  benchCheerUntil: [number, number] = [0, 0];
   paused = false;
   pauseText!: Phaser.GameObjects.Text;
   pauseIdx = 0;
@@ -63,7 +71,10 @@ export class GameScene extends Phaser.Scene {
     this.input2 = new InputMapper(this);
     const [t0, t1] = this.sim.teams;
     drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
-    drawHoops(this);
+    const hoops = drawHoops(this);
+    this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
+    this.crowd = new Crowd(this, t0.def.colors[0], t1.def.colors[0]);
+    this.buildSideline();
     this.shadows = this.add.graphics().setDepth(-500);
     this.overlay = this.add.graphics().setDepth(-400);
     this.overlayTop = this.add.graphics().setDepth(5000);
@@ -201,7 +212,27 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Crowd + bench + coach reactions. power 0..1; team = whose good moment it is. */
+  reactAll(team: 0 | 1 | undefined, power: number, worldX: number) {
+    if (team === undefined) return;
+    this.crowd.react(worldX, power, team === 0);
+    if (team === 1 && power > 0.5) this.crowd.react(worldX, power * 0.6, true, true); // home fans boo the visitors' big play
+    this.benchCheerUntil[team] = this.time.now + 1800;
+    for (const c of this.coaches) if (c.team === team && power > 0.5) { c.act = 'cheer'; c.actUntil = this.time.now + 1300; }
+  }
+
   onEvent(e: GameEvent) {
+    {
+      const sim = this.sim;
+      const who = e.pid ? sim.players.find((p) => p.id === e.pid) : null;
+      const wx = sx(who ? who.p.x : sim.ball.p.x);
+      const d = e.data ?? {};
+      const team = (e.team ?? who?.team) as 0 | 1 | undefined;
+      if (e.kind === 'net') this.reactAll(d.team, d.type === 'dunk' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx);
+      else if (['block', 'steal', 'ankles', 'poster', 'charge'].includes(e.kind)) this.reactAll(team, e.kind === 'steal' ? 0.6 : 0.9, wx);
+      else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
+      if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) { c.act = 'point'; c.actUntil = this.time.now + 1100; }
+    }
     this.playSound(e);
     if (e.quiet) return;
     const mine = e.pid === 'USER';
@@ -224,6 +255,8 @@ export class GameScene extends Phaser.Scene {
     const dist = this.runDist.get(p.id) ?? 0;
     const phase = (p.number * 0.137) % 1; // so players don't dribble in lockstep
     if (p.state === 'fallen') return { clip: a?.name === 'ankleFall' ? 'ankleFall' : 'fall', u: a ? (now - a.start) / 0.65 : 1 };
+    if (sim.inb?.inbounder === p && sim.inb.hasBall && len(p.vel) < 2) return { clip: 'inbound', u: now };
+    if (hasBall && p.deadDribble && p.state !== 'shoot') return { clip: 'hold', u: now * 1.5 };
     if (a && a.name.startsWith('shot_')) {
       const clip = SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper';
       const c = CLIP[clip];
@@ -282,7 +315,7 @@ export class GameScene extends Phaser.Scene {
     // frame the action between the ball and the rim being attacked
     const rimX = sim.rim(sim.possession).x;
     const bx0 = u && sim.userOnCourt ? sim.ball.p.x * 0.7 + u.p.x * 0.3 : sim.ball.p.x;
-    const focusX = (bx0 + (rimX - bx0) * 0.42) * S;
+    const focusX = sx(bx0 + (rimX - bx0) * 0.42);
     let tx = focusX - VIEW_W / 2;
     // never lose your own player
     if (u && sim.userOnCourt) tx = Phaser.Math.Clamp(tx, sx(u.p.x) - VIEW_W + 140, sx(u.p.x) - 140);
@@ -311,26 +344,108 @@ export class GameScene extends Phaser.Scene {
       const flip = p.face.x < 0;
       s.setFlipX(flip);
       const bo = sh.sheet.ball[idx];
-      if (bo && (holder === p || p.state === 'shoot')) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * PIXEL, y: s.y - bo[1] * PIXEL };
+      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * PIXEL, y: s.y - bo[1] * PIXEL };
       s.setDepth(sy(p.p.y));
       const ghost = sim.time < p.screenedUntil;
       s.setTint(ghost ? 0xb0b0ff : 0xffffff);
       this.shadows.fillStyle(0x000000, 0.28);
-      this.shadows.fillEllipse(sx(p.p.x), sy(p.p.y), 38 - p.z * 2, 10);
+      this.shadows.fillEllipse(sx(p.p.x), sy(p.p.y), 32 - p.z * 2, 9);
     }
 
     // ball
     const b = sim.ball;
     this.ballG.clear().setDepth(sy(b.p.y) + 1);
-    const inHand = !!this.heldBall && b.st.kind === 'held';
+    const inHand = !!this.heldBall && (b.st.kind === 'held' || (b.st.kind === 'dead' && !!sim.inb?.hasBall));
     const bx = inHand ? this.heldBall!.x : sx(b.p.x), by = inHand ? this.heldBall!.y : sy(b.p.y, b.z);
     this.shadows.fillStyle(0x000000, 0.3); this.shadows.fillEllipse(sx(b.p.x), sy(b.p.y), 16, 5);
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);
     this.ballG.fillStyle(0xff9a4a, 1); this.ballG.fillRect(bx - 5, by - 6, 4, 3);
     this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 8, by, bx + 8, by); this.ballG.lineBetween(bx, by - 8, bx, by + 8);
 
+    this.crowd.clutch = sim.clutch;
+    this.crowd.update(cam.scrollX, VIEW_W);
+    this.renderSideline();
+    for (const t of this.shotClockTexts) t.setText(String(Math.max(0, Math.ceil(sim.shotClock))));
     this.drawOverlays();
     this.drawHud();
+  }
+
+  /** Scorer's table, officials, coaches and team benches along the far sideline. */
+  buildSideline() {
+    const sim = this.sim;
+    const [t0, t1] = sim.teams;
+    const g = this.add.graphics().setDepth(sy(-4.6));
+    const x0 = sx(41), x1 = sx(53), yF = sy(-3.4), h = 2.6 * S;
+    // officials behind the table
+    for (const ox of [44.5, 49.5]) {
+      g.fillStyle(0x111111, 1); g.fillRect(sx(ox) - 7, yF - h - 22, 14, 24);
+      g.fillStyle(0xd9a066, 1); g.fillRect(sx(ox) - 4, yF - h - 32, 8, 9);
+      g.fillStyle(0xffffff, 1); for (let i = 0; i < 4; i++) g.fillRect(sx(ox) - 7 + i * 4, yF - h - 20, 2, 18);
+    }
+    // table: top, draped front in both teams' colors, LED ribbon
+    g.fillStyle(0x2a2f3c, 1); g.fillRect(x0 - 6, yF - h - 6, x1 - x0 + 12, 8);
+    g.fillStyle(0x10131c, 1); g.fillRect(x0, yF - h, x1 - x0, h);
+    g.fillStyle(Phaser.Display.Color.HexStringToColor(t0.def.colors[0]).color, 1); g.fillRect(x0, yF - h, (x1 - x0) / 2, 6);
+    g.fillStyle(Phaser.Display.Color.HexStringToColor(t1.def.colors[0]).color, 1); g.fillRect((x0 + x1) / 2, yF - h, (x1 - x0) / 2, 6);
+    g.fillStyle(0x05060a, 1); g.fillRect(x0 + 6, yF - h + 14, x1 - x0 - 12, 22);
+    this.tableText = this.add.text((x0 + x1) / 2, yF - h + 25, '', { fontFamily: FONT, fontSize: '14px', color: '#ffb02e', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(-4.5));
+    // bench chairs
+    for (const [a, b] of [[20, 40], [54, 74]]) for (let x = a; x <= b; x += 2.2) { g.fillStyle(0x3a3f4d, 1); g.fillRect(sx(x) - 9, sy(-3.9) - 30, 18, 4); g.fillRect(sx(x) - 9, sy(-3.9) - 30, 3, 30); }
+    // coaches in suits
+    this.coaches = [];
+    ([0, 1] as const).forEach((team) => {
+      const def = sim.teams[team].def;
+      const rng = new Rng(def.seed * 31 + 7);
+      const look = randomAppearance(() => rng.next());
+      Object.assign(look, { armSleeve: 'both', sleeveColor: '#1d1f2a', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false, headband: null, shoe: '#111111', shoeAccent: '#111111', socks: 'low', sockColor: '#111111', hair: rng.pick(['bald', 'buzz', 'fade', 'waves']) });
+      const kit: Kit = { jersey: '#1d1f2a', jerseyShade: '#14161e', trim: def.colors[0], shorts: '#22242e', number: -1, pants: true };
+      const key = `coach_${def.id}`;
+      let sheet = SHEET_CACHE.get(key);
+      if (!sheet || !this.textures.exists(key)) {
+        sheet = buildSheet(6.2, look, kit);
+        if (this.textures.exists(key)) this.textures.remove(key);
+        const tex = this.textures.addCanvas(key, sheet.canvas)!;
+        for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
+        SHEET_CACHE.set(key, sheet);
+      }
+      const home = team === 0 ? 39 : 55;
+      const sprite = this.add.sprite(sx(home), sy(-1.6), key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(PIXEL).setDepth(sy(-1.6));
+      this.coaches.push({ team, sprite, sheet, home, x: home, act: 'idle', actUntil: 0 });
+    });
+  }
+
+  renderSideline() {
+    const sim = this.sim, now = this.time.now;
+    const [a, b] = sim.teams;
+    const clock = sim.cfg.mode === 'practice' ? '--:--' : `${Math.floor(Math.max(0, sim.clock) / 60)}:${String(Math.floor(Math.max(0, sim.clock) % 60)).padStart(2, '0')}`;
+    this.tableText.setText(`${a.def.id} ${a.score}  ${clock}  ${b.score} ${b.def.id}`);
+    // benches: everyone on the roster who isn't on the floor sits; they jump up on their team's big plays
+    const onCourt = new Set(sim.players.map((p) => p.id));
+    ([0, 1] as const).forEach((team) => {
+      const bench = sim.teams[team].roster.filter((p) => !onCourt.has(p.id));
+      const start = team === 0 ? 20 : 54;
+      bench.forEach((p, i) => {
+        this.ensureSprite(p);
+        const s = this.sprites.get(p.id), sh = this.sheets.get(p.id);
+        if (!s || !sh) return;
+        const cheering = now < this.benchCheerUntil[team];
+        const clip = cheering ? 'cheer' : 'sit';
+        const c = CLIP[clip];
+        s.setVisible(true).setPosition(sx(start + i * 2.2), sy(-3.9)).setDepth(sy(-3.9)).setFlipX(team === 1).setTint(0xffffff);
+        s.setFrame(sh.sheet.index[clip].start + frameAt(c, now / 1000 * (cheering ? 2.5 : 0.4) + i * 0.37));
+      });
+    });
+    // coaches pace the sideline, point when calling a play, celebrate big plays
+    for (const c of this.coaches) {
+      let clip = 'idle', u = now / 2000;
+      if (now < c.actUntil) { clip = c.act; u = c.act === 'cheer' ? now / 400 : 1 - (c.actUntil - now) / 1100; }
+      else {
+        const target = c.home + Math.sin(now / 2600 + c.team * 2) * 2.5;
+        const dx = target - c.x;
+        if (Math.abs(dx) > 0.15) { c.x += Math.sign(dx) * Math.min(Math.abs(dx), 0.05); clip = 'jog'; u = c.x / 3; c.sprite.setFlipX(dx < 0); }
+      }
+      c.sprite.setPosition(sx(c.x), sy(-1.6)).setFrame(c.sheet.index[clip].start + frameAt(CLIP[clip], u));
+    }
   }
 
   drawOverlays() {
@@ -340,6 +455,24 @@ export class GameScene extends Phaser.Scene {
     this.labelTexts = [];
     const u = sim.user;
     const dbg = app.settings.debug;
+    // sprint bursts: speed lines streaming behind the runner, dust puff on start
+    for (const p of sim.players) {
+      if (sim.time >= p.burstUntil) continue;
+      const sp = len(p.vel);
+      if (sp < 4) continue;
+      const bx = -p.vel.x / sp, by = -p.vel.y / sp * (D / S);
+      const px0 = sx(p.p.x), feet = sy(p.p.y, p.z);
+      const fade = Math.min(1, (p.burstUntil - sim.time) / 0.4);
+      for (let i = 0; i < 5; i++) {
+        const hgt = (0.15 + i * 0.17) * p.height * S;
+        const wob = Math.sin(sim.time * 30 + i * 2.1) * 6;
+        const lenPx = 26 + ((i * 37 + Math.floor(sim.time * 20)) % 3) * 9;
+        const x0 = px0 + bx * (14 + wob), y0 = feet - hgt + by * 14;
+        gt.lineStyle(2, 0xffffff, 0.55 * fade);
+        gt.lineBetween(x0, y0, x0 + bx * lenPx, y0 + by * lenPx);
+      }
+      if (sim.time - p.burstStartAt < 0.25) { g.fillStyle(0xe8d6b0, 0.5 * (1 - (sim.time - p.burstStartAt) / 0.25)); for (let i = 0; i < 4; i++) g.fillCircle(px0 + bx * (8 + i * 7), feet - 2 - i, 4 + i); }
+    }
     if (dbg.aiTargets) for (const p of sim.players) { g.lineStyle(1, p.team === 0 ? 0x66aaff : 0xff6666, 0.5); g.lineBetween(sx(p.p.x), sy(p.p.y), sx(p.target.x), sy(p.target.y)); }
     if (dbg.hitboxes) for (const p of sim.players) { g.lineStyle(1, 0xffffff, 0.6); g.strokeEllipse(sx(p.p.x), sy(p.p.y), 2.2 * S, 2.2 * D); }
     if (!u || !sim.userOnCourt) return;
@@ -376,7 +509,7 @@ export class GameScene extends Phaser.Scene {
       // contest cone
       if (dbg.cone) {
         const dir = norm(sub(rim, u.p));
-        const L = 8;
+        const L = contestReach(sim.preview?.type ?? 'three');
         const rot = (a: number) => ({ x: dir.x * Math.cos(a) - dir.y * Math.sin(a), y: dir.x * Math.sin(a) + dir.y * Math.cos(a) });
         const l = rot(-CONE_HALF), r = rot(CONE_HALF);
         const c = sim.preview?.contest ?? 0;
@@ -424,7 +557,7 @@ export class GameScene extends Phaser.Scene {
     let eq = '';
     if (prev) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
     else if (ls && sim.time - ls.at < 4) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
-    else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. Y = call for the ball (teammates decide based on trust).' : 'Defense: A = block/contest  Y = swipe/deflect  B = take a charge') : '';
+    else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     this.eqText.setText(eq);
 
     const [a, b] = sim.teams;
@@ -434,7 +567,8 @@ export class GameScene extends Phaser.Scene {
 
     const asg = sim.userAssignment();
     const playName = sim.runner.play ? sim.runner.play.name : '';
-    this.playText.setText(playName ? `PLAY: ${playName}${asg ? `   —   YOU: ${asg.act.toUpperCase()}` : ''}` : '');
+    const forYou = sim.runner.focusPid && sim.runner.focusPid === sim.user?.id;
+    this.playText.setText(playName ? `PLAY: ${playName}${forYou ? ' — for YOU' : ''}${asg ? `   —   YOU: ${asg.act.toUpperCase()}` : ''}` : '');
 
     // trust bars
     const tr = sim.trust;
@@ -444,16 +578,26 @@ export class GameScene extends Phaser.Scene {
     h.fillStyle(0x4fc3ff, 1); h.fillRect(150, VIEW_H - 72, tr.team, 10);
     h.fillStyle(0xffc34f, 1); h.fillRect(150, VIEW_H - 56, tr.coach, 10);
 
-    // ultimate meter
+    // sprint burst pip
     const u = sim.user;
+    if (u) {
+      const ready = sim.time >= u.burstCdUntil;
+      const active = sim.time < u.burstUntil;
+      const frac = active ? 1 - (sim.time - u.burstStartAt) / Math.max(0.1, u.burstUntil - u.burstStartAt) : ready ? 1 : 1 - (u.burstCdUntil - sim.time) / Math.max(0.1, u.burstCdUntil - u.burstUntil);
+      h.fillStyle(0x000000, 0.5); h.fillCircle(285, VIEW_H - 56, 20);
+      h.lineStyle(4, 0x2a3350, 1); h.strokeCircle(285, VIEW_H - 56, 15);
+      h.lineStyle(4, active ? 0x7df9ff : ready ? 0x66ff99 : 0xffb030, 1);
+      h.beginPath(); h.arc(285, VIEW_H - 56, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.001, Math.min(1, frac))); h.strokePath();
+    }
+    // ultimate meter
     const st = sim.ult.state;
     h.fillStyle(0x000000, 0.5); h.fillRect(VIEW_W - 270, VIEW_H - 84, 260, 54);
     if (!st.unlocked) {
-      this.ultText.setText('[X] ULTIMATE\n???  — LOCKED').setColor('#888888');
+      this.ultText.setText('[□] ULTIMATE\n???  — LOCKED').setColor('#888888');
       h.fillStyle(0x333333, 1); h.fillRect(VIEW_W - 260, VIEW_H - 40, 240, 6);
     } else if (u) {
       const c = u.ultCharge;
-      this.ultText.setText(`[X] ${st.id ? ULTIMATES[st.id].name : 'No ultimate'}\n${ultLevelName(st)}  ${c >= 100 ? 'READY!' : c.toFixed(0) + '%'}`).setColor(c >= 100 ? '#ffdd33' : '#ffffff');
+      this.ultText.setText(`[□] ${st.id ? ULTIMATES[st.id].name : 'No ultimate'}\n${ultLevelName(st)}  ${c >= 100 ? 'READY!' : c.toFixed(0) + '%'}`).setColor(c >= 100 ? '#ffdd33' : '#ffffff');
       h.fillStyle(0x332200, 1); h.fillRect(VIEW_W - 260, VIEW_H - 40, 240, 6);
       h.fillStyle(c >= 100 ? 0xffdd33 : 0xff8a00, 1); h.fillRect(VIEW_W - 260, VIEW_H - 40, 2.4 * c, 6);
     }
@@ -470,9 +614,11 @@ export class GameScene extends Phaser.Scene {
       this.benchText.setVisible(true).setText(`ON THE BENCH  (${plan?.role ?? ''})\nCoach trust ${sim.trust.coach.toFixed(0)} — earn minutes with good basketball\n${q ? `Coach plans to sub you in during Q${Math.min(4, q)}` : 'No more minutes planned tonight'}\n\nSimulating at ${app.settings.benchSpeed}x`);
     } else this.benchText.setVisible(false);
 
-    this.helpText.setText(sim.holder() === sim.user ? 'A Shoot (hold back=floater, side=hook/euro)   Y Pass to ●   B Dribble move + stick   X Ultimate   RT Sprint   Start Pause   F1 Dev'
-      : sim.user && sim.user.team === sim.possession ? 'Y Call for ball   B Set screen   X Ultimate   RT Sprint   Start Pause   F1 Dev'
-      : 'A Block/Contest   Y Swipe steal   B Take charge   X Ultimate   RT Sprint   Start Pause   F1 Dev');
+    const u2 = sim.user;
+    const tail = '□ Ultimate   R2 Sprint   Options Pause   F1 Dev';
+    this.helpText.setText(!u2 ? '' : sim.holder() === u2 ? (u2.deadDribble ? '✕ Shoot   △ Pass to ●   (dribble picked up — no moving)   ' + tail : '✕ Shoot (hold back=floater, side=hook/euro)   △ Pass to ●   ○ Dribble move + stick   ' + tail)
+      : u2.team === sim.possession ? '△ Call for ball   ○ Set screen   ' + tail
+      : '✕ Block/Contest   △ Swipe steal   ○ Take charge   ' + tail);
   }
 }
 

@@ -15,6 +15,13 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   let target;
   let urgent = false;
 
+  // transition defense: get back and protect the rim before matching up
+  if (sim.inTransition(sim.possession) && dist(d.p, rim) > dist(ballP, rim) - 3) {
+    const depth = Math.max(4, Math.min(16, dist(ballP, rim) * 0.4));
+    sim.steer(d, add(rim, scale(norm(sub(ballP, rim)), depth)), true);
+    return;
+  }
+
   if (man === h) {
     const gap = 3.4 - (d.sub.perimD / 99) * 0.9;
     target = add(man.p, scale(norm(sub(rim, man.p)), gap));

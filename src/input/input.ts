@@ -3,11 +3,11 @@ import { UserInput } from '../sim/game';
 import { Vec, len, scale } from '../sim/math';
 
 /**
- * Gamepad-first input (Xbox layout):
- *   A (bottom) = Shoot / Block      Y (top)  = Pass / Call for ball / Steal
- *   B (right)  = Dribble move / Screen / Take charge
- *   X (left)   = Ultimate           Left stick = move, RT = sprint
- * Keyboard fallback mirrors the diamond on I/J/K/L: K=A, L=B, J=X, I=Y, WASD = move, Shift = sprint.
+ * Gamepad-first input (PlayStation labels; standard mapping indices):
+ *   ✕ (bottom, 0) = Shoot / Block      △ (top, 3) = Pass / Call for ball / Steal
+ *   ○ (right, 1)  = Dribble move / Screen / Take charge
+ *   □ (left, 2)   = Ultimate           Left stick = move, R2 (7) = sprint burst (tap)
+ * Keyboard fallback mirrors the diamond on I/J/K/L: K=✕, L=○, J=□, I=△, WASD = move, Shift = sprint.
  */
 export const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 
@@ -59,18 +59,19 @@ export class InputMapper {
       back: this.btn(BTN.BACK) || this.key('ESC') || this.key('BACKSPACE'),
       dev: this.btn(BTN.BACK) && this.btn(BTN.START),
       mute: this.key('M'),
+      sprint: this.btn(BTN.RT) || this.btn(BTN.RB) || this.key('SHIFT'),
     };
   }
   pressed(k: string) { return !!this.cur[k] && !this.prev[k]; }
   held(k: string) { return !!this.cur[k]; }
 
-  /** Menu confirm/cancel: A/Enter/Space and B/Esc. */
+  /** Menu confirm/cancel: ✕/Enter/Space and ○/Esc. */
   confirm() { return this.pressed('a') || this.pressed('start'); }
   cancel() { return this.pressed('b') || this.pressed('back'); }
 
   gameInput(): UserInput {
     return {
-      move: this.move, sprint: this.sprint,
+      move: this.move, sprint: this.pressed('sprint'),
       a: this.pressed('a'), b: this.pressed('b'), x: this.pressed('x'), y: this.pressed('y'),
       aHeld: this.held('a'), bHeld: this.held('b'),
     };

@@ -12,6 +12,13 @@ export interface ShotEval {
 
 export const CONE_HALF = 0.7; // ~40 degrees
 
+/** Distance (ft) at which a defender stops contesting this shot type. Also the drawn cone length. */
+export function contestReach(type: string): number {
+  if (type === 'mid' || type === 'three' || type === 'deep3') return 5.5;
+  if (type === 'floater') return 4;
+  return 6;
+}
+
 /** Pick a shot type from location + stick (Dunk City style: hold back = floater, sideways = hook / euro). */
 export function selectShotType(p: Player, side: Side, stick: Vec, now: number): string {
   const rim = rimPos(side);
@@ -52,20 +59,20 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
   const rim = rimPos(side);
   const dir = norm(sub(rim, shooter.p));
   const close = SHOT_TYPES[type].contact || type === 'floater' || type === 'hook' || type === 'push';
-  const reachFt = close ? 6 : 8;
+  const reachFt = contestReach(type);
   let keep = 1;
   const by: { name: string; dist: number; c: number }[] = [];
   for (const d of defenders) {
     if (d.state === 'fallen') continue;
     const rel = sub(d.p, shooter.p);
     const r = len(rel);
-    if (r > reachFt + 1.5) continue;
+    if (r > reachFt) continue;
     const along = dot(rel, dir);
     const lat = Math.abs(cross(dir, rel));
     const ang = Math.atan2(lat, along);
     let angF = ang <= CONE_HALF ? 1 : clamp01(1 - (ang - CONE_HALF) / 0.8) * 0.55;
     if (r < 2.2) angF = Math.max(angF, 0.5); // bodies right on you still bother you
-    const closeness = clamp01(1 - (r - 1.5) / reachFt);
+    const closeness = clamp01(1 - (r - 1.5) / Math.max(0.5, reachFt - 1.5));
     const heightF = clamp(0.8 + (d.height - shooter.height) * 0.3, 0.6, 1.35);
     const handUp = d.z > 0.4 ? 1.3 : 1;
     const rating = close ? (d.sub.block + d.sub.postD) / 2 : d.sub.perimD;

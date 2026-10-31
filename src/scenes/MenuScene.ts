@@ -22,12 +22,12 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(80, 440, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
-      'A  shoot  |  block                    K / Space',
-      'Y  pass ● | call for ball | steal     I',
-      'B  dribble move | screen | charge     L',
-      'X  ultimate                           J',
-      'RT sprint      Start pause            Shift / Enter',
-      'Back+Start  dev tools                 F1 or `',
+      '✕  shoot  |  block                    K / Space',
+      '△  pass ● | call for ball | steal     I',
+      '○  dribble move | screen | charge     L',
+      '□  ultimate                           J',
+      'R2 sprint burst (tap)  Options pause  Shift / Enter',
+      'Create+Options  dev tools             F1 or `',
       '                                      M  mute',
     ].join('\n'), { fontFamily: FONT, fontSize: '15px', color: COL.text, lineSpacing: 4 });
   }

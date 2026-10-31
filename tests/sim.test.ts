@@ -45,7 +45,8 @@ describe('shooting', () => {
     const toRim = norm(sub(rimPos(side), p.p));
     const mkD = (dx: number) => { const d = mk({ team: 1 }); d.p = { x: p.p.x + toRim.x * dx, y: p.p.y + toRim.y * dx }; return d; };
     const near = computeContest(p, [mkD(2.5)], side, 'three', 0).raw;
-    const far = computeContest(p, [mkD(6.5)], side, 'three', 0).raw;
+    const far = computeContest(p, [mkD(4.5)], side, 'three', 0).raw;
+    expect(computeContest(p, [mkD(6)], side, 'three', 0).raw).toBe(0); // outside the shorter jumper cone
     const behind = computeContest(p, [mkD(-3)], side, 'three', 0).raw;
     expect(near).toBeGreaterThan(far);
     expect(far).toBeGreaterThan(behind);
@@ -218,5 +219,106 @@ describe('chase-down ultimate', () => {
     for (let s = 1; s <= 30; s++) { if (trial(s, true)) withUlt++; if (trial(s, false)) without++; }
     console.log(`chase-down blocks: ult ${withUlt}/30, no ult ${without}/30`);
     expect(withUlt).toBeGreaterThan(without + 8);
+  });
+});
+
+describe('playtest round 4 mechanics', () => {
+  const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+  const practice = (nodes: string[] = [], core = 70) => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: { shooting: core, finishing: core, strength: core, mobility: core, playmaking: core }, nodes, isUser: true });
+    const g = makeGame({ mode: 'practice', practice: { defenders: 0, teammates: 0, runPlays: false } }, u);
+    return { g, u };
+  };
+  it('floaters are less accurate than before', () => {
+    const p = mk(); p.p = hc(1, 10, 0);
+    expect(evaluateShot(p, [], 1, 'floater', { now: 0, clutch: false }).terms[0].value).toBeLessThan(0.5); // was ~0.54 here
+  });
+  it('sprint is a timed burst with a cooldown; mobility recovers faster', () => {
+    const { g, u } = practice();
+    const run = u.runSpeed;
+    g.update(1 / 60, { ...idle, move: { x: 1, y: 0 }, sprint: true });
+    expect(g.topSpeed(u)).toBeCloseTo(u.burstSpeed);
+    expect(u.burstSpeed).toBeGreaterThan(run);
+    for (let i = 0; i < 60 * 3; i++) g.update(1 / 60, { ...idle, move: { x: 1, y: 0 } });
+    expect(g.topSpeed(u)).toBeCloseTo(u.runSpeed);
+    const before = u.burstUntil;
+    g.update(1 / 60, { ...idle, sprint: true }); // still recharging
+    expect(u.burstUntil).toBe(before);
+    expect(mk({ core: { shooting: 60, finishing: 60, strength: 60, mobility: 95, playmaking: 60 } }).burstCd).toBeLessThan(mk({ core: { shooting: 60, finishing: 60, strength: 60, mobility: 40, playmaking: 60 } }).burstCd);
+  });
+  it('side drive covers real distance, and a stick flick (no button) crosses over', () => {
+    for (const [nodes, expected] of [[['dr_cross'], 'Crossover'], [[], 'Change of Direction']] as const) {
+      const { g, u } = practice([...nodes]);
+      const y0 = u.p.y;
+      g.update(1 / 60, { ...idle, move: { x: 0, y: 1 }, b: true });
+      for (let i = 0; i < 30; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } });
+      expect(u.p.y - y0).toBeGreaterThan(8);
+      g.update(1 / 60, { ...idle, move: { x: 0, y: -1 } }); // flick up, no button
+      const moves = g.events.filter((e) => e.kind === 'move').map((e) => e.text);
+      expect(moves).toEqual(['Side Drive', expected]);
+    }
+  });
+  it('a pump fake picks up the dribble: no moving or dribbling, but you can still pass or shoot', () => {
+    const { g, u } = practice();
+    g.update(1 / 60, { ...idle, b: true }); // neutral stick = pump fake
+    for (let i = 0; i < 30; i++) g.update(1 / 60, idle);
+    expect(u.deadDribble).toBe(true);
+    const p0 = { ...u.p };
+    for (let i = 0; i < 30; i++) g.update(1 / 60, { ...idle, move: { x: 1, y: 0 } });
+    expect(Math.hypot(u.p.x - p0.x, u.p.y - p0.y)).toBeLessThan(0.3);
+    g.update(1 / 60, { ...idle, move: { x: 0, y: 1 }, b: true });
+    expect(g.events.filter((e) => e.kind === 'move').length).toBe(1);
+    g.update(1 / 60, { ...idle, a: true });
+    expect(u.state).toBe('shoot');
+  });
+});
+
+describe('inbounds, transition, equal touches', () => {
+  const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+  it('after a made basket a big walks out of bounds and passes it in to the point guard (nobody teleports)', () => {
+    const g = makeGame({ seed: 4 });
+    let checked = false;
+    for (let i = 0; i < 60 * 400 && !checked; i++) {
+      const before = g.events.length;
+      g.update(1 / 60, idle);
+      const madeNow = g.events.slice(before).some((e) => e.kind === 'net');
+      if (madeNow && g.inb) {
+        const inb = g.inb;
+        expect(['4', '5']).toContain(inb.inbounder.role);
+        const pg = inb.receiver;
+        let maxJump = 0, prev = { ...pg.p };
+        let passes = 0;
+        for (let k = 0; k < 60 * 8 && g.inb; k++) {
+          const b2 = g.events.length;
+          g.update(1 / 60, idle);
+          maxJump = Math.max(maxJump, Math.hypot(pg.p.x - prev.x, pg.p.y - prev.y)); prev = { ...pg.p };
+          passes += g.events.slice(b2).filter((e) => e.kind === 'pass').length;
+        }
+        g.update(1 / 60, idle);
+        expect(g.inb).toBeNull();
+        expect(inb.inbounder.p.x < 1 || inb.inbounder.p.x > 93).toBe(true); // he was out of bounds
+        expect(g.events.some((e) => e.kind === 'pass' && e.pid === inb.inbounder.id)).toBe(true);
+        expect(maxJump).toBeLessThan(1); // the PG walked there
+        checked = true;
+      }
+    }
+    expect(checked).toBe(true);
+  });
+  it('with "feature me" on, the coach runs about a fifth of the sets for you', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'C', core: core(60), isUser: true });
+    const g = makeGame({ featureUser: true }, u);
+    g.inbound(0);
+    let mine = 0;
+    for (let i = 0; i < 50; i++) { g.callPlay(); if (g.runner.focusPid === 'USER') mine++; }
+    expect(mine).toBeGreaterThanOrEqual(8);
+    expect(mine).toBeLessThanOrEqual(13);
+  });
+  it('a swapped play gives you the featured role even as a center', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'C', core: core(60), isUser: true });
+    const g = makeGame({ featureUser: true, allowedPlays: ['floppy'] }, u);
+    g.inbound(0);
+    for (let i = 0; i < 10; i++) { g.callPlay(); if (g.runner.focusPid === 'USER') break; }
+    expect(g.runner.focusPid).toBe('USER');
+    expect(g.playRole(u)).toBe('2'); // Floppy is run for the 2-man
   });
 });

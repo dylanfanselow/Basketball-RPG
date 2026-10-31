@@ -20,7 +20,7 @@ export class LevelUpScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
-    title(this, 'LEVEL UP', `Each point = +${STAT_POINT_VALUE} to a core stat. Then spend perk points in the trees.  A/Enter: add · B/Esc: back`);
+    title(this, 'LEVEL UP', `Each point = +${STAT_POINT_VALUE} to a core stat. Then spend perk points in the trees.  ✕/Enter: add · ○/Esc: back`);
     this.g = this.add.graphics();
     this.pts = this.add.text(60, 130, '', { fontFamily: FONT, fontSize: '20px', color: COL.accent });
     this.rows = CORE_STATS.map((s, i) => {

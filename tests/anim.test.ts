@@ -93,7 +93,7 @@ describe('audio/animation events from the sim', () => {
     for (const p of g.players) p.p = { x: 80, y: 40 };
     g.ball.st = { kind: 'loose', vel: { x: 0, y: 0 }, vz: 0, lastTeam: 0 };
     g.ball.p = { x: 20, y: 10 }; g.ball.z = 8;
-    g.freezeAI = true;
+    g.freezeAI = true; g.inb = null; g.live = true;
     const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     for (let i = 0; i < 90; i++) g.update(1 / 60, idle);
     expect(g.events.filter((e) => e.kind === 'bounce').length).toBeGreaterThanOrEqual(2);
