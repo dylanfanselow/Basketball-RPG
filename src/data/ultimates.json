@@ -1,0 +1,30 @@
+{
+  "_doc": "Ultimates are a separate system unlocked by story flag ult_unlocked. Each has evolution levels bought with milestone points (50-pt game, game winner, triple-double...).",
+  "deepStepback": {
+    "name": "Deep Step-Back", "positions": ["PG", "SG", "SF"], "context": "ball",
+    "desc": "From around the 3PT line, an explosive step-back into deep-3 range. The next shot ignores most of the contest.",
+    "levels": [
+      { "name": "Deep Step-Back",        "cost": 0, "stepFt": 5.5, "contestMult": 0.25, "shotBonus": 1.25, "window": 1.4 },
+      { "name": "Double Step-Back",      "cost": 2, "stepFt": 7.5, "contestMult": 0.18, "shotBonus": 1.35, "window": 1.6 },
+      { "name": "Step-Back Step-Through","cost": 3, "stepFt": 7.5, "contestMult": 0.10, "shotBonus": 1.45, "window": 1.8, "stepThroughFollow": true }
+    ]
+  },
+  "ftTakeoff": {
+    "name": "Free-Throw-Line Takeoff", "positions": ["PG", "SG", "SF", "PF"], "context": "ball",
+    "desc": "Driving within ~19 ft, take off from the free-throw line and fly in for a dunk that nearly can't be stopped.",
+    "levels": [
+      { "name": "Takeoff",            "cost": 0, "range": 19, "makePct": 0.88, "contestMult": 0.30 },
+      { "name": "Posterizer Takeoff", "cost": 2, "range": 20, "makePct": 0.92, "contestMult": 0.18, "stunDefenders": true },
+      { "name": "Skywalker",          "cost": 3, "range": 22, "makePct": 0.95, "contestMult": 0.10, "stunDefenders": true }
+    ]
+  },
+  "chaseDown": {
+    "name": "Chase-Down Block", "positions": ["SF", "PF", "C"], "context": "defense",
+    "desc": "Lock onto the ball handler. You get a burst of speed, and blocking from behind becomes possible (normally very hard).",
+    "levels": [
+      { "name": "Chase-Down",         "cost": 0, "speedMult": 1.45, "duration": 2.4, "blockChance": 0.70 },
+      { "name": "Freight Train",      "cost": 2, "speedMult": 1.65, "duration": 2.8, "blockChance": 0.80 },
+      { "name": "Pinned to the Glass","cost": 3, "speedMult": 1.85, "duration": 3.2, "blockChance": 0.90, "keepPossession": true }
+    ]
+  }
+}

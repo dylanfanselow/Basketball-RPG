@@ -1,0 +1,16 @@
+{
+  "id": "dribbling", "name": "Dribbling", "shape": "chain", "color": "#4ecdc4",
+  "desc": "Mostly moves. Moves chain into each other: Crossover -> Behind-the-Back -> Snatch-Back.",
+  "nodes": [
+    { "id": "dr_handle", "name": "Tight Handle", "type": "passive", "x": 50, "y": 92, "prereqs": [], "cost": 1, "desc": "+4 Ball Speed and Ankle Break.", "effects": [{ "t": "sub", "key": "ballSpeed", "add": 4 }, { "t": "sub", "key": "ankleBreak", "add": 4 }] },
+    { "id": "dr_cross", "name": "Crossover", "type": "move", "x": 30, "y": 74, "prereqs": ["dr_handle"], "cost": 1, "desc": "B + stick sideways.", "effects": [{ "t": "move", "move": "crossover" }] },
+    { "id": "dr_btb", "name": "Behind-the-Back", "type": "move", "x": 22, "y": 54, "prereqs": ["dr_cross"], "cost": 1, "desc": "Press B again right after a Crossover to go behind the back the other way.", "effects": [{ "t": "move", "move": "behindBack" }] },
+    { "id": "dr_snatch", "name": "Snatch-Back", "type": "move", "x": 18, "y": 32, "prereqs": ["dr_btb"], "cost": 2, "desc": "Chain after Behind-the-Back: B + stick back. Creates a wide-open window.", "effects": [{ "t": "move", "move": "snatchBack" }] },
+    { "id": "dr_inout", "name": "In-and-Out", "type": "move", "x": 70, "y": 74, "prereqs": ["dr_handle"], "cost": 1, "desc": "Chain after a Hesi: B + stick sideways.", "effects": [{ "t": "move", "move": "inOut" }] },
+    { "id": "dr_hesiburst", "name": "Hesi Blow-By", "type": "move", "x": 78, "y": 54, "prereqs": ["dr_inout"], "cost": 1, "desc": "Chain after a Hesi: B + stick toward the rim. Big burst.", "effects": [{ "t": "move", "move": "hesiBurst" }] },
+    { "id": "dr_spin", "name": "Spin Move", "type": "move", "x": 50, "y": 60, "prereqs": ["dr_cross", "dr_inout"], "cost": 1, "desc": "B + stick toward the rim with a defender right on you.", "effects": [{ "t": "move", "move": "spin" }] },
+    { "id": "dr_stepback", "name": "Step-Back", "type": "move", "x": 50, "y": 40, "prereqs": ["dr_spin"], "cost": 1, "desc": "B + stick back. Creates space for a jumper.", "effects": [{ "t": "move", "move": "stepback" }] },
+    { "id": "dr_chain", "name": "Combo Artist", "type": "passive", "x": 50, "y": 20, "prereqs": ["dr_stepback"], "cost": 2, "desc": "Chain windows x1.35 and ankle-break chance x1.25.", "effects": [{ "t": "param", "key": "chainWindow", "mult": 1.35 }, { "t": "param", "key": "ankleMult", "mult": 1.25 }] },
+    { "id": "dr_breaker", "name": "Ankle Breaker", "type": "passive", "x": 82, "y": 30, "prereqs": ["dr_hesiburst"], "cost": 2, "desc": "Ankle-break chance x1.4.", "effects": [{ "t": "param", "key": "ankleMult", "mult": 1.4 }] }
+  ]
+}

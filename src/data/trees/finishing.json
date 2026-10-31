@@ -1,0 +1,20 @@
+{
+  "id": "finishing", "name": "Finishing", "shape": "trident", "color": "#ff6b6b",
+  "desc": "A trident. Left prong: dunks. Middle prong: layups. Right prong: floaters, hooks and push shots.",
+  "nodes": [
+    { "id": "fi_root", "name": "Rim Instincts", "type": "passive", "x": 50, "y": 92, "prereqs": [], "cost": 1, "desc": "+3 Layup, Dunk, Floater.", "effects": [{ "t": "sub", "key": "layup", "add": 3 }, { "t": "sub", "key": "dunk", "add": 3 }, { "t": "sub", "key": "floater", "add": 3 }] },
+    { "id": "fi_fork", "name": "Body Control", "type": "passive", "x": 50, "y": 76, "prereqs": ["fi_root"], "cost": 1, "desc": "+4 Craft.", "effects": [{ "t": "sub", "key": "craft", "add": 4 }] },
+
+    { "id": "fi_power", "name": "Power Dunker", "type": "passive", "x": 20, "y": 58, "prereqs": ["fi_fork"], "cost": 1, "desc": "Dunks x1.06, contest on dunks x0.85.", "effects": [{ "t": "shot", "types": ["dunk"], "mult": 1.06 }, { "t": "contestIn", "types": ["dunk"], "mult": 0.85 }] },
+    { "id": "fi_lob", "name": "Lob Threat", "type": "passive", "x": 18, "y": 38, "prereqs": ["fi_power"], "cost": 1, "desc": "Catching lobs near the rim turns into dunks x1.10.", "effects": [{ "t": "shot", "types": ["dunk"], "cond": "catchShoot", "mult": 1.10 }] },
+    { "id": "fi_poster", "name": "Posterizer", "type": "ability", "x": 16, "y": 16, "prereqs": ["fi_lob"], "cost": 2, "desc": "Contested dunks x1.15. A made contested dunk staggers the defender.", "effects": [{ "t": "shot", "types": ["dunk"], "cond": "contested", "mult": 1.15 }, { "t": "param", "key": "posterize", "add": 1 }] },
+
+    { "id": "fi_layup", "name": "Acrobat", "type": "passive", "x": 50, "y": 56, "prereqs": ["fi_fork"], "cost": 1, "desc": "Layups x1.06.", "effects": [{ "t": "shot", "types": ["layup", "euro"], "mult": 1.06 }] },
+    { "id": "fi_euro", "name": "Euro Step", "type": "ability", "x": 50, "y": 36, "prereqs": ["fi_layup"], "cost": 1, "desc": "Shoot near the rim while holding the stick sideways = Euro Step layup (weaker contest).", "effects": [{ "t": "shotType", "shot": "euro" }] },
+    { "id": "fi_andone", "name": "And-One Artist", "type": "passive", "x": 50, "y": 16, "prereqs": ["fi_euro"], "cost": 2, "desc": "+10 Contact Finish. Contested layups x1.10.", "effects": [{ "t": "sub", "key": "contactFinish", "add": 10 }, { "t": "shot", "types": ["layup", "euro"], "cond": "contested", "mult": 1.10 }] },
+
+    { "id": "fi_float", "name": "Teardrop", "type": "passive", "x": 80, "y": 58, "prereqs": ["fi_fork"], "cost": 1, "desc": "Floaters x1.10.", "effects": [{ "t": "shot", "types": ["floater"], "mult": 1.10 }] },
+    { "id": "fi_hook", "name": "Sky Hook", "type": "passive", "x": 82, "y": 38, "prereqs": ["fi_float"], "cost": 1, "desc": "Hooks x1.10, contest on hooks x0.85.", "effects": [{ "t": "shot", "types": ["hook"], "mult": 1.10 }, { "t": "contestIn", "types": ["hook"], "mult": 0.85 }] },
+    { "id": "fi_stepthru", "name": "Step-Through", "type": "ability", "x": 84, "y": 16, "prereqs": ["fi_hook"], "cost": 2, "desc": "After a pump fake (B with no stick direction), Shoot = Step-Through.", "effects": [{ "t": "shotType", "shot": "stepThrough" }] }
+  ]
+}

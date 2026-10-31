@@ -1,0 +1,1 @@
+{ "_doc": "FUTURE CONTENT: random in-season events. Shape: { id, weight, when, text, choices: [{ text, effects: [...career effects] }] }.", "events": [] }

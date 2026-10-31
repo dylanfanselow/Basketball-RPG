@@ -1,0 +1,12 @@
+{
+  "id": "screens", "name": "Screens", "shape": "branch", "color": "#fdcb6e",
+  "desc": "Off-ball B = set a screen. Good screens build trust fast.",
+  "nodes": [
+    { "id": "sc_root", "name": "Brick Wall", "type": "passive", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+8 Screen. Defenders stay stuck on you longer.", "effects": [{ "t": "sub", "key": "screen", "add": 8 }] },
+    { "id": "sc_roll", "name": "Roll Man", "type": "passive", "x": 28, "y": 66, "prereqs": ["sc_root"], "cost": 1, "desc": "Finishing right after rolling off a screen x1.08.", "effects": [{ "t": "shot", "types": ["layup", "dunk", "floater", "hook"], "cond": "afterScreen", "mult": 1.08 }] },
+    { "id": "sc_pop", "name": "Pick & Pop", "type": "passive", "x": 72, "y": 66, "prereqs": ["sc_root"], "cost": 1, "desc": "Jumpers right after screening x1.08.", "effects": [{ "t": "shot", "types": ["mid", "three"], "cond": "afterScreen", "mult": 1.08 }] },
+    { "id": "sc_slip", "name": "Slip Artist", "type": "passive", "x": 28, "y": 42, "prereqs": ["sc_roll"], "cost": 1, "desc": "Teammates trust you more on rolls and slips (pass utility x1.2 after screens).", "effects": [{ "t": "param", "key": "rollTrust", "mult": 1.2 }] },
+    { "id": "sc_rescreen", "name": "Re-Screen", "type": "passive", "x": 72, "y": 42, "prereqs": ["sc_pop"], "cost": 1, "desc": "Screen cooldown x0.5.", "effects": [{ "t": "param", "key": "screenCd", "mult": 0.5 }] },
+    { "id": "sc_ghost", "name": "Screen Assassin", "type": "passive", "x": 50, "y": 20, "prereqs": ["sc_slip", "sc_rescreen"], "cost": 2, "desc": "Screen stun x1.5. Defenders you screen can be knocked down.", "effects": [{ "t": "param", "key": "screenStun", "mult": 1.5 }] }
+  ]
+}

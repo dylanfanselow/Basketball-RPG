@@ -1,0 +1,13 @@
+{
+  "id": "perimeter", "name": "Perimeter Defense", "shape": "branch", "color": "#74b9ff",
+  "desc": "On-ball defense, steals, closeouts, drawing charges.",
+  "nodes": [
+    { "id": "pd_root", "name": "Lockdown Stance", "type": "passive", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+6 Perimeter D, +4 Ankle Resist.", "effects": [{ "t": "sub", "key": "perimD", "add": 6 }, { "t": "sub", "key": "ankleResist", "add": 4 }] },
+    { "id": "pd_hands", "name": "Quick Hands", "type": "passive", "x": 26, "y": 68, "prereqs": ["pd_root"], "cost": 1, "desc": "Swipe steal chance x1.3.", "effects": [{ "t": "param", "key": "stealChance", "mult": 1.3 }] },
+    { "id": "pd_lanes", "name": "Interceptor", "type": "passive", "x": 22, "y": 44, "prereqs": ["pd_hands"], "cost": 1, "desc": "Pass deflection reach x1.4.", "effects": [{ "t": "param", "key": "deflect", "mult": 1.4 }] },
+    { "id": "pd_contest", "name": "Hand in Face", "type": "passive", "x": 74, "y": 68, "prereqs": ["pd_root"], "cost": 1, "desc": "Your jumper contests x1.15.", "effects": [{ "t": "contestOut", "types": ["mid", "three", "deep3"], "mult": 1.15 }] },
+    { "id": "pd_close", "name": "Closeout King", "type": "passive", "x": 78, "y": 44, "prereqs": ["pd_contest"], "cost": 1, "desc": "Defensive speed +6.", "effects": [{ "t": "sub", "key": "speed", "add": 6 }] },
+    { "id": "pd_charge", "name": "Charge Magnet", "type": "ability", "x": 50, "y": 50, "prereqs": ["pd_root"], "cost": 1, "desc": "Feet get set faster when taking a charge, and the success window is bigger.", "effects": [{ "t": "param", "key": "chargeSet", "mult": 0.6 }, { "t": "sub", "key": "charge", "add": 10 }] },
+    { "id": "pd_flop", "name": "Floor Burn", "type": "passive", "x": 50, "y": 22, "prereqs": ["pd_charge", "pd_lanes"], "cost": 2, "desc": "Charges and steals give extra ult charge and coach trust.", "effects": [{ "t": "param", "key": "hustleBonus", "mult": 1.5 }] }
+  ]
+}

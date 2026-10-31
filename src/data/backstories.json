@@ -1,0 +1,6 @@
+{
+  "_doc": "FUTURE CONTENT. Backstories apply traits + modifiers through the same effect system as perks. Not yet selectable in the UI.",
+  "generator": { "name": "Lights On a Generator", "desc": "Grew up hustling. Starter bonuses to hustle attributes.", "traits": ["hustler"], "effects": [{ "t": "sub", "key": "rebound", "add": 6 }, { "t": "sub", "key": "steal", "add": 5 }, { "t": "sub", "key": "stamina", "add": 6 }], "ultStoryEvent": "oneOnOne_hsRival" },
+  "legacy": { "name": "Living Up to the Name", "desc": "Child of an NBA player, under pressure to match their father's legacy. Gains Clutch Gene.", "traits": ["clutchGene"], "effects": [{ "t": "shot", "types": ["mid", "three", "deep3", "layup", "dunk", "floater", "hook", "push", "euro", "stepThrough"], "cond": "clutch", "mult": 1.12, "label": "Clutch Gene" }], "ultStoryEvent": "legacy_film_room" },
+  "euro": { "name": "New World", "desc": "European player in a new environment, struggling to connect with teammates. Unicorn: can take perks from other positions.", "traits": ["unicorn"], "effects": [], "startTrustPenalty": 10, "ultStoryEvent": "euro_pickup_run" }
+}

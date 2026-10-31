@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hoop Career</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05060d; overflow: hidden; }
+    #game { width: 100vw; height: 100vh; }
+    #dev { position: fixed; top: 0; right: 0; width: 430px; max-height: 100vh; overflow-y: auto; background: rgba(10,12,22,0.95); color: #dfe6ff;
+      font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; border-left: 2px solid #ffcc33; z-index: 10; padding: 8px 10px 40px; box-sizing: border-box; }
+    #dev .hdr { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 6px; color: #ffcc33; }
+    #dev details { border-top: 1px solid #2a3150; padding: 4px 0; }
+    #dev summary { cursor: pointer; color: #ffcc33; font-weight: bold; padding: 2px 0; }
+    #dev .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; flex-wrap: wrap; }
+    #dev .lbl { width: 110px; color: #9fb0e0; }
+    #dev .val { width: 34px; text-align: right; }
+    #dev input[type=range] { flex: 1; }
+    #dev button { background: #1f2742; color: #fff; border: 1px solid #3c4876; border-radius: 3px; padding: 2px 6px; cursor: pointer; font: inherit; }
+    #dev button:hover { background: #2d3866; }
+    #dev select, #dev .txt { background: #1f2742; color: #fff; border: 1px solid #3c4876; font: inherit; }
+    #dev .chk { display: block; padding: 1px 0; cursor: pointer; }
+    #dev .tree { margin: 4px 0 6px; padding-left: 4px; border-left: 2px solid #2a3150; }
+    #dev .tname { font-weight: bold; display: flex; gap: 6px; align-items: center; }
+    #dev .note { color: #7884aa; font-size: 11px; }
+    #dev pre.live { white-space: pre-wrap; color: #bfe8c0; margin: 2px 0; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

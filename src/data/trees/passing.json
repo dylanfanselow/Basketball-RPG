@@ -1,0 +1,12 @@
+{
+  "id": "passing", "name": "Passing", "shape": "branch", "color": "#55efc4",
+  "desc": "Lobs, skips, vision.",
+  "nodes": [
+    { "id": "pa_root", "name": "Floor General", "type": "passive", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+4 Pass Speed and Range.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 4 }, { "t": "sub", "key": "passRange", "add": 4 }] },
+    { "id": "pa_vision", "name": "Dime Vision", "type": "ability", "x": 30, "y": 68, "prereqs": ["pa_root"], "cost": 1, "desc": "Passing lanes are drawn: green = safe, red = risky.", "effects": [{ "t": "param", "key": "laneVision", "add": 1 }] },
+    { "id": "pa_lob", "name": "Lob City", "type": "ability", "x": 70, "y": 68, "prereqs": ["pa_root"], "cost": 1, "desc": "Passes to cutters near the rim become lobs over the defense (lower interception).", "effects": [{ "t": "param", "key": "lob", "add": 1 }] },
+    { "id": "pa_skip", "name": "Skip Pass", "type": "passive", "x": 30, "y": 46, "prereqs": ["pa_vision"], "cost": 1, "desc": "Long cross-court passes are safe from further away.", "effects": [{ "t": "sub", "key": "passRange", "add": 10 }] },
+    { "id": "pa_dimes", "name": "Dimer", "type": "passive", "x": 70, "y": 46, "prereqs": ["pa_lob"], "cost": 1, "desc": "Teammates shooting right off your pass get x1.06.", "effects": [{ "t": "param", "key": "dimer", "mult": 1.06 }] },
+    { "id": "pa_bullet", "name": "Bullet Passer", "type": "passive", "x": 50, "y": 24, "prereqs": ["pa_skip", "pa_dimes"], "cost": 2, "desc": "+10 Pass Speed.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 10 }] }
+  ]
+}

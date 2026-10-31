@@ -1,0 +1,14 @@
+{
+  "_doc": "Dribble moves fired by B + stick. dir is the stick direction relative to the handler->rim line. chainFrom: only available within chainWindow seconds after that move. default: true = known without a perk. burst ft/s, dur seconds, ankle = base ankle-break chance vs a close defender, stagger = defender reaction delay seconds.",
+  "hesi":       { "name": "Hesitation",     "dir": "toward",  "default": true, "burst": 14, "burstDir": "stick",   "dur": 0.35, "ankle": 0.02, "stagger": 0.18 },
+  "retreat":    { "name": "Retreat Dribble","dir": "back",    "default": true, "burst": 10, "burstDir": "stick",   "dur": 0.40, "ankle": 0.0,  "stagger": 0.05 },
+  "jab":        { "name": "Jab / Pump",     "dir": "neutral", "default": true, "burst": 0,  "burstDir": "none",    "dur": 0.35, "ankle": 0.03, "stagger": 0.30, "pumpFake": true },
+  "lateral":    { "name": "Side Dribble",   "dir": "perp",    "default": true, "burst": 11, "burstDir": "stick",   "dur": 0.35, "ankle": 0.0,  "stagger": 0.10 },
+  "crossover":  { "name": "Crossover",      "dir": "perp",    "burst": 19, "burstDir": "stick", "dur": 0.38, "ankle": 0.10, "stagger": 0.35 },
+  "behindBack": { "name": "Behind-the-Back","dir": "any",     "chainFrom": "crossover", "chainWindow": 0.55, "burst": 20, "burstDir": "reverseLast", "dur": 0.38, "ankle": 0.18, "stagger": 0.45 },
+  "snatchBack": { "name": "Snatch-Back",    "dir": "back",    "chainFrom": "behindBack", "chainWindow": 0.55, "burst": 17, "burstDir": "stick", "dur": 0.40, "ankle": 0.22, "stagger": 0.55, "openShot": 0.9 },
+  "spin":       { "name": "Spin Move",      "dir": "toward",  "needsClose": true, "burst": 17, "burstDir": "aroundDefender", "dur": 0.48, "ankle": 0.12, "stagger": 0.40 },
+  "stepback":   { "name": "Step-Back",      "dir": "back",    "burst": 18, "burstDir": "stick", "dur": 0.34, "ankle": 0.08, "stagger": 0.40, "openShot": 0.7 },
+  "inOut":      { "name": "In-and-Out",     "dir": "perp",    "chainFrom": "hesi", "chainWindow": 0.5, "burst": 18, "burstDir": "stick", "dur": 0.35, "ankle": 0.12, "stagger": 0.38 },
+  "hesiBurst":  { "name": "Hesi Blow-By",   "dir": "toward",  "chainFrom": "hesi", "chainWindow": 0.5, "burst": 22, "burstDir": "stick", "dur": 0.40, "ankle": 0.06, "stagger": 0.45 }
+}

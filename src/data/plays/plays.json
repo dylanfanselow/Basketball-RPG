@@ -1,0 +1,69 @@
+{
+  "_doc": "Half-court sets. Spots are named in court.ts (top, lw, rw, lc, rc, le, re, lb, rb, ls/rs slots, rim, fl/fr free-throw-line corners, lwing_deep...). 'screen:N' = go set a screen on role N's defender. act: move | screen | cut | handle | hold. 'options' = roles the ball handler should look for in this phase (utility bonus). 'ball' = which role the play wants holding the ball at the start of the phase (the AI passes there).",
+  "highPnR": {
+    "name": "High Pick & Roll", "tags": ["pnr"],
+    "phases": [
+      { "dur": 2.0, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "lc", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "lw", "act": "move" }, "5": { "to": "screen:1", "act": "screen" } } },
+      { "dur": 2.4, "roles": { "1": { "to": "re", "act": "handle" }, "5": { "to": "rim", "act": "cut" }, "4": { "to": "lw", "act": "hold" } }, "options": ["5", "2", "3"] },
+      { "dur": 2.0, "roles": { "5": { "to": "lb", "act": "move" }, "4": { "to": "top", "act": "move" } }, "options": ["4", "2", "3", "5"] }
+    ]
+  },
+  "spainPnR": {
+    "name": "Spain Pick & Roll", "tags": ["pnr"],
+    "phases": [
+      { "dur": 2.0, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "lc", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "fl", "act": "move" }, "5": { "to": "screen:1", "act": "screen" } } },
+      { "dur": 1.6, "roles": { "1": { "to": "re", "act": "handle" }, "5": { "to": "rim", "act": "cut" }, "4": { "to": "screen:5", "act": "screen" } }, "options": ["5"] },
+      { "dur": 2.2, "roles": { "4": { "to": "top", "act": "move" }, "5": { "to": "rb", "act": "move" } }, "options": ["4", "5", "2", "3"] }
+    ]
+  },
+  "hornsFlare": {
+    "name": "Horns Flare", "tags": ["horns"],
+    "phases": [
+      { "dur": 2.0, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "lc", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "le", "act": "move" }, "5": { "to": "re", "act": "move" } } },
+      { "dur": 1.8, "roles": { "1": { "to": "rw", "act": "handle" }, "4": { "to": "screen:2", "act": "screen" }, "2": { "to": "lw", "act": "cut" }, "5": { "to": "screen:1", "act": "screen" } }, "options": ["2"] },
+      { "dur": 2.2, "roles": { "5": { "to": "rim", "act": "cut" }, "4": { "to": "top", "act": "move" } }, "options": ["2", "5", "4", "3"] }
+    ]
+  },
+  "floppy": {
+    "name": "Floppy", "tags": ["offball"],
+    "phases": [
+      { "dur": 1.8, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "rim", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "lb", "act": "move" }, "5": { "to": "rb", "act": "move" } } },
+      { "dur": 2.2, "roles": { "4": { "to": "screen:2", "act": "screen" }, "5": { "to": "rb", "act": "screen" }, "2": { "to": "lw", "act": "cut" } }, "options": ["2"] },
+      { "dur": 2.0, "roles": { "2": { "to": "lw", "act": "hold" }, "4": { "to": "lb", "act": "move" }, "3": { "to": "rw", "act": "move" } }, "options": ["2", "4", "3", "5"] }
+    ]
+  },
+  "chicago": {
+    "name": "Chicago (Pin-Down to DHO)", "tags": ["dho"],
+    "phases": [
+      { "dur": 1.8, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "rb", "act": "move" }, "3": { "to": "lc", "act": "move" }, "4": { "to": "lw", "act": "move" }, "5": { "to": "rw", "act": "move" } } },
+      { "dur": 1.8, "roles": { "5": { "to": "screen:2", "act": "screen" }, "2": { "to": "rw", "act": "cut" }, "1": { "to": "lw", "act": "move" } }, "options": ["2"] },
+      { "dur": 1.6, "ball": "2", "roles": { "5": { "to": "screen:2", "act": "screen" }, "2": { "to": "top", "act": "handle" } }, "options": ["2"] },
+      { "dur": 2.2, "roles": { "5": { "to": "rim", "act": "cut" } }, "options": ["5", "3", "4", "1"] }
+    ]
+  },
+  "motion5out": {
+    "name": "5-Out Motion", "tags": ["motion"],
+    "phases": [
+      { "dur": 1.8, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "lw", "act": "move" }, "3": { "to": "rw", "act": "move" }, "4": { "to": "lc", "act": "move" }, "5": { "to": "rc", "act": "move" } } },
+      { "dur": 1.6, "roles": { "2": { "to": "rim", "act": "cut" }, "4": { "to": "lw", "act": "move" } }, "options": ["2", "3"] },
+      { "dur": 1.6, "roles": { "2": { "to": "lc", "act": "move" }, "3": { "to": "rim", "act": "cut" }, "5": { "to": "rw", "act": "move" } }, "options": ["3", "4", "5"] },
+      { "dur": 2.0, "roles": { "3": { "to": "rc", "act": "move" } }, "options": ["2", "3", "4", "5"] }
+    ]
+  },
+  "postSplit": {
+    "name": "Post Entry Split", "tags": ["post"],
+    "phases": [
+      { "dur": 1.8, "ball": "1", "roles": { "1": { "to": "lw", "act": "handle" }, "2": { "to": "top", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "rw", "act": "move" }, "5": { "to": "lb", "act": "move" } } },
+      { "dur": 1.6, "ball": "5", "roles": { "5": { "to": "lb", "act": "hold" } }, "options": ["5"] },
+      { "dur": 2.0, "roles": { "1": { "to": "screen:2", "act": "screen" }, "2": { "to": "rim", "act": "cut" } }, "options": ["2", "1", "3", "4"] }
+    ]
+  },
+  "zoneOverload": {
+    "name": "Zone Overload", "tags": ["zone"],
+    "phases": [
+      { "dur": 2.0, "ball": "1", "roles": { "1": { "to": "ls", "act": "handle" }, "2": { "to": "lw", "act": "move" }, "3": { "to": "lc", "act": "move" }, "4": { "to": "fl", "act": "move" }, "5": { "to": "rb", "act": "move" } } },
+      { "dur": 2.0, "roles": { "4": { "to": "le", "act": "move" }, "5": { "to": "rim", "act": "cut" } }, "options": ["4", "3", "5"] },
+      { "dur": 2.0, "roles": { "1": { "to": "rs", "act": "move" }, "2": { "to": "top", "act": "move" } }, "options": ["2", "1", "3", "4", "5"] }
+    ]
+  }
+}

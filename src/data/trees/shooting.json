@@ -1,0 +1,20 @@
+{
+  "id": "shooting", "name": "Shooting", "shape": "V", "color": "#ffb347",
+  "desc": "A V. The left arm is 3-point craft, the right arm is the 2-point midrange game, and the nodes inside the V help both.",
+  "nodes": [
+    { "id": "sh_root", "name": "Shooter's Touch", "type": "passive", "x": 50, "y": 92, "prereqs": [], "cost": 1, "desc": "+3 3PT and Midrange.", "effects": [{ "t": "sub", "key": "three", "add": 3 }, { "t": "sub", "key": "mid", "add": 3 }] },
+
+    { "id": "sh_catch", "name": "Catch & Shoot", "type": "passive", "x": 38, "y": 72, "prereqs": ["sh_root"], "cost": 1, "desc": "Catch-and-shoot jumpers x1.08.", "effects": [{ "t": "shot", "types": ["three", "deep3", "mid"], "cond": "catchShoot", "mult": 1.08 }] },
+    { "id": "sh_corner", "name": "Corner Specialist", "type": "passive", "x": 28, "y": 52, "prereqs": ["sh_catch"], "cost": 1, "desc": "Corner 3s x1.10.", "effects": [{ "t": "shot", "types": ["three"], "cond": "corner", "mult": 1.10 }] },
+    { "id": "sh_range", "name": "Limitless Range", "type": "passive", "x": 20, "y": 32, "prereqs": ["sh_corner"], "cost": 2, "desc": "Deep 3s x1.25.", "effects": [{ "t": "shot", "types": ["deep3"], "mult": 1.25 }] },
+    { "id": "sh_pullup3", "name": "Pull-Up Threat", "type": "passive", "x": 12, "y": 12, "prereqs": ["sh_range"], "cost": 2, "desc": "Off-the-dribble 3s x1.10.", "effects": [{ "t": "shot", "types": ["three", "deep3"], "cond": "pullUp", "mult": 1.10 }] },
+
+    { "id": "sh_mid", "name": "Mid-Range Maestro", "type": "passive", "x": 62, "y": 72, "prereqs": ["sh_root"], "cost": 1, "desc": "Midrange x1.08.", "effects": [{ "t": "shot", "types": ["mid"], "mult": 1.08 }] },
+    { "id": "sh_fade", "name": "Fadeaway", "type": "passive", "x": 72, "y": 52, "prereqs": ["sh_mid"], "cost": 1, "desc": "Contest on your midrange x0.80.", "effects": [{ "t": "contestIn", "types": ["mid"], "mult": 0.80 }] },
+    { "id": "sh_contact", "name": "Shot Through Contact", "type": "passive", "x": 80, "y": 32, "prereqs": ["sh_fade"], "cost": 2, "desc": "+8 Contact Shot. Contested 2s x1.06.", "effects": [{ "t": "sub", "key": "contactShot", "add": 8 }, { "t": "shot", "types": ["mid", "push"], "cond": "contested", "mult": 1.06 }] },
+    { "id": "sh_clutch2", "name": "Elbow Assassin", "type": "passive", "x": 88, "y": 12, "prereqs": ["sh_contact"], "cost": 2, "desc": "Clutch midrange x1.15.", "effects": [{ "t": "shot", "types": ["mid"], "cond": "clutch", "mult": 1.15 }] },
+
+    { "id": "sh_release", "name": "Quick Release", "type": "passive", "x": 50, "y": 60, "prereqs": ["sh_catch", "sh_mid"], "cost": 2, "desc": "Jumper windup x0.80.", "effects": [{ "t": "param", "key": "release", "mult": 0.80 }] },
+    { "id": "sh_afterMove", "name": "Shot Creator", "type": "passive", "x": 50, "y": 36, "prereqs": ["sh_release"], "cost": 2, "desc": "Jumpers right after a dribble move x1.10.", "effects": [{ "t": "shot", "types": ["mid", "three", "deep3"], "cond": "afterMove", "mult": 1.10 }] }
+  ]
+}
