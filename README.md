@@ -1,4 +1,6 @@
-# Hoop Career
+# Basketball-RPG (Hoop Career)
+
+Basketball career simulation game with RPG elements.
 
 A gameplay-first vertical slice of a 5v5 career basketball RPG: Hoopland-inspired side-view pixel art with taller,
 more realistic proportions; Dunk City Dynasty-style 4-button controls; Skyrim-style progression; and team basketball
