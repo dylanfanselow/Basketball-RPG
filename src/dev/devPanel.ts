@@ -184,8 +184,10 @@ export function initDevPanel() {
 
     // trust / minutes
     const tr = el('div');
-    tr.append(slider('team trust', 0, 100, 1, Math.round(c.trust.team), (v) => { c.trust.team = v; if (s) s.trust.team = v; app.changed(); }));
-    tr.append(slider('coach trust', 0, 100, 1, Math.round(c.trust.coach), (v) => { c.trust.coach = v; if (s) s.trust.coach = v; app.changed(); }));
+    const tsrc = s ? s.trust : c.trust;
+    tr.append(el('div', { class: 'note' }, s && s.cfg.rotation ? 'Editing CAREER trust (live game).' : s ? 'Editing this game\'s sandbox trust (quick/practice).' : 'Editing CAREER trust.'));
+    tr.append(slider('team trust', 0, 100, 1, Math.round(tsrc.team), (v) => { tsrc.team = v; app.changed(); }));
+    tr.append(slider('coach trust', 0, 100, 1, Math.round(tsrc.coach), (v) => { tsrc.coach = v; app.changed(); }));
     tr.append(check('Force starter (career)', c.forceStarter, (v) => { c.forceStarter = v; app.changed(); }));
     root.append(section('Trust / minutes', tr));
 

@@ -555,7 +555,9 @@ export class GameSim {
   }
 
   dribbleMove(p: Player, stick: Vec) {
-    if (this.holder() !== p || p.busy || p.state === 'dribbleMove') return;
+    if (this.holder() !== p || p.busy) return;
+    // input buffer: pressing during a move queues the next one (makes chains feel responsive)
+    if (p.state === 'dribbleMove') { p.bufferedMove = { stick: { ...stick }, at: this.time }; return; }
     const rim = this.rim(p.team);
     const toRim = norm(sub(rim, p.p));
     const nd = this.nearestDefender(p);
@@ -645,8 +647,13 @@ export class GameSim {
       // timed states
       if (p.state === 'shoot' && p.stateT >= p.stateDur) this.releaseShot(p);
       if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove') && p.stateT >= p.stateDur) {
-        if (p.state === 'dribbleMove' && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; }
+        const wasMove = p.state === 'dribbleMove';
+        if (wasMove && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; }
         p.state = 'idle';
+        if (wasMove && p.bufferedMove) {
+          const b = p.bufferedMove; p.bufferedMove = null;
+          if (this.time - b.at < 0.35) this.dribbleMove(p, b.stick);
+        }
       }
       if (p.jumpAt && this.time >= p.jumpAt) { p.jumpAt = 0; this.jump(p, 0.9); }
 

@@ -148,3 +148,56 @@ describe('headless AI game', () => {
     expect(maxUsage).toBeLessThan(0.4);
   });
 });
+
+describe('input buffering', () => {
+  it('B pressed during a crossover queues behind-the-back', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), nodes: ['dr_cross', 'dr_btb'], isUser: true });
+    const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
+    const inp = { move: { x: 0, y: -1 }, sprint: false, a: false, b: true, x: false, y: false, aHeld: false, bHeld: true };
+    g.update(1 / 60, inp);
+    const idle = { ...inp, move: { x: 0, y: 0 }, b: false, bHeld: false };
+    for (let i = 0; i < 10; i++) g.update(1 / 60, idle);
+    g.update(1 / 60, { ...idle, b: true }); // press mid-move
+    for (let i = 0; i < 40; i++) g.update(1 / 60, idle);
+    const moves = g.events.filter((e) => e.kind === 'move').map((e) => e.text);
+    expect(moves).toEqual(['Crossover', 'Behind-the-Back']);
+  });
+});
+
+describe('three-move chain', () => {
+  it('crossover -> behind-the-back -> snatch-back', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), nodes: ['dr_cross', 'dr_btb', 'dr_snatch'], isUser: true });
+    const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
+    const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+    const run = (n: number) => { for (let i = 0; i < n; i++) g.update(1 / 60, idle); };
+    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true }); run(26);
+    g.update(1 / 60, { ...idle, b: true }); run(26);
+    g.update(1 / 60, { ...idle, move: { x: -1, y: 0 }, b: true }); run(30);
+    expect(g.events.filter((e) => e.kind === 'move').map((e) => e.text)).toEqual(['Crossover', 'Behind-the-Back', 'Snatch-Back']);
+  });
+});
+
+describe('chase-down ultimate', () => {
+  function trial(seed: number, useUlt: boolean) {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'C', core: core(70), isUser: true });
+    const g = makeGame({ seed, ult: { unlocked: true, id: 'chaseDown', level: 0 } }, u);
+    g.inbound(1);
+    const h = g.holder()!;
+    const side = g.side(1);
+    // breakaway: handler sprinting at the rim, user trailing behind, everyone else far away
+    for (const p of g.players) p.p = hc(side, 70, p.team === 0 ? -20 : 20);
+    h.p = hc(side, 22, 0); u.p = hc(side, 27, 0);
+    h.aiMode = 'drive'; h.aiModeUntil = 99;
+    u.ultCharge = 100;
+    const idle = { move: { x: 0, y: 0 }, sprint: true, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+    g.update(1 / 60, { ...idle, x: useUlt });
+    for (let i = 0; i < 150; i++) g.update(1 / 60, idle);
+    return g.events.some((e) => e.kind === 'block');
+  }
+  it('locks on and blocks from behind far more often than a normal chase', () => {
+    let withUlt = 0, without = 0;
+    for (let s = 1; s <= 30; s++) { if (trial(s, true)) withUlt++; if (trial(s, false)) without++; }
+    console.log(`chase-down blocks: ult ${withUlt}/30, no ult ${without}/30`);
+    expect(withUlt).toBeGreaterThan(without + 8);
+  });
+});

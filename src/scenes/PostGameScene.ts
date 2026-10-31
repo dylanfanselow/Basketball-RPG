@@ -4,15 +4,16 @@ import { FONT, COL, title } from './ui';
 import { app } from '../state';
 import { applyGameResult, xpToNext } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
+import type { GameSim } from '../sim/game';
 
 export class PostGameScene extends Phaser.Scene {
-  inp!: InputMapper; mode = 'quick';
+  inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null;
   constructor() { super('PostGame'); }
-  init(d: { mode: string }) { this.mode = d.mode; }
+  init(d: { mode: string; sim: GameSim }) { this.mode = d.mode; this.sim = d.sim; }
   create() {
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
-    const sim = app.sim;
+    const sim = this.sim;
     if (!sim) { this.scene.start('Menu'); return; }
     const [a, b] = sim.teams;
     title(this, 'FINAL', `${a.def.city} ${a.def.name} ${a.score} – ${b.score} ${b.def.city} ${b.def.name}`);
@@ -34,7 +35,7 @@ export class PostGameScene extends Phaser.Scene {
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);
       for (const e of r.evo) lines.push(`Ultimate evolution: ${e}`);
     } else {
-      app.changed(); // trust changes from quick games persist too (dev-friendly)
+      lines.push('(Quick games don\'t affect your career save.)');
     }
     lines.push('', 'Box score:');
     for (const t of sim.teams) {

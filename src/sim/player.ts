@@ -34,6 +34,7 @@ export class Player {
   aiMode: 'none' | 'drive' = 'none'; aiModeUntil = 0; cutUntil = 0;
   /** runtime sim fields */
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
+  bufferedMove: { stick: Vec; at: number } | null = null;
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
 
   constructor(init: PlayerInit) {

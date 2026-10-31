@@ -31,7 +31,8 @@ export function createSim(mode: Mode): GameSim {
     teams: [myTeam, oppTeam],
     rosters: [mine, theirs],
     userId: user.id,
-    trust: c.trust,
+    // career games use (and change) your real trust; quick games/practice use a sandbox copy
+    trust: mode === 'career' ? c.trust : { team: 60, coach: 60 },
     ult: careerUlt(c),
     practice: app.settings.practice,
     rotation: mode === 'career' ? planRotation(c.trust.coach, app.settings.quarterLen, c.forceStarter) : undefined,

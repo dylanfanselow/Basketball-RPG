@@ -125,7 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.render();
     if (sim.over && !this.ended) {
       this.ended = true;
-      this.time.delayedCall(1800, () => this.scene.start('PostGame', { mode: this.mode }));
+      this.time.delayedCall(1800, () => this.scene.start('PostGame', { mode: this.mode, sim: this.sim }));
     }
   }
 
