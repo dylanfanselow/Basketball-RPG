@@ -44,7 +44,8 @@ export type BallState =
   | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1 }
   | { kind: 'dead' };
 
-export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1; pid?: string; big?: boolean; good?: boolean }
+/** quiet events drive audio/animation only and never show in the on-screen feed */
+export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1; pid?: string; big?: boolean; good?: boolean; quiet?: boolean; data?: Record<string, any> }
 
 export class GameSim {
   cfg: GameConfig;
@@ -467,6 +468,8 @@ export class GameSim {
     const windMult = jumper ? p.mods.pMult('release') : p.mods.pMult('gather');
     p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
     p.pendingShot = { type, override };
+    p.anim = { name: `shot_${type}`, start: this.time, release: this.time + p.stateDur };
+    this.quiet('gather', { type }, p.id);
     const rim = this.rim(p.team);
     const d = dist(p.p, rim);
     if (def.contact || type === 'floater' || type === 'stepThrough') {
@@ -493,6 +496,8 @@ export class GameSim {
     const side = this.side(p.team);
     const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override });
     const rim = this.rim(p.team);
+    if (p.anim) p.anim.release = this.time;
+    this.quiet('release', { type: ps.type }, p.id);
 
     // blocks
     for (const d of this.opp(p.team)) {
@@ -550,6 +555,7 @@ export class GameSim {
     const dur = (d / speed) * (lob ? 1.6 : 1) + 0.06;
     this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > from.safePassDist, checked: new Set() };
     this.lastPasser = from; this.lastPassAt = this.time;
+    this.quiet('pass', { lob, dist: d }, from.id);
     from.state = from.state === 'dribbleMove' ? from.state : 'idle';
     from.face = norm(sub(lead, from.p));
   }
@@ -566,6 +572,7 @@ export class GameSim {
     const dir = moveDirection(id, p, stick, toRim, nd.d?.p ?? null);
     const towardMult = dot(dir, toRim) > 0.5 ? p.mods.pMult('firstStep') : 1;
     p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = m.dur;
+    p.anim = { name: `move_${id}`, start: this.time, dur: m.dur };
     p.move = { id, dir, t: 0 };
     p.dribbledSinceCatch = true;
     p.moveVel = scale(dir, m.burst * towardMult * (0.85 + 0.15 * p.ballSpeedMult));
@@ -582,7 +589,7 @@ export class GameSim {
       if (m.pumpFake) {
         if (this.rng.chance(0.25 + 0.3 * ratio * prox)) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
       } else if (this.rng.chance(chance)) {
-        def.state = 'fallen'; def.stateT = 0; def.stateDur = 1.3;
+        this.knockDown(def, 1.3, 'ankles');
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });
         this.gainUlt(p, ULT_GAINS.ankles);
       } else {
@@ -634,6 +641,15 @@ export class GameSim {
     if (p.busy || p.z > 0) return;
     p.state = 'charge'; p.stateT = 0; p.stateDur = 0.9; p.chargeSetAt = this.time; p.want = v(); p.vel = v();
   }
+
+  /** Put a player on the floor (ankle break, charge, screen, poster). */
+  knockDown(p: Player, dur: number, how: string) {
+    p.state = 'fallen'; p.stateT = 0; p.stateDur = dur;
+    p.anim = { name: how === 'ankles' ? 'ankleFall' : 'fall', start: this.time, dur };
+  }
+
+  /** Audio/animation-only event. */
+  quiet(kind: string, data: Record<string, any> = {}, pid?: string) { this.emit({ kind, text: '', quiet: true, data, pid }); }
 
   gainUlt(p: Player, amount: number) {
     if (p !== this.user || !this.ult.state.unlocked) return;
@@ -716,6 +732,7 @@ export class GameSim {
         const def = a === h ? b : a;
         const ratio = (h.sub.driveStability + 20) / (def.sub.postD * 0.5 + def.sub.perimD * 0.5 + 20);
         h.vel = scale(h.vel, clamp(0.45 + 0.4 * ratio, 0.4, 0.95));
+        if (this.time - this.lastContactAt > 0.6) { this.lastContactAt = this.time; this.quiet('contact', { hard: false }, h.id); }
       }
     }
   }
@@ -725,10 +742,11 @@ export class GameSim {
     const stun = clamp((0.4 + (scr.sub.screen - def.sub.driveStability) / 99 * 0.8) * scr.mods.pMult('screenStun'), 0.15, 1.4);
     def.screenedUntil = this.time + stun;
     scr.lastScreenAt = this.time;
+    this.quiet('screenHit', { stun }, scr.id);
     if (!scr.screenHit) {
       scr.screenHit = true;
       if (scr === this.user) { applyTrust(this.trust, 'screen'); this.gainUlt(scr, ULT_GAINS.screen); this.emit({ kind: 'screen', text: `Screen! ${def.name} is stuck`, good: true, pid: scr.id }); }
-      if (scr.mods.pMult('screenStun') > 1.3 && this.rng.chance(0.2)) { def.state = 'fallen'; def.stateT = 0; def.stateDur = 1.0; this.emit({ kind: 'screen', text: `${def.name} flattened by the screen`, big: true }); }
+      if (scr.mods.pMult('screenStun') > 1.3 && this.rng.chance(0.2)) { this.knockDown(def, 1.0, 'screen'); this.emit({ kind: 'screen', text: `${def.name} flattened by the screen`, big: true }); }
     }
     if (this.switchAll) {
       const scrDef = this.defenderOf(scr);
@@ -740,7 +758,8 @@ export class GameSim {
     if (def.state !== 'charge' || len(h.vel) < 6) return;
     const setTime = 0.28 * def.mods.pMult('chargeSet');
     const rimD = dist(def.p, this.rim(h.team));
-    def.state = 'fallen'; def.stateT = 0; def.stateDur = 0.9;
+    this.knockDown(def, 0.9, 'charge');
+    this.quiet('contact', { hard: true }, def.id);
     if (this.time - def.chargeSetAt >= setTime && rimD > RESTRICTED_R && this.rng.chance(0.5 + def.sub.charge / 99 * 0.4)) {
       h.box.tov++;
       this.emit({ kind: 'charge', text: `CHARGE! ${def.name} takes it`, team: def.team, pid: def.id, big: true });
@@ -805,6 +824,7 @@ export class GameSim {
         if (k >= 1) {
           if (dist(st.to.p, b.p) < 3.5 && st.to.state !== 'fallen') {
             this.giveBall(st.to);
+            this.quiet('catch', {}, st.to.id);
             this.assistCand = { passer: st.from, receiver: st.to, at: this.time };
             if (this.runner.cur?.options?.includes(st.to.role)) st.to.receivedAt = this.time;
           } else {
@@ -827,7 +847,7 @@ export class GameSim {
         b.p = add(b.p, scale(st.vel, dt));
         st.vel = scale(st.vel, 1 - dt * 0.8);
         st.vz -= 32 * dt; b.z += st.vz * dt;
-        if (b.z <= 0.4) { b.z = 0.4; st.vz = Math.abs(st.vz) * 0.55; if (st.vz < 1.5) st.vz = 0; }
+        if (b.z <= 0.4) { b.z = 0.4; const impact = Math.abs(st.vz); st.vz = impact * 0.55; if (st.vz < 1.5) st.vz = 0; if (impact > 2.5) this.quiet('bounce', { v: impact }); }
         if (b.p.x < 0 || b.p.x > 94 || b.p.y < 0 || b.p.y > COURT_W) {
           this.emit({ kind: 'oob', text: 'Out of bounds' });
           this.deadBall((1 - st.lastTeam) as 0 | 1);
@@ -868,12 +888,18 @@ export class GameSim {
     }
   }
   wasShotRebound = false;
+  lastContactAt = -9;
 
   private resolveShot(st: Extract<BallState, { kind: 'shot' }>) {
     const s = st.shooter;
     const team = s.team;
     const t = this.teams[team];
     if (!st.foul || st.made) { s.box.fga++; if (st.pts === 3) s.box.tpa++; }
+    this.quiet(st.made ? 'net' : 'rim', {
+      type: st.ev.type, swish: st.made && st.ev.contest < 0.2 && ['mid', 'three', 'deep3'].includes(st.ev.type),
+      // cosmetic only: must not consume sim RNG
+      board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
+    }, s.id);
     if (st.made) {
       const before = t.score - this.teams[1 - team].score;
       t.score += st.pts;
@@ -888,7 +914,7 @@ export class GameSim {
       this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${st.pts}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
-        if (nd && dist(nd.p, s.p) < 4) { nd.state = 'fallen'; nd.stateT = 0; nd.stateDur = 1.2; this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
+        if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
       }
       this.checkLeftMan(s);
       this.assistCand = null;

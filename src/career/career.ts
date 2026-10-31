@@ -5,14 +5,16 @@ import { ModSource } from '../sim/modifiers';
 import { TrustState } from '../sim/ai/trust';
 import { UltState, ULT_MILESTONES } from '../sim/ultimates';
 import type { BoxScore } from '../sim/player';
+import { Appearance, defaultAppearance, withDefaults } from '../render/appearance';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const STAT_POINT_VALUE = 2; // each core-stat point adds this many rating points
 export const STAT_MAX = 99;
 
 export interface CareerState {
   version: number;
   name: string; pos: Position; height: number; number: number; skin: number;
+  appearance: Appearance;
   core: CoreStats;
   level: number; xp: number; statPoints: number; perkPoints: number;
   nodes: string[];
@@ -31,7 +33,7 @@ export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerSt
   const others = TEAMS.filter((t) => t.id !== teamId).map((t) => t.id);
   const schedule = Array.from({ length: 10 }, (_, i) => others[(i * 7) % others.length]);
   return {
-    version: SAVE_VERSION, name, pos, height: HEIGHTS[pos], number: 7, skin: 2,
+    version: SAVE_VERSION, name, pos, height: HEIGHTS[pos], number: 7, skin: 2, appearance: defaultAppearance(),
     core, level: 1, xp: 0, statPoints: 5, perkPoints: 2, nodes: [], traits: [], backstory: null,
     flags: { ult_unlocked: false }, ult: { id: null, level: 0, evoPoints: 0, seenMilestones: [] },
     trust: { team: 20, coach: 20 }, teamId,
@@ -54,7 +56,7 @@ export function careerExtraMods(c: CareerState): ModSource[] {
 export function careerPlayer(c: CareerState, teamIdx: 0 | 1 = 0): Player {
   return new Player({
     id: 'USER', name: c.name, team: teamIdx, pos: c.pos, core: c.core, nodes: c.nodes,
-    extra: careerExtraMods(c), isUser: true, number: c.number, skin: c.skin, height: c.height,
+    extra: careerExtraMods(c), isUser: true, number: c.number, skin: c.appearance.skin, height: c.height, appearance: c.appearance,
   });
 }
 
@@ -99,7 +101,15 @@ export function loadCareer(): CareerState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const c = JSON.parse(raw) as CareerState;
-    return c.version === SAVE_VERSION ? c : null;
+    return migrateCareer(JSON.parse(raw));
   } catch { return null; }
+}
+
+/** Upgrade older saves in place. v1 -> v2 adds appearance. */
+export function migrateCareer(c: any): CareerState | null {
+  if (!c || typeof c.version !== 'number') return null;
+  if (c.version === 1) { c.appearance = { ...defaultAppearance(), skin: c.skin ?? 2 }; c.version = 2; }
+  if (c.version !== SAVE_VERSION) return null;
+  c.appearance = withDefaults(c.appearance);
+  return c as CareerState;
 }

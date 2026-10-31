@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
 import { MenuList, title, FONT, COL } from './ui';
 import { app } from '../state';
+import { sfx } from '../audio/sfx';
 
 export class MenuScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
@@ -27,12 +28,17 @@ export class MenuScene extends Phaser.Scene {
       'X  ultimate                           J',
       'RT sprint      Start pause            Shift / Enter',
       'Back+Start  dev tools                 F1 or `',
+      '                                      M  mute',
     ].join('\n'), { fontFamily: FONT, fontSize: '15px', color: COL.text, lineSpacing: 4 });
   }
   padText?: Phaser.GameObjects.Text;
+  soundText?: Phaser.GameObjects.Text;
   update() {
     const pad = this.inp.pad;
     if (!this.padText) this.padText = this.add.text(80, 640, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
+    if (!this.soundText) this.soundText = this.add.text(80, 668, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
+    this.soundText.setText(sfx.running ? `🔊 Sound on  (M to ${sfx.settings.muted ? 'unmute' : 'mute'})` : '🔇 Press any key or click to enable sound');
+    if (this.inp.pressed('mute')) sfx.toggleMute();
     this.padText.setText(pad ? `🎮 Controller: ${pad.id.replace(/\(.*\)/, '').trim()}` : 'No controller detected. Plug one in and press any button on it.').setColor(pad ? COL.good : COL.dim);
     this.inp.poll(); if (this.inp.pressed('dev')) (window as any).__toggleDev?.(); this.menu.update(this.inp); }
 }

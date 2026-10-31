@@ -5,14 +5,15 @@ import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
-import { buildSheet, teamPalette, FRAMES, FRAME_W, FRAME_H, PIXEL, FrameName } from '../render/sprites';
+import { buildSheet, Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, PIXEL, frameRect } from '../render/sprites';
+import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
+import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
 import { CONE_HALF } from '../sim/shooting';
 import { norm, sub, dist, len, segDist } from '../sim/math';
 import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
 
-const FI = Object.fromEntries(FRAMES.map((f, i) => [f, i])) as Record<FrameName, number>;
 const FONT = '"Courier New", monospace';
 
 export class GameScene extends Phaser.Scene {
@@ -38,6 +39,10 @@ export class GameScene extends Phaser.Scene {
   feed: { text: string; t: number; color: string }[] = [];
   acc = 0;
   runDist = new Map<string, number>();
+  sheets = new Map<string, { key: string; sheet: Sheet }>();
+  animMem = new Map<string, { clip: string; u: number }>();
+  lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
+  heldBall: { x: number; y: number } | null = null;
   paused = false;
   pauseText!: Phaser.GameObjects.Text;
   pauseIdx = 0;
@@ -69,24 +74,34 @@ export class GameScene extends Phaser.Scene {
 
   private onAppChanged = () => { this.buildSprites(); };
 
-  /** (Re)generate pixel sheets for everyone (dev tools call this after changes). */
+  /** Team uniform for a player (home = team colors, away = white with team trim). */
+  kitFor(p: Player): Kit {
+    const t = this.sim.teams[p.team].def;
+    return p.team === 0
+      ? { jersey: t.colors[0], jerseyShade: shade(t.colors[0], 0.75), trim: t.colors[1], shorts: shade(t.colors[0], 0.9), number: p.number }
+      : { jersey: '#f2f2f2', jerseyShade: '#cfcfcf', trim: t.colors[0], shorts: '#e6e6e6', number: p.number };
+  }
+
+  /** Build (or rebuild after a dev-panel change) the sprite sheets for players on the court. */
   buildSprites() {
-    const all = new Set<Player>([...this.sim.teams[0].roster, ...this.sim.teams[1].roster]);
-    for (const p of all) {
-      const key = `pl_${p.id}_${p.team}`;
-      if (!this.textures.exists(key)) {
-        const t = this.sim.teams[p.team];
-        const pal = teamPalette(p.team === 0 ? t.def.colors : [t.def.colors[0], t.def.colors[1]], p.skin);
-        if (p.team === 1) { pal.jersey = '#f2f2f2'; pal.jerseyShade = '#cfcfcf'; pal.trim = t.def.colors[0]; pal.shorts = '#e6e6e6'; }
-        const canvas = buildSheet(p.height, pal, p.number);
-        const tex = this.textures.addCanvas(key, canvas)!;
-        FRAMES.forEach((_, i) => tex.add(i, 0, i * FRAME_W, 0, FRAME_W, FRAME_H));
-      }
-      if (!this.sprites.has(p.id)) {
-        const s = this.add.sprite(0, 0, key, 0).setOrigin(0.44, 0.97).setScale(PIXEL);
-        this.sprites.set(p.id, s);
-      }
-    }
+    for (const p of this.sim.players) this.ensureSprite(p);
+  }
+
+  ensureSprite(p: Player) {
+    const kit = this.kitFor(p);
+    const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}`;
+    const cur = this.sheets.get(p.id);
+    if (cur?.key === key) return;
+    if (!this.textures.exists(key)) {
+      const sheet = buildSheet(p.height, p.appearance, kit);
+      const tex = this.textures.addCanvas(key, sheet.canvas)!;
+      for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
+      this.sheets.set(p.id, { key, sheet });
+    } else if (cur) this.sheets.set(p.id, { key, sheet: cur.sheet });
+    if (cur && cur.key !== key && this.textures.exists(cur.key)) this.time.delayedCall(0, () => this.textures.remove(cur.key));
+    let s = this.sprites.get(p.id);
+    if (!s) { s = this.add.sprite(0, 0, key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(PIXEL); this.sprites.set(p.id, s); }
+    else s.setTexture(key, 0);
   }
 
   makeHud() {
@@ -107,6 +122,7 @@ export class GameScene extends Phaser.Scene {
   update(_t: number, deltaMs: number) {
     this.input2.poll();
     if (this.input2.pressed('dev')) (window as any).__toggleDev?.();
+    if (this.input2.pressed('mute')) this.feed.unshift({ text: sfx.toggleMute() ? 'Sound off (M)' : 'Sound on (M)', t: this.time.now, color: '#ffffff' });
     if (this.ended) return;
     if (this.input2.pressed('start') && !this.input2.held('back')) { this.paused = !this.paused; this.pauseIdx = 0; }
     if (this.paused) { this.updatePause(); return; }
@@ -142,7 +158,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Stereo pan for a world x position relative to the camera. */
+  panAt(x: number) { return Phaser.Math.Clamp((sx(x) - this.cameras.main.scrollX - VIEW_W / 2) / (VIEW_W / 2), -1, 1) * 0.7; }
+
+  playSound(e: GameEvent) {
+    const sim = this.sim;
+    const who = e.pid ? sim.players.find((p) => p.id === e.pid) : null;
+    const pan = this.panAt(who ? who.p.x : sim.ball.p.x);
+    const d = e.data ?? {};
+    const home = e.team === 0 || (who?.team === 0);
+    switch (e.kind) {
+      case 'move': sfx.squeak(pan); break;
+      case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough'].includes(d.type)) sfx.squeak(pan, 0.7); break;
+      case 'pass': sfx.pass(pan, !!d.lob); break;
+      case 'catch': sfx.catch(pan); break;
+      case 'release': sfx.release(pan); break;
+      case 'net':
+        if (d.type === 'dunk') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
+        else { d.swish ? sfx.swish(pan) : sfx.rimIn(pan); if (d.pts === 3) sfx.cheer(d.team === 0 ? 0.75 : 0.3); }
+        break;
+      case 'rim': sfx.clank(pan, !!d.board); break;
+      case 'bounce': sfx.bounce(d.v ?? 6, pan); break;
+      case 'screenHit': sfx.thud(pan, false); break;
+      case 'contact': sfx.thud(pan, !!d.hard); break;
+      case 'block': sfx.block(pan); sfx.cheer(home ? 0.8 : 0.35); break;
+      case 'steal': sfx.steal(pan); if (home) sfx.cheer(0.55); else sfx.groan(); break;
+      case 'ankles': sfx.squeak(pan, 1.2); sfx.cheer(1); break;
+      case 'poster': sfx.cheer(1); break;
+      case 'ult': if (e.big) sfx.cheer(0.9); break;
+      case 'foul': case 'oob': sfx.whistle(false); break;
+      case 'charge': sfx.whistle(true); if (home) sfx.cheer(0.6); break;
+      case 'violation': sfx.buzzer(); break;
+      case 'period': case 'final': sfx.buzzer(); break;
+    }
+  }
+
   onEvent(e: GameEvent) {
+    this.playSound(e);
+    if (e.quiet) return;
     const mine = e.pid === 'USER';
     const color = e.good === false ? '#ff8080' : e.good ? '#9dff9d' : e.team === 1 ? '#ffd0d0' : e.team === 0 ? '#d0e4ff' : '#ffffff';
     if (e.kind === 'move' && !mine) return;
@@ -156,31 +209,62 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  frameFor(p: Player): FrameName {
-    const sim = this.sim;
+  /** Which animation clip a player is in right now, and how far through it (u). */
+  clipFor(p: Player): { clip: string; u: number } {
+    const sim = this.sim, now = sim.time, a = p.anim;
     const hasBall = sim.holder() === p;
-    if (p.state === 'fallen') return 'fallen';
-    if (p.state === 'stagger' || sim.time < p.staggerUntil) return 'stagger';
-    if (p.state === 'screen') return 'screen';
-    if (p.state === 'charge') return 'charge';
-    if (p.state === 'shoot' && p.pendingShot) {
-      const t = p.pendingShot.type;
-      return t === 'dunk' ? 'dunk' : ['mid', 'three', 'deep3', 'push'].includes(t) ? 'shoot' : 'layup';
+    const dist = this.runDist.get(p.id) ?? 0;
+    const phase = (p.number * 0.137) % 1; // so players don't dribble in lockstep
+    if (p.state === 'fallen') return { clip: a?.name === 'ankleFall' ? 'ankleFall' : 'fall', u: a ? (now - a.start) / 0.65 : 1 };
+    if (a && a.name.startsWith('shot_')) {
+      const clip = SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper';
+      const c = CLIP[clip];
+      const inPost = a.release !== undefined && now >= a.release && (now - a.release < (c.post ?? 0.5) || p.z > 0.05);
+      if (p.state === 'shoot' || inPost) return { clip, u: shotU(c, now, a.start, p.state === 'shoot' ? a.release : a.release) };
     }
-    if (sim.ball.st.kind === 'shot' && sim.ball.st.shooter === p && p.z > 0.2) return sim.ball.st.ev.type === 'dunk' ? 'dunk' : 'shoot';
-    if (p.z > 0.3) return 'block';
-    if (p.state === 'dribbleMove') return 'cross';
-    if (sim.time < p.swipingUntil) return 'swipe';
-    if (sim.lastPasser === p && sim.time - sim.lastPassAt < 0.22) return 'pass';
+    if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
+    if (p.state === 'stagger' || now < p.staggerUntil) return { clip: 'stagger', u: now * 2 };
+    if (p.state === 'screen') return { clip: 'screen', u: p.stateT / 0.25 };
+    if (p.state === 'charge') return { clip: 'charge', u: p.stateT / 0.2 };
+    if (p.z > 0.3) return { clip: 'block', u: p.vz > 0 ? 0.4 * (1 - p.vz / p.jumpVel) : 0.4 + 0.6 * Math.min(1, -p.vz / p.jumpVel) };
+    if (now < p.swipingUntil) return { clip: 'swipe', u: 1 - (p.swipingUntil - now) / 0.3 };
+    if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: 'pass', u: (now - sim.lastPassAt) / 0.3 };
+    if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };
     const sp = len(p.vel);
     if (sp > 2.5) {
-      const dd = (this.runDist.get(p.id) ?? 0);
-      const idx = Math.floor(dd / 2.3) % 4;
-      return (['run0', 'run1', 'run2', 'run3'] as FrameName[])[idx];
+      if (hasBall) return { clip: 'dribbleRun', u: dist / 8 + phase };
+      const man = p.guarding ? sim.players.find((q) => q.id === p.guarding) : null;
+      if (p.team !== sim.possession && man && sp < p.walkSpeed * 1.05 && Math.hypot(man.p.x - p.p.x, man.p.y - p.p.y) < 8) return { clip: 'slide', u: dist / 5 };
+      return sp > p.walkSpeed * 1.1 ? { clip: 'sprint', u: dist / 9.5 } : { clip: 'jog', u: dist / 7 };
     }
-    if (hasBall) return Math.floor(sim.time * 4) % 2 ? 'dribble' : 'dribble2';
-    if (p.team !== sim.possession && sim.live) return 'defend';
-    return 'idle';
+    if (hasBall) return { clip: 'dribble', u: now * 1.7 + phase };
+    if (p.team !== sim.possession && sim.live) return { clip: 'defend', u: now * 1.2 + phase };
+    return { clip: 'idle', u: now * 0.5 + phase };
+  }
+
+  /** Dribble bounce sounds synced to the animation: fire when the clip passes a bounce point. */
+  dribbleSound(p: Player, clip: string, u: number) {
+    const prev = this.animMem.get(p.id);
+    this.animMem.set(p.id, { clip, u });
+    const c = CLIP[clip];
+    if (!c.bounce || !prev || prev.clip !== clip || this.sim.holder() !== p) return;
+    const wrap = (x: number) => (c.loop ? ((x % 1) + 1) % 1 : Math.max(0, Math.min(1, x)));
+    const a = wrap(prev.u), b = wrap(u);
+    for (const t of c.bounce) {
+      const crossed = a <= b ? a < t && t <= b : a < t || t <= b;
+      if (crossed && u !== prev.u) sfx.dribble(0.45 + Math.min(0.5, len(p.vel) / 30), this.panAt(p.p.x));
+    }
+  }
+
+  /** Sneaker squeaks on hard cuts at speed. */
+  cutSound(p: Player) {
+    const lv = this.lastVel.get(p.id) ?? { x: p.vel.x, y: p.vel.y, squeakAt: 0 };
+    const sp = len(p.vel), lsp = Math.hypot(lv.x, lv.y);
+    if (sp > 9 && lsp > 9) {
+      const cos = (p.vel.x * lv.x + p.vel.y * lv.y) / (sp * lsp);
+      if (cos < 0.6 && this.sim.time - lv.squeakAt > 0.5) { sfx.squeak(this.panAt(p.p.x), 0.6); lv.squeakAt = this.sim.time; }
+    }
+    this.lastVel.set(p.id, { x: p.vel.x, y: p.vel.y, squeakAt: lv.squeakAt });
   }
 
   render() {
@@ -201,28 +285,41 @@ export class GameScene extends Phaser.Scene {
     const onCourt = new Set(sim.players.map((p) => p.id));
     this.shadows.clear();
     for (const [id, s] of this.sprites) s.setVisible(onCourt.has(id));
+    this.heldBall = null;
+    const holder = sim.holder();
     for (const p of sim.players) {
+      this.ensureSprite(p);
       const s = this.sprites.get(p.id);
-      if (!s) continue;
+      const sh = this.sheets.get(p.id);
+      if (!s || !sh) continue;
       this.runDist.set(p.id, (this.runDist.get(p.id) ?? 0) + len(p.vel) / 60);
-      s.setFrame(FI[this.frameFor(p)]);
+      const { clip, u } = this.clipFor(p);
+      const c = CLIP[clip];
+      const idx = sh.sheet.index[clip].start + frameAt(c, u);
+      this.dribbleSound(p, clip, u);
+      this.cutSound(p);
+      s.setFrame(idx);
       s.setPosition(sx(p.p.x), sy(p.p.y, p.z));
-      s.setFlipX(p.face.x < 0);
+      const flip = p.face.x < 0;
+      s.setFlipX(flip);
+      const bo = sh.sheet.ball[idx];
+      if (bo && (holder === p || p.state === 'shoot')) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * PIXEL, y: s.y - bo[1] * PIXEL };
       s.setDepth(sy(p.p.y));
       const ghost = sim.time < p.screenedUntil;
       s.setTint(ghost ? 0xb0b0ff : 0xffffff);
       this.shadows.fillStyle(0x000000, 0.28);
-      this.shadows.fillEllipse(sx(p.p.x), sy(p.p.y), 46 - p.z * 2, 12);
+      this.shadows.fillEllipse(sx(p.p.x), sy(p.p.y), 38 - p.z * 2, 10);
     }
 
     // ball
     const b = sim.ball;
     this.ballG.clear().setDepth(sy(b.p.y) + 1);
-    const bx = sx(b.p.x), by = sy(b.p.y, b.z);
+    const inHand = !!this.heldBall && b.st.kind === 'held';
+    const bx = inHand ? this.heldBall!.x : sx(b.p.x), by = inHand ? this.heldBall!.y : sy(b.p.y, b.z);
     this.shadows.fillStyle(0x000000, 0.3); this.shadows.fillEllipse(sx(b.p.x), sy(b.p.y), 16, 5);
-    this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 9);
+    this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);
     this.ballG.fillStyle(0xff9a4a, 1); this.ballG.fillRect(bx - 5, by - 6, 4, 3);
-    this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 9, by, bx + 9, by); this.ballG.lineBetween(bx, by - 9, bx, by + 9);
+    this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 8, by, bx + 8, by); this.ballG.lineBetween(bx, by - 8, bx, by + 8);
 
     this.drawOverlays();
     this.drawHud();
@@ -375,3 +472,9 @@ function fmtEq(e: import('../sim/shooting').ShotEval): string {
   return e.terms.map((t) => (t.kind === 'base' ? `${(t.value * 100).toFixed(0)}% ${t.label}` : `× ${t.value.toFixed(2)} ${t.label}`)).join('  ') + `  =  ${(e.pct * 100).toFixed(1)}%  (${e.pts}PT)`;
 }
 void D;
+
+function hashStr(s: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}

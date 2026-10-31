@@ -34,6 +34,7 @@ export function tryActivateUlt(sim: GameSim, p: Player) {
   if (st.id === 'deepStepback' && hasBall && d >= 17 && d <= 29 && !p.busy) {
     const away = norm(sub(p.p, rim));
     p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = 0.32;
+    p.anim = { name: 'move_stepback', start: sim.time, dur: 0.32 };
     p.move = { id: 'stepback', dir: away, t: 0 };
     p.moveVel = scale(away, level.stepFt / 0.32);
     p.dribbledSinceCatch = true;

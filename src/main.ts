@@ -8,6 +8,7 @@ import { UltimateScene } from './scenes/UltimateScene';
 import { PostGameScene } from './scenes/PostGameScene';
 import { initDevPanel } from './dev/devPanel';
 import { activePad } from './input/input';
+import { sfx } from './audio/sfx';
 import './state';
 
 const game = new Phaser.Game({
@@ -40,3 +41,9 @@ window.addEventListener('gamepadconnected', (e) => {
 });
 window.addEventListener('gamepaddisconnected', () => showToast('Controller disconnected — keyboard still works'));
 setTimeout(() => { if (!activePad()) showToast('Using a controller? Plug it in and press any button on it.'); }, 1500);
+
+// Browsers only allow sound after a key press or click (gamepad presses don't count everywhere).
+const unlockAudio = () => sfx.unlock();
+window.addEventListener('keydown', unlockAudio);
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('gamepadconnected', unlockAudio);

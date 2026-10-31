@@ -19,7 +19,7 @@ export class InputMapper {
   sprint = false;
   constructor(private scene: Phaser.Scene) {
     const kb = scene.input.keyboard!;
-    for (const k of ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SHIFT', 'I', 'J', 'K', 'L', 'SPACE', 'ENTER', 'ESC', 'Q', 'E', 'BACKSPACE'])
+    for (const k of ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SHIFT', 'I', 'J', 'K', 'L', 'SPACE', 'ENTER', 'ESC', 'Q', 'E', 'BACKSPACE', 'M'])
       this.keys[k] = kb.addKey(k, false);
   }
   /** Read the browser Gamepad API directly so a controller plugged in at any time is picked up. */
@@ -58,6 +58,7 @@ export class InputMapper {
       start: this.btn(BTN.START) || this.key('ENTER'),
       back: this.btn(BTN.BACK) || this.key('ESC') || this.key('BACKSPACE'),
       dev: this.btn(BTN.BACK) && this.btn(BTN.START),
+      mute: this.key('M'),
     };
   }
   pressed(k: string) { return !!this.cur[k] && !this.prev[k]; }

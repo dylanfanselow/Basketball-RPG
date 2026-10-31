@@ -24,7 +24,7 @@ npm test         # sim unit tests + a headless AI-vs-AI game
 | **X** (left) | Ultimate | Ultimate | Ultimate |
 | Left stick / RT | Move / sprint | | |
 
-Keyboard: WASD move, **K**=A, **L**=B, **J**=X, **I**=Y, Shift sprint, Enter pause. **F1** or **`** toggles dev tools
+Keyboard: WASD move, **K**=A, **L**=B, **J**=X, **I**=Y, Shift sprint, Enter pause, **M** mute. **F1** or **`** toggles dev tools
 (gamepad: Back+Start).
 
 ## How it's built
@@ -39,4 +39,7 @@ Keyboard: WASD move, **K**=A, **L**=B, **J**=X, **I**=Y, Shift sprint, Enter pau
 - `src/data/**`: everything tunable. `statInfluence.json` (core stat → sub-ratings), `shotTypes.json`, `moves.json`,
   `trees/*.json` (perk constellations), `ultimates.json`, `league.json` (placeholder teams, swap freely).
 - `src/career/**`: level/XP/stat points, skill tree rules, rotation/minutes, plus stubs for story, random events and backstories.
-- `src/dev/devPanel.ts`: the dev tools overlay.
+- `src/render/anim.ts`: keyframed animation clips (jumper, floater, hook, layup, Euro, dunk, every dribble move…), sampled into smooth in-between frames.
+- `src/render/sprites.ts` + `appearance.ts`: procedural pixel players with hair, faces and gear (sleeves, socks, goggles, masks, shoes).
+- `src/audio/sfx.ts`: all sound effects and crowd synthesized with Web Audio (no audio files).
+- `src/dev/devPanel.ts`: the dev tools overlay, including Appearance and Audio sections.

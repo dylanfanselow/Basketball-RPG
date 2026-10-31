@@ -3,6 +3,8 @@ import { CORE_STATS, TREES, ULTIMATES, PLAYS, NODES } from '../sim/data';
 import { POSITIONS, HEIGHTS } from '../sim/attributes';
 import { newCareer } from '../career/career';
 import { Player } from '../sim/player';
+import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
+import { sfx } from '../audio/sfx';
 
 /**
  * Developer tools overlay (F1 / ` / Back+Start). Everything applies live: to the career save
@@ -31,6 +33,7 @@ function syncLive() {
   if (p) {
     p.core = { ...c.core };
     p.nodes = new Set(c.nodes);
+    p.appearance = { ...c.appearance };
     p.recompute();
     if (app.sim) app.sim.ult.state = { unlocked: !!c.flags.ult_unlocked, id: c.ult.id, level: c.ult.level };
   }
@@ -144,6 +147,49 @@ export function initDevPanel() {
       btn('+3 evo points', () => { c.ult.evoPoints += 3; app.changed(); }),
     ));
     root.append(section('Ultimate', ult));
+
+    // appearance
+    const ap = el('div');
+    const a = c.appearance;
+    const setA = (k: keyof Appearance, v: any) => { (a as any)[k] = v; syncLive(); };
+    const sel = (label: string, k: keyof Appearance, opts: readonly (string | number)[], names?: string[]) =>
+      el('div', { class: 'row' }, el('span', { class: 'lbl' }, label),
+        el('select', { onchange: (e: any) => { const raw = e.target.value; setA(k, typeof opts[0] === 'number' ? Number(raw) : raw); } },
+          ...opts.map((o, i) => el('option', { value: String(o), selected: String((a as any)[k]) === String(o) }, names?.[i] ?? String(o)))));
+    const color = (label: string, k: keyof Appearance, optional = false) => {
+      const val = (a as any)[k] as string | null;
+      const inp = el('input', { type: 'color', value: val ?? '#ffffff', oninput: (e: any) => setA(k, e.target.value) });
+      const row = el('div', { class: 'row' }, el('span', { class: 'lbl' }, label), inp);
+      if (optional) row.append(check('on', !!val, (v) => { setA(k, v ? (inp as HTMLInputElement).value : null); }));
+      return row;
+    };
+    const flag = (label: string, k: keyof Appearance) => check(label, !!(a as any)[k], (v) => setA(k, v));
+    ap.append(el('div', { class: 'row' },
+      btn('Randomize look', () => { c.appearance = randomAppearance(Math.random); syncLive(); }),
+      btn('Randomize gear only', () => { const r = randomAppearance(Math.random, a.skin); Object.assign(a, { headband: r.headband, armSleeve: r.armSleeve, sleeveColor: r.sleeveColor, wristband: r.wristband, legSleeve: r.legSleeve, legSleeveColor: r.legSleeveColor, kneePad: r.kneePad, socks: r.socks, sockColor: r.sockColor, shoe: r.shoe, shoeAccent: r.shoeAccent }); syncLive(); })));
+    ap.append(sel('skin tone', 'skin', SKIN_TONES.map((_, i) => i), SKIN_TONES.map((_, i) => `tone ${i + 1}`)));
+    ap.append(sel('hair', 'hair', HAIR_STYLES), color('hair color', 'hairColor'), sel('facial hair', 'facial', FACIAL));
+    ap.append(color('eye color', 'eyeColor'), sel('eye height', 'eyeY', [-1, 0, 1], ['high', 'middle', 'low']), sel('eye spacing', 'eyeGap', [0, 1], ['close', 'wide']), sel('brows', 'brow', [1, 2], ['thin', 'thick']));
+    ap.append(sel('nose', 'nose', NOSES), sel('mouth', 'mouth', MOUTHS), sel('mouth height', 'mouthY', [-1, 0, 1], ['high', 'middle', 'low']), flag('big ears', 'bigEars'));
+    ap.append(color('headband', 'headband', true), sel('arm sleeve', 'armSleeve', ARM_SLEEVE), color('sleeve color', 'sleeveColor'), color('wristband', 'wristband', true));
+    ap.append(sel('leg sleeve', 'legSleeve', LEG_SLEEVE), color('leg sleeve color', 'legSleeveColor'), flag('knee pad', 'kneePad'));
+    ap.append(sel('socks', 'socks', SOCKS), color('sock color', 'sockColor'), color('shoes', 'shoe'), color('shoe accent', 'shoeAccent'));
+    ap.append(flag('goggles', 'goggles'), flag('face mask', 'mask'));
+    ap.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'jersey #'), el('input', { type: 'number', min: 0, max: 99, value: c.number, class: 'txt', style: 'width:60px', onchange: (e: any) => { c.number = Math.max(0, Math.min(99, Number(e.target.value) || 0)); const p = livePlayer(); if (p) p.number = c.number; syncLive(); } })));
+    root.append(section('Appearance', ap));
+
+    // audio
+    const au = el('div');
+    const st = sfx.settings;
+    au.append(el('div', { class: 'note' }, sfx.running ? 'Sound is on.' : 'Sound starts after you press a key or click the page.'));
+    au.append(check('Mute (M)', st.muted, (v) => { st.muted = v; sfx.applySettings(); }));
+    au.append(slider('master', 0, 1, 0.05, st.master, (v) => { st.master = v; sfx.applySettings(); }));
+    au.append(slider('effects', 0, 1, 0.05, st.sfx, (v) => { st.sfx = v; sfx.applySettings(); }));
+    au.append(slider('crowd', 0, 1, 0.05, st.crowd, (v) => { st.crowd = v; sfx.applySettings(); }));
+    au.append(el('div', { class: 'row' },
+      btn('▶ dribble', () => sfx.dribble(0.7)), btn('▶ squeak', () => sfx.squeak()), btn('▶ swish', () => sfx.swish()), btn('▶ clank', () => sfx.clank()),
+      btn('▶ dunk', () => sfx.dunk()), btn('▶ screen', () => sfx.thud(0, true)), btn('▶ whistle', () => sfx.whistle()), btn('▶ buzzer', () => sfx.buzzer()), btn('▶ cheer', () => sfx.cheer(0.9))));
+    root.append(section('Audio', au));
 
     // game controls
     const gc = el('div');

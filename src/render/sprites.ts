@@ -1,64 +1,36 @@
 /**
- * Procedural pixel-art player sprites. Tall, realistic proportions (~1:7.5 head-to-body),
- * not chibi. Each pose is a skeleton in pixel space and limbs are rasterized as thick
- * pixel lines, so new animations are just new joint tables.
+ * Procedural pixel-art players. Bodies are skeletons from anim.ts drawn as layered limb segments
+ * (skin, then sleeves/socks/shoes on top), and a bigger head with face, hair and gear.
+ * Every clip is sampled into frames and packed into one sheet per player.
  */
-export const FRAME_W = 32;
-export const FRAME_H = 72;
-export const PIXEL = 3; // on-screen scale
+import { CLIPS, Clip, Pose, J, sampleClip, frameTime } from './anim';
+import { Appearance, SKIN_TONES } from './appearance';
 
-export const FRAMES = ['idle', 'run0', 'run1', 'run2', 'run3', 'dribble', 'defend', 'shoot', 'block', 'dunk', 'layup', 'screen', 'fallen', 'stagger', 'pass', 'swipe', 'charge', 'dribble2', 'cross'] as const;
-export type FrameName = (typeof FRAMES)[number];
+export const FRAME_W = 64;
+export const FRAME_H = 112;
+export const CX = 32;        // horizontal center of the figure in a frame
+export const FOOT_Y = 106;   // floor line in a frame
+export const PIXEL = 2;      // screen pixels per art pixel
+export const COLS = 16;
 
-type J = [number, number]; // x offset from center (+ = facing direction), y = height up from floor in px
-interface Pose { head: J; neck: J; hip: J; sB: J; eB: J; hB: J; sF: J; eF: J; hF: J; kB: J; fB: J; kF: J; fF: J; lean?: number }
+export interface Kit { jersey: string; jerseyShade: string; trim: string; shorts: string; number: number }
+export interface Sheet { canvas: HTMLCanvasElement; index: Record<string, { start: number; count: number }>; ball: (J | null)[]; total: number }
 
-/** Skeleton for a figure of height H px. Front = limbs nearer the camera. */
-function pose(name: FrameName, H: number): Pose {
-  const hipY = H * 0.5, shY = H * 0.8, kneeY = H * 0.26, neckY = H * 0.85, headY = H * 0.92;
-  const P = (o: Partial<Pose>): Pose => ({
-    head: [0, headY], neck: [0, neckY], hip: [0, hipY],
-    sB: [-1, shY], eB: [-2, shY - H * 0.16], hB: [-2, shY - H * 0.31],
-    sF: [1, shY], eF: [2, shY - H * 0.16], hF: [2, shY - H * 0.31],
-    kB: [-1, kneeY], fB: [-2, 0], kF: [1, kneeY], fF: [2, 0], ...o,
-  });
-  const s = H / 64;
-  switch (name) {
-    case 'idle': return P({});
-    case 'run0': return P({ kF: [5 * s, kneeY + 2], fF: [9 * s, 3], kB: [-3 * s, kneeY], fB: [-8 * s, 4], eF: [-3, shY - H * 0.15], hF: [-1, shY - H * 0.27], eB: [4, shY - H * 0.14], hB: [7, shY - H * 0.22], lean: 2 });
-    case 'run1': return P({ kF: [2 * s, kneeY + 1], fF: [1, 0], kB: [-1, kneeY + 3], fB: [-6 * s, 6], lean: 2 });
-    case 'run2': return P({ kB: [5 * s, kneeY + 2], fB: [9 * s, 3], kF: [-3 * s, kneeY], fF: [-8 * s, 4], eB: [-3, shY - H * 0.15], hB: [-1, shY - H * 0.27], eF: [4, shY - H * 0.14], hF: [7, shY - H * 0.22], lean: 2 });
-    case 'run3': return P({ kB: [2 * s, kneeY + 1], fB: [1, 0], kF: [-1, kneeY + 3], fF: [-6 * s, 6], lean: 2 });
-    case 'dribble': return P({ head: [2, headY - 3], neck: [2, neckY - 3], hip: [-1, hipY - 3], sF: [3, shY - 3], eF: [6, shY - H * 0.17], hF: [8, shY - H * 0.32], sB: [1, shY - 3], eB: [-1, shY - H * 0.18], hB: [1, shY - H * 0.3], kF: [4, kneeY], fF: [4, 0], kB: [-4, kneeY], fB: [-5, 0] });
-    case 'dribble2': return P({ head: [2, headY - 3], neck: [2, neckY - 3], hip: [-1, hipY - 3], sF: [3, shY - 3], eF: [6, shY - H * 0.15], hF: [8, shY - H * 0.24], sB: [1, shY - 3], eB: [-1, shY - H * 0.18], hB: [1, shY - H * 0.3], kF: [4, kneeY], fF: [4, 0], kB: [-4, kneeY], fB: [-5, 0] });
-    case 'cross': return P({ head: [3, headY - 5], neck: [3, neckY - 5], hip: [0, hipY - 5], sF: [4, shY - 5], eF: [2, shY - H * 0.2], hF: [-4, shY - H * 0.34], sB: [2, shY - 5], eB: [-3, shY - H * 0.2], hB: [-1, shY - H * 0.32], kF: [7, kneeY - 1], fF: [9, 0], kB: [-6, kneeY], fB: [-9, 0], lean: 3 });
-    case 'defend': return P({ head: [1, headY - 6], neck: [1, neckY - 6], hip: [-1, hipY - 6], sF: [2, shY - 6], eF: [8, shY - 8], hF: [12, shY - 4], sB: [0, shY - 6], eB: [-6, shY - 8], hB: [-10, shY - 3], kF: [6, kneeY - 2], fF: [8, 0], kB: [-6, kneeY - 2], fB: [-8, 0] });
-    case 'shoot': return P({ sF: [1, shY], eF: [4, shY + H * 0.1], hF: [3, shY + H * 0.24], sB: [-1, shY], eB: [-2, shY + H * 0.1], hB: [1, shY + H * 0.22] });
-    case 'block': return P({ sF: [1, shY], eF: [2, shY + H * 0.15], hF: [3, shY + H * 0.3], sB: [-1, shY], eB: [-1, shY + H * 0.15], hB: [-1, shY + H * 0.29], kF: [2, kneeY + 3], fF: [0, 2], kB: [-2, kneeY + 2], fB: [-4, 1] });
-    case 'dunk': return P({ head: [2, headY], sF: [2, shY], eF: [6, shY + H * 0.14], hF: [9, shY + H * 0.26], eB: [-4, shY - H * 0.1], hB: [-7, shY - H * 0.18], kF: [5, kneeY + 6], fF: [1, 6], kB: [-3, kneeY - 1], fB: [-7, 1], lean: 3 });
-    case 'layup': return P({ sF: [2, shY], eF: [5, shY + H * 0.13], hF: [7, shY + H * 0.27], eB: [-3, shY - H * 0.12], hB: [-4, shY - H * 0.25], kF: [6, kneeY + 8], fF: [3, 5], kB: [-1, kneeY], fB: [-3, 0], lean: 2 });
-    case 'screen': return P({ sF: [2, shY], eF: [5, shY - H * 0.1], hF: [0, shY - H * 0.12], sB: [-2, shY], eB: [-5, shY - H * 0.1], hB: [1, shY - H * 0.13], kF: [5, kneeY], fF: [7, 0], kB: [-5, kneeY], fB: [-7, 0] });
-    case 'charge': return P({ head: [-1, headY - 2], neck: [-1, neckY - 2], sF: [1, shY - 2], eF: [4, shY - H * 0.12], hF: [0, shY - H * 0.14], eB: [-4, shY - H * 0.12], hB: [0, shY - H * 0.15], kF: [4, kneeY], fF: [6, 0], kB: [-4, kneeY], fB: [-6, 0], lean: -2 });
-    case 'stagger': return P({ head: [-5, headY - 2], neck: [-4, neckY - 2], hip: [-1, hipY], sF: [-3, shY - 2], eF: [3, shY + 2], hF: [7, shY + 6], sB: [-5, shY - 2], eB: [-10, shY], hB: [-13, shY + 4], kF: [3, kneeY], fF: [6, 0], kB: [-3, kneeY + 2], fB: [-2, 0], lean: -4 });
-    case 'fallen': return P({ head: [-26, 5], neck: [-21, 5], hip: [0, 5], sF: [-19, 7], eF: [-14, 13], hF: [-9, 9], sB: [-19, 5], eB: [-24, 10], hB: [-28, 4], kF: [8, 10], fF: [16, 3], kB: [8, 5], fB: [17, 2] });
-    case 'pass': return P({ sF: [2, shY], eF: [8, shY - 2], hF: [14, shY - 2], sB: [0, shY], eB: [6, shY - 3], hB: [12, shY - 4], kF: [4, kneeY], fF: [6, 0], kB: [-3, kneeY], fB: [-5, 0], lean: 2 });
-    case 'swipe': return P({ head: [3, headY - 6], neck: [3, neckY - 6], hip: [0, hipY - 6], sF: [4, shY - 6], eF: [10, shY - 14], hF: [16, shY - 20], kF: [7, kneeY - 2], fF: [10, 0], kB: [-5, kneeY - 1], fB: [-8, 0], lean: 4 });
-  }
-}
-
-export interface Palette { skin: string; skinShade: string; hair: string; jersey: string; jerseyShade: string; trim: string; shorts: string; shoe: string; sock: string }
-
-export const SKINS: [string, string][] = [['#f3c9a2', '#d9a77e'], ['#d9a066', '#b98048'], ['#a86b3c', '#8a5228'], ['#7a4a26', '#5e3519'], ['#4e2f1a', '#3a2010']];
+/** Art-pixel figure height for a player height in feet (6'6" -> ~75 px -> ~150 screen px). */
+export const figureHeight = (heightFt: number) => Math.round(heightFt * 11.5);
 
 export function shade(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, ((n >> 16) & 255) * f));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) * f));
-  const b = Math.max(0, Math.min(255, (n & 255) * f));
-  return '#' + ((1 << 24) | (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)).toString(16).slice(1);
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v * f)));
+  return '#' + ((1 << 24) | (c((n >> 16) & 255) << 16) | (c((n >> 8) & 255) << 8) | c(n & 255)).toString(16).slice(1);
 }
 
-function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, w: number) {
+// ---------- raster primitives ----------
+type Ctx = CanvasRenderingContext2D;
+function px(ctx: Ctx, x: number, y: number, c: string) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); }
+function rect(ctx: Ctx, x: number, y: number, w: number, h: number, c: string) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+function line(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, w: number, c: string) {
+  ctx.fillStyle = c;
   x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
   let err = dx + dy;
@@ -71,65 +43,9 @@ function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number,
     if (e2 <= dx) { err += dx; y0 += sy; }
   }
 }
-
-/** Draw one frame into ctx at frame offset ox. H = figure height in px. */
-export function drawFrame(ctx: CanvasRenderingContext2D, ox: number, name: FrameName, H: number, pal: Palette, number: number) {
-  const p = pose(name, H);
-  const cx = ox + FRAME_W / 2 - 2;
-  const fy = FRAME_H - 2;
-  const lean = p.lean ?? 0;
-  const X = (j: J, upper = false) => cx + j[0] + (upper ? lean * (j[1] / H) : 0);
-  const Y = (j: J) => fy - j[1];
-  const limb = (a: J, b: J, c: J, color: string, w1: number, w2: number, upper: boolean) => {
-    ctx.fillStyle = color;
-    line(ctx, X(a, upper), Y(a), X(b, upper), Y(b), w1);
-    line(ctx, X(b, upper), Y(b), X(c, upper), Y(c), w2);
-  };
-  // back leg (shaded) + shoe
-  limb(p.hip, p.kB, p.fB, pal.skinShade, 4, 3, false);
-  ctx.fillStyle = pal.sock; ctx.fillRect(X(p.fB) - 1, Y(p.fB) - 4, 3, 2);
-  ctx.fillStyle = shade(pal.shoe, 0.7); ctx.fillRect(X(p.fB) - 2, Y(p.fB) - 2, 6, 3);
-  // back arm
-  limb(p.sB, p.eB, p.hB, pal.skinShade, 3, 3, true);
-  // shorts
-  ctx.fillStyle = pal.shorts;
-  const hx = X(p.hip, true), hy = Y(p.hip);
-  ctx.fillRect(hx - 5, hy - 3, 11, 8);
-  ctx.fillRect(X(p.kB) - 2, hy + 3, 4, Math.max(2, (Y(p.kB) - hy) * 0.55));
-  // torso (jersey)
-  const sx = X(p.sF, true), sy = Y(p.sF);
-  ctx.fillStyle = pal.jersey;
-  const top = Math.min(sy, Y(p.sB)) - 1;
-  const left = Math.min(hx, sx) - 4;
-  const right = Math.max(hx, sx) + 4;
-  for (let y = top; y <= hy; y++) {
-    const t = (y - top) / Math.max(1, hy - top);
-    const cxr = sx + (hx - sx) * t;
-    ctx.fillRect(Math.round(cxr - 4.5), y, 9, 1);
-  }
-  ctx.fillStyle = pal.jerseyShade;
-  for (let y = top; y <= hy; y++) { const t = (y - top) / Math.max(1, hy - top); ctx.fillRect(Math.round(sx + (hx - sx) * t - 4.5), y, 2, 1); }
-  ctx.fillStyle = pal.trim; ctx.fillRect(Math.round(sx - 2), top, 5, 1); ctx.fillRect(hx - 5, hy - 3, 11, 1);
-  // number
-  ctx.fillStyle = pal.trim;
-  drawDigits(ctx, Math.round((sx + hx) / 2) - 2, Math.round(top + (hy - top) * 0.35), number);
-  void left; void right;
-  // front leg
-  ctx.fillStyle = pal.shorts; ctx.fillRect(X(p.kF) - 2 + Math.round((hx - X(p.kF)) * 0.4), hy + 3, 5, Math.max(2, (Y(p.kF) - hy) * 0.55));
-  limb(p.hip, p.kF, p.fF, pal.skin, 4, 3, false);
-  ctx.fillStyle = pal.sock; ctx.fillRect(X(p.fF) - 1, Y(p.fF) - 4, 3, 2);
-  ctx.fillStyle = pal.shoe; ctx.fillRect(X(p.fF) - 2, Y(p.fF) - 2, 6, 3);
-  // neck + head
-  ctx.fillStyle = pal.skin;
-  line(ctx, X(p.neck, true), Y(p.neck), X(p.sF, true) - 1, Y(p.sF), 3);
-  const hdx = Math.round(X(p.head, true)), hdy = Math.round(Y(p.head));
-  ctx.fillRect(hdx - 3, hdy - 4, 7, 8);
-  ctx.fillStyle = pal.skinShade; ctx.fillRect(hdx - 3, hdy + 2, 7, 2);
-  ctx.fillStyle = pal.hair; ctx.fillRect(hdx - 3, hdy - 5, 7, 3); ctx.fillRect(hdx - 3, hdy - 3, 2, 3);
-  ctx.fillStyle = '#111'; ctx.fillRect(hdx + 2, hdy - 1, 1, 1); // eye (facing right)
-  // front arm on top
-  limb(p.sF, p.eF, p.hF, pal.skin, 3, 3, true);
-  ctx.fillStyle = pal.jersey; ctx.fillRect(X(p.sF, true) - 1, Y(p.sF) - 1, 3, 3);
+/** Draw the part of segment a->b between t0 and t1. */
+function part(ctx: Ctx, a: J, b: J, t0: number, t1: number, w: number, c: string) {
+  line(ctx, a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0, a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1, w, c);
 }
 
 const DIG: Record<string, string[]> = {
@@ -137,29 +53,181 @@ const DIG: Record<string, string[]> = {
   '3': ['111', '001', '011', '001', '111'], '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '111', '001', '111'],
   '6': ['111', '100', '111', '101', '111'], '7': ['111', '001', '010', '010', '010'], '8': ['111', '101', '111', '101', '111'], '9': ['111', '101', '111', '001', '111'],
 };
-function drawDigits(ctx: CanvasRenderingContext2D, x: number, y: number, n: number) {
+function digits(ctx: Ctx, x: number, y: number, n: number, c: string) {
   const s = String(n % 100);
-  const w = s.length * 4 - 1;
-  let ox = x - (w - 3) / 2;
+  let ox = Math.round(x - (s.length * 4 - 1) / 2);
   for (const ch of s) {
     const g = DIG[ch];
-    for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) if (g[r][c] === '1') ctx.fillRect(Math.round(ox + c), y + r, 1, 1);
+    for (let r = 0; r < 5; r++) for (let k = 0; k < 3; k++) if (g[r][k] === '1') px(ctx, ox + k, y + r, c);
     ox += 4;
   }
 }
 
-/** Build a horizontal strip canvas with every frame. */
-export function buildSheet(heightFt: number, pal: Palette, number: number): HTMLCanvasElement {
-  const H = Math.round(heightFt * 9.2);
-  const c = document.createElement('canvas');
-  c.width = FRAME_W * FRAMES.length; c.height = FRAME_H;
-  const ctx = c.getContext('2d')!;
-  FRAMES.forEach((f, i) => drawFrame(ctx, i * FRAME_W, f, H, pal, number));
-  return c;
+// ---------- body ----------
+function drawLeg(ctx: Ctx, hip: J, knee: J, foot: J, a: Appearance, kit: Kit, back: boolean, sleeve: boolean, pad: boolean) {
+  const [skin] = SKIN_TONES[a.skin % SKIN_TONES.length];
+  const sk = back ? shade(skin, 0.82) : skin;
+  const dim = (c: string) => (back ? shade(c, 0.8) : c);
+  line(ctx, hip[0], hip[1], knee[0], knee[1], 6, sk);
+  line(ctx, knee[0], knee[1], foot[0], foot[1] - 2, 5, sk);
+  part(ctx, hip, knee, 0, 0.58, 8, dim(kit.shorts));               // shorts
+  if (sleeve) { part(ctx, hip, knee, 0.55, 1, 6, dim(a.legSleeveColor)); part(ctx, knee, foot, 0, 0.7, 5, dim(a.legSleeveColor)); }
+  if (pad) part(ctx, hip, knee, 0.85, 1, 5, dim('#20232a')), part(ctx, knee, foot, 0, 0.12, 5, dim('#20232a'));
+  const sockFrom = a.socks === 'high' ? 0.35 : a.socks === 'crew' ? 0.68 : 0.9;
+  part(ctx, knee, foot, sockFrom, 0.92, 5, dim(a.sockColor));
+  // shoe: points forward (+x), accent stripe
+  const fx = Math.round(foot[0]), fy = Math.round(foot[1]);
+  rect(ctx, fx - 3, fy - 3, 7, 3, dim(a.shoe));
+  rect(ctx, fx - 3, fy - 1, 7, 1, dim(shade(a.shoe, 0.7)));
+  rect(ctx, fx - 1, fy - 2, 3, 1, dim(a.shoeAccent));
 }
 
-export function teamPalette(colors: string[], skin: number, hairDark = true): Palette {
-  const [primary, secondary] = colors;
-  const [s, ss] = SKINS[skin % SKINS.length];
-  return { skin: s, skinShade: ss, hair: hairDark ? '#1b1410' : '#3b2a1a', jersey: primary, jerseyShade: shade(primary, 0.75), trim: secondary, shorts: shade(primary, 0.9), shoe: '#f4f4f4', sock: '#ffffff' };
+function drawArm(ctx: Ctx, sh: J, el: J, hand: J, a: Appearance, kit: Kit, back: boolean, sleeve: boolean, wrist: boolean) {
+  const [skin] = SKIN_TONES[a.skin % SKIN_TONES.length];
+  const sk = back ? shade(skin, 0.82) : skin;
+  const dim = (c: string) => (back ? shade(c, 0.8) : c);
+  line(ctx, sh[0], sh[1], el[0], el[1], 5, sk);
+  line(ctx, el[0], el[1], hand[0], hand[1], 4, sk);
+  if (sleeve) { part(ctx, sh, el, 0.15, 1, 5, dim(a.sleeveColor)); part(ctx, el, hand, 0, 0.78, 4, dim(a.sleeveColor)); }
+  if (wrist && a.wristband) part(ctx, el, hand, 0.68, 0.86, 5, dim(a.wristband));
+  rect(ctx, hand[0] - 2, hand[1] - 1, 4, 4, sk);
+  rect(ctx, sh[0] - 3, sh[1] - 1, 6, 4, dim(kit.jersey)); // jersey strap over the shoulder
 }
+
+function drawTorso(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit) {
+  const top: J = [(sF[0] + sB[0]) / 2, Math.min(sF[1], sB[1]) - 1];
+  const len = Math.max(1, hip[1] - top[1]);
+  for (let i = 0; i <= Math.abs(len); i++) {
+    const t = i / Math.abs(len || 1);
+    const cx = top[0] + (hip[0] - top[0]) * t;
+    const cy = top[1] + (hip[1] - top[1]) * t;
+    const w = 14 - t * 2.5;
+    rect(ctx, cx - w / 2, cy, Math.round(w), 1, kit.jersey);
+    rect(ctx, cx - w / 2, cy, 2, 1, kit.jerseyShade);
+  }
+  rect(ctx, top[0] - 2, top[1], 5, 1, kit.trim);           // collar
+  rect(ctx, hip[0] - 7, hip[1] - 2, 14, 7, kit.shorts);    // shorts waist
+  rect(ctx, hip[0] - 7, hip[1] - 2, 14, 1, kit.trim);
+  digits(ctx, top[0] + (hip[0] - top[0]) * 0.4, top[1] + (hip[1] - top[1]) * 0.25, kit.number, kit.trim);
+  line(ctx, neck[0], neck[1], top[0], top[1], 4, 'transparent');
+}
+
+// ---------- head ----------
+const HEAD_ROWS: [number, number, number][] = [ // [y, xFrom, xTo] relative to head center, facing +x
+  [-6, -4, 4], [-5, -5, 5], [-4, -6, 6], [-3, -6, 6], [-2, -6, 6], [-1, -6, 6], [0, -6, 6], [1, -6, 6],
+  [2, -6, 6], [3, -6, 6], [4, -5, 6], [5, -5, 6], [6, -4, 5], [7, -2, 4],
+];
+
+function drawHairBack(ctx: Ctx, cx: number, cy: number, a: Appearance) {
+  const c = a.hairColor;
+  if (a.hair === 'afro') { for (let y = -12; y <= 3; y++) for (let x = -10; x <= 8; x++) if ((x + 1) ** 2 / 90 + (y + 4) ** 2 / 64 <= 1) px(ctx, cx + x, cy + y, c); }
+  if (a.hair === 'dreads') for (let x = -7; x <= -1; x += 2) rect(ctx, cx + x, cy - 3, 2, 12 + ((x * 7) & 3), shade(c, x % 4 === 0 ? 1 : 0.85));
+  if (a.hair === 'braids') for (let x = -7; x <= -3; x += 2) rect(ctx, cx + x, cy - 2, 1, 9, shade(c, 0.9));
+  if (a.hair === 'bun') { for (let y = -3; y <= 1; y++) for (let x = -3; x <= 1; x++) if (x * x + y * y <= 4) px(ctx, cx - 6 + x, cy - 8 + y, c); }
+}
+
+function drawHairFront(ctx: Ctx, cx: number, cy: number, a: Appearance) {
+  const c = a.hairColor, hi = shade(c, 1.35);
+  /** Fill the top of the skull from row yTop to yBot (rows above the head get a slightly narrower dome). */
+  const cap = (yTop: number, yBot: number, back = -6, front = 4) => {
+    for (let y = yTop; y <= yBot; y++) {
+      const r = HEAD_ROWS.find((h) => h[0] === y);
+      const x0 = r ? Math.max(back, r[1]) : back + 2, x1 = r ? Math.min(front, r[2]) : front - 2;
+      rect(ctx, cx + x0, cy + y, x1 - x0 + 1, 1, c);
+    }
+  };
+  switch (a.hair) {
+    case 'bald': px(ctx, cx - 1, cy - 5, shade(SKIN_TONES[a.skin % 5][0], 1.15)); break;
+    case 'buzz': cap(-6, -5); rect(ctx, cx - 6, cy - 4, 3, 3, shade(c, 1.1)); break;
+    case 'fade': cap(-7, -4); for (let y = -3; y <= 0; y++) for (let x = -6; x <= -3; x++) if ((x + y) % 2 === 0 || y < -1) px(ctx, cx + x, cy + y, c); break;
+    case 'hightop': rect(ctx, cx - 5, cy - 13, 10, 8, c); rect(ctx, cx - 5, cy - 13, 10, 1, hi); cap(-5, -4); break;
+    case 'afro': for (let x = -6; x <= 5; x++) px(ctx, cx + x, cy - 5, c); break;
+    case 'twists': cap(-7, -4); for (let x = -6; x <= 4; x += 2) rect(ctx, cx + x, cy - 9 - (x & 2 ? 1 : 0), 1, 3, c); break;
+    case 'dreads': cap(-7, -4); for (let x = -5; x <= 3; x += 2) rect(ctx, cx + x, cy - 9, 1, 3, c); break;
+    case 'braids': cap(-7, -4); for (let x = -5; x <= 4; x += 2) rect(ctx, cx + x, cy - 7, 1, 3, shade(c, 1.3)); break;
+    case 'mohawk': rect(ctx, cx - 2, cy - 12, 4, 7, c); rect(ctx, cx - 2, cy - 12, 4, 1, hi); for (let x = -6; x <= -3; x++) if (x % 2) px(ctx, cx + x, cy - 3, c); break;
+    case 'bun': cap(-6, -4); break;
+    case 'curly': cap(-8, -4); for (let x = -6; x <= 4; x++) if (x % 2 === 0) px(ctx, cx + x, cy - 9, c); rect(ctx, cx - 7, cy - 4, 2, 4, c); break;
+    case 'waves': cap(-7, -4); for (let x = -5; x <= 3; x += 3) px(ctx, cx + x, cy - 6, hi), px(ctx, cx + x + 1, cy - 5, hi); break;
+  }
+}
+
+function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance) {
+  const cx = Math.round(hx), cy = Math.round(hy);
+  const [skin, skinSh] = SKIN_TONES[a.skin % SKIN_TONES.length];
+  drawHairBack(ctx, cx, cy, a);
+  for (const [y, x0, x1] of HEAD_ROWS) rect(ctx, cx + x0, cy + y, x1 - x0 + 1, 1, skin);
+  rect(ctx, cx - 6, cy + 3, 4, 3, skinSh);                              // jaw shadow
+  // ear
+  rect(ctx, cx - 2 - (a.bigEars ? 1 : 0), cy - 1, a.bigEars ? 3 : 2, a.bigEars ? 4 : 3, skinSh);
+  // eyes (3/4 view: front eye + far eye)
+  const ey = cy - 1 + a.eyeY;
+  px(ctx, cx + 3, ey, '#f4f4f4'); px(ctx, cx + 4, ey, a.eyeColor); px(ctx, cx + 4, ey - 1 + 1, a.eyeColor);
+  px(ctx, cx + 0 - a.eyeGap, ey, a.eyeColor);
+  // brows
+  for (let r = 0; r < a.brow; r++) rect(ctx, cx + 2, ey - 2 - r, 4, 1, shade(a.hairColor, 0.9));
+  px(ctx, cx - 1 - a.eyeGap, ey - 2, shade(a.hairColor, 0.9));
+  // nose
+  const ny = ey + 2;
+  if (a.nose === 'small') { px(ctx, cx + 6, ny, skin); px(ctx, cx + 5, ny + 1, skinSh); }
+  if (a.nose === 'wide') { px(ctx, cx + 6, ny, skin); px(ctx, cx + 6, ny + 1, skin); rect(ctx, cx + 4, ny + 1, 2, 1, skinSh); }
+  if (a.nose === 'long') { px(ctx, cx + 6, ny - 1, skin); px(ctx, cx + 7, ny, skin); px(ctx, cx + 6, ny + 1, skinSh); }
+  // mouth
+  const my = cy + 4 + a.mouthY, lip = '#5a1f1f';
+  if (a.mouth === 'neutral') rect(ctx, cx + 3, my, 3, 1, lip);
+  if (a.mouth === 'smile') { px(ctx, cx + 2, my - 1, lip); rect(ctx, cx + 3, my, 3, 1, lip); px(ctx, cx + 6, my - 1, lip); }
+  if (a.mouth === 'frown') { px(ctx, cx + 2, my + 1, lip); rect(ctx, cx + 3, my, 3, 1, lip); }
+  if (a.mouth === 'open') { rect(ctx, cx + 4, my, 2, 2, '#2a0d0d'); px(ctx, cx + 4, my, '#f4f4f4'); }
+  // facial hair
+  const fh = a.hairColor;
+  if (a.facial === 'stubble') for (let y = 3; y <= 7; y++) for (let x = -3; x <= 5; x++) if ((x + y) % 2 === 0 && y !== my - cy) px(ctx, cx + x, cy + y, shade(fh, 1.2));
+  if (a.facial === 'mustache' || a.facial === 'goatee') rect(ctx, cx + 3, my - 1, 4, 1, fh);
+  if (a.facial === 'goatee') rect(ctx, cx + 3, my + 2, 3, 2, fh);
+  if (a.facial === 'beard') { for (let y = 2; y <= 7; y++) for (let x = -4; x <= 6; x++) if (y !== my - cy || x < 3) { const r = HEAD_ROWS.find((h) => h[0] === y); if (r && x >= r[1] && x <= r[2]) px(ctx, cx + x, cy + y, fh); } rect(ctx, cx + 3, my, 3, 1, lip); }
+  drawHairFront(ctx, cx, cy, a);
+  if (a.headband) { rect(ctx, cx - 6, cy - 4, 13, 2, a.headband); rect(ctx, cx - 6, cy - 4, 13, 1, shade(a.headband, 1.2)); }
+  if (a.goggles) { rect(ctx, cx - 6, ey, 13, 1, '#222'); rect(ctx, cx + 2, ey - 1, 5, 3, '#222'); rect(ctx, cx + 3, ey, 3, 1, '#8fd3ff'); }
+  if (a.mask) { const m = '#c9d3dc'; rect(ctx, cx + 1, ey - 2, 6, 1, m); rect(ctx, cx + 1, ey + 2, 6, 1, m); rect(ctx, cx + 6, ey - 2, 1, 5, m); rect(ctx, cx + 1, ey - 2, 1, 5, m); }
+}
+
+// ---------- figure ----------
+/** Draw one pose. ox/oy = the frame's top-left in the sheet. Returns the ball offset (art px, origin-relative, +y up). */
+export function drawPose(ctx: Ctx, ox: number, oy: number, pose: Pose, H: number, a: Appearance, kit: Kit): J | null {
+  const u = H / 100;
+  const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
+  const p = Object.fromEntries(Object.entries(pose).map(([k, v]) => [k, v ? T(v as J) : v])) as unknown as Pose;
+  const sleeveF = a.armSleeve !== 'none', sleeveB = a.armSleeve === 'both';
+  drawArm(ctx, p.sB, p.eB, p.hB, a, kit, true, sleeveB, true);
+  drawLeg(ctx, p.hip, p.kB, p.fB, a, kit, true, a.legSleeve === 'both', false);
+  drawTorso(ctx, p.neck, p.hip, p.sF, p.sB, kit);
+  drawLeg(ctx, p.hip, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad);
+  const [skin] = SKIN_TONES[a.skin % SKIN_TONES.length];
+  line(ctx, p.neck[0], p.neck[1], p.head[0] - 1, p.head[1] + 5, 4, skin);
+  drawHead(ctx, p.head[0], p.head[1], a);
+  drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, true);
+  return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+}
+
+/** Build a sheet with every clip sampled into frames. */
+export function buildSheet(heightFt: number, a: Appearance, kit: Kit): Sheet {
+  const H = figureHeight(heightFt);
+  const total = CLIPS.reduce((n, c) => n + c.frames, 0);
+  const rows = Math.ceil(total / COLS);
+  const canvas = document.createElement('canvas');
+  canvas.width = FRAME_W * COLS; canvas.height = FRAME_H * rows;
+  const ctx = canvas.getContext('2d')!;
+  const index: Sheet['index'] = {};
+  const ball: (J | null)[] = [];
+  let i = 0;
+  for (const c of CLIPS) {
+    index[c.name] = { start: i, count: c.frames };
+    for (let f = 0; f < c.frames; f++, i++) {
+      const pose = sampleClip(c, frameTime(c, f));
+      ball.push(drawPose(ctx, (i % COLS) * FRAME_W, Math.floor(i / COLS) * FRAME_H, pose, H, a, kit));
+    }
+  }
+  return { canvas, index, ball, total };
+}
+
+export const frameRect = (i: number) => ({ x: (i % COLS) * FRAME_W, y: Math.floor(i / COLS) * FRAME_H });
+export type { Clip };

@@ -2,6 +2,7 @@ import { TeamDef, CoreStats } from '../sim/data';
 import { Player } from '../sim/player';
 import { Rng, clamp } from '../sim/math';
 import { POSITIONS, Position, HEIGHTS } from '../sim/attributes';
+import { randomAppearance } from '../render/appearance';
 
 const FIRST = ['Marcus', 'Jalen', 'Tyrese', 'Devin', 'Malik', 'Andre', 'Isaiah', 'Kobe', 'Darius', 'Trey', 'Luka', 'Nikola', 'Jaylen', 'Cade', 'Zion', 'Bam', 'Rudy', 'Khalil', 'Omari', 'Dante', 'Xavier', 'Cam', 'Jordan', 'Miles', 'Evan', 'Theo', 'Amari', 'Quentin', 'Rashad', 'Elijah', 'Bo', 'Kendrick', 'Shai', 'Victor', 'Ty', 'Reggie'];
 const LAST = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Price', 'Ward', 'Bryant', 'Okafor', 'Diallo', 'Novak', 'Petrovic', 'Simmons', 'Banks', 'Reed', 'Fields', 'Holloway', 'Jennings', 'Lowe', 'Moss', 'Pierce', 'Grant', 'Vance', 'Stone', 'Booker', 'Rivers', 'Hart', 'Knox', 'Silva', 'Adebayo', 'Fox', 'Duke', 'Wells', 'Payne', 'Shaw', 'Cross'];
@@ -36,9 +37,11 @@ export function generateRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size
       core[k] = clamp(Math.round(base + (BIAS[pos][k] ?? 0) + rng.range(-7, 7)), 30, 95);
     }
     const name = `${rng.pick(FIRST)} ${rng.pick(LAST)}`;
+    const skin = Math.floor(rng.range(0, 5));
     out.push(new Player({
+      appearance: randomAppearance(() => rng.next(), skin),
       id: `${team.id}-${i}`, name, team: teamIdx, pos, core, nodes: AI_PERKS[pos],
-      number: Math.floor(rng.range(0, 55)), skin: Math.floor(rng.range(0, 5)),
+      number: Math.floor(rng.range(0, 55)), skin,
       height: HEIGHTS[pos] + rng.range(-0.15, 0.15),
     }));
   }

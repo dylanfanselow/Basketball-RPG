@@ -2,6 +2,7 @@ import { CoreStats, MOVES } from './data';
 import { computeSubRatings, SubRatings, rmap, Position, HEIGHTS } from './attributes';
 import { ModSet, ModSource } from './modifiers';
 import { Vec, v } from './math';
+import { Appearance, defaultAppearance } from '../render/appearance';
 
 export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe';
 
@@ -9,12 +10,12 @@ export interface BoxScore { pts: number; fgm: number; fga: number; tpm: number; 
 export const emptyBox = (): BoxScore => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ast: 0, reb: 0, stl: 0, blk: 0, tov: 0, secs: 0, usage: 0, touches: 0 });
 
 export interface PlayerInit {
-  id: string; name: string; team: 0 | 1; pos: Position; core: CoreStats; nodes?: string[]; extra?: ModSource[]; isUser?: boolean; number?: number; skin?: number; height?: number;
+  id: string; name: string; team: 0 | 1; pos: Position; core: CoreStats; nodes?: string[]; extra?: ModSource[]; isUser?: boolean; number?: number; skin?: number; height?: number; appearance?: Appearance;
 }
 
 export class Player {
   id: string; name: string; team: 0 | 1; pos: Position; role: string; number: number; skin: number;
-  height: number; isUser: boolean;
+  height: number; isUser: boolean; appearance: Appearance;
   core: CoreStats; nodes: Set<string>; extra: ModSource[];
   mods: ModSet; sub!: SubRatings;
 
@@ -34,6 +35,8 @@ export class Player {
   aiMode: 'none' | 'drive' = 'none'; aiModeUntil = 0; cutUntil = 0;
   /** runtime sim fields */
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
+  /** current animation clip for the renderer (shots, moves, falls) */
+  anim: { name: string; start: number; release?: number; dur?: number } | null = null;
   bufferedMove: { stick: Vec; at: number } | null = null;
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
 
@@ -43,6 +46,7 @@ export class Player {
     this.number = init.number ?? 0; this.skin = init.skin ?? 0;
     this.height = init.height ?? HEIGHTS[init.pos];
     this.isUser = !!init.isUser;
+    this.appearance = init.appearance ?? { ...defaultAppearance(), skin: this.skin };
     this.core = { ...init.core };
     this.nodes = new Set(init.nodes ?? []);
     this.extra = init.extra ?? [];
