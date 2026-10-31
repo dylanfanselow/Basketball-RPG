@@ -20,7 +20,7 @@ npm test         # sim unit tests + a headless AI-vs-AI game
 |---|---|---|---|
 | **A** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater, **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
 | **Y** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
-| **B** (right) | Dribble move + stick direction (uses the moves you've unlocked) | Set a screen | Take a charge |
+| **B** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
 | **X** (left) | Ultimate | Ultimate | Ultimate |
 | Left stick / RT | Move / sprint | | |
 
@@ -36,6 +36,7 @@ Keyboard: WASD move, **K**=A, **L**=B, **J**=X, **I**=Y, Shift sprint, Enter pau
   - `ai/trust.ts`: why teammates do or don't pass to you. `ai/offense.ts` and `ai/defense.ts` run sets, reads, help and closeouts.
   - `plays/runner.ts` + `src/data/plays/plays.json`: real sets (High PnR, Spain, Horns Flare, Floppy, Chicago, …).
   - `ultimates.ts`: a separate ultimate system (Deep Step-Back, FT-Line Takeoff, Chase-Down Block) with evolutions.
+- `src/data/rosters.json`: real 2026-27 NBA rosters (names, numbers, ratings, perks, looks). Edit it directly, or use the dev panel's **NBA player looks** section and "Save look to rosters.json" (works under `npm run dev`).
 - `src/data/**`: everything tunable. `statInfluence.json` (core stat → sub-ratings), `shotTypes.json`, `moves.json`,
   `trees/*.json` (perk constellations), `ultimates.json`, `league.json` (placeholder teams, swap freely).
 - `src/career/**`: level/XP/stat points, skill tree rules, rotation/minutes, plus stubs for story, random events and backstories.

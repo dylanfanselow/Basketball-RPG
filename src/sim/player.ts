@@ -37,6 +37,7 @@ export class Player {
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
   /** current animation clip for the renderer (shots, moves, falls) */
   anim: { name: string; start: number; release?: number; dur?: number } | null = null;
+  movePlantAt = 0.3; movePlanted = false;
   bufferedMove: { stick: Vec; at: number } | null = null;
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
 

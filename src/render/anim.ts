@@ -7,8 +7,9 @@
 export type J = [number, number];
 export const JOINTS = ['head', 'neck', 'sF', 'sB', 'eF', 'eB', 'hF', 'hB', 'hip', 'kF', 'kB', 'fF', 'fB'] as const;
 export type JointName = (typeof JOINTS)[number];
-export type Pose = Record<JointName, J> & { ball?: J | null };
-type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null };
+/** backView: player turned away from the camera (spin moves) - drawn without a face */
+export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean };
+type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean };
 
 export const BASE: Pose = {
   head: [1, 91], neck: [0, 82], sF: [2, 79], sB: [-2, 79], eF: [4, 65], eB: [-3, 65], hF: [5, 52], hB: [-3, 52],
@@ -75,36 +76,99 @@ export const CLIPS: Clip[] = [
     { t: 1, pose: runDrib(jogA, [11, 47], [12, 42]) }] },
 
   // ---------- dribble moves ----------
-  { name: 'move_crossover', frames: 6, bounce: [0.45], keys: [
-    { t: 0, pose: P({ hF: [10, 44], eF: [8, 60], ball: [11, 38] }, athletic) },
-    { t: 0.45, pose: P({ head: [5, 83], neck: [4, 75], sF: [5, 72], sB: [1, 72], hip: [0, 43], kF: [9, 21], fF: [13, 0], kB: [-6, 21], fB: [-9, 0], hF: [7, 22], eF: [8, 48], hB: [5, 22], eB: [3, 48], ball: [6, 4] }) },
-    { t: 1, pose: P({ hB: [9, 44], eB: [6, 60], hF: [3, 58], eF: [5, 66], ball: [10, 38], head: [3, 87], neck: [2, 78] }, athletic) }] },
-  { name: 'move_inOut', frames: 5, bounce: [0.5], keys: [
-    { t: 0, pose: dribHigh }, { t: 0.5, pose: P({ head: [4, 86], hF: [6, 30], eF: [7, 52], ball: [6, 4] }, athletic) }, { t: 1, pose: dribHigh }] },
-  { name: 'move_behindBack', frames: 6, bounce: [0.5], keys: [
-    { t: 0, pose: P({ hF: [9, 40], ball: [10, 34] }, athletic) },
-    { t: 0.5, pose: P({ head: [4, 85], hip: [0, 45], hF: [-9, 32], eF: [-5, 56], ball: [-10, 6], kF: [10, 23], fF: [14, 0] }, athletic) },
-    { t: 1, pose: P({ hB: [9, 42], eB: [6, 60], ball: [10, 36], hF: [4, 58] }, athletic) }] },
-  { name: 'move_snatchBack', frames: 6, keys: [
-    { t: 0, pose: P({ ball: [10, 30], hF: [9, 36] }, athletic) },
-    { t: 0.4, pose: P({ fF: [6, 9], fB: [-3, 12], kF: [8, 32], kB: [-1, 34], hip: [-2, 54], hF: [3, 60], hB: [1, 58], ball: [4, 60], head: [-1, 92] }) },
+  // Each move: sell (lean / ball out), plant (dip, ball hits the floor), action (ball changes hands /
+  // body turns), recovery into the next dribble. plantAt in moves.json lines up with the plant key.
+  { name: 'move_changeDir', frames: 8, bounce: [0.4], keys: [
+    { t: 0, pose: runDrib(jogA, [11, 46], [12, 42]) },
+    { t: 0.4, pose: P({ hip: [0, 45], head: [3, 86], neck: [2, 77], hF: [8, 26], eF: [8, 50], ball: [7, 4], kF: [7, 22], fF: [10, 0] }, athletic) },
+    { t: 0.7, pose: P({ hB: [9, 40], eB: [6, 58], ball: [10, 36], hF: [3, 58], eF: [5, 66] }, athletic) },
+    { t: 1, pose: P({ hB: [11, 46], eB: [8, 62], ball: [12, 42], hF: [4, 58] }, athletic) }] },
+  { name: 'move_crossover', frames: 10, bounce: [0.38], keys: [
+    { t: 0, pose: runDrib(jogA, [11, 46], [12, 42]) },
+    { t: 0.22, pose: P({ head: [5, 87], neck: [4, 78], sF: [5, 75], hF: [15, 40], eF: [11, 56], ball: [16, 30], kF: [10, 24], fF: [14, 0], kB: [-4, 25], fB: [-8, 1] }, athletic) },
+    { t: 0.38, pose: P({ head: [4, 81], neck: [3, 73], sF: [4, 70], sB: [0, 70], hip: [0, 41], hF: [7, 18], eF: [8, 44], hB: [4, 20], eB: [2, 44], ball: [5, 5], kF: [9, 20], fF: [13, 0], kB: [-7, 20], fB: [-11, 0] }) },
+    { t: 0.62, pose: P({ head: [6, 84], neck: [5, 76], hip: [0, 45], hB: [10, 38], eB: [7, 56], ball: [11, 33], hF: [3, 60], eF: [5, 66], kF: [8, 32], fF: [6, 12], kB: [-7, 23], fB: [-13, 2] }, athletic) },
+    { t: 1, pose: P({ hB: [11, 46], eB: [8, 62], ball: [12, 42], hF: [4, 58], eF: [5, 66] }, athletic) }] },
+  { name: 'move_doubleCross', frames: 10, bounce: [0.4], keys: [
+    { t: 0, pose: P({ hB: [10, 40], eB: [7, 57], ball: [11, 35], hF: [3, 60] }, athletic) },
+    { t: 0.4, pose: P({ head: [4, 81], neck: [3, 73], hip: [0, 41], hF: [5, 20], eF: [6, 44], hB: [7, 18], eB: [5, 44], ball: [5, 5], kF: [9, 20], fF: [13, 0], kB: [-7, 20], fB: [-11, 0] }) },
+    { t: 0.65, pose: P({ head: [6, 84], hip: [0, 45], hF: [11, 38], eF: [9, 56], ball: [12, 33], hB: [2, 60], kF: [10, 26], fF: [15, 1], kB: [-6, 24], fB: [-12, 3] }, athletic) },
+    { t: 1, pose: runDrib(jogB, [11, 46], [12, 42]) }] },
+  { name: 'move_inOut', frames: 9, bounce: [0.62], keys: [
+    { t: 0, pose: runDrib(jogA, [11, 46], [12, 42]) },
+    { t: 0.3, pose: P({ head: [-1, 88], neck: [-1, 79], sF: [0, 76], sB: [-4, 76], hF: [6, 36], eF: [8, 54], ball: [5, 30], kF: [6, 25], fF: [9, 0] }, athletic) },
+    { t: 0.5, pose: P({ head: [6, 85], neck: [5, 76], sF: [6, 73], hF: [14, 34], eF: [11, 52], ball: [15, 26], kF: [10, 26], fF: [15, 1], kB: [-6, 23], fB: [-12, 3] }, athletic) },
+    { t: 0.62, pose: P({ head: [7, 84], hF: [14, 22], eF: [12, 46], ball: [16, 4], kF: [10, 26], fF: [15, 1] }, athletic) },
+    { t: 1, pose: runDrib(jogB, [11, 46], [12, 42]) }] },
+  { name: 'move_betweenLegs', frames: 10, bounce: [0.32], keys: [
+    { t: 0, pose: P({ hip: [0, 43], kF: [9, 21], fF: [14, 0], kB: [-7, 21], fB: [-11, 0], hF: [12, 44], eF: [9, 60], ball: [13, 40] }, athletic) },
+    { t: 0.32, pose: P({ hip: [0, 41], head: [3, 82], neck: [2, 74], kF: [10, 20], fF: [15, 0], kB: [-8, 20], fB: [-12, 0], hF: [5, 22], eF: [7, 46], ball: [2, 4] }, athletic) },
+    { t: 0.55, pose: P({ hip: [0, 42], kF: [10, 20], fF: [15, 0], kB: [-8, 20], fB: [-12, 0], hB: [-5, 28], eB: [-5, 50], ball: [-4, 25], hF: [6, 54] }, athletic) },
+    { t: 0.78, pose: P({ hip: [0, 45], hB: [-2, 42], eB: [-4, 58], ball: [-1, 40], hF: [7, 56] }, athletic) },
+    { t: 1, pose: P({ hB: [9, 44], eB: [6, 60], ball: [10, 40], hF: [4, 58] }, athletic) }] },
+  { name: 'move_behindBack', frames: 10, bounce: [0.45], keys: [
+    { t: 0, pose: P({ hB: [10, 40], eB: [7, 57], ball: [11, 35], hF: [3, 60] }, athletic) },
+    { t: 0.25, pose: P({ head: [5, 85], hip: [0, 45], hB: [-9, 40], eB: [-6, 58], ball: [-11, 36], hF: [6, 58], kF: [9, 24], fF: [13, 0] }, athletic) },
+    { t: 0.45, pose: P({ head: [5, 83], hip: [0, 43], hB: [-7, 22], eB: [-7, 46], ball: [-6, 5], hF: [9, 34], eF: [9, 54], kF: [10, 22], fF: [15, 0], kB: [-7, 22], fB: [-12, 1] }, athletic) },
+    { t: 0.68, pose: P({ head: [6, 85], hF: [12, 38], eF: [10, 55], ball: [13, 33], hB: [-2, 58], kF: [9, 30], fF: [8, 10], kB: [-7, 23], fB: [-13, 2] }, athletic) },
+    { t: 1, pose: runDrib(jogA, [11, 46], [12, 42]) }] },
+  { name: 'move_shammgod', frames: 11, keys: [
+    { t: 0, pose: P({ hB: [10, 40], eB: [7, 57], ball: [11, 35], hF: [4, 58] }, athletic) },
+    { t: 0.28, pose: P({ head: [-2, 88], neck: [-1, 79], sF: [1, 76], hB: [21, 42], eB: [13, 58], ball: [23, 38], hF: [5, 56], kF: [11, 24], fF: [16, 0], kB: [-6, 24], fB: [-10, 0] }, athletic) },
+    { t: 0.55, pose: P({ head: [2, 86], hF: [19, 40], eF: [12, 56], ball: [17, 36], hB: [10, 50], eB: [7, 60], kF: [10, 22], fF: [15, 0], kB: [-7, 22], fB: [-12, 0], hip: [0, 42] }, athletic) },
+    { t: 0.75, pose: runDrib(sprA, [13, 40], [15, 18]) },
+    { t: 1, pose: runDrib(sprB, [12, 44], [13, 38]) }] },
+  { name: 'move_snatchBack', frames: 9, keys: [
+    { t: 0, pose: runDrib(jogA, [11, 44], [12, 36]) },
+    { t: 0.3, pose: P({ hip: [0, 43], kF: [10, 21], fF: [14, 0], head: [4, 84], hF: [12, 22], ball: [13, 10] }, athletic) },
+    { t: 0.55, pose: P({ fF: [7, 10], fB: [-3, 12], kF: [8, 33], kB: [-1, 35], hip: [-2, 55], hF: [4, 58], hB: [2, 57], ball: [5, 58], head: [-2, 93], neck: [-2, 84] }) },
+    { t: 0.8, pose: P({ hip: [0, 46], kF: [7, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], ball: [6, 60], hF: [6, 60], hB: [4, 58] }) },
     { t: 1, pose: P({ ball: [6, 60], hF: [6, 60], hB: [4, 58] }, athletic) }] },
-  { name: 'move_spin', frames: 8, keys: [
-    { t: 0, pose: P({ ball: [11, 40], hF: [10, 45] }, athletic) },
-    { t: 0.35, pose: P({ head: [-1, 87], neck: [-1, 78], sF: [-3, 76], sB: [3, 76], hF: [-6, 50], eF: [-5, 63], hB: [8, 56], eB: [6, 66], ball: [-8, 46], kF: [-2, 26], fF: [-1, 0], kB: [6, 25], fB: [10, 2] }, athletic) },
-    { t: 0.7, pose: P({ head: [0, 88], sF: [1, 77], sB: [-1, 77], hF: [-2, 46], ball: [-2, 40], kF: [6, 26], fF: [10, 2] }, athletic) },
-    { t: 1, pose: P({ ball: [11, 40], hF: [10, 45], head: [4, 87] }, athletic) }] },
-  { name: 'move_stepback', frames: 6, keys: [
-    { t: 0, pose: P({ head: [5, 86], neck: [4, 78], ball: [11, 36], hF: [10, 42] }, athletic) },
-    { t: 0.45, pose: P({ fF: [7, 10], fB: [-1, 12], kF: [8, 34], kB: [0, 36], hip: [-1, 55], ball: [5, 58], hF: [6, 58], hB: [4, 57], head: [-1, 93], neck: [-1, 84] }) },
+  { name: 'move_spin', frames: 11, keys: [
+    { t: 0, pose: runDrib(jogA, [11, 44], [12, 38]) },
+    { t: 0.2, pose: P({ hip: [0, 45], kF: [9, 23], fF: [12, 0], kB: [-5, 25], fB: [-9, 2], hF: [8, 48], eF: [7, 60], ball: [9, 46], hB: [6, 60], head: [3, 86] }, athletic) },
+    { t: 0.42, pose: P({ backView: true, head: [-1, 87], neck: [-1, 78], sF: [-3, 76], sB: [3, 76], hF: [-9, 50], eF: [-6, 62], ball: [-10, 46], hB: [7, 58], eB: [5, 66], kF: [-2, 26], fF: [-1, 0], kB: [6, 27], fB: [11, 4] }, athletic) },
+    { t: 0.62, pose: P({ backView: true, head: [0, 88], sF: [-1, 77], sB: [1, 77], hF: [-4, 46], hB: [-2, 48], ball: [-4, 44], kF: [3, 26], fF: [2, 0], kB: [3, 30], fB: [6, 10] }, athletic) },
+    { t: 0.8, pose: P({ head: [5, 86], hF: [9, 42], eF: [8, 58], ball: [10, 38], kF: [10, 28], fF: [15, 2], kB: [-5, 24], fB: [-10, 4] }, athletic) },
+    { t: 1, pose: runDrib(sprA, [12, 46], [13, 40]) }] },
+  { name: 'move_stepback', frames: 9, keys: [
+    { t: 0, pose: P({ head: [6, 86], neck: [5, 77], ball: [12, 38], hF: [11, 44] }, athletic) },
+    { t: 0.3, pose: P({ hip: [0, 42], head: [6, 82], neck: [5, 74], kF: [11, 21], fF: [15, 0], kB: [-6, 22], fB: [-10, 1], ball: [13, 8], hF: [12, 22] }, athletic) },
+    { t: 0.55, pose: P({ fF: [6, 11], fB: [-3, 13], kF: [8, 34], kB: [-1, 36], hip: [-2, 56], ball: [5, 58], hF: [6, 58], hB: [4, 57], head: [-2, 94], neck: [-2, 85] }) },
+    { t: 0.8, pose: P({ hip: [0, 45], kF: [7, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], ball: [6, 60], hF: [6, 60], hB: [4, 58] }) },
     { t: 1, pose: P({ ball: [6, 60], hF: [6, 60], hB: [4, 58] }, athletic) }] },
-  { name: 'move_hesi', frames: 5, bounce: [0.5], keys: [
-    { t: 0, pose: dribHigh }, { t: 0.5, pose: P({ head: [0, 92], neck: [0, 83], sF: [1, 80], sB: [-3, 80], hip: [0, 52], hF: [9, 40], ball: [11, 4] }) }, { t: 1, pose: dribHigh }] },
-  { name: 'move_hesiBurst', frames: 5, keys: [
-    { t: 0, pose: dribHigh }, { t: 0.5, pose: P({ head: [10, 82], neck: [8, 74], sF: [9, 71], sB: [5, 71], hip: [0, 46], kF: [10, 26], fF: [14, 1], kB: [-6, 22], fB: [-12, 4], hF: [13, 34], ball: [15, 8] }) }, { t: 1, pose: runDrib(jogA, [11, 47], [12, 42]) }] },
-  { name: 'move_jab', frames: 4, keys: [{ t: 0, pose: chest }, { t: 0.45, pose: P({ ball: [4, 94], hF: [4, 92], hB: [2, 91], eF: [6, 80], eB: [-2, 80], head: [1, 91] }) }, { t: 1, pose: chest }] },
-  { name: 'move_retreat', frames: 5, bounce: [0.5], keys: [{ t: 0, pose: runDrib(jogB, [11, 45], [12, 40]) }, { t: 0.5, pose: runDrib(jogA, [11, 41], [12, 3]) }, { t: 1, pose: runDrib(jogB, [11, 45], [12, 40]) }] },
-  { name: 'move_lateral', frames: 5, bounce: [0.5], keys: [{ t: 0, pose: dribHigh }, { t: 0.5, pose: P({ kF: [9, 22], fF: [12, 0], kB: [-8, 22], fB: [-11, 0], hip: [0, 44], hF: [11, 40], ball: [12, 4] }, athletic) }, { t: 1, pose: dribHigh }] },
+  { name: 'move_hesi', frames: 9, bounce: [0.72], keys: [
+    { t: 0, pose: runDrib(jogA, [11, 46], [12, 42]) },
+    { t: 0.3, pose: P({ hip: [0, 50], head: [0, 92], neck: [0, 83], hF: [12, 38], ball: [13, 30], kF: [7, 26], fF: [10, 0], kB: [-5, 26], fB: [-8, 0] }, athletic) },
+    { t: 0.45, pose: P({ hip: [0, 52], head: [-1, 94], neck: [-1, 85], sF: [1, 82], sB: [-3, 82], hF: [12, 50], eF: [9, 64], ball: [13, 46], hB: [4, 62], kF: [7, 27], fF: [10, 0], kB: [-5, 27], fB: [-8, 0] }, athletic) },
+    { t: 0.72, pose: P({ hip: [0, 48], head: [3, 89], hF: [12, 24], ball: [13, 4] }, athletic) },
+    { t: 1, pose: dribHigh }] },
+  { name: 'move_hesiBurst', frames: 8, bounce: [0.5], keys: [
+    { t: 0, pose: P({ hip: [0, 52], head: [-1, 94], neck: [-1, 85], hF: [12, 50], ball: [13, 46] }, athletic) },
+    { t: 0.2, pose: P({ head: [10, 82], neck: [8, 74], sF: [9, 71], sB: [5, 71], hip: [0, 46], hF: [14, 38], ball: [15, 32] }, athletic) },
+    { t: 0.5, pose: P({ head: [11, 82], neck: [9, 74], sF: [10, 71], sB: [6, 71], hip: [0, 47], kF: [11, 28], fF: [17, 2], kB: [-7, 22], fB: [-14, 6], hF: [16, 20], ball: [18, 4] }) },
+    { t: 1, pose: runDrib(sprA, [12, 46], [13, 40]) }] },
+  { name: 'move_hesiPullback', frames: 8, keys: [
+    { t: 0, pose: P({ hip: [0, 52], head: [-1, 94], neck: [-1, 85], hF: [12, 50], ball: [13, 46] }, athletic) },
+    { t: 0.25, pose: P({ hip: [0, 43], kF: [10, 21], fF: [14, 0], head: [5, 84], hF: [12, 26], ball: [13, 12] }, athletic) },
+    { t: 0.55, pose: P({ head: [-3, 89], neck: [-3, 80], hip: [-1, 47], kF: [6, 25], fF: [8, 2], kB: [-7, 24], fB: [-12, 0], hF: [5, 40], ball: [5, 34] }, athletic) },
+    { t: 1, pose: P({ ball: [6, 58], hF: [6, 58], hB: [4, 56] }, athletic) }] },
+  { name: 'move_jab', frames: 8, keys: [
+    { t: 0, pose: chest },
+    { t: 0.3, pose: P({ kF: [9, 23], fF: [14, 0], hip: [1, 47], head: [5, 87], neck: [4, 78], ball: [9, 58], hF: [9, 58], hB: [7, 56] }) },
+    { t: 0.5, pose: P({ ball: [4, 95], hF: [4, 92], hB: [2, 91], eF: [6, 80], eB: [-2, 80], head: [1, 92], hip: [0, 52] }) },
+    { t: 0.75, pose: P({ ball: [7, 62], hF: [7, 62], hB: [5, 60], hip: [0, 48] }) },
+    { t: 1, pose: chest }] },
+  { name: 'move_retreat', frames: 8, bounce: [0.5], keys: [
+    { t: 0, pose: runDrib(jogB, [11, 45], [12, 40]) },
+    { t: 0.25, pose: P({ head: [-2, 88], hB: [5, 62], hF: [10, 34], ball: [11, 24] }, jogA) },
+    { t: 0.5, pose: runDrib(mirrorLegsArms(jogB), [10, 40], [11, 4]) },
+    { t: 1, pose: runDrib(jogB, [11, 45], [12, 40]) }] },
+  { name: 'move_lateral', frames: 8, bounce: [0.5], keys: [
+    { t: 0, pose: dribHigh },
+    { t: 0.25, pose: P({ kF: [6, 23], fF: [8, 0], kB: [-6, 23], fB: [-8, 0], hip: [0, 45], hF: [11, 40], ball: [12, 30] }, athletic) },
+    { t: 0.5, pose: P({ kF: [10, 22], fF: [13, 0], kB: [-9, 22], fB: [-12, 0], hip: [0, 43], hF: [11, 30], ball: [12, 4] }, athletic) },
+    { t: 1, pose: dribHigh }] },
 
   // ---------- shots ----------
   { name: 'shot_jumper', frames: 12, release: 0.58, post: 0.55, keys: [
@@ -219,6 +283,7 @@ export function sampleClip(c: Clip, u: number): Pose {
   for (const j of JOINTS) out[j] = lerpJ(a.pose[j], b.pose[j], t);
   const ba = a.pose.ball, bb = b.pose.ball;
   out.ball = ba && bb ? lerpJ(ba, bb, (u - a.t) / (span || 1)) : t < 0.5 ? ba ?? null : bb ?? null;
+  out.backView = t < 0.5 ? !!a.pose.backView : !!b.pose.backView;
   return out;
 }
 

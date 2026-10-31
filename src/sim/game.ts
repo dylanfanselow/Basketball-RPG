@@ -245,7 +245,7 @@ export class GameSim {
   }
 
   callPlay() {
-    const id = PlayRunner.pick(this.rng, this.cfg.allowedPlays);
+    const id = PlayRunner.pick(this.rng, this.cfg.allowedPlays, this.runner.lastPlayId);
     this.runner.call(id);
     this.phaseStartedAt = this.time;
     this.emit({ kind: 'play', text: `Coach: "${this.runner.play!.name}"`, team: this.possession });
@@ -339,6 +339,18 @@ export class GameSim {
     if (r.advanced && r.prev) {
       this.gradeUserPhase(r.prev.roles);
       this.phaseStartedAt = this.time;
+    }
+    // the set ran out without a shot: swing it, re-space, call something else (unless the clock is short)
+    const rn = this.runner;
+    if (rn.done && rn.resetUntil === -1 && h && h.team === this.possession) {
+      if (this.shotClock > 7) {
+        rn.resetUntil = this.time + 1.2;
+        this.emit({ kind: 'play', text: 'Coach: "Reset — swing it!"', team: this.possession });
+      } else rn.resetUntil = -2;
+    }
+    if (rn.resetUntil > 0 && this.time >= rn.resetUntil) {
+      if (this.shotClock > 6 && h && h.team === this.possession) this.callPlay();
+      else rn.resetUntil = -2;
     }
   }
 
@@ -575,7 +587,9 @@ export class GameSim {
     p.anim = { name: `move_${id}`, start: this.time, dur: m.dur };
     p.move = { id, dir, t: 0 };
     p.dribbledSinceCatch = true;
-    p.moveVel = scale(dir, m.burst * towardMult * (0.85 + 0.15 * p.ballSpeedMult));
+    const isCross = id === 'crossover' || id === 'doubleCross';
+    p.moveVel = scale(dir, m.burst * towardMult * (isCross ? p.mods.pMult('crossBurst') : 1) * (0.85 + 0.15 * p.ballSpeedMult));
+    p.movePlantAt = m.plantAt ?? 0.3; p.movePlanted = false;
     if (m.pumpFake) p.pumpFakeAt = this.time;
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
     this.emit({ kind: 'move', text: m.name, pid: p.id });
@@ -585,7 +599,7 @@ export class GameSim {
       const def = nd.d;
       const prox = clamp01(1 - (nd.dist - 2) / 3.5);
       const ratio = Math.pow((p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20), 2);
-      const chance = m.ankle * p.mods.pMult('ankleMult') * ratio * prox;
+      const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox;
       if (m.pumpFake) {
         if (this.rng.chance(0.25 + 0.3 * ratio * prox)) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
       } else if (this.rng.chance(chance)) {
@@ -680,7 +694,11 @@ export class GameSim {
 
       switch (p.state) {
         case 'screen': case 'charge': case 'fallen': p.vel = v(); break;
-        case 'dribbleMove': p.vel = p.moveVel; break;
+        case 'dribbleMove':
+          // sell first (slow down / shift weight), then plant and burst
+          if (p.stateT < p.movePlantAt * p.stateDur) p.vel = scale(p.vel, 0.9);
+          else { p.vel = p.moveVel; if (!p.movePlanted) { p.movePlanted = true; this.quiet('plant', { move: p.move?.id }, p.id); } }
+          break;
         case 'shoot': p.vel = scale(p.vel, 0.985); break;
         default: {
           const accel = p.z > 0 ? 1.5 : p === this.user && p.isUser ? 14 : 9;

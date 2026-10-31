@@ -65,13 +65,31 @@ describe('moves', () => {
   it('falls back to basic moves when nothing is unlocked', () => {
     const p = mk();
     expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('lateral');
+    p.vel = v(0, 8);
+    expect(resolveMove(p, v(0, -1), toRim, 0, 3)).toBe('changeDir');
   });
-  it('crossover chains into behind-the-back inside the window only', () => {
-    const p = mk({ nodes: ['dr_cross', 'dr_btb'] });
-    expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('crossover');
-    p.lastMove = { id: 'crossover', endAt: 1.0, dir: v(0, 1) };
-    expect(resolveMove(p, v(0, -1), toRim, 1.3, 3)).toBe('behindBack');
-    expect(resolveMove(p, v(0, -1), toRim, 2.5, 3)).toBe('crossover');
+  it('crossover needs a change of direction up/down the screen', () => {
+    const p = mk({ nodes: ['dr_cross'] });
+    expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('lateral');      // standing still: no cross
+    p.vel = v(2, 8);                                                     // dribbling down the screen
+    expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('lateral');      // same way: no cross
+    expect(resolveMove(p, v(0, -1), toRim, 0, 3)).toBe('crossover');   // the other way: crossover
+    expect(resolveMove(p, v(1, 0), toRim, 0, 3)).toBe('hesi');         // toward the hoop
+  });
+  it('crossover chains: double cross, behind-the-back, shammgod, only inside the window', () => {
+    const p = mk({ nodes: ['dr_cross', 'dr_btb', 'dr_dbl', 'dr_shammgod'] });
+    p.vel = v(0, -8); // now going up after the cross
+    p.lastMove = { id: 'crossover', endAt: 1.0, dir: v(0, -1) };
+    expect(resolveMove(p, v(0, 1), toRim, 1.3, 3)).toBe('doubleCross');
+    expect(resolveMove(p, v(0, 0), toRim, 1.3, 3)).toBe('behindBack');
+    expect(resolveMove(p, v(1, 0), toRim, 1.3, 3)).toBe('shammgod');
+    expect(resolveMove(p, v(0, 1), toRim, 2.5, 3)).toBe('crossover');
+  });
+  it('between-the-legs when standing, in-and-out when moving', () => {
+    const p = mk({ nodes: ['dr_legs', 'dr_inout'] });
+    expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('betweenLegs');
+    p.vel = v(0, 8);
+    expect(resolveMove(p, v(0, 1), toRim, 0, 3)).toBe('inOut');
   });
 });
 
@@ -153,9 +171,9 @@ describe('input buffering', () => {
   it('B pressed during a crossover queues behind-the-back', () => {
     const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), nodes: ['dr_cross', 'dr_btb'], isUser: true });
     const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
-    const inp = { move: { x: 0, y: -1 }, sprint: false, a: false, b: true, x: false, y: false, aHeld: false, bHeld: true };
-    g.update(1 / 60, inp);
-    const idle = { ...inp, move: { x: 0, y: 0 }, b: false, bHeld: false };
+    const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+    for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } }); // dribble down the screen
+    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true });                  // stick up + B = crossover
     for (let i = 0; i < 10; i++) g.update(1 / 60, idle);
     g.update(1 / 60, { ...idle, b: true }); // press mid-move
     for (let i = 0; i < 40; i++) g.update(1 / 60, idle);
@@ -170,6 +188,7 @@ describe('three-move chain', () => {
     const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
     const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     const run = (n: number) => { for (let i = 0; i < n; i++) g.update(1 / 60, idle); };
+    for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } });
     g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true }); run(26);
     g.update(1 / 60, { ...idle, b: true }); run(26);
     g.update(1 / 60, { ...idle, move: { x: -1, y: 0 }, b: true }); run(30);

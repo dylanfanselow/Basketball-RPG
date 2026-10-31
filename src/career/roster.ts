@@ -2,7 +2,11 @@ import { TeamDef, CoreStats } from '../sim/data';
 import { Player } from '../sim/player';
 import { Rng, clamp } from '../sim/math';
 import { POSITIONS, Position, HEIGHTS } from '../sim/attributes';
-import { randomAppearance } from '../render/appearance';
+import { randomAppearance, withDefaults, Appearance } from '../render/appearance';
+import rostersRaw from '../data/rosters.json';
+
+export interface RosterEntry { name: string; number: number; pos: Position; heightFt: number; tier: number; archetype: string; core: CoreStats; perks: string[]; appearance: Partial<Appearance> }
+export const REAL_ROSTERS: Record<string, RosterEntry[]> = (rostersRaw as any).teams;
 
 const FIRST = ['Marcus', 'Jalen', 'Tyrese', 'Devin', 'Malik', 'Andre', 'Isaiah', 'Kobe', 'Darius', 'Trey', 'Luka', 'Nikola', 'Jaylen', 'Cade', 'Zion', 'Bam', 'Rudy', 'Khalil', 'Omari', 'Dante', 'Xavier', 'Cam', 'Jordan', 'Miles', 'Evan', 'Theo', 'Amari', 'Quentin', 'Rashad', 'Elijah', 'Bo', 'Kendrick', 'Shai', 'Victor', 'Ty', 'Reggie'];
 const LAST = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Price', 'Ward', 'Bryant', 'Okafor', 'Diallo', 'Novak', 'Petrovic', 'Simmons', 'Banks', 'Reed', 'Fields', 'Holloway', 'Jennings', 'Lowe', 'Moss', 'Pierce', 'Grant', 'Vance', 'Stone', 'Booker', 'Rivers', 'Hart', 'Knox', 'Silva', 'Adebayo', 'Fox', 'Duke', 'Wells', 'Payne', 'Shaw', 'Cross'];
@@ -25,7 +29,19 @@ const AI_PERKS: Record<Position, string[]> = {
   C: ['sc_root', 'in_root', 'in_wall', 'fi_root'],
 };
 
+/** Real roster from rosters.json when the team has one, otherwise a generated one. */
 export function generateRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size = 10): Player[] {
+  const real = REAL_ROSTERS[team.id];
+  if (real && real.length >= 5) {
+    return real.map((e, i) => new Player({
+      id: `${team.id}-${i}`, name: e.name, team: teamIdx, pos: e.pos, core: { ...e.core }, nodes: e.perks,
+      number: e.number, skin: e.appearance.skin ?? 2, height: e.heightFt, appearance: withDefaults(e.appearance),
+    }));
+  }
+  return generatedRoster(team, teamIdx, strength, size);
+}
+
+export function generatedRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size = 10): Player[] {
   const rng = new Rng(team.seed * 7919 + 13);
   const out: Player[] = [];
   for (let i = 0; i < size; i++) {

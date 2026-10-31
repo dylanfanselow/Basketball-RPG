@@ -8,16 +8,22 @@ export class PlayRunner {
   t = 0;
   done = false;
   ballCalledAt = -1;
+  /** sim time a reset ends (>0), -1 = none, -2 = no more calls this possession */
+  resetUntil = -1;
+  lastPlayId: string | null = null;
+  swungAt = -1;
 
   get play(): PlayDef | null { return this.playId ? PLAYS[this.playId] : null; }
   get cur(): PlayPhase | null { return !this.done && this.play ? this.play.phases[this.phase] ?? null : null; }
 
-  call(id: string) { this.playId = id; this.phase = 0; this.t = 0; this.done = false; this.ballCalledAt = -1; }
-  reset() { this.playId = null; this.phase = 0; this.t = 0; this.done = false; }
+  call(id: string) { this.playId = id; this.lastPlayId = id; this.phase = 0; this.t = 0; this.done = false; this.ballCalledAt = -1; this.resetUntil = -1; }
+  reset() { this.playId = null; this.phase = 0; this.t = 0; this.done = false; this.resetUntil = -1; this.swungAt = -1; }
+  resetting(now: number) { return this.resetUntil > now; }
 
-  static pick(rng: Rng, allowed?: string[]): string {
+  static pick(rng: Rng, allowed?: string[], exclude?: string | null): string {
     const ids = (allowed && allowed.length ? allowed : Object.keys(PLAYS)).filter((id) => PLAYS[id]);
-    return rng.pick(ids);
+    const fresh = ids.filter((id) => id !== exclude);
+    return rng.pick(fresh.length ? fresh : ids);
   }
 
   /** Returns true when the phase just advanced (so the caller can grade the previous phase). */

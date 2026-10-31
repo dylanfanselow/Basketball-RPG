@@ -5,6 +5,8 @@ import { newCareer } from '../career/career';
 import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
+import { REAL_ROSTERS } from '../career/roster';
+import { withDefaults } from '../render/appearance';
 
 /**
  * Developer tools overlay (F1 / ` / Back+Start). Everything applies live: to the career save
@@ -148,35 +150,37 @@ export function initDevPanel() {
     ));
     root.append(section('Ultimate', ult));
 
-    // appearance
+    // appearance (your player)
     const ap = el('div');
-    const a = c.appearance;
-    const setA = (k: keyof Appearance, v: any) => { (a as any)[k] = v; syncLive(); };
-    const sel = (label: string, k: keyof Appearance, opts: readonly (string | number)[], names?: string[]) =>
-      el('div', { class: 'row' }, el('span', { class: 'lbl' }, label),
-        el('select', { onchange: (e: any) => { const raw = e.target.value; setA(k, typeof opts[0] === 'number' ? Number(raw) : raw); } },
-          ...opts.map((o, i) => el('option', { value: String(o), selected: String((a as any)[k]) === String(o) }, names?.[i] ?? String(o)))));
-    const color = (label: string, k: keyof Appearance, optional = false) => {
-      const val = (a as any)[k] as string | null;
-      const inp = el('input', { type: 'color', value: val ?? '#ffffff', oninput: (e: any) => setA(k, e.target.value) });
-      const row = el('div', { class: 'row' }, el('span', { class: 'lbl' }, label), inp);
-      if (optional) row.append(check('on', !!val, (v) => { setA(k, v ? (inp as HTMLInputElement).value : null); }));
-      return row;
-    };
-    const flag = (label: string, k: keyof Appearance) => check(label, !!(a as any)[k], (v) => setA(k, v));
     ap.append(el('div', { class: 'row' },
       btn('Randomize look', () => { c.appearance = randomAppearance(Math.random); syncLive(); }),
-      btn('Randomize gear only', () => { const r = randomAppearance(Math.random, a.skin); Object.assign(a, { headband: r.headband, armSleeve: r.armSleeve, sleeveColor: r.sleeveColor, wristband: r.wristband, legSleeve: r.legSleeve, legSleeveColor: r.legSleeveColor, kneePad: r.kneePad, socks: r.socks, sockColor: r.sockColor, shoe: r.shoe, shoeAccent: r.shoeAccent }); syncLive(); })));
-    ap.append(sel('skin tone', 'skin', SKIN_TONES.map((_, i) => i), SKIN_TONES.map((_, i) => `tone ${i + 1}`)));
-    ap.append(sel('hair', 'hair', HAIR_STYLES), color('hair color', 'hairColor'), sel('facial hair', 'facial', FACIAL));
-    ap.append(color('eye color', 'eyeColor'), sel('eye height', 'eyeY', [-1, 0, 1], ['high', 'middle', 'low']), sel('eye spacing', 'eyeGap', [0, 1], ['close', 'wide']), sel('brows', 'brow', [1, 2], ['thin', 'thick']));
-    ap.append(sel('nose', 'nose', NOSES), sel('mouth', 'mouth', MOUTHS), sel('mouth height', 'mouthY', [-1, 0, 1], ['high', 'middle', 'low']), flag('big ears', 'bigEars'));
-    ap.append(color('headband', 'headband', true), sel('arm sleeve', 'armSleeve', ARM_SLEEVE), color('sleeve color', 'sleeveColor'), color('wristband', 'wristband', true));
-    ap.append(sel('leg sleeve', 'legSleeve', LEG_SLEEVE), color('leg sleeve color', 'legSleeveColor'), flag('knee pad', 'kneePad'));
-    ap.append(sel('socks', 'socks', SOCKS), color('sock color', 'sockColor'), color('shoes', 'shoe'), color('shoe accent', 'shoeAccent'));
-    ap.append(flag('goggles', 'goggles'), flag('face mask', 'mask'));
+      btn('Randomize gear only', () => { const r = randomAppearance(Math.random, c.appearance.skin); Object.assign(c.appearance, { headband: r.headband, armSleeve: r.armSleeve, sleeveColor: r.sleeveColor, wristband: r.wristband, legSleeve: r.legSleeve, legSleeveColor: r.legSleeveColor, kneePad: r.kneePad, socks: r.socks, sockColor: r.sockColor, shoe: r.shoe, shoeAccent: r.shoeAccent }); syncLive(); })));
+    ap.append(...appearanceControls(c.appearance, syncLive));
     ap.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'jersey #'), el('input', { type: 'number', min: 0, max: 99, value: c.number, class: 'txt', style: 'width:60px', onchange: (e: any) => { c.number = Math.max(0, Math.min(99, Number(e.target.value) || 0)); const p = livePlayer(); if (p) p.number = c.number; syncLive(); } })));
     root.append(section('Appearance', ap));
+
+    // NBA player looks: edit any roster player and save it into src/data/rosters.json (dev server only)
+    const rl = el('div');
+    const teamIds = Object.keys(REAL_ROSTERS);
+    if (!teamIds.includes(rosterTeam)) rosterTeam = teamIds[0];
+    const roster = REAL_ROSTERS[rosterTeam];
+    if (rosterIdx >= roster.length) rosterIdx = 0;
+    const entry = roster[rosterIdx];
+    entry.appearance = withDefaults(entry.appearance);
+    rl.append(el('div', { class: 'row' },
+      el('select', { onchange: (e: any) => { rosterTeam = e.target.value; rosterIdx = 0; render(); } }, ...teamIds.map((t) => el('option', { value: t, selected: t === rosterTeam }, t))),
+      el('select', { onchange: (e: any) => { rosterIdx = Number(e.target.value); render(); } }, ...roster.map((p, i) => el('option', { value: String(i), selected: i === rosterIdx }, `#${p.number} ${p.name}`)))));
+    const applyToLive = () => {
+      // update the on-court copy too (matched by name) so you see the change right away
+      for (const t of app.sim?.teams ?? []) for (const p of t.roster) if (p.name === entry.name) p.appearance = { ...(entry.appearance as Appearance) };
+      app.changed();
+    };
+    rl.append(...appearanceControls(entry.appearance as Appearance, applyToLive));
+    const status = el('span', { class: 'note' }, '');
+    rl.append(el('div', { class: 'row' },
+      btn('Save look to rosters.json', () => saveLook(rosterTeam, entry.name, entry.appearance, status)), status));
+    rl.append(el('div', { class: 'note' }, 'Saving needs the local dev server (npm run dev). It rewrites src/data/rosters.json; commit it to keep the change.'));
+    root.append(section('NBA player looks', rl));
 
     // audio
     const au = el('div');
@@ -278,6 +282,49 @@ export function initDevPanel() {
     d.p = { x: u.p.x + (dir.x / l) * ft, y: u.p.y + (dir.y / l) * ft };
     d.guarding = u.id; d.vel = { x: 0, y: 0 };
     app.changed();
+  }
+}
+
+/** One labelled control per appearance field, bound to `a`. */
+function appearanceControls(a: Appearance, changed: () => void): HTMLElement[] {
+  const setA = (k: keyof Appearance, v: any) => { (a as any)[k] = v; changed(); };
+  const sel = (label: string, k: keyof Appearance, opts: readonly (string | number)[], names?: string[]) =>
+    el('div', { class: 'row' }, el('span', { class: 'lbl' }, label),
+      el('select', { onchange: (e: any) => { const raw = e.target.value; setA(k, typeof opts[0] === 'number' ? Number(raw) : raw); } },
+        ...opts.map((o, i) => el('option', { value: String(o), selected: String((a as any)[k]) === String(o) }, names?.[i] ?? String(o)))));
+  const color = (label: string, k: keyof Appearance, optional = false) => {
+    const val = (a as any)[k] as string | null;
+    const inp = el('input', { type: 'color', value: val ?? '#ffffff', oninput: (e: any) => setA(k, e.target.value) });
+    const row = el('div', { class: 'row' }, el('span', { class: 'lbl' }, label), inp);
+    if (optional) {
+      const box = el('input', { type: 'checkbox', checked: !!val, onchange: (e: any) => setA(k, e.target.checked ? (inp as HTMLInputElement).value : null) });
+      row.append(el('label', { class: 'chk' }, box, ' on'));
+    }
+    return row;
+  };
+  const flag = (label: string, k: keyof Appearance) => el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: !!(a as any)[k], onchange: (e: any) => setA(k, e.target.checked) }), ' ' + label);
+  return [
+    sel('skin tone', 'skin', SKIN_TONES.map((_, i) => i), SKIN_TONES.map((_, i) => `tone ${i + 1}`)),
+    sel('hair', 'hair', HAIR_STYLES), color('hair color', 'hairColor'), sel('facial hair', 'facial', FACIAL),
+    color('eye color', 'eyeColor'), sel('eye height', 'eyeY', [-1, 0, 1], ['high', 'middle', 'low']), sel('eye spacing', 'eyeGap', [0, 1], ['close', 'wide']), sel('brows', 'brow', [1, 2], ['thin', 'thick']),
+    sel('nose', 'nose', NOSES), sel('mouth', 'mouth', MOUTHS), sel('mouth height', 'mouthY', [-1, 0, 1], ['high', 'middle', 'low']), flag('big ears', 'bigEars'),
+    color('headband', 'headband', true), sel('arm sleeve', 'armSleeve', ARM_SLEEVE), color('sleeve color', 'sleeveColor'), color('wristband', 'wristband', true),
+    sel('leg sleeve', 'legSleeve', LEG_SLEEVE), color('leg sleeve color', 'legSleeveColor'), flag('knee pad', 'kneePad'),
+    sel('socks', 'socks', SOCKS), color('sock color', 'sockColor'), color('shoes', 'shoe'), color('shoe accent', 'shoeAccent'),
+    flag('goggles', 'goggles'), flag('face mask', 'mask'),
+  ];
+}
+
+let rosterTeam = 'LAL';
+let rosterIdx = 0;
+
+async function saveLook(team: string, name: string, appearance: Partial<Appearance>, status: HTMLElement) {
+  status.textContent = 'Saving…';
+  try {
+    const r = await fetch('/__dev/save-look', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ team, name, appearance }) });
+    status.textContent = r.ok ? `Saved ${name}.` : `Couldn't save (${r.status}). Run the game with npm run dev.`;
+  } catch {
+    status.textContent = "Couldn't save: this build has no dev server. Run the game with npm run dev.";
   }
 }
 

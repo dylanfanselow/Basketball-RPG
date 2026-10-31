@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
-import { SHOT_TYPES } from '../src/sim/data';
+import { SHOT_TYPES, MOVES } from '../src/sim/data';
 import { Rng } from '../src/sim/math';
 import { Player } from '../src/sim/player';
 import { makeGame, simToEnd } from './helpers';
@@ -37,6 +37,19 @@ describe('keyframe animation', () => {
     expect(frameAt(c, shotU(c, start, start, release))).toBe(0);
     expect(last).toBe(frameAt(c, c.release!));
     expect(frameAt(c, shotU(c, release + 5, start, release))).toBe(c.frames - 1);
+  });
+  it('every dribble move has its own clip with at least 8 frames', () => {
+    for (const id of Object.keys(MOVES)) {
+      const c = CLIP[`move_${id}`];
+      expect(c, id).toBeDefined();
+      expect(c.frames, id).toBeGreaterThanOrEqual(8);
+    }
+  });
+  it('the spin turns its back to the camera mid-move', () => {
+    const c = CLIP.move_spin;
+    expect(sampleClip(c, 0).backView).toBe(false);
+    expect(sampleClip(c, 0.5).backView).toBe(true);
+    expect(sampleClip(c, 1).backView).toBe(false);
   });
   it('dribble clips carry the ball to the floor at their bounce point', () => {
     for (const name of ['dribble', 'dribbleRun']) {
@@ -89,6 +102,7 @@ describe('audio/animation events from the sim', () => {
     const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: { shooting: 70, finishing: 70, strength: 70, mobility: 70, playmaking: 70 }, nodes: ['dr_cross'], isUser: true });
     const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
     const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+    for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } });
     g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true });
     expect(u.anim?.name).toBe('move_crossover');
     for (let i = 0; i < 40; i++) g.update(1 / 60, idle);

@@ -15,6 +15,7 @@ import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
 
 const FONT = '"Courier New", monospace';
+const SHEET_CACHE = new Map<string, Sheet>();
 
 export class GameScene extends Phaser.Scene {
   sim!: GameSim;
@@ -50,7 +51,11 @@ export class GameScene extends Phaser.Scene {
 
   constructor() { super('Game'); }
 
-  init(data: { mode: Mode }) { this.mode = data.mode ?? 'practice'; this.ended = false; this.paused = false; this.feed = []; this.sprites.clear(); }
+  init(data: { mode: Mode }) {
+    this.mode = data.mode ?? 'practice'; this.ended = false; this.paused = false; this.feed = [];
+    // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
+    this.sprites.clear(); this.sheets.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear();
+  }
 
   create() {
     this.sim = createSim(this.mode);
@@ -92,13 +97,16 @@ export class GameScene extends Phaser.Scene {
     const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}`;
     const cur = this.sheets.get(p.id);
     if (cur?.key === key) return;
-    if (!this.textures.exists(key)) {
-      const sheet = buildSheet(p.height, p.appearance, kit);
+    // textures outlive scenes, so keep the frame/ball data alongside them
+    let sheet = SHEET_CACHE.get(key);
+    if (!sheet || !this.textures.exists(key)) {
+      sheet = buildSheet(p.height, p.appearance, kit);
+      if (this.textures.exists(key)) this.textures.remove(key);
       const tex = this.textures.addCanvas(key, sheet.canvas)!;
       for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
-      this.sheets.set(p.id, { key, sheet });
-    } else if (cur) this.sheets.set(p.id, { key, sheet: cur.sheet });
-    if (cur && cur.key !== key && this.textures.exists(cur.key)) this.time.delayedCall(0, () => this.textures.remove(cur.key));
+      SHEET_CACHE.set(key, sheet);
+    }
+    this.sheets.set(p.id, { key, sheet });
     let s = this.sprites.get(p.id);
     if (!s) { s = this.add.sprite(0, 0, key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(PIXEL); this.sprites.set(p.id, s); }
     else s.setTexture(key, 0);
@@ -168,7 +176,7 @@ export class GameScene extends Phaser.Scene {
     const d = e.data ?? {};
     const home = e.team === 0 || (who?.team === 0);
     switch (e.kind) {
-      case 'move': sfx.squeak(pan); break;
+      case 'plant': if (d.move !== 'jab') sfx.squeak(pan); break;
       case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough'].includes(d.type)) sfx.squeak(pan, 0.7); break;
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;

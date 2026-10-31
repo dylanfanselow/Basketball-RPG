@@ -152,11 +152,20 @@ function drawHairFront(ctx: Ctx, cx: number, cy: number, a: Appearance) {
   }
 }
 
-function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance) {
+function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, backView = false) {
   const cx = Math.round(hx), cy = Math.round(hy);
   const [skin, skinSh] = SKIN_TONES[a.skin % SKIN_TONES.length];
   drawHairBack(ctx, cx, cy, a);
   for (const [y, x0, x1] of HEAD_ROWS) rect(ctx, cx + x0, cy + y, x1 - x0 + 1, 1, skin);
+  if (backView) {
+    // turned away: ears on both sides, hair over the back of the head, no face
+    rect(ctx, cx - 7, cy - 1, 2, 3, skinSh); rect(ctx, cx + 6, cy - 1, 2, 3, skinSh);
+    rect(ctx, cx - 6, cy + 4, 13, 3, skinSh);
+    drawHairFront(ctx, cx, cy, a);
+    if (a.hair !== 'bald') for (let y = -4; y <= 2; y++) rect(ctx, cx - 5, cy + y, 11, 1, shade(a.hairColor, y % 2 ? 1 : 0.9));
+    if (a.headband) rect(ctx, cx - 6, cy - 4, 13, 2, a.headband);
+    return;
+  }
   rect(ctx, cx - 6, cy + 3, 4, 3, skinSh);                              // jaw shadow
   // ear
   rect(ctx, cx - 2 - (a.bigEars ? 1 : 0), cy - 1, a.bigEars ? 3 : 2, a.bigEars ? 4 : 3, skinSh);
@@ -195,7 +204,7 @@ function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance) {
 export function drawPose(ctx: Ctx, ox: number, oy: number, pose: Pose, H: number, a: Appearance, kit: Kit): J | null {
   const u = H / 100;
   const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
-  const p = Object.fromEntries(Object.entries(pose).map(([k, v]) => [k, v ? T(v as J) : v])) as unknown as Pose;
+  const p = Object.fromEntries(Object.entries(pose).map(([k, v]) => [k, Array.isArray(v) ? T(v as J) : v])) as unknown as Pose;
   const sleeveF = a.armSleeve !== 'none', sleeveB = a.armSleeve === 'both';
   drawArm(ctx, p.sB, p.eB, p.hB, a, kit, true, sleeveB, true);
   drawLeg(ctx, p.hip, p.kB, p.fB, a, kit, true, a.legSleeve === 'both', false);
@@ -203,7 +212,7 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, pose: Pose, H: number
   drawLeg(ctx, p.hip, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad);
   const [skin] = SKIN_TONES[a.skin % SKIN_TONES.length];
   line(ctx, p.neck[0], p.neck[1], p.head[0] - 1, p.head[1] + 5, 4, skin);
-  drawHead(ctx, p.head[0], p.head[1], a);
+  drawHead(ctx, p.head[0], p.head[1], a, !!pose.backView);
   drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, true);
   return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
 }

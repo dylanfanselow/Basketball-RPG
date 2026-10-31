@@ -91,6 +91,20 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const sinceCatch = sim.time - p.receivedAt;
   const urgency = clamp01(1 - sim.shotClock / 14);
   const phase = sim.runner.cur;
+  const resetting = sim.runner.resetting(sim.time);
+
+  // reset: get the ball back to the top and to the point guard, then the coach calls the next set
+  if (resetting) {
+    const pg = sim.byRole(p.team, '1');
+    if (pg && pg !== p && sim.runner.swungAt < 0 && sinceCatch > 0.3 && laneRisk(sim, p, pg) < 0.4 && sim.openness(pg) > 0.3) {
+      sim.runner.swungAt = sim.time; sim.pass(p, pg); return;
+    }
+    sim.steer(p, spot(side, 'top'), false, 0.85);
+    const quick = selectShotType(p, side, v(), sim.time);
+    const qev = evaluateShot(p, sim.opp(p.team), side, quick, { now: sim.time, clutch: sim.clutch });
+    if (qev.contest < 0.08 && qev.pct * qev.pts > 1.15) sim.startShot(p, quick); // only a wide-open look
+    return;
+  }
 
   // the play wants the ball somewhere else this phase
   if (phase?.ball && phase.ball !== p.role && sim.runner.ballCalledAt !== sim.runner.phase) {
@@ -109,7 +123,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const team = sim.teams[p.team].onCourt;
   const avgUse = team.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, team.length);
   const avgTouch = team.reduce((a, q) => a + q.box.touches, 0) / Math.max(1, team.length);
-  const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.04;
+  const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09;
 
   let best: Player | null = null, bestVal = -1e9;
   for (const m of sim.mates(p)) {
@@ -118,6 +132,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     let val = catchEV(sim, m) * (0.5 + 0.6 * open);
     if (phase?.options?.includes(m.role)) val += 0.22;
     if (avgTouch > 3) val += clamp01((avgTouch - m.box.touches) / avgTouch) * 0.2;
+    val -= Math.max(0, m.box.usage - avgUse) * 0.05;
     const toRimM = norm(sub(rim, m.p));
     if (dot(m.vel, toRimM) > 8 && open > 0.4) val += 0.25;
     val -= laneRisk(sim, p, m) * 0.9;
@@ -150,8 +165,9 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
 
   const nd = sim.nearestDefender(p);
   if (nd.d && nd.dist < 4.2 && sim.rng.chance(0.14 * (p.sub.ankleBreak / 70))) {
-    const lat = sim.rng.chance(0.5) ? 1 : -1;
-    const stick = sim.rng.chance(0.6) ? scale({ x: -toRim.y, y: toRim.x }, lat) : toRim;
+    // change direction up/down the screen if we're already moving that way, otherwise attack the rim
+    const goingY = Math.abs(p.vel.y) > 3 ? Math.sign(p.vel.y) : 0;
+    const stick = goingY && sim.rng.chance(0.6) ? { x: 0, y: -goingY } : sim.rng.chance(0.3) ? { x: 0, y: sim.rng.chance(0.5) ? 1 : -1 } : toRim;
     sim.dribbleMove(p, stick);
     return;
   }
