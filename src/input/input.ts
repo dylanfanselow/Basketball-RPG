@@ -22,12 +22,9 @@ export class InputMapper {
     for (const k of ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SHIFT', 'I', 'J', 'K', 'L', 'SPACE', 'ENTER', 'ESC', 'Q', 'E', 'BACKSPACE'])
       this.keys[k] = kb.addKey(k, false);
   }
-  get pad(): Phaser.Input.Gamepad.Gamepad | null {
-    const gp = this.scene.input.gamepad;
-    if (!gp || gp.total === 0) return null;
-    return gp.pad1 ?? gp.getPad(0) ?? null;
-  }
-  private btn(i: number) { const p = this.pad; return !!p && !!p.buttons[i] && p.buttons[i].value > 0.4; }
+  /** Read the browser Gamepad API directly so a controller plugged in at any time is picked up. */
+  get pad(): Gamepad | null { return activePad(); }
+  private btn(i: number) { const p = this.pad; return !!p && !!p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.4); }
   private key(k: string) { return !!this.keys[k]?.isDown; }
 
   /** Call once per frame. */
@@ -36,8 +33,8 @@ export class InputMapper {
     const pad = this.pad;
     let mx = 0, my = 0;
     if (pad) {
-      mx = pad.axes.length > 0 ? pad.axes[0].getValue() : 0;
-      my = pad.axes.length > 1 ? pad.axes[1].getValue() : 0;
+      mx = pad.axes[0] ?? 0;
+      my = pad.axes[1] ?? 0;
       if (Math.hypot(mx, my) < 0.18) { mx = 0; my = 0; }
     }
     if (this.key('A') || this.key('LEFT')) mx = -1;
@@ -77,4 +74,12 @@ export class InputMapper {
       aHeld: this.held('a'), bHeld: this.held('b'),
     };
   }
+}
+
+/** First connected controller (prefers ones using the standard Xbox-style mapping). */
+export function activePad(): Gamepad | null {
+  let pads: (Gamepad | null)[] = [];
+  try { pads = Array.from(navigator.getGamepads?.() ?? []); } catch { return null; }
+  const live = pads.filter((p): p is Gamepad => !!p && p.connected);
+  return live.find((p) => p.mapping === 'standard') ?? live[0] ?? null;
 }

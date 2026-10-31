@@ -23,6 +23,9 @@
     #dev .tree { margin: 4px 0 6px; padding-left: 4px; border-left: 2px solid #2a3150; }
     #dev .tname { font-weight: bold; display: flex; gap: 6px; align-items: center; }
     #dev .note { color: #7884aa; font-size: 11px; }
+    #padToast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: rgba(10,12,22,0.92); color: #ffe08a; border: 1px solid #ffcc33;
+      font: 14px ui-monospace, Menlo, Consolas, monospace; padding: 8px 14px; border-radius: 4px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 20; }
+    #padToast.show { opacity: 1; transform: translate(-50%, 0); }
     #dev pre.live { white-space: pre-wrap; color: #bfe8c0; margin: 2px 0; font-size: 11px; }
   </style>
 </head>
