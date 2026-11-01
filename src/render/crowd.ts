@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CROWD_TOP, CROWD_ROWS, CROWD_ROW_H, WORLD_W } from './view';
+import { CROWD_TOP, CROWD_ROWS, CROWD_ROW_H, FRONT_ROWS, WORLD_W } from './view';
 
 interface Fan { x: number; row: number; shirt: number; shirtLit: number; skin: number; skinLit: number; hair: number; phase: number; away: boolean; standClutch: boolean; seat: boolean; size: number }
 
@@ -43,6 +43,20 @@ export class Crowd {
         this.fans.push({
           x: x + rng.between(-2, 2), row, shirt: mul(base, 0.6 * lit), shirtLit: mul(base, 0.85 * lit), skin: mul(skin, 0.62 * lit), skinLit: mul(skin, 0.9 * lit),
           hair: mul(rng.pick(HAIRS), lit), phase: rng.frac() * 10, away: isAway, standClutch: rng.frac() < 0.5, seat: true, size: 0.9 + rng.frac() * 0.25,
+        });
+      }
+    }
+    // lower bowl: bigger (closer) anonymous fans right behind the bench and courtside celebs, a little backlit
+    for (let row = CROWD_ROWS; row < CROWD_ROWS + FRONT_ROWS; row++) {
+      const lit = row === CROWD_ROWS ? 0.78 : 0.86;
+      for (let x = -150 + (row % 2) * 8; x < WORLD_W + 150; x += 16) {
+        if (rng.frac() < 0.04) continue;
+        const isAway = rng.frac() < 0.12;
+        const base = rng.frac() < 0.45 ? (isAway ? away : home) : rng.pick(neutral);
+        const skin = rng.pick(SKINS);
+        this.fans.push({
+          x: x + rng.between(-3, 3), row, shirt: mul(base, 0.6 * lit), shirtLit: mul(base, 0.85 * lit), skin: mul(skin, 0.62 * lit), skinLit: mul(skin, 0.9 * lit),
+          hair: mul(rng.pick(HAIRS), lit), phase: rng.frac() * 10, away: isAway, standClutch: rng.frac() < 0.5, seat: true, size: 1.35 + rng.frac() * 0.25,
         });
       }
     }

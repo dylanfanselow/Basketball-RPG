@@ -12,6 +12,8 @@ export const VIEW_W = 1280, VIEW_H = 720;
 export const sx = (x: number) => (x + OOB_FT) * S;
 export const fromSx = (px: number) => px / S - OOB_FT;
 export const CROWD_TOP = 96, CROWD_ROWS = 8, CROWD_ROW_H = 24;
+/** Lower-bowl rows of fans in front of the stands, right behind the bench / courtside celebs (rows CROWD_ROWS..). */
+export const FRONT_ROWS = 2;
 export const sy = (y: number, z = 0) => FLOOR_TOP + y * D - z * S;
 
 function poly(g: Phaser.GameObjects.Graphics, pts: [number, number][], close = false) {
@@ -43,9 +45,10 @@ export function drawCourt(scene: Phaser.Scene, paintColors: [string, string]) {
     g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1); g.fillRect(-200, y, W, CROWD_ROW_H);
     g.fillStyle(0x0b0919, 0.9); g.fillRect(-200, y + CROWD_ROW_H - 3, W, 3);
   }
-  // LED ad ribbon along the front of the stands
-  g.fillStyle(0x0a0c14, 1); g.fillRect(-200, FLOOR_TOP - 66, W, 26);
-  for (let x = 0; x < W; x += 300) { g.fillStyle(x % 600 === 0 ? 0x24335a : 0x5a2433, 1); g.fillRect(x + 8, FLOOR_TOP - 62, 284, 18); }
+  // lower-bowl risers down to the apron (their fans are the FRONT_ROWS in crowd.ts, behind the bench and celebs)
+  const lowTop = CROWD_TOP + CROWD_ROWS * CROWD_ROW_H;
+  g.fillStyle(0x2c2356, 1); g.fillRect(-200, lowTop, W, FLOOR_TOP - 40 - lowTop);
+  g.fillStyle(0x0b0919, 0.9); g.fillRect(-200, lowTop + CROWD_ROW_H - 3, W, 3);
   // apron (floor around the court, incl. behind the baselines and the far sideline where the table and benches sit)
   // apron in a deep team-neutral navy (like a painted out-of-bounds border), court in warm glossy maple
   g.fillStyle(0x23204a, 1); g.fillRect(-200, FLOOR_TOP - 40, W, COURT_W * D + 110);

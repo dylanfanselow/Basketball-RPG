@@ -86,6 +86,25 @@ describe('round 12 clips', () => {
   });
 });
 
+describe('round 13 clips', () => {
+  const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  it('side drive and dribbling burst keep the dribbling arm at a fixed length, hand at the hip', () => {
+    for (const name of ['move_lateral', 'dribbleBurst']) {
+      const c = CLIP[name];
+      for (let i = 0; i < c.frames; i++) {
+        const p = sampleClip(c, i / c.frames);
+        expect(Math.abs(d(p.sF, p.eF) + d(p.eF, p.hF) - (ARM_U + ARM_F))).toBeLessThan(1.5); // in-betweens drift ~1 unit
+        expect(p.hF[1]).toBeGreaterThan(40);
+      }
+    }
+  });
+  it('sprint burst leans further and strides longer than the normal sprint', () => {
+    const b = CLIP.burst.keys[0].pose, s = CLIP.sprint.keys[0].pose;
+    expect(b.neck[0]).toBeGreaterThan(s.neck[0] + 3);
+    expect(b.fF[0] - b.fB[0]).toBeGreaterThan(s.fF[0] - s.fB[0] + 5);
+  });
+});
+
 describe('keyframe animation', () => {
   it('sampling at a key time returns that key exactly', () => {
     for (const c of CLIPS) for (const k of c.keys) {

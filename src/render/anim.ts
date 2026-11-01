@@ -97,6 +97,19 @@ function cycle(a: Pose, b: Pose): Key[] {
 }
 
 const [jogA, jogB] = stride(1, 2, 8);
+/**
+ * Sprint burst (R2): torso leaning well into the run, hips a touch lower, long reaching stride with toe-off behind,
+ * high knee drive on the passing pose, hard arm pump. [contact, passing] like `stride`; legs/arms at fixed length.
+ */
+const BURST_LEAN = 11;
+const burstTorso = (hipY: number, rise: number): Pose => P({
+  hip: [0, hipY], head: [1 + BURST_LEAN, 86 + rise], neck: [BURST_LEAN * 0.75, 77 + rise],
+  sF: [2 + BURST_LEAN * 0.65, 74 + rise], sB: [-2 + BURST_LEAN * 0.65, 74 + rise],
+});
+const burstA = arms(legs(burstTorso(48, 0), [20, 2], [-20, 6]), [-10, 58], [BURST_LEAN + 10, 74]);
+const burstB = arms(legs(burstTorso(51, 2), [2, 0], [-6, 26]), [4, 60], [8, 62]);
+/** Dribbling burst: same legs, the hand pushes the ball farther out front and it comes back up to the hand. */
+const burstDrib = (lg: Pose, hand: J, ball: J): Pose => ({ ...arms(lg, hand, [BURST_LEAN - 2, 62]), ball });
 const [sprA, sprB] = stride(1.35, 6, 16);
 // running dribble: legs from the jog, front arm pumping the ball
 const runDrib = (legs: Pose, hand: J, ball: J): Pose => ({ ...legs, eF: [9, 62], hF: hand, ball, eB: [0, 66], hB: [6, 60] });
@@ -108,6 +121,11 @@ export const CLIPS: Clip[] = [
   { name: 'idle', frames: 4, loop: true, keys: [{ t: 0, pose: BASE }, { t: 0.5, pose: P({ head: [1, 90.3], neck: [0, 81.3], sF: [2, 78.4], sB: [-2, 78.4], hip: [0, 50.5] }) }, { t: 1, pose: BASE }] },
   { name: 'jog', frames: 8, loop: true, keys: cycle(jogA, jogB) },
   { name: 'sprint', frames: 8, loop: true, keys: cycle(sprA, sprB) },
+  { name: 'burst', frames: 8, loop: true, keys: cycle(burstA, burstB) },
+  { name: 'dribbleBurst', frames: 8, loop: true, bounce: [0.25, 0.75], keys: [
+    { t: 0, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.25, pose: burstDrib(burstB, [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
+    { t: 0.5, pose: burstDrib(mirrorLegsArms(burstA), [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.75, pose: burstDrib(mirrorLegsArms(burstB), [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
+    { t: 1, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }] },
   { name: 'defend', frames: 6, loop: true, keys: [
     { t: 0, pose: defPose() },
     { t: 0.5, pose: defPose({ dip: 1.5, hF: [22, 56], hB: [-17, 54] }) },
@@ -229,12 +247,13 @@ export const CLIPS: Clip[] = [
     { t: 0.25, pose: P({ head: [-2, 88], hB: [5, 62], hF: [10, 34], ball: [11, 24] }, jogA) },
     { t: 0.5, pose: runDrib(mirrorLegsArms(jogB), [10, 40], [11, 4]) },
     { t: 1, pose: runDrib(jogB, [11, 45], [12, 40]) }] },
+  // side drive: lean and push the ball out front; the hand stays at the hip (fixed arm length) and the ball comes back up
   { name: 'move_lateral', frames: 9, bounce: [0.3, 0.75], keys: [
-    { t: 0, pose: P({ hip: [0, 44], head: [4, 85], neck: [3, 76], hF: [11, 42], ball: [12, 36], kF: [8, 22], fF: [11, 0] }, athletic) },
-    { t: 0.3, pose: P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3], hF: [16, 20], eF: [12, 46], ball: [17, 4] }) },
-    { t: 0.55, pose: P({ hip: [0, 43], head: [8, 82], neck: [6, 74], sF: [7, 71], sB: [3, 71], kF: [3, 30], fF: [1, 10], kB: [9, 24], fB: [15, 1], hF: [15, 38], eF: [11, 54], ball: [16, 32] }) },
-    { t: 0.75, pose: P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3], hF: [16, 20], eF: [12, 46], ball: [17, 4] }) },
-    { t: 1, pose: P({ hip: [0, 44], head: [5, 84], neck: [4, 75], hF: [12, 42], ball: [13, 36], kF: [8, 22], fF: [11, 0] }, athletic) }] },
+    { t: 0, pose: { ...arms(P({ hip: [0, 44], head: [4, 85], neck: [3, 76], kF: [8, 22], fF: [11, 0] }, athletic), [12, 52], [5, 60]), ball: [13, 47] } },
+    { t: 0.3, pose: { ...arms(P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3] }), [15, 50], [8, 56]), ball: [18, 4] } },
+    { t: 0.55, pose: { ...arms(P({ hip: [0, 43], head: [8, 82], neck: [6, 74], sF: [7, 71], sB: [3, 71], kF: [3, 30], fF: [1, 10], kB: [9, 24], fB: [15, 1] }), [16, 49], [8, 57]), ball: [17, 44] } },
+    { t: 0.75, pose: { ...arms(P({ hip: [0, 42], head: [8, 81], neck: [6, 73], sF: [7, 70], sB: [3, 70], kF: [12, 24], fF: [18, 2], kB: [-7, 20], fB: [-14, 3] }), [15, 50], [8, 56]), ball: [18, 4] } },
+    { t: 1, pose: { ...arms(P({ hip: [0, 44], head: [5, 84], neck: [4, 75], kF: [8, 22], fF: [11, 0] }, athletic), [13, 52], [5, 60]), ball: [14, 47] } }] },
 
   // ---------- shots ----------
   // jumper: ball rises from the dribble into the shooting pocket (in front, chest/chin), then up to the set point

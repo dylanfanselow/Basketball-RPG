@@ -391,6 +391,8 @@ export class GameScene extends Phaser.Scene {
     if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };
     const sp = len(p.vel);
     if (hasBall && p.bHolding && p.state !== 'dribbleMove') return { clip: 'dribbleReady', u: now * 1.3 };
+    // sprint burst (R2): its own forward-leaning, long-stride run
+    if (sp > 2.5 && now < p.burstUntil) return hasBall ? { clip: 'dribbleBurst', u: dist / 12 + phase } : { clip: 'burst', u: dist / 12 };
     if (sp > 2.5) {
       if (hasBall) return { clip: 'dribbleRun', u: dist / 8 + phase };
       const man = p.guarding ? sim.players.find((q) => q.id === p.guarding) : null;
