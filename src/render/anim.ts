@@ -9,12 +9,11 @@ export const JOINTS = ['head', 'neck', 'sF', 'sB', 'eF', 'eB', 'hF', 'hB', 'hip'
 export type JointName = (typeof JOINTS)[number];
 /**
  * backView: player turned away from the camera (spin moves) - drawn without a face.
- * open: three-quarter "open" defensive stance - chest to the camera, head in profile toward his man (+x). Joints are
- * then in a front view: x = screen left/right, F = the side toward the man (+x), B = the other side; the hip joint is
- * the pelvis center (legs hang from hip.x +/- OPEN_HIP).
+ * lat: optional sideways spread per joint for multi-angle drawing (pose3d.lift): invisible from the side (yaw 0),
+ * it shows as soon as the player turns (wide feet, knees out, arms spread). Interpolated between keys.
  */
-export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; open?: boolean; lat?: Partial<Record<JointName, number>> };
-type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; open?: boolean; lat?: Partial<Record<JointName, number>> };
+export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>> };
+type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>> };
 
 export const BASE: Pose = {
   head: [1, 91], neck: [0, 82], sF: [2, 79], sB: [-2, 79], eF: [4, 65], eB: [-3, 65], hF: [5, 52], hB: [-3, 52],
@@ -76,23 +75,18 @@ export function legs(p: Pose, fF?: J | null, fB?: J | null): Pose {
 const READY = P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70] });
 /** Stationary dribble: the hand stays around the hip (elbow bent) and the ball comes back up to it. */
 const dribAt = (hand: J, ball: J, guard: J = [5, 60]): Pose => ({ ...arms(athletic, hand, guard), ball });
-/** Pelvis half-width for open (front-view) poses: each leg hangs from hip.x +/- OPEN_HIP. */
-export const OPEN_HIP = 5;
 /**
- * Open defensive stance (front view, see Pose.open): low wide base with the knees pushed out over the feet, chest to
- * the camera, head turned to his man, arms spread - the man-side hand up and active, the other low in the lane.
- * hx shifts the whole upper body (weight shift), dip lowers it (bounce).
+ * Defensive stance: slight squat (hips back, knees bent over the toes), arms out and angled down with soft elbows.
+ * spread = sideways stance (pose3d lat): feet wide, knees out over them, arms out to the sides; side-on it's invisible,
+ * turned toward the camera it reads as a wide open stance. fl/bl = feet lateral (+ = the player's right/near side).
  */
-const openPose = (o: { hx?: number; dip?: number; fF?: J; fB?: J; hF?: J; hB?: J; head?: number } = {}): Pose => {
-  const hx = o.hx ?? 0, dip = o.dip ?? 0, hy = 46 - dip;
-  const base: Pose = { ...BASE, open: true, ball: null,
-    hip: [hx, hy], neck: [hx, 75 - dip], head: [hx + 1.5 + (o.head ?? 0), 84.5 - dip],
-    sF: [hx + 10, 72.5 - dip], sB: [hx - 10, 72.5 - dip] };
-  const fF = o.fF ?? [13, 0], fB = o.fB ?? [-13, 0];
-  // knees bend outward (over the toes): +x leg bends counter-clockwise, -x leg clockwise
-  const rF = limb([hx + OPEN_HIP, hy], fF, THIGH, SHIN, 1), rB = limb([hx - OPEN_HIP, hy], fB, THIGH, SHIN, -1);
-  const withLegs: Pose = { ...base, kF: rF.mid, fF: rF.end, kB: rB.mid, fB: rB.end };
-  return arms(withLegs, o.hF ?? [hx + 31, 77 - dip], o.hB ?? [hx - 30, 56 - dip], [-1, 1]);
+const defPose = (o: { hip?: number; fF?: J; fB?: J; hF?: J; hB?: J; dip?: number; fl?: number; bl?: number } = {}): Pose => {
+  const dip = o.dip ?? 0;
+  const torso = P({ hip: [-2, (o.hip ?? 45) - dip], head: [4, 84 - dip], neck: [3, 75 - dip], sF: [3, 72 - dip], sB: [-1, 72 - dip] });
+  const fl = o.fl ?? 12, bl = o.bl ?? -12;
+  // arms out to the sides (mostly sideways, a little forward) so they read in every view, not across the chest
+  return { ...arms(legs(torso, o.fF ?? [6, 0], o.fB ?? [-5, 0]), o.hF ?? [11, 55 - dip], o.hB ?? [-6, 53 - dip]),
+    lat: { fF: fl, kF: fl - 1, fB: bl, kB: bl + 1, eF: 21, hF: 29, eB: -21, hB: -29 } };
 };
 
 const lowStance = P({ head: [3, 85], neck: [2, 76], sF: [3, 73], sB: [-1, 73], hip: [0, 44], kF: [7, 22], kB: [-6, 22], fF: [9, 0], fB: [-8, 0] });
@@ -142,22 +136,22 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.25, pose: burstDrib(burstB, [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
     { t: 0.5, pose: burstDrib(mirrorLegsArms(burstA), [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.75, pose: burstDrib(mirrorLegsArms(burstB), [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
     { t: 1, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }] },
-  // open stance, alive: weight shifts foot to foot, a little bounce, the man-side hand pumps/swipes, the lane hand waggles
+  // stance, alive: a little bounce, weight shifting foot to foot, the hands working out of step
   { name: 'defend', frames: 12, loop: true, keys: [
-    { t: 0, pose: openPose() },
-    { t: 0.25, pose: openPose({ hx: 1.5, dip: 1.2, hF: [34, 83], hB: [-29, 53], head: 0.5 }) },
-    { t: 0.5, pose: openPose({ hx: 0, dip: 0.2, hF: [30, 72], hB: [-31, 59] }) },
-    { t: 0.75, pose: openPose({ hx: -1.5, dip: 1.2, hF: [33, 80], hB: [-28, 54], head: -0.5 }) },
-    { t: 1, pose: openPose() }] },
-  // open-stance shuffle: the lead foot (toward the man, +x) steps out in the air while the trail foot stays planted
-  // (sliding back relative to the hips by the body's travel), then the trail foot closes. Feet never cross.
-  // One cycle = 16 figure units of travel (see GameScene.defStance).
+    { t: 0, pose: defPose() },
+    { t: 0.25, pose: defPose({ dip: 1.2, hF: [12, 60], hB: [-7, 50], fl: 13, bl: -11 }) },
+    { t: 0.5, pose: defPose({ dip: 0.2, hF: [10, 53], hB: [-6, 56] }) },
+    { t: 0.75, pose: defPose({ dip: 1.2, hF: [12, 58], hB: [-7, 52], fl: 11, bl: -13 }) },
+    { t: 1, pose: defPose() }] },
+  // defensive shuffle, stepping sideways (lat): the lead (right/near) foot steps out in the air while the trail foot
+  // stays planted (sliding in relative to the hips by the body's travel), then the trail foot closes. One cycle = 16
+  // figure units of sideways travel (GameScene.defStance). Side-on the feet just lift in turn.
   { name: 'slide', frames: 8, loop: true, keys: [
-    { t: 0, pose: openPose() },
-    { t: 0.25, pose: openPose({ dip: 0.6, fF: [17, 5], fB: [-17, 0], hF: [32, 80] }) },
-    { t: 0.5, pose: openPose({ dip: 2, fF: [21, 0], fB: [-21, 0] }) },
-    { t: 0.75, pose: openPose({ dip: 0.6, fF: [17, 0], fB: [-17, 4], hB: [-30, 59] }) },
-    { t: 1, pose: openPose() }] },
+    { t: 0, pose: defPose() },
+    { t: 0.25, pose: defPose({ dip: 0.5, fF: [6, 5], fl: 16, bl: -16, hF: [11, 57] }) },
+    { t: 0.5, pose: defPose({ dip: 1.5, fl: 20, bl: -20 }) },
+    { t: 0.75, pose: defPose({ dip: 0.5, fB: [-5, 4], fl: 16, bl: -16, hB: [-6, 55] }) },
+    { t: 1, pose: defPose() }] },
   { name: 'dribble', frames: 8, loop: true, bounce: [0.5], keys: [
     { t: 0, pose: dribAt([11, 56], [12, 51]) },
     { t: 0.2, pose: dribAt([12, 52], [13, 45]) },
@@ -488,8 +482,16 @@ export function sampleClip(c: Clip, u: number): Pose {
   const ba = a.pose.ball, bb = b.pose.ball;
   out.ball = ba && bb ? cr(prev.pose.ball ?? ba, ba, bb, next.pose.ball ?? bb, t) : t < 0.5 ? ba ?? null : bb ?? null;
   out.backView = t < 0.5 ? !!a.pose.backView : !!b.pose.backView;
-  out.open = t < 0.5 ? !!a.pose.open : !!b.pose.open;
-  out.lat = (t < 0.5 ? a.pose.lat : b.pose.lat) ?? a.pose.lat ?? b.pose.lat;
+  if (a.pose.lat || b.pose.lat) {
+    // sideways spread blends like the joints (keys without one hold their neighbour's)
+    const la = a.pose.lat ?? b.pose.lat!, lb = b.pose.lat ?? la, lp = prev.pose.lat ?? la, ln = next.pose.lat ?? lb;
+    const lat: Partial<Record<JointName, number>> = {};
+    for (const j of Object.keys(la) as JointName[]) {
+      const v = (q: Partial<Record<JointName, number>>) => [q[j] ?? la[j]!, 0] as J;
+      lat[j] = cr(v(lp), v(la), v(lb), v(ln), t)[0];
+    }
+    out.lat = lat;
+  }
   return out;
 }
 

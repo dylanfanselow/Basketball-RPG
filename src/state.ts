@@ -11,6 +11,8 @@ export const app = {
     debug: { cone: true, lanes: false, paths: true, hitboxes: false, aiTargets: false },
     timeScale: 1,
     benchSpeed: 6,
+    /** multi-angle players: force every player to one drawn view (dev), plus a live cache readout */
+    angles: { force: null as number | null, flip: false, readout: '' },
   },
   save() { saveCareer(this.career); },
   listeners: new Set<() => void>(),

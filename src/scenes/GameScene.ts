@@ -9,8 +9,9 @@ import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../
 import { requestSheet } from '../render/sheetPool';
 import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
 import type { Appearance } from '../render/appearance';
-import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H } from '../render/sprites';
-import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
+import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
+import { FrameCache, yawFor } from '../render/frameCache';
+import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
 import { CONE_HALF, contestReach, computeContest, selectShotType } from '../sim/shooting';
@@ -31,6 +32,16 @@ const FONT = '"Courier New", monospace';
 const SHEET_CACHE = new Map<string, Sheet>();
 const SHEETS_LOADING = new Set<string>();
 const MAX_SHEETS = 16;
+/**
+ * Multi-angle players: clips that turn with the player (locomotion, stances, dribbles). Everything else (shots,
+ * moves, passes, box-outs...) stays in side view toward the rim so ball offsets and timing match the sim.
+ */
+const ANGLED = new Set(['idle', 'jog', 'sprint', 'burst', 'defend', 'slide', 'dribble', 'dribbleRun', 'dribbleBurst', 'hold']);
+/** Angled frames are drawn on demand into pages of 8 x 6 slots, per sheet (look) key; freed with the sheet. */
+const ANG_COLS = 8, ANG_ROWS = 6, ANG_PAGES = 6, ANG_BUDGET = 4, ANG_PREWARM = 2;
+const ANGLE_CACHE = new Map<string, { cache: FrameCache; prewarm: string[] }>();
+const PREWARM_CLIPS = ['defend', 'slide', 'idle', 'jog', 'dribble'];
+const angPage = (key: string, n: number) => `${key}_ang${n}`;
 /** Sideline layout (court feet): benches toward each baseline, courtside celebrity rows between them and the table. */
 const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
 const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
@@ -61,11 +72,13 @@ export class GameScene extends Phaser.Scene {
   runDist = new Map<string, number>();
   /** defensive shuffle phase (cycles) and drawn facing (true = facing -x) per defender, see defStance */
   slidePhase = new Map<string, number>();
+  /** drawn view per player (multi-angle), kept for hysteresis */
+  yawMem = new Map<string, { yaw: number; flip: boolean }>();
   defFlip = new Map<string, boolean>();
   sheets = new Map<string, { key: string; sheet: Sheet }>();
   animMem = new Map<string, { clip: string; u: number }>();
   lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
-  heldBall: { x: number; y: number } | null = null;
+  heldBall: { x: number; y: number; behind?: number } | null = null;
   crowd!: Crowd;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
@@ -90,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     this.mode = data.mode ?? 'practice';
     this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
-    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear();
+    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear();
   }
 
   create() {
@@ -169,7 +182,82 @@ export class GameScene extends Phaser.Scene {
       SHEET_CACHE.delete(key);
       for (const [id, e] of this.sheets) if (e.key === key) { this.sheets.delete(id); this.sprites.get(id)?.destroy(); this.sprites.delete(id); this.reflections.get(id)?.destroy(); this.reflections.delete(id); }
       if (this.textures.exists(key)) this.textures.remove(key);
+      const ang = ANGLE_CACHE.get(key);
+      if (ang) { for (let n = 0; n < ang.cache.pages; n++) if (this.textures.exists(angPage(key, n))) this.textures.remove(angPage(key, n)); ANGLE_CACHE.delete(key); }
     }
+  }
+
+  /**
+   * The angled-frame cache for a sheet key (created on first use). Frames are drawn on the main thread into canvas
+   * texture pages; `pumpAngles` refreshes dirty pages once per frame. Prewarm queues the common stance/run angles.
+   */
+  angleCache(key: string, heightFt: number, look: Appearance, kit: Kit): FrameCache {
+    let e = ANGLE_CACHE.get(key);
+    if (e) return e.cache;
+    const tm = this.sys.game.textures, H = figureHeight(heightFt);
+    const cache = new FrameCache({
+      newPage: (n) => { if (tm.exists(angPage(key, n))) tm.remove(angPage(key, n)); tm.createCanvas(angPage(key, n), ANG_COLS * FRAME_W, ANG_ROWS * FRAME_H); },
+      draw: (ck, page, index) => {
+        const [clip, frame, yaw] = ck.split('|');
+        const tex = tm.get(angPage(key, page)) as Phaser.Textures.CanvasTexture;
+        const ctx = tex.getContext();
+        const x = (index % ANG_COLS) * FRAME_W, y = Math.floor(index / ANG_COLS) * FRAME_H;
+        ctx.clearRect(x, y, FRAME_W, FRAME_H);
+        ctx.save(); ctx.beginPath(); ctx.rect(x, y, FRAME_W, FRAME_H); ctx.clip();
+        const c = CLIP[clip];
+        const r = drawAngled(ctx, x, y, sampleClip(c, frameTime(c, +frame)), H, look, kit, c.keys.some((k) => !!k.pose.ball), +yaw);
+        ctx.restore();
+        crispenRect(ctx, x, y, FRAME_W, FRAME_H);
+        if (!tex.has(`s${index}`)) tex.add(`s${index}`, 0, x, y, FRAME_W, FRAME_H);
+        return r;
+      },
+    }, ANG_COLS * ANG_ROWS, ANG_PAGES);
+    const prewarm: string[] = [];
+    for (const yaw of [45, 90, -45, -90]) for (const clip of PREWARM_CLIPS) for (let f = 0; f < CLIP[clip].frames; f++) prewarm.push(`${clip}|${f}|${yaw}`);
+    e = { cache, prewarm };
+    ANGLE_CACHE.set(key, e);
+    return cache;
+  }
+
+  /** Draw queued angled frames within the per-frame budget (your player first), prewarm when idle, refresh pages. */
+  pumpAngles() {
+    const order = [...this.sim.players].sort((a, b) => (b === this.sim.user ? 1 : 0) - (a === this.sim.user ? 1 : 0));
+    let budget = ANG_BUDGET, warm = ANG_PREWARM, slots = 0, drawn = 0;
+    const t0 = performance.now();
+    for (const p of order) {
+      if (performance.now() - t0 > 4) break; // never spend more than ~4 ms a frame drawing new angles
+      const sh = this.sheets.get(p.id); if (!sh) continue;
+      const e = ANGLE_CACHE.get(sh.key); if (!e) continue;
+      if (budget > 0 && !e.cache.pending && warm > 0 && e.prewarm.length) { e.cache.request(e.prewarm.shift()!); warm--; }
+      const before = e.cache.drawn;
+      const dirty = e.cache.drain(Math.min(budget, 2));
+      budget -= e.cache.drawn - before; drawn += e.cache.drawn - before;
+      for (const n of dirty) (this.textures.get(angPage(sh.key, n)) as Phaser.Textures.CanvasTexture).refresh();
+      slots += e.cache.size;
+    }
+    if (drawn) this.angMs = this.angMs * 0.8 + ((performance.now() - t0) / drawn) * 0.2;
+    app.settings.angles.readout = `cached frames ${slots}  ·  ~${this.angMs.toFixed(2)} ms per new frame`;
+  }
+  angMs = 0;
+
+  /** Which drawn view (yaw + mirror) a player in an angled clip shows. Defenders face their man, turned a bit to us. */
+  viewFor(p: Player, clip: string): { yaw: number; flip: boolean } {
+    const force = app.settings.angles.force;
+    if (force !== null) return { yaw: force, flip: app.settings.angles.flip };
+    let dx = p.face.x, dy = p.face.y, bias = 0;
+    if (clip === 'defend' || clip === 'slide') {
+      const man = p.guarding ? this.sim.players.find((q) => q.id === p.guarding) : null;
+      if (man) { dx = man.p.x - p.p.x; dy = man.p.y - p.p.y; bias = 35; }
+    }
+    let ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (bias) { // turn toward the camera (+90) on whichever side he faces, so the open stance shows
+      const left = Math.abs(ang) > 90;
+      const a = Math.min(90, (left ? Math.sign(ang || 1) * (180 - Math.abs(ang)) : ang) + bias);
+      ang = left ? (a >= 0 ? 180 - a : -180 - a) : a;
+    }
+    const v = yawFor(ang, this.yawMem.get(p.id));
+    this.yawMem.set(p.id, v);
+    return v;
   }
 
   /** Every on-court player and coach has a sheet (the game waits for this at tip-off). */
@@ -482,21 +570,32 @@ export class GameScene extends Phaser.Scene {
       this.runDist.set(p.id, (this.runDist.get(p.id) ?? 0) + len(p.vel) / 60);
       const { clip, u, flip: flipTo } = this.clipFor(p);
       const c = CLIP[clip];
-      const idx = sh.sheet.index[clip].start + frameAt(c, u);
+      const fi = frameAt(c, u), idx = sh.sheet.index[clip].start + fi;
       this.dribbleSound(p, clip, u);
       this.cutSound(p);
-      s.setFrame(idx);
+      // multi-angle: turning clips use a cached angled frame when it's drawn, the side view (same mirror) until then
+      let texKey = sh.key, frame: string | number = idx, bo = sh.sheet.ball[idx], behind = false;
+      let flip = flipTo ?? p.face.x < 0;
+      if (ANGLED.has(clip)) {
+        const v = this.viewFor(p, clip);
+        flip = v.flip;
+        if (v.yaw !== 0) {
+          const cache = this.angleCache(sh.key, p.height, p.appearance, this.kitFor(p));
+          const ck = `${clip}|${fi}|${v.yaw}`, slot = cache.get(ck);
+          if (slot) { texKey = angPage(sh.key, slot.page); frame = `s${slot.index}`; bo = slot.ball; behind = slot.ballBehind; }
+          else cache.request(ck, p === sim.user);
+        }
+      }
+      if (s.texture.key !== texKey) s.setTexture(texKey, frame); else s.setFrame(frame);
       s.setPosition(sx(p.p.x), sy(p.p.y, p.z));
-      const flip = flipTo ?? p.face.x < 0;
       s.setFlipX(flip);
-      const bo = sh.sheet.ball[idx];
-      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: s.y - bo[1] * SPRITE_SCALE };
+      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: s.y - bo[1] * SPRITE_SCALE, behind: behind ? sy(p.p.y) - 0.5 : undefined };
       s.setDepth(sy(p.p.y));
       // glossy hardwood: a faint, squashed, upside-down reflection under each player
       let r = this.reflections.get(p.id);
-      if (!r) { r = this.add.sprite(0, 0, sh.key, idx).setOrigin(CX / FRAME_W, (FRAME_H - FOOT_Y) / FRAME_H).setFlipY(true).setAlpha(0.1).setTint(0x6a4a2a).setDepth(-450); this.reflections.set(p.id, r); }
-      if (r.texture.key !== sh.key) r.setTexture(sh.key, idx);
-      r.setFrame(idx).setScale(SPRITE_SCALE, SPRITE_SCALE * 0.5).setFlipX(flip).setPosition(s.x, sy(p.p.y) + p.z * S * 0.5)
+      if (!r) { r = this.add.sprite(0, 0, texKey, frame).setOrigin(CX / FRAME_W, (FRAME_H - FOOT_Y) / FRAME_H).setFlipY(true).setAlpha(0.1).setTint(0x6a4a2a).setDepth(-450); this.reflections.set(p.id, r); }
+      if (r.texture.key !== texKey) r.setTexture(texKey, frame); else r.setFrame(frame);
+      r.setScale(SPRITE_SCALE, SPRITE_SCALE * 0.5).setFlipX(flip).setPosition(s.x, sy(p.p.y) + p.z * S * 0.5)
         .setVisible(p.p.x > 0 && p.p.x < 94 && p.p.y > 0.5);
       const ghost = sim.time < p.screenedUntil;
       s.setTint(ghost ? 0xb0b0ff : 0xffffff);
@@ -504,10 +603,12 @@ export class GameScene extends Phaser.Scene {
       this.shadows.fillEllipse(sx(p.p.x), sy(p.p.y), 32 - p.z * 2, 9);
     }
 
-    // ball
+    this.pumpAngles();
+
+    // ball (behind the holder when an angled frame has it on the far side of the body)
     const b = sim.ball;
-    this.ballG.clear().setDepth(sy(b.p.y) + 1);
     const inHand = !!this.heldBall && (b.st.kind === 'held' || (b.st.kind === 'dead' && !!sim.inb?.hasBall));
+    this.ballG.clear().setDepth(inHand && this.heldBall!.behind !== undefined ? this.heldBall!.behind : sy(b.p.y) + 1);
     const bx = inHand ? this.heldBall!.x : sx(b.p.x), by = inHand ? this.heldBall!.y : sy(b.p.y, b.z);
     this.shadows.fillStyle(0x000000, 0.3); this.shadows.fillEllipse(sx(b.p.x), sy(b.p.y), 16, 5);
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);

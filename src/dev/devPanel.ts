@@ -246,6 +246,19 @@ export function initDevPanel() {
     gc.append(slider('quarter length (s)', 30, 720, 30, app.settings.quarterLen, (v) => { app.settings.quarterLen = v; }));
     root.append(section('Game controls', gc));
 
+    // multi-angle players
+    const an = el('div'), ang = app.settings.angles;
+    an.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'force angle'),
+      el('select', { onchange: (e: any) => { ang.force = e.target.value === '' ? null : +e.target.value; } },
+        ...[['', 'off (natural)'], ['0', 'side'], ['45', '¾ front'], ['90', 'front'], ['-45', '¾ back'], ['-90', 'back']].map(([v, l]) =>
+          el('option', ang.force === (v === '' ? null : +v) ? { value: v, selected: 'selected' } : { value: v }, l)))));
+    an.append(check('…mirrored (facing left)', ang.flip, (v) => { ang.flip = v; }));
+    an.append(el('div', { class: 'note' }, 'Angled frames are drawn on demand (side view shows until ready).'));
+    an.append(el('pre', { class: 'live', id: 'angRead' }, ang.readout));
+    // one shared timer (the panel re-renders often): refresh the cache readout by id
+    if (!(window as any).__angRO) (window as any).__angRO = setInterval(() => { const e = document.getElementById('angRead'); if (e) e.textContent = app.settings.angles.readout; }, 500);
+    root.append(section('Multi-angle players', an));
+
     // practice
     const pr = el('div');
     const ps = app.settings.practice;

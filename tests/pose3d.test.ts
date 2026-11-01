@@ -3,7 +3,7 @@ import { CLIPS, JOINTS, sampleClip } from '../src/render/anim';
 import { lift, view, toRad, SHOULDER_HALF } from '../src/render/pose3d';
 
 describe('pose3d (multi-angle players)', () => {
-  const poses = CLIPS.flatMap((c) => c.keys.map((k) => k.pose)).filter((p) => !p.open);
+  const poses = CLIPS.flatMap((c) => c.keys.map((k) => k.pose));
   it('yaw 0 is exactly the authored side view', () => {
     for (const p of poses) {
       const v = view(p, 0).pose;

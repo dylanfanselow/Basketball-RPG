@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN, OPEN_HIP } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
@@ -111,31 +111,26 @@ describe('round 14: defensive shuffle', () => {
     const c = CLIP.slide, at = (t: number) => sampleClip(c, t);
     expect(at(0.25).fF[1]).toBeGreaterThan(2); expect(at(0.25).fB[1]).toBeLessThan(0.5);
     expect(at(0.75).fB[1]).toBeGreaterThan(2); expect(at(0.75).fF[1]).toBeLessThan(0.5);
-    const w = (t: number) => at(t).fF[0] - at(t).fB[0];
+    const w = (t: number) => at(t).lat!.fF! - at(t).lat!.fB!; // the shuffle steps sideways
     expect(w(0.5)).toBeGreaterThan(w(0) + 10);
     for (let i = 0; i < c.frames; i++) {
       const p = at(i / c.frames);
-      for (const [k, f, sg] of [['kF', 'fF', 1], ['kB', 'fB', -1]] as const) {
-        const hipJ = [p.hip[0] + sg * OPEN_HIP, p.hip[1]]; // open stance: legs hang from the hip sockets
-        expect(Math.abs(d(hipJ, p[k]) + d(p[k], p[f]) - (THIGH + SHIN))).toBeLessThan(1.5);
-      }
+      for (const [k, f] of [['kF', 'fF'], ['kB', 'fB']] as const) expect(Math.abs(d(p.hip, p[k]) + d(p[k], p[f]) - (THIGH + SHIN))).toBeLessThan(1.5);
     }
   });
 });
 
-describe('round 15: open defensive stance', () => {
-  it('defend and slide are open (front view): wide base, knees out over the feet, arms spread both ways', () => {
+describe('round 16: defensive stance spreads sideways for multi-angle drawing', () => {
+  it('defend and slide carry a lat spread: feet wide, knees out over them, arms out to the sides', () => {
     for (const name of ['defend', 'slide']) for (const k of CLIP[name].keys) {
-      const p = k.pose;
-      expect(p.open).toBe(true);
-      expect(p.fF[0] - p.fB[0]).toBeGreaterThan(24);
-      expect(p.kF[0]).toBeGreaterThan(p.hip[0] + OPEN_HIP); expect(p.kB[0]).toBeLessThan(p.hip[0] - OPEN_HIP);
-      expect(p.hF[0]).toBeGreaterThan(p.sF[0] + 10); expect(p.hB[0]).toBeLessThan(p.sB[0] - 10);
+      const l = k.pose.lat!;
+      expect(l.fF! - l.fB!).toBeGreaterThan(20);
+      expect(Math.abs(l.kF!)).toBeLessThan(Math.abs(l.fF!)); expect(l.hF!).toBeGreaterThan(20); expect(l.hB!).toBeLessThan(-20);
     }
   });
-  it('the idle stance is alive: weight shifts and the hands move', () => {
+  it('the idle stance is alive: bounce and moving hands', () => {
     const ks = CLIP.defend.keys.map((k) => k.pose);
-    expect(new Set(ks.map((p) => p.hip[0])).size).toBeGreaterThan(1);
+    expect(new Set(ks.map((p) => p.hip[1])).size).toBeGreaterThan(1);
     expect(new Set(ks.map((p) => p.hF[1])).size).toBeGreaterThan(2);
   });
 });

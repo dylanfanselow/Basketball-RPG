@@ -8,7 +8,7 @@
  * Sprites are drawn at ART x detail and shown at PIXEL / ART scale; the game camera runs at 1.5x, so each art
  * pixel ends up PIXEL device pixels: same size on screen as before, 1.5x the detail.
  */
-import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP, OPEN_HIP } from './anim';
+import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
 import { view, toRad, SHOULDER_HALF, HIP_HALF, projX } from './pose3d';
 
@@ -371,7 +371,6 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
  * lowered by TORSO_DROP. ox/oy = the frame's top-left in the sheet. Returns the ball offset (art px, origin-relative, +y up).
  */
 export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip = false, yawDeg = 0): J | null {
-  if (keyed.open) { drawOpen(ctx, ox, oy, keyed, H, a, kit); return null; }
   if (yawDeg !== 0) return drawPoseYaw(ctx, ox, oy, keyed, H, a, kit, ballClip, yawDeg);
   const pose = rigArms(keyed, ballClip);
   const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
@@ -399,10 +398,18 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: numbe
  * -90 = facing away). Limbs are drawn far -> near by depth around the torso; the torso is a projected volume; the head
  * turns (profile -> three-quarter -> front, or the back of the head when facing away).
  */
-function drawPoseYaw(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip: boolean, yawDeg: number): J | null {
+function drawPoseYaw(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip: boolean, yawDeg: number, mirrorText = false): J | null {
+  return drawAngled(ctx, ox, oy, keyed, H, a, kit, ballClip, yawDeg, mirrorText).ball;
+}
+
+/**
+ * One multi-angle frame (see drawPoseYaw). mirrorText: the frame will be shown flipped, so draw the jersey number
+ * pre-mirrored to read correctly. Returns the ball offset and whether the ball is behind the body (draw it behind).
+ */
+export function drawAngled(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip: boolean, yawDeg: number, mirrorText = false): { ball: J | null; ballBehind: boolean } {
   const yaw = toRad(yawDeg), c = Math.cos(yaw), sn = Math.sin(yaw);
   const rigged = rigArms(keyed, ballClip);
-  const { pose, depth } = view(rigged, yaw);
+  const { pose, depth, ballDepth } = view(rigged, yaw);
   const u = H / 100, k = H / 99;
   const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
   const p = Object.fromEntries(Object.entries(pose).map(([key, v]) => [key, Array.isArray(v) ? T(v as J) : v])) as unknown as Pose;
@@ -430,17 +437,17 @@ function drawPoseYaw(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a
     poly(ctx, [[Math.min(hA[0], hB[0]) - 2 * k, hA[1] - 1 * k], [Math.max(hA[0], hB[0]) + 2 * k, hA[1] - 1 * k], [mx + 3 * k, hA[1] + 9 * k], [mx - 3 * k, hA[1] + 9 * k]], P0.base);
   }
   tube(ctx, top, [p.head[0] - 1.5 * k * c, p.head[1] + 8 * k], () => 3.8 * k, S);
-  drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k);
+  drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k, mirrorText);
   if (yawDeg <= -30) drawHead(ctx, p.head[0], p.head[1], a, k, true);
   else if (yawDeg < 25) drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   else frontHead(ctx, p.head[0], p.head[1], a, k * 1.25, { turn: Math.max(0, Math.min(1, c * 1.35)) });
   for (const it of items) if (it.d >= 0) it.draw(false);
   void away; void SHOULDER_HALF;
-  return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+  return { ball: pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null, ballBehind: !!pose.ball && ballDepth < -4 };
 }
 
 /** Torso seen at a yaw: the chest/back profile widths and a lateral (shoulder-span) width projected together. */
-function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appearance, k: number) {
+function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appearance, k: number, mirrorText = false) {
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const L = hip[1] - top[1];
   const prof = (t: number): [number, number, number] => { // [front, back, lateral] half-widths
@@ -484,49 +491,12 @@ function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appear
   const P = ramp(kit.shorts);
   poly(ctx, [[wbL[0] + 0.4 * k, wy], [wbR[0] - 0.4 * k, wy], [wbR[0] - 0.2 * k, wy + 4 * k], [wbL[0] + 0.2 * k, wy + 4 * k]], P.base);
   stroke(ctx, [[wbL[0] + 0.4 * k, wy + 0.5], [wbR[0] - 0.4 * k, wy + 0.5]], 1.2, Tr.base);
-  if (kit.number >= 0) digits(ctx, top[0] + (hip[0] - top[0]) * 0.4 + 2 * k * c, top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
-}
-
-/**
- * Open defensive stance (Pose.open): chest to the camera with the number centered, legs from both hip sockets with
- * the knees out, arms spread to both sides, head in profile toward his man (+x).
- */
-function drawOpen(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit) {
-  const pose = rigArms(keyed, false);
-  const u = H / 100, k = H / 99;
-  const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
-  const p = Object.fromEntries(Object.entries(pose).map(([key, v]) => [key, Array.isArray(v) ? T(v as J) : v])) as unknown as Pose;
-  const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
-  const topF = T([keyed.sF[0] + tdx, keyed.sF[1] + tdy]), topB = T([keyed.sB[0] + tdx, keyed.sB[1] + tdy]);
-  const hipF = T([keyed.hip[0] + OPEN_HIP, keyed.hip[1]]), hipB = T([keyed.hip[0] - OPEN_HIP, keyed.hip[1]]);
-  const S = skinRamp(a), J0 = ramp(kit.jersey), Tr = ramp(kit.trim);
-  // legs (far-side leg slightly darker), then the shorts' crotch so the two shorts tubes read as one garment
-  drawLeg(ctx, hipB, p.kB, p.fB, a, kit, true, a.legSleeve === 'both', false, k, -1);
-  drawLeg(ctx, hipF, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad, k, 1);
-  const P0 = ramp(kit.shorts);
-  poly(ctx, [[hipB[0] - 2 * k, hipB[1] - 1 * k], [hipF[0] + 2 * k, hipF[1] - 1 * k], [(hipF[0] + hipB[0]) / 2 + 3 * k, hipF[1] + 10 * k], [(hipF[0] + hipB[0]) / 2 - 3 * k, hipF[1] + 10 * k]], P0.base);
-  // neck under the jersey, then the torso seen from the front
-  const top: J = [(topF[0] + topB[0]) / 2, (topF[1] + topB[1]) / 2], hipC = T(keyed.hip);
-  tube(ctx, top, [p.head[0] - 1.5 * k, p.head[1] + 8 * k], () => 3.8 * k, S);
-  const half = Math.abs(topF[0] - topB[0]) / 2, L = hipC[1] - top[1];
-  // shoulders -> broad chest -> taper to the waist (a touch wider than the hips so the shorts sit under it)
-  const w = (t: number) => (t < 0.08 ? half * 0.8 : t < 0.2 ? half * 1.12 : t < 0.45 ? half * 1.14 : half * (1.14 - (t - 0.45) * 0.36));
-  const side = (sg: number): J[] => Array.from({ length: 13 }, (_, i) => { const t = i / 12; return [top[0] + (hipC[0] - top[0]) * t + sg * w(t), top[1] + L * t] as J; });
-  const grad = ctx.createLinearGradient(top[0] - half, top[1], top[0] + half, hipC[1]);
-  grad.addColorStop(0, J0.sh); grad.addColorStop(0.3, J0.base); grad.addColorStop(0.55, J0.hi); grad.addColorStop(0.85, J0.base); grad.addColorStop(1, J0.deep);
-  poly(ctx, [...side(1), ...side(-1).reverse()], grad);
-  // armhole trims, v-neck, side shading, number, waistband
-  for (const sg of [-1, 1]) stroke(ctx, [[top[0] + sg * half * 0.62, top[1]], [top[0] + sg * half * 0.98, top[1] + 6 * k], [top[0] + sg * half * 0.9, top[1] + 10 * k]], 1.2, Tr.base);
-  poly(ctx, [[top[0] - 2.6 * k, top[1]], [top[0] + 2.6 * k, top[1]], [top[0], top[1] + 4.6 * k]], S.base);
-  stroke(ctx, [[top[0] - 2.8 * k, top[1]], [top[0], top[1] + 4.8 * k], [top[0] + 2.8 * k, top[1]]], 1.4, Tr.base);
-  if (kit.number >= 0) digits(ctx, top[0], top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
-  const wb = lerp2(top, hipC, 0.97);
-  poly(ctx, [[wb[0] - half * 0.9, wb[1]], [wb[0] + half * 0.9, wb[1]], [wb[0] + half * 0.92, wb[1] + 4 * k], [wb[0] - half * 0.92, wb[1] + 4 * k]], P0.base);
-  stroke(ctx, [[wb[0] - half * 0.9, wb[1] + 0.5], [wb[0] + half * 0.9, wb[1] + 0.5]], 1.2, Tr.base);
-  // head turned to his man, then both arms spread (far arm a touch darker)
-  drawHead(ctx, p.head[0], p.head[1], a, k, false);
-  drawArm(ctx, p.sB, p.eB, p.hB, a, kit, true, a.armSleeve === 'both', k);
-  drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, a.armSleeve !== 'none', k);
+  if (kit.number >= 0) {
+    const nx = top[0] + (hip[0] - top[0]) * 0.4 + 2 * k * c;
+    if (mirrorText) { ctx.save(); ctx.translate(nx, 0); ctx.scale(-1, 1); ctx.translate(-nx, 0); }
+    digits(ctx, nx, top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
+    if (mirrorText) ctx.restore();
+  }
 }
 
 /**
@@ -535,8 +505,12 @@ function drawOpen(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: A
  */
 export function crispen(canvas: HTMLCanvasElement, edge = 0.6) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
-  const { width: w, height: h } = canvas;
-  const img = ctx.getImageData(0, 0, w, h);
+  crispenRect(ctx, 0, 0, canvas.width, canvas.height, edge);
+}
+
+/** crispen() for one region of a canvas (a single cached frame slot). */
+export function crispenRect(ctx: Ctx, x0: number, y0: number, w: number, h: number, edge = 0.6) {
+  const img = ctx.getImageData(x0, y0, w, h);
   const d = img.data;
   for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
   const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] === 255;
@@ -546,7 +520,7 @@ export function crispen(canvas: HTMLCanvasElement, edge = 0.6) {
     if (!solid(x - 1, y) || !solid(x + 1, y) || !solid(x, y - 1) || !solid(x, y + 1)) mark.push((y * w + x) * 4);
   }
   for (const i of mark) { d[i] *= edge; d[i + 1] *= edge; d[i + 2] *= edge; }
-  ctx.putImageData(img, 0, 0);
+  ctx.putImageData(img, x0, y0);
 }
 
 /** Build a sheet with every clip sampled into frames. */
