@@ -85,6 +85,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   clips only (locomotion, stances, dribbles, hold) — shots/moves stay side view toward the rim; defenders face their
   man turned toward the camera; angled frames drawn on demand (never block, side view until ready). Supersedes the
   round-15 front-view stance.
+- **Round 17:** defensive stance is calm (small hand drift, no flicker between stance/shuffle or between views);
+  shorts keep a visible waistband and leg split from every angle.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.

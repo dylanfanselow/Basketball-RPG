@@ -19,6 +19,7 @@
 | 14 | `e69eac4` | Defenders look like they are weirdly sliding | Real planted-foot shuffle clip; defenders face their man and step from 0.4 ft/s with distance-matched phase |
 | 15 | `88b6224` | Defensive stance still rigid/strange; owner picked a three-quarter open stance + live motion | `Pose.open` front-view stance (wide base, knees out, arms spread, head to the man) with weight shift, bounce and active hands; open-stance shuffle |
 | 16 | `d3588f7`, `4c0bfd0` | Open stance still looked bad; asked whether a 360 model is reasonable / laggy → approved after a turntable preview | Multi-angle players: 3D lift + yaw projection of every clip, on-demand angled-frame cache with side-view fallback, defenders three-quarter facing their man; round-15 front-view hack removed |
+| 17 | `0035f89` | Defensive arms shake too much; the seam disappears when facing up/down the screen | Calmer `defend` loop, stance/shuffle + view hysteresis for defenders; waistband over the shorts, inseam/notch and side seams in angled views |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
