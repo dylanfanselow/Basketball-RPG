@@ -26,3 +26,5 @@ Code rules that bite (details in WORKFLOW.md "Gotchas"):
 Commands: `npm run dev`, `npm test`, `npx tsc --noEmit`, `npm run build:single`.
 After each change: test → commit → `git pull --rebase origin main` → push → rebuild + republish the browser link
 (see WORKFLOW.md) → update the docs (STATUS/HISTORY/BACKLOG/DECISIONS) if anything changed.
+Also update the root `README.md` automatically when a change affects it — skim only the relevant section and make a
+minimal edit; don't re-review the whole file.
