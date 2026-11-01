@@ -37,9 +37,9 @@ describe('arm rig', () => {
     const low = CLIP.dribble.keys.find((k) => k.pose.ball![1] < 10)!.pose, r = rigArms(low, true);
     expect(r.ball).toEqual(low.ball);
   });
-  it('free clips (defense, off-ball) get full-length arms with the same shape', () => {
-    expect(isBallClip(CLIP.defend)).toBe(false);
-    const def = CLIP.defend.keys[0].pose, r = rigArms(def, false);
+  it('free clips (off-ball) get full-length arms with the same shape', () => {
+    expect(isBallClip(CLIP.jog)).toBe(false);
+    const def = CLIP.jog.keys[0].pose, r = rigArms(def, false);
     for (const [s, e, h] of ARMS) {
       expect(d(r[s], r[e]) + d(r[e], r[h])).toBeGreaterThanOrEqual(UPPER_ARM + FOREARM - 0.01);
       expect(d(r[s], r[h])).toBeGreaterThan(d(def[s], def[h]));

@@ -84,9 +84,14 @@ const defPose = (o: { hip?: number; fF?: J; fB?: J; hF?: J; hB?: J; dip?: number
   const dip = o.dip ?? 0;
   const torso = P({ hip: [-2, (o.hip ?? 45) - dip], head: [4, 84 - dip], neck: [3, 75 - dip], sF: [3, 72 - dip], sB: [-1, 72 - dip] });
   const fl = o.fl ?? 12, bl = o.bl ?? -12;
-  // arms out to the sides (mostly sideways, a little forward) so they read in every view, not across the chest
-  return { ...arms(legs(torso, o.fF ?? [6, 0], o.fB ?? [-5, 0]), o.hF ?? [11, 55 - dip], o.hB ?? [-6, 53 - dip]),
-    lat: { fF: fl, kF: fl - 1, fB: bl, kB: bl + 1, eF: 21, hF: 29, eB: -21, hB: -29 } };
+  // arms out to the sides (mostly sideways, a little forward) so they read in every view, not across the chest.
+  // Elbows are placed, not solved: halfway out and well below the shoulder->hand line, so they point at the floor
+  // from every angle (a side-view solve bent the far arm's elbow up into a "chicken wing" when turned).
+  const lg = legs(torso, o.fF ?? [6, 0], o.fB ?? [-5, 0]);
+  const hF = o.hF ?? [11, 51 - dip], hB = o.hB ?? [-5, 50 - dip];
+  const elbow = (s: J, h: J): J => [(s[0] + h[0]) / 2, (s[1] + h[1]) / 2 - 6.5];
+  return { ...lg, hF, hB, eF: elbow(lg.sF, hF), eB: elbow(lg.sB, hB),
+    lat: { fF: fl, kF: fl - 1, fB: bl, kB: bl + 1, eF: 19, hF: 29, eB: -19, hB: -29 } };
 };
 
 const lowStance = P({ head: [3, 85], neck: [2, 76], sF: [3, 73], sB: [-1, 73], hip: [0, 44], kF: [7, 22], kB: [-6, 22], fF: [9, 0], fB: [-8, 0] });
@@ -139,18 +144,18 @@ export const CLIPS: Clip[] = [
   // stance, alive but calm: a small bounce, weight shifting foot to foot, the hands drifting slightly out of step
   { name: 'defend', frames: 12, loop: true, keys: [
     { t: 0, pose: defPose() },
-    { t: 0.25, pose: defPose({ dip: 0.8, hF: [11.5, 56.5], hB: [-6.5, 52], fl: 12.6, bl: -11.4 }) },
-    { t: 0.5, pose: defPose({ dip: 0.2, hF: [11, 54.5], hB: [-6, 53.8] }) },
-    { t: 0.75, pose: defPose({ dip: 0.8, hF: [11.5, 56], hB: [-6.5, 52.5], fl: 11.4, bl: -12.6 }) },
+    { t: 0.25, pose: defPose({ dip: 0.8, hF: [11.5, 52.5], hB: [-5.5, 49], fl: 12.6, bl: -11.4 }) },
+    { t: 0.5, pose: defPose({ dip: 0.2, hF: [11, 50.5], hB: [-5, 50.8] }) },
+    { t: 0.75, pose: defPose({ dip: 0.8, hF: [11.5, 52], hB: [-5.5, 49.5], fl: 11.4, bl: -12.6 }) },
     { t: 1, pose: defPose() }] },
   // defensive shuffle, stepping sideways (lat): the lead (right/near) foot steps out in the air while the trail foot
   // stays planted (sliding in relative to the hips by the body's travel), then the trail foot closes. One cycle = 16
   // figure units of sideways travel (GameScene.defStance). Side-on the feet just lift in turn.
   { name: 'slide', frames: 8, loop: true, keys: [
     { t: 0, pose: defPose() },
-    { t: 0.25, pose: defPose({ dip: 0.5, fF: [6, 5], fl: 16, bl: -16, hF: [11, 57] }) },
+    { t: 0.25, pose: defPose({ dip: 0.5, fF: [6, 5], fl: 16, bl: -16, hF: [11, 53] }) },
     { t: 0.5, pose: defPose({ dip: 1.5, fl: 20, bl: -20 }) },
-    { t: 0.75, pose: defPose({ dip: 0.5, fB: [-5, 4], fl: 16, bl: -16, hB: [-6, 55] }) },
+    { t: 0.75, pose: defPose({ dip: 0.5, fB: [-5, 4], fl: 16, bl: -16, hB: [-5, 52] }) },
     { t: 1, pose: defPose() }] },
   { name: 'dribble', frames: 8, loop: true, bounce: [0.5], keys: [
     { t: 0, pose: dribAt([11, 56], [12, 51]) },
@@ -555,7 +560,8 @@ export function rigArms(p: Pose, ballClip: boolean): Pose {
   for (const [sk, ek, hk] of [['sF', 'eF', 'hF'], ['sB', 'eB', 'hB']] as const) {
     const s0 = p[sk], e0 = p[ek], h0 = p[hk];
     const s1 = move(s0);
-    const f = ballClip ? 1 : Math.max(1, Math.min(2, (UPPER_ARM + FOREARM) / Math.max(1e-6, dist(s0, e0) + dist(e0, h0))));
+    // sideways-spread poses (lat) are authored at their real 3D length: don't stretch them in 2D
+    const f = ballClip || p.lat ? 1 : Math.max(1, Math.min(2, (UPPER_ARM + FOREARM) / Math.max(1e-6, dist(s0, e0) + dist(e0, h0))));
     out[sk] = s1;
     out[ek] = [s1[0] + (e0[0] - s0[0]) * f, s1[1] + (e0[1] - s0[1]) * f];
     out[hk] = [s1[0] + (h0[0] - s0[0]) * f, s1[1] + (h0[1] - s0[1]) * f];

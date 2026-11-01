@@ -434,11 +434,10 @@ export function drawAngled(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: num
     let tEnd = 0.08;
     for (let t = 0.08; t <= 0.74; t += 0.06) { if (Math.hypot(A(t)[0] - B(t)[0], A(t)[1] - B(t)[1]) < 11.5 * k) tEnd = t; else break; }
     const end = lerp2(A(tEnd), B(tEnd), 0.5);
-    const dark = shade(P0.deep, 0.55);
-    stroke(ctx, [[mx, sA[1] + 2.5 * k], end], 1.6 * k, dark, 1);
-    // shadowed notch where the two legs of the shorts part at the hem
+    stroke(ctx, [[mx, sA[1] + 2.5 * k], end], 1.3 * k, P0.deep, 0.85);
+    // soft shadowed notch where the two legs of the shorts part at the hem (the shorts' own shadow tone, not a hole)
     const hm = lerp2(A(0.74), B(0.74), 0.5);
-    poly(ctx, [[hm[0] - 2.4 * k, hm[1] + 1 * k], [hm[0] + 2.4 * k, hm[1] + 1 * k], [hm[0], hm[1] - 5 * k]], dark);
+    if (Math.hypot(A(0.74)[0] - B(0.74)[0], A(0.74)[1] - B(0.74)[1]) < 12 * k) poly(ctx, [[hm[0] - 1.8 * k, hm[1] + 1 * k], [hm[0] + 1.8 * k, hm[1] + 1 * k], [hm[0], hm[1] - 4 * k]], P0.sh);
     if (Math.abs(sn) > 0.5) for (const [h, kn] of [[sA, p.kF], [sB, p.kB]] as const) {
       const out = Math.sign(h[0] - mx) || 1, q = lerp2(h, kn, 0.62);
       stroke(ctx, [[h[0] + out * 6.2 * k, h[1] + 1 * k], [q[0] + out * 5.6 * k, q[1]]], 1.2 * k, Tr.base, 0.85);
@@ -459,7 +458,17 @@ export function drawAngled(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: num
     poly(ctx, [[Math.min(hA[0], hB[0]) - 2 * k, hA[1] - 1 * k], [Math.max(hA[0], hB[0]) + 2 * k, hA[1] - 1 * k], [mx + 2.2 * k, hA[1] + 3 * k], [mx - 2.2 * k, hA[1] + 3 * k]], P0.base);
   }
   tube(ctx, top, [p.head[0] - 1.5 * k * c, p.head[1] + 8 * k], () => 3.8 * k, S);
-  drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k, mirrorText);
+  const [jl, jr] = drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k, mirrorText);
+  // shorts waistband: part of the shorts (same shading, round like them), as wide as the shorts or the jersey
+  {
+    const P = ramp(kit.shorts), Tr = ramp(kit.trim), sA = sock(1), sB = sock(-1);
+    const x0 = Math.min(jl[0], sA[0] - 6.2 * k, sB[0] - 6.2 * k) + 0.6 * k, x1 = Math.max(jr[0], sA[0] + 6.2 * k, sB[0] + 6.2 * k) - 0.6 * k;
+    const wy = jl[1] - 1.2 * k;
+    const g = ctx.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, P.sh); g.addColorStop(0.3, P.hi); g.addColorStop(0.6, P.base); g.addColorStop(1, P.sh);
+    poly(ctx, [[x0, wy], [x1, wy], [x1 - 0.3 * k, wy + 4.2 * k], [x0 + 0.3 * k, wy + 4.2 * k]], g);
+    stroke(ctx, [[x0, wy + 0.5], [x1, wy + 0.5]], 1.2, Tr.base);
+  }
   if (yawDeg <= -30) drawHead(ctx, p.head[0], p.head[1], a, k, true);
   else if (yawDeg < 25) drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   else frontHead(ctx, p.head[0], p.head[1], a, k * 1.25, { turn: Math.max(0, Math.min(1, c * 1.35)) });
@@ -469,7 +478,8 @@ export function drawAngled(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: num
 }
 
 /** Torso seen at a yaw: the chest/back profile widths and a lateral (shoulder-span) width projected together. */
-function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appearance, k: number, mirrorText = false) {
+/** Returns the jersey's bottom corners (for the shorts' waistband, which drawAngled draws to fit the shorts). */
+function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appearance, k: number, mirrorText = false): [J, J] {
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const L = hip[1] - top[1];
   const prof = (t: number): [number, number, number] => { // [front, back, lateral] half-widths
@@ -509,17 +519,13 @@ function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appear
   // armhole trims at both shoulders
   for (const q of [R[1], Lf[1]]) stroke(ctx, [[q[0], q[1] - 1 * k], [q[0] + (q === R[1] ? -2 : 2) * k, q[1] + 5 * k], [q[0] + (q === R[1] ? -1 : 1) * k, q[1] + 9 * k]], 1.2, Tr.base);
   // waistband and number (chest when facing us, back when facing away)
-  const ext = Math.abs(sn) * 2.4 * k; // seen from the front/back the waistband wraps the full width of the shorts
-  const wbL: J = [Lf[N][0] - ext, Lf[N][1]], wbR: J = [R[N][0] + ext, R[N][1]], wy = lerp2(top, hip, 0.97)[1];
-  const P = ramp(kit.shorts);
-  poly(ctx, [[wbL[0] + 0.4 * k, wy], [wbR[0] - 0.4 * k, wy], [wbR[0] - 0.2 * k, wy + 4 * k], [wbL[0] + 0.2 * k, wy + 4 * k]], P.base);
-  stroke(ctx, [[wbL[0] + 0.4 * k, wy + 0.5], [wbR[0] - 0.4 * k, wy + 0.5]], 1.2, Tr.base);
   if (kit.number >= 0) {
     const nx = top[0] + (hip[0] - top[0]) * 0.4 + 2 * k * c;
     if (mirrorText) { ctx.save(); ctx.translate(nx, 0); ctx.scale(-1, 1); ctx.translate(-nx, 0); }
     digits(ctx, nx, top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
     if (mirrorText) ctx.restore();
   }
+  return [Lf[N], R[N]];
 }
 
 /**
