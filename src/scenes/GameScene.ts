@@ -11,7 +11,7 @@ import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '..
 import type { Appearance } from '../render/appearance';
 import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
 import { FrameCache, yawFor } from '../render/frameCache';
-import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime } from '../render/anim';
+import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
 import { CONE_HALF, contestReach, computeContest, selectShotType } from '../sim/shooting';
@@ -73,7 +73,9 @@ export class GameScene extends Phaser.Scene {
   /** defensive shuffle phase (cycles) and drawn facing (true = facing -x) per defender, see defStance */
   slidePhase = new Map<string, number>();
   /** drawn view per player (multi-angle), kept for hysteresis */
-  yawMem = new Map<string, { yaw: number; flip: boolean }>();
+  yawMem = new Map<string, { yaw: number; flip: boolean; at?: number }>();
+  /** defender is mid-shuffle (stance hysteresis, see shuffleState) */
+  shuffling = new Map<string, boolean>();
   defFlip = new Map<string, boolean>();
   sheets = new Map<string, { key: string; sheet: Sheet }>();
   animMem = new Map<string, { clip: string; u: number }>();
@@ -103,7 +105,7 @@ export class GameScene extends Phaser.Scene {
     this.mode = data.mode ?? 'practice';
     this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
-    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear();
+    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear(); this.shuffling.clear();
   }
 
   create() {
@@ -255,9 +257,13 @@ export class GameScene extends Phaser.Scene {
       const a = Math.min(90, (left ? Math.sign(ang || 1) * (180 - Math.abs(ang)) : ang) + bias);
       ang = left ? (a >= 0 ? 180 - a : -180 - a) : a;
     }
-    const v = yawFor(ang, this.yawMem.get(p.id));
-    this.yawMem.set(p.id, v);
-    return v;
+    // defenders track a moving man: wider hysteresis, and at most one view change per 0.25 s, so they don't jitter
+    const prev = this.yawMem.get(p.id), now = this.sim.time;
+    const v = yawFor(ang, prev, bias ? 20 : 10);
+    if (prev && (v.yaw !== prev.yaw || v.flip !== prev.flip) && bias && now - (prev.at ?? -9) < 0.25) return prev;
+    const out = prev && v.yaw === prev.yaw && v.flip === prev.flip ? prev : { ...v, at: now };
+    this.yawMem.set(p.id, out);
+    return out;
   }
 
   /** Every on-court player and coach has a sheet (the game waits for this at tip-off). */
@@ -509,7 +515,9 @@ export class GameScene extends Phaser.Scene {
     let flip = this.defFlip.get(p.id) ?? dx < 0;
     if (dx > 0.5) flip = false; else if (dx < -0.5) flip = true;
     this.defFlip.set(p.id, flip);
-    if (sp <= 0.4) return { clip: 'defend', u: sim.time * 1.2 + (p.number * 0.137) % 1, flip };
+    const shuffle = shuffleState(sp, this.shuffling.get(p.id) ?? false);
+    this.shuffling.set(p.id, shuffle);
+    if (!shuffle) return { clip: 'defend', u: sim.time * 0.7 + (p.number * 0.137) % 1, flip };
     const ph = (this.slidePhase.get(p.id) ?? 0) + Math.min(sp / (0.16 * p.height), 3) / 60;
     this.slidePhase.set(p.id, ph);
     const along = p.vel.x * (flip ? -1 : 1);

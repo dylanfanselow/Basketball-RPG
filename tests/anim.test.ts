@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN, shuffleState } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
@@ -132,6 +132,20 @@ describe('round 16: defensive stance spreads sideways for multi-angle drawing', 
     const ks = CLIP.defend.keys.map((k) => k.pose);
     expect(new Set(ks.map((p) => p.hip[1])).size).toBeGreaterThan(1);
     expect(new Set(ks.map((p) => p.hF[1])).size).toBeGreaterThan(2);
+  });
+});
+
+describe('round 17: calm defensive stance', () => {
+  it('defend hands drift only slightly across the loop (no shaking)', () => {
+    const ys = CLIP.defend.keys.map((k) => k.pose.hF[1]), xs = CLIP.defend.keys.map((k) => k.pose.hF[0]);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(3);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1.5);
+  });
+  it('stance/shuffle switch has hysteresis', () => {
+    expect(shuffleState(0.45, false)).toBe(false); // not enough to start
+    expect(shuffleState(0.7, false)).toBe(true);
+    expect(shuffleState(0.45, true)).toBe(true); // keeps shuffling
+    expect(shuffleState(0.2, true)).toBe(false);
   });
 });
 

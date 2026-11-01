@@ -136,12 +136,12 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.25, pose: burstDrib(burstB, [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
     { t: 0.5, pose: burstDrib(mirrorLegsArms(burstA), [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }, { t: 0.75, pose: burstDrib(mirrorLegsArms(burstB), [BURST_LEAN + 7, 52], [BURST_LEAN + 9, 3]) },
     { t: 1, pose: burstDrib(burstA, [BURST_LEAN + 6, 54], [BURST_LEAN + 7, 49]) }] },
-  // stance, alive: a little bounce, weight shifting foot to foot, the hands working out of step
+  // stance, alive but calm: a small bounce, weight shifting foot to foot, the hands drifting slightly out of step
   { name: 'defend', frames: 12, loop: true, keys: [
     { t: 0, pose: defPose() },
-    { t: 0.25, pose: defPose({ dip: 1.2, hF: [12, 60], hB: [-7, 50], fl: 13, bl: -11 }) },
-    { t: 0.5, pose: defPose({ dip: 0.2, hF: [10, 53], hB: [-6, 56] }) },
-    { t: 0.75, pose: defPose({ dip: 1.2, hF: [12, 58], hB: [-7, 52], fl: 11, bl: -13 }) },
+    { t: 0.25, pose: defPose({ dip: 0.8, hF: [11.5, 56.5], hB: [-6.5, 52], fl: 12.6, bl: -11.4 }) },
+    { t: 0.5, pose: defPose({ dip: 0.2, hF: [11, 54.5], hB: [-6, 53.8] }) },
+    { t: 0.75, pose: defPose({ dip: 0.8, hF: [11.5, 56], hB: [-6.5, 52.5], fl: 11.4, bl: -12.6 }) },
     { t: 1, pose: defPose() }] },
   // defensive shuffle, stepping sideways (lat): the lead (right/near) foot steps out in the air while the trail foot
   // stays planted (sliding in relative to the hips by the body's travel), then the trail foot closes. One cycle = 16
@@ -516,6 +516,12 @@ export function shotU(c: Clip, now: number, start: number, release: number | und
   }
   return r + (1 - r) * Math.min(1, (now - release) / (c.post ?? 0.5));
 }
+
+/**
+ * Defender stance choice with hysteresis so it doesn't flicker between the idle stance and the shuffle when the speed
+ * hovers around the threshold: start shuffling above 0.6 ft/s, stop below 0.3 ft/s.
+ */
+export const shuffleState = (speed: number, wasShuffling: boolean) => (wasShuffling ? speed > 0.3 : speed > 0.6);
 
 // ---------- arm rig (applied when a pose is drawn) ----------
 /** How far the arm sockets sit below the authored keyframes (toward the hips), in figure units. */

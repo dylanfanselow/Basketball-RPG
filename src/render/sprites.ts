@@ -423,25 +423,47 @@ export function drawAngled(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: num
   const sleeveF = a.armSleeve !== 'none', sleeveB = a.armSleeve === 'both';
   const frontShoe = Math.abs(c) < 0.55;
   const avg = (...ks: (keyof typeof depth)[]) => ks.reduce((t, kk) => t + depth[kk], 0) / ks.length;
-  type Item = { d: number; draw: (far: boolean) => void };
+  type Item = { d: number; draw: (far: boolean) => void; leg?: boolean };
+  // front/back views: once both legs are drawn, mark the shorts' split (inseam) and outer side seams on top of them
+  let legsDrawn = 0;
+  const legDone = () => { if (++legsDrawn === 2 && Math.abs(sn) > 0.3) shortsSeams(); };
+  const shortsSeams = () => {
+    const P0 = ramp(kit.shorts), Tr = ramp(kit.trim), sA = sock(1), sB = sock(-1), mx = (sA[0] + sB[0]) / 2;
+    const A = (t: number) => lerp2(sA, p.kF, t), B = (t: number) => lerp2(sB, p.kB, t);
+    // the split runs down between the two shorts legs for as long as they still touch
+    let tEnd = 0.08;
+    for (let t = 0.08; t <= 0.74; t += 0.06) { if (Math.hypot(A(t)[0] - B(t)[0], A(t)[1] - B(t)[1]) < 11.5 * k) tEnd = t; else break; }
+    const end = lerp2(A(tEnd), B(tEnd), 0.5);
+    const dark = shade(P0.deep, 0.55);
+    stroke(ctx, [[mx, sA[1] + 2.5 * k], end], 1.6 * k, dark, 1);
+    // shadowed notch where the two legs of the shorts part at the hem
+    const hm = lerp2(A(0.74), B(0.74), 0.5);
+    poly(ctx, [[hm[0] - 2.4 * k, hm[1] + 1 * k], [hm[0] + 2.4 * k, hm[1] + 1 * k], [hm[0], hm[1] - 5 * k]], dark);
+    if (Math.abs(sn) > 0.5) for (const [h, kn] of [[sA, p.kF], [sB, p.kB]] as const) {
+      const out = Math.sign(h[0] - mx) || 1, q = lerp2(h, kn, 0.62);
+      stroke(ctx, [[h[0] + out * 6.2 * k, h[1] + 1 * k], [q[0] + out * 5.6 * k, q[1]]], 1.2 * k, Tr.base, 0.85);
+    }
+  };
   const items: Item[] = [
     { d: avg('sB', 'eB', 'hB'), draw: (far: boolean) => drawArm(ctx, p.sB, p.eB, p.hB, a, kit, far, sleeveB, k) },
     { d: avg('sF', 'eF', 'hF'), draw: (far: boolean) => drawArm(ctx, p.sF, p.eF, p.hF, a, kit, far, sleeveF, k) },
-    { d: avg('kB', 'fB') - 0.01, draw: (far: boolean) => drawLeg(ctx, sock(-1), p.kB, p.fB, a, kit, far, a.legSleeve === 'both', false, k, frontShoe ? (sn >= 0 ? 1 : -1) : undefined) },
-    { d: avg('kF', 'fF'), draw: (far: boolean) => drawLeg(ctx, sock(1), p.kF, p.fF, a, kit, far, a.legSleeve !== 'none', a.kneePad, k, frontShoe ? (sn >= 0 ? -1 : 1) : undefined) },
+    { leg: true, d: avg('kB', 'fB') - 0.01, draw: (far: boolean) => { drawLeg(ctx, sock(-1), p.kB, p.fB, a, kit, far, a.legSleeve === 'both', false, k, frontShoe ? (sn >= 0 ? 1 : -1) : undefined); legDone(); } },
+    { leg: true, d: avg('kF', 'fF'), draw: (far: boolean) => { drawLeg(ctx, sock(1), p.kF, p.fF, a, kit, far, a.legSleeve !== 'none', a.kneePad, k, frontShoe ? (sn >= 0 ? -1 : 1) : undefined); legDone(); } },
   ].sort((x, y) => x.d - y.d);
-  for (const it of items) if (it.d < 0) it.draw(true);
-  // shorts crotch when the legs are seen apart
+  // legs always go under the torso (the jersey's waistband sits over the shorts), far leg first; arms sort around it
+  for (const it of items) if (it.leg) it.draw(it.d < 0 && items.some((o) => o.leg && o !== it && o.d > it.d));
+  for (const it of items) if (!it.leg && it.d < 0) it.draw(true);
+  // shorts gusset when the legs are seen apart: only closes the gap just under the waistband (the split shows below)
   if (Math.abs(sn) > 0.3) {
     const P0 = ramp(kit.shorts), hA = sock(1), hB = sock(-1), mx = (hA[0] + hB[0]) / 2;
-    poly(ctx, [[Math.min(hA[0], hB[0]) - 2 * k, hA[1] - 1 * k], [Math.max(hA[0], hB[0]) + 2 * k, hA[1] - 1 * k], [mx + 3 * k, hA[1] + 9 * k], [mx - 3 * k, hA[1] + 9 * k]], P0.base);
+    poly(ctx, [[Math.min(hA[0], hB[0]) - 2 * k, hA[1] - 1 * k], [Math.max(hA[0], hB[0]) + 2 * k, hA[1] - 1 * k], [mx + 2.2 * k, hA[1] + 3 * k], [mx - 2.2 * k, hA[1] + 3 * k]], P0.base);
   }
   tube(ctx, top, [p.head[0] - 1.5 * k * c, p.head[1] + 8 * k], () => 3.8 * k, S);
   drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k, mirrorText);
   if (yawDeg <= -30) drawHead(ctx, p.head[0], p.head[1], a, k, true);
   else if (yawDeg < 25) drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   else frontHead(ctx, p.head[0], p.head[1], a, k * 1.25, { turn: Math.max(0, Math.min(1, c * 1.35)) });
-  for (const it of items) if (it.d >= 0) it.draw(false);
+  for (const it of items) if (!it.leg && it.d >= 0) it.draw(false);
   void away; void SHOULDER_HALF;
   return { ball: pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null, ballBehind: !!pose.ball && ballDepth < -4 };
 }
@@ -487,7 +509,8 @@ function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appear
   // armhole trims at both shoulders
   for (const q of [R[1], Lf[1]]) stroke(ctx, [[q[0], q[1] - 1 * k], [q[0] + (q === R[1] ? -2 : 2) * k, q[1] + 5 * k], [q[0] + (q === R[1] ? -1 : 1) * k, q[1] + 9 * k]], 1.2, Tr.base);
   // waistband and number (chest when facing us, back when facing away)
-  const wbL = Lf[N - 0], wbR = R[N - 0], wy = lerp2(top, hip, 0.97)[1];
+  const ext = Math.abs(sn) * 2.4 * k; // seen from the front/back the waistband wraps the full width of the shorts
+  const wbL: J = [Lf[N][0] - ext, Lf[N][1]], wbR: J = [R[N][0] + ext, R[N][1]], wy = lerp2(top, hip, 0.97)[1];
   const P = ramp(kit.shorts);
   poly(ctx, [[wbL[0] + 0.4 * k, wy], [wbR[0] - 0.4 * k, wy], [wbR[0] - 0.2 * k, wy + 4 * k], [wbL[0] + 0.2 * k, wy + 4 * k]], P.base);
   stroke(ctx, [[wbL[0] + 0.4 * k, wy + 0.5], [wbR[0] - 0.4 * k, wy + 0.5]], 1.2, Tr.base);
