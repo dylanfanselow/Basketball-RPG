@@ -6,11 +6,11 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 ## Sim (`src/sim`)
 | File | Role |
 |---|---|
-| `game.ts` | `GameSim`: the whole game loop. `update(dt, input)` → user input (`handleUser`, tap/hold logic in `ux`), AI `think`, ults, `physics`, `collisions` (screens, charges, box-outs), `updateBall` (pass/shot/rim/loose/dead), plays, `rules`. Also `startShot`/`releaseShot`/`resolveShot`, `pass`, `dribbleMove`, `pumpFake`, `flickCross`, `startBurst`, `setScreen`, `swipe`, `takeCharge`, inbound system (`deadBall` → `startInbound` → `updateInbound`, `thinkInbound`, `clampFor`), `chaseBall` (rebounding), `boxOut`, `callPlay` (feature-me rotation + role swap), `playRole`. Emits events (`emit`, `quiet` for audio/anim-only). 1v1: `cfg.oneOnOne` (mode stays `'practice'`), both teams share a side, `checkBall(team)` replaces `practiceReset`, `scoreValue`, `checkWin`; second human `user2` + `ux2`, `update(dt, input, input2?)`, `handleUser(u, inp, ux)`, `isHuman`. Step-through: `stepThrough()` + `liftAt` in `physics`. |
+| `game.ts` | `GameSim`: the whole game loop. `update(dt, input)` → user input (`handleUser`, tap/hold logic in `ux`), AI `think`, ults, `physics`, `collisions` (screens, charges, box-outs), `updateBall` (pass/shot/rim/loose/dead), plays, `rules`. Also `startShot`/`releaseShot`/`resolveShot`, `pass`, `dribbleMove`, `pumpFake`, `flickCross`, `startBurst`, `setScreen`, `swipe`, `takeCharge`, inbound system (`deadBall` → `startInbound` → `updateInbound`, `thinkInbound`, `clampFor`), `chaseBall` (rebounding), `boxOut`, `callPlay` (feature-me rotation + role swap), `playRole`. Emits events (`emit`, `quiet` for audio/anim-only). 1v1: `cfg.oneOnOne` (mode stays `'practice'`), both teams share a side, `checkBall(team)` replaces `practiceReset`, `scoreValue`, `checkWin`; second human `user2` + `ux2`, `update(dt, input, input2?)`, `handleUser(u, inp, ux)`, `isHuman`. Step-through: `stepThrough()` + `liftAt`/`liftVz` in `physics`, `stepThroughReady` (HUD). Blocks/strips: `stun(p, secs, anim)` (`stunnedUntil` gates `handleUser`/`think`/movement), loose ball `noGrabUntil`/`noGrabPid`/`noGrabPidUntil` (checked in `tryGrab`). Passing: `pass` sets `magnet` (short passes re-aim at the receiver each tick, 4.5 ft catch radius) and `riskMult` (short ×0.15 / medium ×0.6 / long ×1.8+); deflection radius grows with length. Icon pass: `iconTargets`/`iconTargetsFor` (`ICON_ORDER` ✕○□△ by role), `UserInput.l2Held`. |
 | `player.ts` | `Player` state: core/sub ratings, `mods`, position/velocity/z, state machine, timers (many default to −9 so "time < x" checks work at t=0), box score, anim record. |
 | `attributes.ts` | Core stats → sub-ratings via `statInfluence.json`; `statFactor`, `rmap`. |
 | `modifiers.ts` | Effect/hook system (`sub`, `shot`, `contestIn`, `contestOut`, `param`, `move`, `shotType`; code hooks with expiry). |
-| `shooting.ts` | `selectShotType`, `computeContest` (cone, `contestReach`), `evaluateShot` (equation terms), `formatEquation`. |
+| `shooting.ts` | `selectShotType` (step-through first: `STEP_THROUGH_WINDOW` 1.5 s, `stepStride`, `STEP_FINISH_FT` → `stepThrough` or `stepThroughJumper`), `computeContest` (cone, `contestReach`; ×0.15 for defenders who `bitOnFake`), `evaluateShot` (equation terms), `formatEquation`, `isStepThrough`. |
 | `moves.ts` | `classifyStick` (basket-relative), `resolveMove` (chains first), `availableMoves` (HUD), `moveDirection` (canonical directions), `sideOf`. |
 | `rim.ts` | Live rim sequences: `pickSeq`, `buildPath`, `sampleRim`. |
 | `plays/runner.ts` | `PlayRunner`: phases, reset timer, role swap, focus player. |
@@ -43,7 +43,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
 | Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |
-| `input/input.ts` | `InputMapper` (Gamepad API + keyboard, edge detection). |
+| `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `l2` (L2/Q, icon pass), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
 | `dev/devPanel.ts` | DOM dev tools overlay. |
 
 ## Data (`src/data`) — tune feel here
@@ -52,6 +52,6 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## Tests (`tests/`)
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
-`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through, 1v1 rules, two humans), `helpers.ts` (`makeGame`, `simToEnd`).
+`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, L2 icon pass), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).

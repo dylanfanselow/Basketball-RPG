@@ -17,6 +17,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   window events. Buttons held when a scene starts are ignored until released. Presses are latched until a sim
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
+- **L2 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold L2 ICON PASS" hint above the diamond.
+- ✕ badge reads **"Step-Through"** while a recent fake + stick toward the rim lines one up.
+- **Fullscreen**: F key, ⛶ corner button (DOM, `main.ts`), main-menu and pause-menu items.
 
 ## Shooting
 - Shot types: dunk, layup, euro, step-through, floater, hook, push, mid, three, deep3 (`shotTypes.json`).
