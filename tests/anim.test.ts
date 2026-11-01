@@ -113,3 +113,13 @@ describe('audio/animation events from the sim', () => {
     expect(u.anim?.release).toBeDefined();
   });
 });
+
+describe('round 6 animation', () => {
+  it('the crossover has at least 14 frames and Catmull-Rom still hits every key', () => {
+    expect(CLIP.move_crossover.frames).toBeGreaterThanOrEqual(14);
+    for (const name of ['move_crossover', 'boxout', 'rebound', 'dribbleReady']) {
+      const c = CLIP[name];
+      for (const k of c.keys) { const p = sampleClip(c, k.t); expect(p.hF[0]).toBeCloseTo(k.pose.hF[0], 5); expect(p.hF[1]).toBeCloseTo(k.pose.hF[1], 5); }
+    }
+  });
+});

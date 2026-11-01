@@ -6,7 +6,7 @@ import { passProbability } from '../src/sim/ai/trust';
 import { planRotation } from '../src/sim/rotation';
 import { Player } from '../src/sim/player';
 import { hc, rimPos } from '../src/sim/court';
-import { v, norm, sub } from '../src/sim/math';
+import { v, norm, sub, scale } from '../src/sim/math';
 import { newCareer, applyGameResult, spendStatPoint } from '../src/career/career';
 import { canUnlock, unlock } from '../src/career/skilltree';
 import { makeGame, simToEnd } from './helpers';
@@ -433,5 +433,55 @@ describe('rebounding: live rim, airballs, box-outs, crash roles', () => {
     }
     expect(cc / 200).toBeGreaterThan(0.9);
     expect(pfShooter).toBeLessThan(pfBig);
+  });
+});
+
+describe('basket-relative moves, fixed distances, screens, shot hang time', () => {
+  const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+  it('from the wing, "toward the hoop" is hesi and "across the line, the other way" is a crossover', () => {
+    const p = mk({ nodes: ['dr_cross'] });
+    const toRim = norm({ x: 1, y: -1 }); // hoop is up and to the right
+    const pr = { x: -toRim.y, y: toRim.x };
+    p.vel = scale(pr, 8); // moving across the line one way
+    expect(resolveMove(p, toRim, toRim, 0, 3)).toBe('hesi');
+    expect(resolveMove(p, scale(toRim, -1), toRim, 0, 3)).toBe('retreat');
+    expect(resolveMove(p, scale(pr, -1), toRim, 0, 3)).toBe('crossover');
+    expect(resolveMove(p, { x: 0, y: -1 }, toRim, 0, 3)).not.toBe('crossover'); // plain "up" is not the cross here (it's toward-ish)
+  });
+  it('every move covers its fixed distance regardless of stick angle or tilt', () => {
+    for (const [stick, expected] of [[{ x: 0, y: 1 }, 12], [{ x: 0.3, y: 0.9 }, 12], [{ x: 0.2, y: 0.45 }, 12], [{ x: 1, y: 0 }, 3]] as const) {
+      const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), isUser: true });
+      const g = makeGame({ mode: 'practice', practice: { defenders: 0, teammates: 0, runPlays: false } }, u);
+      const p0 = { ...u.p };
+      g.update(1 / 60, { ...idle, move: stick, b: true, bHeld: true });
+      for (let i = 0; i < 70; i++) g.update(1 / 60, idle);
+      const d = Math.hypot(u.p.x - p0.x, u.p.y - p0.y);
+      expect(d, JSON.stringify(stick)).toBeGreaterThan(expected * 0.85);
+      expect(d, JSON.stringify(stick)).toBeLessThan(expected * 1.15);
+    }
+  });
+  it('a screen knocks the defender back with the bumped animation', () => {
+    const g = makeGame({ seed: 2 });
+    g.inbound(0);
+    const scr = g.offense()[4], def = g.defense()[0];
+    scr.state = 'screen'; scr.stateT = 0; scr.stateDur = 1.1;
+    scr.p = { x: 60, y: 25 }; def.p = { x: 61.8, y: 25 };
+    const before = Math.hypot(def.p.x - scr.p.x, def.p.y - scr.p.y);
+    (g as any).screenContact(scr, def, 1.8);
+    expect(def.bumpedUntil).toBeGreaterThan(g.time);
+    expect(def.anim?.name).toBe('bumped');
+    expect(Math.hypot(def.p.x - scr.p.x, def.p.y - scr.p.y)).toBeGreaterThan(before + 0.5);
+  });
+  it('a 24 ft three hangs in the air at least 1.2s; a rebound grab plays the rebound animation', () => {
+    const g = makeGame({ seed: 6 });
+    g.inbound(0);
+    const s = g.byRole(0, '2')!;
+    s.p = hc(1, 29, 0);
+    g.giveBall(s); s.pendingShot = { type: 'three' }; (g as any).releaseShot(s);
+    const st = g.ball.st as any;
+    if (st.kind === 'shot') expect(st.dur).toBeGreaterThanOrEqual(1.2);
+    let grabbed = false;
+    for (let i = 0; i < 60 * 6 && !grabbed; i++) { g.update(1 / 60, idle); grabbed = g.players.some((p) => p.anim?.name === 'rebound'); }
+    expect(grabbed || g.events.some((e) => e.kind === 'net')).toBe(true);
   });
 });

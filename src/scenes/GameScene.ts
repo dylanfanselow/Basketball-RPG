@@ -9,7 +9,7 @@ import { buildSheet, Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, PIXEL, fra
 import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
-import { CONE_HALF, contestReach } from '../sim/shooting';
+import { CONE_HALF, contestReach, computeContest, selectShotType } from '../sim/shooting';
 import { Crowd } from '../render/crowd';
 import { ControllerHud } from '../render/hud';
 import { randomAppearance } from '../render/appearance';
@@ -271,8 +271,9 @@ export class GameScene extends Phaser.Scene {
     }
     if (p.state === 'dribbleMove' && a?.name === 'pumpfake') return { clip: 'pumpfake', u: (now - a.start) / (a.dur ?? 0.4) };
     if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
-    if (now < p.bumpedUntil) return { clip: 'bumped', u: 1 - (p.bumpedUntil - now) / 0.5 };
-    if (p.boxingOut) return { clip: 'boxout', u: now * 2 };
+    if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? (now - a.start) / Math.max(0.2, a.dur ?? 0.5) : 0.5 };
+    if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
+    if (p.boxingOut) return { clip: now < p.leanedUntil ? 'boxoutPush' : 'boxout', u: now * 1.6 };
     if (p.state === 'stagger' || now < p.staggerUntil) return { clip: 'stagger', u: now * 2 };
     if (p.state === 'screen') return { clip: 'screen', u: p.stateT / 0.25 };
     if (p.state === 'charge') return { clip: 'charge', u: p.stateT / 0.2 };
@@ -281,6 +282,7 @@ export class GameScene extends Phaser.Scene {
     if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: 'pass', u: (now - sim.lastPassAt) / 0.3 };
     if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };
     const sp = len(p.vel);
+    if (hasBall && p.bHolding && p.state !== 'dribbleMove') return { clip: 'dribbleReady', u: now * 1.3 };
     if (sp > 2.5) {
       if (hasBall) return { clip: 'dribbleRun', u: dist / 8 + phase };
       const man = p.guarding ? sim.players.find((q) => q.id === p.guarding) : null;
@@ -508,6 +510,24 @@ export class GameScene extends Phaser.Scene {
 
     const hasBall = sim.holder() === u;
     const onO = u.team === sim.possession;
+    // your matchup's contest cone (solid when he has the ball): colored by how much you'd bother his shot
+    if (!onO && u.guarding && dbg.cone) {
+      const m = sim.players.find((p) => p.id === u.guarding);
+      if (m) {
+        const mside = sim.side(m.team);
+        const type = selectShotType(m, mside, { x: 0, y: 0 }, sim.time);
+        const L = contestReach(type);
+        const dir = norm(sub(rimPos(mside), m.p));
+        const rot = (ang: number) => ({ x: dir.x * Math.cos(ang) - dir.y * Math.sin(ang), y: dir.x * Math.sin(ang) + dir.y * Math.cos(ang) });
+        const l = rot(-CONE_HALF), r = rot(CONE_HALF);
+        const c = computeContest(m, [u], mside, type, sim.time).raw;
+        const col = c > 0.3 ? 0x40ff70 : c > 0.1 ? 0xffb030 : 0xff4040;
+        const alpha = sim.holder() === m ? 1 : 0.25;
+        const pts = [new Phaser.Math.Vector2(sx(m.p.x), sy(m.p.y)), new Phaser.Math.Vector2(sx(m.p.x + l.x * L), sy(m.p.y + l.y * L)), new Phaser.Math.Vector2(sx(m.p.x + r.x * L), sy(m.p.y + r.y * L))];
+        g.fillStyle(col, 0.2 * alpha); g.lineStyle(1, col, 0.65 * alpha);
+        g.fillPoints(pts, true); g.strokePoints(pts, true);
+      }
+    }
     // defensive assignment
     if (!onO && u.guarding) {
       const m = sim.players.find((p) => p.id === u.guarding);

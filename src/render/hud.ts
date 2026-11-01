@@ -173,6 +173,17 @@ export class ControllerHud {
         lbl.setVisible(true).setText(MOVES[m.id]?.name ?? m.id).setPosition(Phaser.Math.Clamp(lx, 44, this.viewW / 2), ly).setColor(m.chain ? '#ffd24d' : flick ? '#7ff6ff' : '#ffffff');
       });
     }
+    // flash the direction of the move you just did (even on a tap)
+    const lm = sim.lastUserMove;
+    const age = lm ? sim.time - lm.at : 99;
+    if (lm && age < 0.45) {
+      const ang = Math.atan2(lm.dir.y, lm.dir.x);
+      const k = age / 0.45;
+      g.lineStyle(14 - 8 * k, 0xfff6a0, 1 - k);
+      g.beginPath(); g.arc(x0, y0, 59 + 10 * k, ang - 0.6, ang + 0.6); g.strokePath();
+      g.lineStyle(4, 0xffffff, 0.9 * (1 - k));
+      g.beginPath(); g.arc(x0, y0, 52, ang - 0.6, ang + 0.6); g.strokePath();
+    }
     // knob
     const mv = inp.move;
     const k = Math.min(1, len(mv));

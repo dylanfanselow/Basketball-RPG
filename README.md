@@ -35,8 +35,9 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, E
 - **Sprint** is a tap: R2 (or Shift) gives a short burst, shown by speed lines and the ring next to the trust bars, then it recharges. Mobility and stamina change both.
 - **Side Drive**: ○ + stick up or down while dribbling. While you're driving, flick the stick the other way (no button) to cross over.
 - **✕ tap = pump fake** (fake as many times as you like; it picks up your dribble so you can only pass or shoot). **✕ hold = shoot.**
-- **Hold ○** and the left-stick widget shows which move each direction does; drag that way to do it. While ○ is still held, flick again for the chain move (gold arcs). A quick **○ tap** = jab step (keeps your dribble).
-- **○ while a shot is in the air = box out.** Stronger box-outs knock players back.
+- **Hold ○** and the left-stick widget shows which move each direction does; drag that way to do it. Directions are relative to **your line to the hoop** (toward it = hesi, away = step-back, across it = crossover / side drive), and every move travels a fixed distance. While ○ is still held, flick again for the chain move (gold arcs). A quick **○ tap** = jab step (keeps your dribble).
+- **○ while a shot is in the air = box out.** Stronger box-outs knock players back, and so do screens.
+- On defense you see **your man's shot cone**: green = you're contesting him, red = he's open.
 - **Quick 5v5**: pick your team, the opponent, and play as any of the five starters or your own player.
 - **Feature me equally** (on in Practice and Quick Game, toggle in the dev panel): the coach rotates who each set is run for, including you, even when you're not the position the play was written for.
 - After a make, a big walks the ball out of bounds and inbounds it to the point guard. Steals and defensive boards can turn into fast breaks.

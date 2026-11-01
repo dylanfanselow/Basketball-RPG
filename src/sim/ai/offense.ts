@@ -221,9 +221,11 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // side drive, then snap it back the other way when the defender recovers
   if (p.flickDir && sim.time < p.flickUntil && nd.d && nd.dist < 4 && sim.rng.chance(0.5)) { sim.flickCross(p, -p.flickDir); return; }
   if (nd.d && nd.dist < 4.2 && sim.rng.chance(0.14 * (p.sub.ankleBreak / 70))) {
-    // change direction up/down the screen if we're already moving that way, otherwise attack the rim
-    const goingY = Math.abs(p.vel.y) > 3 ? Math.sign(p.vel.y) : 0;
-    const stick = goingY && sim.rng.chance(0.6) ? { x: 0, y: -goingY } : sim.rng.chance(0.3) ? { x: 0, y: sim.rng.chance(0.5) ? 1 : -1 } : toRim;
+    // change direction across the hoop line if already moving across it, otherwise side drive or attack the rim
+    const pr = { x: -toRim.y, y: toRim.x };
+    const lat = p.vel.x * toRim.y - p.vel.y * toRim.x; // -(toRim × vel)
+    const going = Math.abs(lat) > 3 ? -Math.sign(lat) : 0;
+    const stick = going && sim.rng.chance(0.6) ? scale(pr, -going) : sim.rng.chance(0.3) ? scale(pr, sim.rng.chance(0.5) ? 1 : -1) : toRim;
     sim.dribbleMove(p, stick);
     return;
   }

@@ -27,7 +27,7 @@ export class Player {
   lastMove: { id: string; endAt: number; dir: Vec } | null = null;
   receivedAt = -99; dribbledSinceCatch = false; lastScreenAt = -99; screenCdUntil = 0;
   pumpFakeAt = -99; openShotUntil = -99; openShotMult = 1;
-  staggerUntil = 0; screenedUntil = 0; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
+  staggerUntil = 0; screenedUntil = -9; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
   ultCharge = 0;
   box: BoxScore = emptyBox();
   /** AI scratch */
@@ -39,6 +39,7 @@ export class Player {
   anim: { name: string; start: number; release?: number; dur?: number } | null = null;
   movePlantAt = 0.3; movePlanted = false;
   allowOobUntil = 0;
+  bHolding = false; leanedUntil = 0;
   lastBitAt = 0; boxOutHeld = false; bumpedUntil = -9; crashing = false; boxingOut = false; lastBumpAt = -9;
   burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
   /** pump fake picked up the dribble: can only pass or shoot */

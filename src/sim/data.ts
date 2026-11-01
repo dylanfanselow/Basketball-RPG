@@ -36,7 +36,7 @@ export interface Tree { id: string; name: string; shape: string; color: string; 
 
 export interface ShotTypeDef { name: string; base: number[][]; sub: string; windup: number; contestW: number; pts: number; contact?: boolean }
 export interface MoveDef {
-  name: string; dir: 'toward' | 'back' | 'cross' | 'same' | 'neutral' | 'any'; default?: boolean; slow?: boolean; moving?: boolean; plantAt?: number;
+  name: string; dist?: number; dir: 'toward' | 'back' | 'cross' | 'same' | 'neutral' | 'any'; default?: boolean; slow?: boolean; moving?: boolean; plantAt?: number;
   chainFrom?: string; chainWindow?: number; needsClose?: boolean;
   burst: number; burstDir: string; dur: number; ankle: number; stagger: number;
   openShot?: number; pumpFake?: boolean;

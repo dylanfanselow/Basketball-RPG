@@ -4,16 +4,22 @@ import { Vec, dot, cross, len, norm, sub, scale, add, perp, v } from './math';
 
 export type StickDir = 'toward' | 'back' | 'cross' | 'same' | 'neutral';
 
+/** Which side of the player-to-hoop line a vector points to: +1 / -1 (0 if along the line). */
+export const sideOf = (toRim: Vec, d: Vec) => Math.sign(cross(toRim, d));
+
 /**
- * Screen-axis stick classification (side view: court y is up/down on screen).
- * Horizontal stick = toward/away from the hoop. Vertical stick = 'cross' when it opposes the way you're
- * dribbling up/down the screen (a change of direction), otherwise 'same'.
+ * Stick classification relative to the player's line to the hoop: toward / back along it, or
+ * lateral across it. Lateral is 'cross' when it opposes the way you're moving across that line
+ * (a change of direction), otherwise 'same'.
  */
 export function classifyStick(stick: Vec, toRim: Vec, vel: Vec = { x: 0, y: 0 }): StickDir {
   const l = len(stick);
   if (l < 0.3) return 'neutral';
-  if (Math.abs(stick.x) >= Math.abs(stick.y)) return stick.x * (toRim.x || 1) > 0 ? 'toward' : 'back';
-  if (Math.abs(vel.y) > 3 && Math.sign(stick.y) !== Math.sign(vel.y)) return 'cross';
+  const t = dot(stick, toRim) / l;
+  if (t > 0.6) return 'toward';
+  if (t < -0.6) return 'back';
+  const latVel = cross(toRim, vel);
+  if (Math.abs(latVel) > 3 && Math.sign(cross(toRim, stick)) !== Math.sign(latVel)) return 'cross';
   return 'same';
 }
 
@@ -39,10 +45,10 @@ export function resolveMove(p: Player, stick: Vec, toRim: Vec, now: number, defD
   return def ? def[0] : 'hesi';
 }
 
-/** Representative stick directions shown on the HUD stick (screen up/down, toward/away from the hoop). */
+/** The four stick directions shown on the HUD stick: toward the hoop, away, and across the line either side. */
 export function availableMoves(p: Player, toRim: Vec, now: number, defDist: number): { dir: Vec; id: string; chain: boolean }[] {
-  const tx = Math.sign(toRim.x) || 1;
-  const dirs: Vec[] = [v(0, -1), v(0, 1), v(tx, 0), v(-tx, 0)];
+  const pr = perp(toRim);
+  const dirs: Vec[] = [toRim, scale(toRim, -1), pr, scale(pr, -1)];
   // mid-move, show what the next press chains into (it gets buffered and fires as this move ends)
   const saved = p.lastMove;
   if (p.state === 'dribbleMove' && p.move) p.lastMove = { id: p.move.id, endAt: now, dir: p.move.dir };
@@ -54,29 +60,32 @@ export function availableMoves(p: Player, toRim: Vec, now: number, defDist: numb
   return out;
 }
 
-/** World-space burst direction for a move. */
+/**
+ * World-space direction a move travels. The stick only chooses the move and the side; the direction
+ * itself is canonical relative to the hoop, so moves always look and travel the same way.
+ */
 export function moveDirection(id: string, p: Player, stick: Vec, toRim: Vec, defPos: Vec | null): Vec {
   const m = MOVES[id];
-  const s = len(stick) > 0.3 ? norm(stick) : p.face;
+  const pr = perp(toRim);
+  const stickSide = len(stick) > 0.3 ? sideOf(toRim, stick) : 0;
+  const side = stickSide || sideOf(toRim, p.vel) || sideOf(toRim, p.face) || 1;
   switch (m.burstDir) {
     case 'none': return v();
-    case 'toward': return toRim;
     case 'reverseLast': {
-      const last = p.lastMove?.dir ?? s;
-      const lat = cross(toRim, last);
-      // mirror the lateral component, keep going downhill
-      return norm(add(scale(toRim, 0.55), scale(perp(toRim), lat > 0 ? -1 : 1)));
+      const last = p.lastMove?.dir ?? scale(pr, side);
+      return norm(add(scale(toRim, 0.45), scale(pr, -(sideOf(toRim, last) || side))));
     }
     case 'aroundDefender': {
       if (!defPos) return toRim;
-      const side = cross(toRim, sub(defPos, p.p)) > 0 ? -1 : 1;
-      return norm(add(toRim, scale(perp(toRim), side * 0.9)));
+      const s2 = cross(toRim, sub(defPos, p.p)) > 0 ? -1 : 1;
+      return norm(add(toRim, scale(pr, s2 * 0.9)));
     }
-    case 'crossKeep': {
-      // change direction up/down the screen but keep the forward/back momentum
-      const fwd = len(p.vel) > 1 ? p.vel.x / len(p.vel) : 0;
-      return norm(v(fwd * 0.55, Math.sign(s.y || 1)));
-    }
-    default: return s;
+  }
+  switch (m.dir) {
+    case 'toward': case 'neutral': return toRim;
+    case 'back': return scale(toRim, -1);
+    case 'cross': return norm(add(scale(pr, side), scale(toRim, 0.25)));     // across the line, a little downhill
+    case 'same': return norm(add(scale(pr, side), scale(toRim, id === 'lateral' ? 0.15 : 0.1)));
+    default: return norm(add(scale(pr, side), scale(toRim, 0.25)));
   }
 }

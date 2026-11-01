@@ -1,9 +1,9 @@
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
-import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross } from './math';
+import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
 import { ShotEval, evaluateShot, selectShotType, formatEquation } from './shooting';
-import { resolveMove, moveDirection } from './moves';
+import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
@@ -608,7 +608,11 @@ export class GameSim {
     // dribble picked up after a pump fake: planted
     if (hasBall && u.deadDribble) u.want = v();
     // flick-cross: while side-driving (and just after), snapping the stick the other way crosses over, no button
-    if (hasBall && this.live && u.flickDir && this.time < u.flickUntil && inp.move.y * u.flickDir < -0.6) this.flickCross(u, Math.sign(inp.move.y));
+    u.bHolding = hasBall && inp.bHeld && !u.deadDribble;
+    if (hasBall && this.live && u.flickDir && this.time < u.flickUntil) {
+      const lat = cross(norm(sub(this.rim(u.team), u.p)), inp.move);
+      if (lat * u.flickDir < -0.6) this.flickCross(u, Math.sign(lat));
+    }
 
     this.passTarget = hasBall ? this.pickPassTarget(u, inp.move) : null;
     if (!this.live) return;
@@ -628,10 +632,10 @@ export class GameSim {
       // ○: press with the stick pushed = move now; hold ○ and drag = move per flick; quick neutral tap = jab step
       if (inp.b) {
         this.ux.bDownAt = this.time; this.ux.bMoved = false;
-        if (len(inp.move) > 0.6) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; } else this.ux.bNeedNeutral = false;
+        if (len(inp.move) > 0.35) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; } else this.ux.bNeedNeutral = false;
       } else if (inp.bHeld) {
-        if (!this.ux.bNeedNeutral && len(inp.move) > 0.6) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; }
-        else if (this.ux.bNeedNeutral && len(inp.move) < 0.3) this.ux.bNeedNeutral = false;
+        if (!this.ux.bNeedNeutral && len(inp.move) > 0.5) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; }
+        else if (this.ux.bNeedNeutral && len(inp.move) < 0.25) this.ux.bNeedNeutral = false;
       } else if (this.ux.bWasHeld && !this.ux.bMoved && this.time - this.ux.bDownAt < TAP_S) this.dribbleMove(u, v());
     } else {
       this.ux.aPending = false;
@@ -760,7 +764,7 @@ export class GameSim {
     const foul = (!!def.contact || ps.type === 'floater') && ev.contest > 0.3 && this.rng.chance(0.06 + 0.16 * ev.contest);
     const made = this.rng.next() < ev.pct;
     const d = ev.dist;
-    const dur = ps.type === 'dunk' ? 0.16 : 0.42 + d * 0.022;
+    const dur = ps.type === 'dunk' ? 0.16 : 0.6 + d * 0.03; // slower flight = more time to fight for rebounding position
     const jumper = ['mid', 'three', 'deep3'].includes(ps.type);
     // bad enough shots can airball (never touches iron)
     const bad = (ev.pct < 0.25 && ev.contest > 0.4) || d > 30;
@@ -810,13 +814,16 @@ export class GameSim {
   topSpeed(p: Player) { return this.time < p.burstUntil ? p.burstSpeed : p.runSpeed; }
   lastRechargeMsg = -9;
 
-  /** Crossover fired by flicking the stick the other way during a side drive. */
-  flickCross(p: Player, dirY: number) {
+  /** Crossover fired by flicking the stick across the hoop line, the other way, during a side drive. side = the new side (±1). */
+  flickCross(p: Player, side: number) {
     p.flickDir = 0;
+    const toRim = norm(sub(this.rim(p.team), p.p));
+    const pr = perp(toRim);
     if (p.state === 'dribbleMove' && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.state = 'idle'; }
-    p.vel = { x: p.vel.x, y: -dirY * Math.max(4, Math.abs(p.vel.y)) }; // still moving the old way, so the stick reads as a change of direction
-    this.dribbleMove(p, { x: 0, y: dirY });
+    p.vel = scale(pr, -side * Math.max(5, Math.abs(cross(toRim, p.vel)))); // still moving the old way, so the stick reads as a change of direction
+    this.dribbleMove(p, scale(pr, side));
   }
+  lastUserMove: { id: string; dir: Vec; at: number } | null = null;
 
   dribbleMove(p: Player, stick: Vec) {
     if (this.holder() !== p || p.busy) return;
@@ -832,16 +839,20 @@ export class GameSim {
     const id = resolveMove(p, stick, toRim, this.time, nd.dist);
     const m = MOVES[id];
     const dir = moveDirection(id, p, stick, toRim, nd.d?.p ?? null);
-    const towardMult = dot(dir, toRim) > 0.5 ? p.mods.pMult('firstStep') : 1;
-    p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = m.dur;
-    p.anim = { name: `move_${id}`, start: this.time, dur: m.dur };
+    const isCross = id === 'crossover' || id === 'doubleCross';
+    // fixed distance: plant during the sell, then cover `dist` in the burst. Perks/ratings make the burst quicker, not longer.
+    const plantAt = m.plantAt ?? 0.3;
+    const quick = (dot(dir, toRim) > 0.5 ? p.mods.pMult('firstStep') : 1) * (isCross ? p.mods.pMult('crossBurst') : 1) * (0.85 + 0.3 * (p.sub.ballSpeed / 99));
+    const burstT = Math.max(0.1, (m.dur * (1 - plantAt)) / quick);
+    p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = m.dur * plantAt + burstT;
+    p.anim = { name: `move_${id}`, start: this.time, dur: p.stateDur };
+    if (p === this.user) this.lastUserMove = { id, dir, at: this.time };
     p.move = { id, dir, t: 0 };
     p.dribbledSinceCatch = true;
-    const isCross = id === 'crossover' || id === 'doubleCross';
-    p.moveVel = scale(dir, m.burst * towardMult * (isCross ? p.mods.pMult('crossBurst') : 1) * (0.85 + 0.15 * p.ballSpeedMult));
-    p.movePlantAt = m.plantAt ?? 0.3; p.movePlanted = false;
+    p.moveVel = scale(dir, (m.dist ?? m.burst * m.dur * 0.6) / burstT);
+    p.movePlantAt = (m.dur * plantAt) / p.stateDur; p.movePlanted = false;
     if (m.pumpFake) { p.pumpFakeAt = this.time; p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
-    if (id === 'lateral') { p.flickDir = Math.sign(dir.y) || 0; p.flickUntil = this.time + m.dur + 0.3; } else p.flickDir = 0;
+    if (id === 'lateral') { p.flickDir = sideOf(toRim, dir) || 0; p.flickUntil = this.time + p.stateDur + 0.3; } else p.flickDir = 0;
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
     this.emit({ kind: 'move', text: m.name, pid: p.id });
 
@@ -929,7 +940,7 @@ export class GameSim {
       if (p.state === 'shoot' && p.stateT >= p.stateDur) this.releaseShot(p);
       if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove') && p.stateT >= p.stateDur) {
         const wasMove = p.state === 'dribbleMove';
-        if (wasMove && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; }
+        if (wasMove && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.vel = scale(p.vel, 0.3); } // moves end where they're meant to
         p.state = 'idle';
         if (wasMove && p.bufferedMove) {
           const b = p.bufferedMove; p.bufferedMove = null;
@@ -950,7 +961,7 @@ export class GameSim {
         case 'screen': case 'charge': case 'fallen': p.vel = v(); break;
         case 'dribbleMove':
           // sell first (slow down / shift weight), then plant and burst
-          if (p.stateT < p.movePlantAt * p.stateDur) p.vel = scale(p.vel, 0.9);
+          if (p.stateT < p.movePlantAt * p.stateDur) p.vel = v(); // planted while selling
           else { p.vel = p.moveVel; if (!p.movePlanted) { p.movePlanted = true; this.quiet('plant', { move: p.move?.id }, p.id); } }
           break;
         case 'shoot': p.vel = scale(p.vel, 0.985); break;
@@ -1013,6 +1024,10 @@ export class GameSim {
     if (scr.state !== 'screen' || d > 2.6 || this.time < def.screenedUntil + 0.6) return;
     const stun = clamp((0.4 + (scr.sub.screen - def.sub.driveStability) / 99 * 0.8) * scr.mods.pMult('screenStun'), 0.15, 1.4);
     def.screenedUntil = this.time + stun;
+    // knocked back off the screen: same stumble as losing a box-out
+    def.p = this.clampFor(def, add(def.p, scale(norm(sub(def.p, scr.p)), this.rng.range(0.8, 1.4))));
+    def.bumpedUntil = this.time + Math.min(stun, 0.6);
+    def.anim = { name: 'bumped', start: this.time, dur: Math.min(stun, 0.6) };
     scr.lastScreenAt = this.time;
     this.quiet('screenHit', { stun }, scr.id);
     if (!scr.screenHit) {
@@ -1062,6 +1077,7 @@ export class GameSim {
     const toT = norm(sub(target, back.p));
     if (dot(back.want, toT) < 3 && dot(back.vel, toT) < 2) return; // not trying to get past
     back.lastBumpAt = this.time;
+    front.leanedUntil = this.time + 0.5;
     const boxer = front.core.strength + front.sub.rebound / 2 + 25 * front.mods.pAdd('boxOut') + 10;
     const mover = back.core.strength + back.sub.driveStability / 2 + this.rng.range(0, 20);
     const away = norm(sub(back.p, front.p));
@@ -1132,7 +1148,7 @@ export class GameSim {
         if (k < 1 || !st.rim) {
           const end = st.target ?? rim;
           b.p = lerpV(st.a, end, k);
-          const apex = st.ev.type === 'dunk' ? 0 : Math.min(6, 2 + st.ev.dist * 0.18);
+          const apex = st.ev.type === 'dunk' ? 0 : Math.min(9, 3 + st.ev.dist * 0.22);
           b.z = st.z0 + ((st.airball ? 8.6 : 10) - st.z0) * k + apex * Math.sin(Math.PI * k);
         }
         if (k < 1) break;
@@ -1192,6 +1208,8 @@ export class GameSim {
     if (!cands.length) return;
     cands.sort((a, c) => c.score - a.score);
     const g = cands[0].p;
+    g.anim = { name: 'rebound', start: this.time, dur: 0.7 };
+    if (g.z === 0 && g.state !== 'fallen') { g.vz = Math.max(g.vz, 7); g.state = 'jump'; }
     const wasShot = this.wasShotRebound;
     this.wasShotRebound = false;
     if (wasShot) {
