@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, grippingHands, SHOULDER_DROP, UPPER_ARM, FOREARM, HOLD_NEAR } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
@@ -9,27 +9,41 @@ import { makeGame, simToEnd } from './helpers';
 
 describe('arm rig', () => {
   const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  it('lowers the shoulders and keeps ball-holding hands exactly on their keyed spot', () => {
+  const ARMS = [['sF', 'eF', 'hF'], ['sB', 'eB', 'hB']] as const;
+  const isBallClip = (c: (typeof CLIPS)[number]) => c.keys.some((k) => !!k.pose.ball);
+  it('lowers the arm sockets ARM_DROP toward the hips in every clip', () => {
     for (const c of CLIPS) for (const k of c.keys) {
-      const r = rigArms(k.pose);
-      // shoulders slide SHOULDER_DROP toward the hips (straight down when upright, sideways in falls)
-      expect(d(r.sF, k.pose.sF)).toBeCloseTo(SHOULDER_DROP, 5);
+      const r = rigArms(k.pose, isBallClip(c));
+      expect(d(r.sF, k.pose.sF)).toBeCloseTo(ARM_DROP, 5);
       expect(d(r.sF, k.pose.hip)).toBeLessThan(d(k.pose.sF, k.pose.hip));
-      for (const h of ['hF', 'hB'] as const) if (k.pose.ball && d(k.pose[h], k.pose.ball) < HOLD_NEAR) {
-        expect(r[h][0]).toBeCloseTo(k.pose[h][0], 5); expect(r[h][1]).toBeCloseTo(k.pose[h][1], 5);
+    }
+  });
+  it('ball clips (dribbles, moves, shots) move arms rigidly: same keyed lengths and shape', () => {
+    for (const c of CLIPS.filter(isBallClip)) for (const k of c.keys) {
+      const r = rigArms(k.pose, true);
+      for (const [s, e, h] of ARMS) {
+        expect(d(r[s], r[e])).toBeCloseTo(d(k.pose[s], k.pose[e]), 5);
+        expect(d(r[e], r[h])).toBeCloseTo(d(k.pose[e], k.pose[h]), 5);
+        expect(d(r[s], r[h])).toBeCloseTo(d(k.pose[s], k.pose[h]), 5);
       }
     }
   });
-  it('free arms (defense, off-ball) are full length and keep their shape', () => {
-    const def = CLIP.defend.keys[0].pose, r = rigArms(def);
-    for (const [s, e, h] of [['sF', 'eF', 'hF'], ['sB', 'eB', 'hB']] as const) {
+  it('a held ball moves with the hands; a dribbled ball on the floor stays put', () => {
+    for (const pose of [CLIP.hold.keys[0].pose, CLIP.shot_jumper.keys[1].pose]) {
+      const r = rigArms(pose, true);
+      expect(d(r.hF, r.ball!)).toBeCloseTo(d(pose.hF, pose.ball!), 5);
+      expect(d(pose.hF, pose.ball!)).toBeLessThan(HOLD_NEAR);
+    }
+    const low = CLIP.dribble.keys[1].pose, r = rigArms(low, true);
+    expect(r.ball).toEqual(low.ball);
+  });
+  it('free clips (defense, off-ball) get full-length arms with the same shape', () => {
+    expect(isBallClip(CLIP.defend)).toBe(false);
+    const def = CLIP.defend.keys[0].pose, r = rigArms(def, false);
+    for (const [s, e, h] of ARMS) {
       expect(d(r[s], r[e]) + d(r[e], r[h])).toBeGreaterThanOrEqual(UPPER_ARM + FOREARM - 0.01);
       expect(d(r[s], r[h])).toBeGreaterThan(d(def[s], def[h]));
     }
-  });
-  it('reports gripping hands only while the ball is in them', () => {
-    expect(grippingHands(rigArms(CLIP.hold.keys[0].pose)).some(Boolean)).toBe(true);
-    expect(grippingHands(rigArms(CLIP.defend.keys[0].pose))).toEqual([null, null]);
   });
 });
 

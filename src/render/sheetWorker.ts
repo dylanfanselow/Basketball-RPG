@@ -8,7 +8,7 @@ self.onmessage = (e: MessageEvent<{ id: number; heightFt: number; a: Appearance;
   try {
     const sh = buildSheet(heightFt, a, kit);
     const bmp = (sh.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
-    (self as unknown as Worker).postMessage({ id, bmp, index: sh.index, ball: sh.ball, hands: sh.hands, total: sh.total }, [bmp]);
+    (self as unknown as Worker).postMessage({ id, bmp, index: sh.index, ball: sh.ball, total: sh.total }, [bmp]);
   } catch (err) {
     (self as unknown as Worker).postMessage({ id, error: String(err) });
   }

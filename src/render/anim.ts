@@ -417,62 +417,46 @@ export function shotU(c: Clip, now: number, start: number, release: number | und
 }
 
 // ---------- arm rig (applied when a pose is drawn) ----------
-/** How far the shoulders sit below the authored keyframes (toward the hips), in figure units. */
-export const SHOULDER_DROP = 3;
-/** Minimum full arm length for free arms (defense, off-ball, guard arm). Authored keys are often shorter. */
+/** How far the arm sockets sit below the authored keyframes (toward the hips), in figure units. */
+export const ARM_DROP = 6;
+/** How far the jersey/torso top sits below the authored shoulders (less than ARM_DROP so the torso keeps its length). */
+export const TORSO_DROP = 4.5;
+/** Minimum full arm length for free arms (clips without the ball: defense, off-ball). Authored keys are often shorter. */
 export const UPPER_ARM = 15;
 export const FOREARM = 14;
-/** A hand this close to the ball is holding it (keeps its keyed spot); past HOLD_FAR it is a free arm. */
+/** A hand this close to the ball is holding it (the ball moves down with the arms); past HOLD_FAR it doesn't. */
 export const HOLD_NEAR = 8;
 export const HOLD_FAR = 12;
 
-const sub = (a: J, b: J): J => [a[0] - b[0], a[1] - b[1]];
 const dist = (a: J, b: J) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
-/** Two-bone IK: elbow for a shoulder->hand span, bending to `side` (+1 = counter-clockwise of shoulder->hand). */
-function elbowIK(s: J, h: J, l1: number, l2: number, side: number): { e: J; h: J } {
-  let d = dist(s, h);
-  const dir: J = d > 1e-6 ? [(h[0] - s[0]) / d, (h[1] - s[1]) / d] : [0, -1];
-  if (d >= l1 + l2) { // out of reach: stretch straight so the hand still lands on its target
-    return { e: lerpJ(s, h, l1 / (l1 + l2)), h };
-  }
-  d = Math.max(d, Math.abs(l1 - l2) + 1e-3);
-  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
-  const ht = Math.sqrt(Math.max(0, l1 * l1 - a * a));
-  return { e: [s[0] + dir[0] * a - dir[1] * ht * side, s[1] + dir[1] * a + dir[0] * ht * side], h };
+/** Offset `amount` units from the neck toward the hips (straight down when upright, sideways in falls). */
+export function dropToward(p: Pose, amount: number): J {
+  const dx = p.hip[0] - p.neck[0], dy = p.hip[1] - p.neck[1], dl = Math.hypot(dx, dy) || 1;
+  return [(dx / dl) * amount, (dy / dl) * amount];
 }
 
 /**
- * Lowers the shoulders and gives free arms full length. Arms holding the ball keep their hand on it (the elbow is
- * re-solved from the lower shoulder); free arms are the keyed arm scaled up about the shoulder to at least
- * UPPER_ARM + FOREARM (same shape and bend). The two blend smoothly by the hand's distance to the ball.
+ * Lowers the arms by ARM_DROP. Ball clips (any key has the ball: dribbles, moves, shots, holds) move each arm
+ * rigidly, keeping its keyed shape and length; a ball held in the hands moves with them. Free clips (no ball:
+ * defense, off-ball) scale each arm about the lowered shoulder to at least UPPER_ARM + FOREARM, same shape and bend.
  */
-export function rigArms(p: Pose): Pose {
+export function rigArms(p: Pose, ballClip: boolean): Pose {
   const out: Pose = { ...p };
-  const dn = sub(p.hip, p.neck), dl = Math.hypot(dn[0], dn[1]) || 1;
-  const drop: J = [(dn[0] / dl) * SHOULDER_DROP, (dn[1] / dl) * SHOULDER_DROP];
+  const [dx, dy] = dropToward(p, ARM_DROP);
+  const move = (j: J): J => [j[0] + dx, j[1] + dy];
   for (const [sk, ek, hk] of [['sF', 'eF', 'hF'], ['sB', 'eB', 'hB']] as const) {
     const s0 = p[sk], e0 = p[ek], h0 = p[hk];
-    const s1: J = [s0[0] + drop[0], s0[1] + drop[1]];
-    const l1 = dist(s0, e0), l2 = dist(e0, h0);
-    const dir = sub(h0, s0);
-    // free arm: the keyed arm scaled up about the shoulder (same shape and bend, full length)
-    const f = Math.max(1, Math.min(2, (UPPER_ARM + FOREARM) / Math.max(1e-6, l1 + l2)));
-    const free: J = [s1[0] + dir[0] * f, s1[1] + dir[1] * f];
-    let w = 1;
-    if (p.ball) { const t = Math.max(0, Math.min(1, (dist(h0, p.ball) - HOLD_NEAR) / (HOLD_FAR - HOLD_NEAR))); w = t * t * (3 - 2 * t); }
-    const hand = lerpJ(h0, free, w);
-    const cross = dir[0] * (e0[1] - s0[1]) - dir[1] * (e0[0] - s0[0]);
-    const side = Math.abs(cross) > 1e-3 ? Math.sign(cross) : -1;
-    const g = 1 + (f - 1) * w;
-    const r = elbowIK(s1, hand, l1 * g, l2 * g, side);
-    out[sk] = s1; out[ek] = r.e; out[hk] = r.h;
+    const s1 = move(s0);
+    const f = ballClip ? 1 : Math.max(1, Math.min(2, (UPPER_ARM + FOREARM) / Math.max(1e-6, dist(s0, e0) + dist(e0, h0))));
+    out[sk] = s1;
+    out[ek] = [s1[0] + (e0[0] - s0[0]) * f, s1[1] + (e0[1] - s0[1]) * f];
+    out[hk] = [s1[0] + (h0[0] - s0[0]) * f, s1[1] + (h0[1] - s0[1]) * f];
+  }
+  if (p.ball) {
+    const t = Math.max(0, Math.min(1, (Math.min(dist(p.hF, p.ball), dist(p.hB, p.ball)) - HOLD_NEAR) / (HOLD_FAR - HOLD_NEAR)));
+    const hold = 1 - t * t * (3 - 2 * t);
+    out.ball = [p.ball[0] + dx * hold, p.ball[1] + dy * hold];
   }
   return out;
-}
-
-/** [front, back] hands (after rigArms) gripping the ball, null when that hand is off it: for finger overlays. */
-export function grippingHands(p: Pose): [J | null, J | null] {
-  const grip = (h: J) => (p.ball && dist(h, p.ball) < HOLD_NEAR ? h : null);
-  return [grip(p.hF), grip(p.hB)];
 }
