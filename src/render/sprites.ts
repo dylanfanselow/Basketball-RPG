@@ -8,7 +8,7 @@
  * Sprites are drawn at ART x detail and shown at PIXEL / ART scale; the game camera runs at 1.5x, so each art
  * pixel ends up PIXEL device pixels: same size on screen as before, 1.5x the detail.
  */
-import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP } from './anim';
+import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP, OPEN_HIP } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
 
 export const ART = 1.5;
@@ -145,7 +145,8 @@ function digits(ctx: Ctx, x: number, y: number, n: number, c: string, outline: s
 }
 
 // ---------- body ----------
-function drawLeg(ctx: Ctx, hip: J, knee: J, foot: J, a: Appearance, kit: Kit, far: boolean, sleeve: boolean, pad: boolean, k: number) {
+/** front: draw a front-facing shoe toed out to that side (open stance) instead of the profile shoe. */
+function drawLeg(ctx: Ctx, hip: J, knee: J, foot: J, a: Appearance, kit: Kit, far: boolean, sleeve: boolean, pad: boolean, k: number, front?: 1 | -1) {
   const S = skinRamp(a, far);
   const ankle: J = [foot[0] - 1 * k, foot[1] - 3.2 * k];
   // thigh: quad belly up top, narrowing into the knee
@@ -171,8 +172,20 @@ function drawLeg(ctx: Ctx, hip: J, knee: J, foot: J, a: Appearance, kit: Kit, fa
     const from = a.socks === 'high' ? 0.4 : a.socks === 'crew' ? 0.7 : 0.9;
     tube(ctx, knee, ankle, (t) => (3.9 - 1.7 * t + 1.0 * bump(t, 0.3, 0.35)) * k + 0.3, ramp(a.sockColor, far), from, 1, false);
   }
-  // high-top shoe pointing forward (+x): upper, toe box, sole, accent stripe, laces
   const Sh = ramp(a.shoe, far);
+  if (front) {
+    // front-facing high-top, toed slightly out: upper with laces, rounded toe, white sole, accent swoosh
+    const fx = foot[0] + front * 0.8 * k, fy = foot[1];
+    const g = ctx.createLinearGradient(fx - 4 * k, fy - 6 * k, fx + 4 * k, fy);
+    g.addColorStop(0, Sh.hi); g.addColorStop(0.55, Sh.base); g.addColorStop(1, Sh.sh);
+    poly(ctx, [[fx - 3.4 * k, fy - 6.4 * k], [fx + 3.4 * k, fy - 6.4 * k], [fx + 4.4 * k + front * 0.8 * k, fy - 1 * k], [fx - 4.4 * k + front * 0.8 * k, fy - 1 * k]], g);
+    poly(ctx, [[fx - 4.8 * k + front * 0.8 * k, fy - 1.4 * k], [fx + 4.8 * k + front * 0.8 * k, fy - 1.4 * k], [fx + 4.6 * k + front * 0.8 * k, fy + 0.4], [fx - 4.6 * k + front * 0.8 * k, fy + 0.4]], far ? '#c9c9c9' : '#f2f2f2');
+    stroke(ctx, [[fx - 1.2 * k, fy - 5.8 * k], [fx - 1.2 * k, fy - 2.6 * k]], 1, Sh.deep, 0.7);
+    stroke(ctx, [[fx + 1.2 * k, fy - 5.8 * k], [fx + 1.2 * k, fy - 2.6 * k]], 1, Sh.deep, 0.7);
+    stroke(ctx, [[fx + front * 1.6 * k, fy - 4.4 * k], [fx + front * 4 * k, fy - 2.2 * k]], 1.2 * k, shade(a.shoeAccent, far ? 0.8 : 1));
+    return;
+  }
+  // high-top shoe pointing forward (+x): upper, toe box, sole, accent stripe, laces
   const fx = foot[0], fy = foot[1];
   const g = ctx.createLinearGradient(fx, fy - 6 * k, fx, fy);
   g.addColorStop(0, Sh.hi); g.addColorStop(0.5, Sh.base); g.addColorStop(1, Sh.sh);
@@ -357,6 +370,7 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
  * lowered by TORSO_DROP. ox/oy = the frame's top-left in the sheet. Returns the ball offset (art px, origin-relative, +y up).
  */
 export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip = false): J | null {
+  if (keyed.open) { drawOpen(ctx, ox, oy, keyed, H, a, kit); return null; }
   const pose = rigArms(keyed, ballClip);
   const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
   const u = H / 100;
@@ -376,6 +390,48 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: numbe
   drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, k);
   return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+}
+
+/**
+ * Open defensive stance (Pose.open): chest to the camera with the number centered, legs from both hip sockets with
+ * the knees out, arms spread to both sides, head in profile toward his man (+x).
+ */
+function drawOpen(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit) {
+  const pose = rigArms(keyed, false);
+  const u = H / 100, k = H / 99;
+  const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
+  const p = Object.fromEntries(Object.entries(pose).map(([key, v]) => [key, Array.isArray(v) ? T(v as J) : v])) as unknown as Pose;
+  const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
+  const topF = T([keyed.sF[0] + tdx, keyed.sF[1] + tdy]), topB = T([keyed.sB[0] + tdx, keyed.sB[1] + tdy]);
+  const hipF = T([keyed.hip[0] + OPEN_HIP, keyed.hip[1]]), hipB = T([keyed.hip[0] - OPEN_HIP, keyed.hip[1]]);
+  const S = skinRamp(a), J0 = ramp(kit.jersey), Tr = ramp(kit.trim);
+  // legs (far-side leg slightly darker), then the shorts' crotch so the two shorts tubes read as one garment
+  drawLeg(ctx, hipB, p.kB, p.fB, a, kit, true, a.legSleeve === 'both', false, k, -1);
+  drawLeg(ctx, hipF, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad, k, 1);
+  const P0 = ramp(kit.shorts);
+  poly(ctx, [[hipB[0] - 2 * k, hipB[1] - 1 * k], [hipF[0] + 2 * k, hipF[1] - 1 * k], [(hipF[0] + hipB[0]) / 2 + 3 * k, hipF[1] + 10 * k], [(hipF[0] + hipB[0]) / 2 - 3 * k, hipF[1] + 10 * k]], P0.base);
+  // neck under the jersey, then the torso seen from the front
+  const top: J = [(topF[0] + topB[0]) / 2, (topF[1] + topB[1]) / 2], hipC = T(keyed.hip);
+  tube(ctx, top, [p.head[0] - 1.5 * k, p.head[1] + 8 * k], () => 3.8 * k, S);
+  const half = Math.abs(topF[0] - topB[0]) / 2, L = hipC[1] - top[1];
+  // shoulders -> broad chest -> taper to the waist (a touch wider than the hips so the shorts sit under it)
+  const w = (t: number) => (t < 0.08 ? half * 0.8 : t < 0.2 ? half * 1.12 : t < 0.45 ? half * 1.14 : half * (1.14 - (t - 0.45) * 0.36));
+  const side = (sg: number): J[] => Array.from({ length: 13 }, (_, i) => { const t = i / 12; return [top[0] + (hipC[0] - top[0]) * t + sg * w(t), top[1] + L * t] as J; });
+  const grad = ctx.createLinearGradient(top[0] - half, top[1], top[0] + half, hipC[1]);
+  grad.addColorStop(0, J0.sh); grad.addColorStop(0.3, J0.base); grad.addColorStop(0.55, J0.hi); grad.addColorStop(0.85, J0.base); grad.addColorStop(1, J0.deep);
+  poly(ctx, [...side(1), ...side(-1).reverse()], grad);
+  // armhole trims, v-neck, side shading, number, waistband
+  for (const sg of [-1, 1]) stroke(ctx, [[top[0] + sg * half * 0.62, top[1]], [top[0] + sg * half * 0.98, top[1] + 6 * k], [top[0] + sg * half * 0.9, top[1] + 10 * k]], 1.2, Tr.base);
+  poly(ctx, [[top[0] - 2.6 * k, top[1]], [top[0] + 2.6 * k, top[1]], [top[0], top[1] + 4.6 * k]], S.base);
+  stroke(ctx, [[top[0] - 2.8 * k, top[1]], [top[0], top[1] + 4.8 * k], [top[0] + 2.8 * k, top[1]]], 1.4, Tr.base);
+  if (kit.number >= 0) digits(ctx, top[0], top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
+  const wb = lerp2(top, hipC, 0.97);
+  poly(ctx, [[wb[0] - half * 0.9, wb[1]], [wb[0] + half * 0.9, wb[1]], [wb[0] + half * 0.92, wb[1] + 4 * k], [wb[0] - half * 0.92, wb[1] + 4 * k]], P0.base);
+  stroke(ctx, [[wb[0] - half * 0.9, wb[1] + 0.5], [wb[0] + half * 0.9, wb[1] + 0.5]], 1.2, Tr.base);
+  // head turned to his man, then both arms spread (far arm a touch darker)
+  drawHead(ctx, p.head[0], p.head[1], a, k, false);
+  drawArm(ctx, p.sB, p.eB, p.hB, a, kit, true, a.armSleeve === 'both', k);
+  drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, a.armSleeve !== 'none', k);
 }
 
 /**
