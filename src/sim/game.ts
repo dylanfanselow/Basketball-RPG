@@ -62,7 +62,9 @@ export type BallState =
       /** short pass: bends toward the receiver every tick and almost never gets picked */
       magnet?: boolean;
       /** interception multiplier from the pass length (short ≪ medium < long) */
-      riskMult?: number }
+      riskMult?: number;
+      /** overhead lead pass over the defense (transition / to a runner): high arc, only catchable near the ends */
+      overhead?: boolean }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
       /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
       airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number } }
@@ -71,10 +73,27 @@ export type BallState =
       noGrabUntil?: number;
       /** the player who just lost it can't grab it back before noGrabPidUntil */
       noGrabPid?: string; noGrabPidUntil?: number }
-  | { kind: 'dead' };
+  /** dead ball; with vel/vz it is still falling/bouncing/rolling (through the net after a make), nobody can grab it */
+  | { kind: 'dead'; vel?: Vec; vz?: number };
 
 /** quiet events drive audio/animation only and never show in the on-screen feed */
 export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1; pid?: string; big?: boolean; good?: boolean; quiet?: boolean; data?: Record<string, any> }
+
+/** Longest a held screen lasts (s). */
+export const SCREEN_HOLD_MAX = 6;
+
+/**
+ * How hard a screen lands: stun (s) and knock-back (ft). Grows with the screener's screen rating and strength over
+ * the defender's, and with a less mobile defender; Brick Wall / Screen Assassin (screenStun) and Screen Navigator
+ * (screenStunTaken, screenKnock) scale it.
+ */
+export function screenImpact(scr: Player, def: Player): { stun: number; knock: number } {
+  const str = (scr.core.strength - def.core.strength) / 99;
+  const base = 0.6 + (scr.sub.screen - def.sub.driveStability) / 99 * 0.8 + str * 0.9 - (def.core.mobility - 60) / 99 * 0.7;
+  const stun = clamp(base * scr.mods.pMult('screenStun') * def.mods.pMult('screenStunTaken'), 0.3, 2.4);
+  const knock = clamp(1.0 + str * 2.0 + (stun - 0.6) * 0.6, 0.6, 2.8) * def.mods.pMult('screenKnock');
+  return { stun, knock };
+}
 
 export class GameSim {
   cfg: GameConfig;
@@ -335,7 +354,7 @@ export class GameSim {
     this.runner.reset();
     this.transitionUntil = 0;
     const ballAt = { ...this.ball.p };
-    this.ball.st = { kind: 'dead' };
+    if (this.ball.st.kind !== 'dead' || this.ball.st.vz === undefined) this.ball.st = { kind: 'dead' };
     if (this.cfg.mode !== 'practice') this.startInbound(next, delay, where, ballAt);
   }
 
@@ -362,7 +381,10 @@ export class GameSim {
       recv = hc(side, 82, 9);
       const bigs = crew.filter((p) => p.role === '5' || p.role === '4');
       inbounder = (bigs.length ? bigs : crew).slice().sort((a, b) => dist(a.p, spot) - dist(b.p, spot))[0];
-      this.ball.p = { ...rimPos(-side as Side) }; this.ball.z = 9; // drops through the net
+      const rimAt = rimPos(-side as Side);
+      if (this.ball.st.kind !== 'dead' || this.ball.st.vz === undefined || dist(this.ball.p, rimAt) > 4) {
+        this.ball.p = { ...rimAt }; this.ball.z = 8.4; this.ball.st = { kind: 'dead', vel: v(0, 0), vz: -6 }; // drops through the net
+      }
     } else {
       const x = where === 'mid' ? 47 : clamp(ballAt.x, 6, 88);
       const top = where === 'mid' ? true : ballAt.y < 25;
@@ -380,8 +402,9 @@ export class GameSim {
     const s = this.inb;
     if (!s) return;
     const b = this.ball;
-    if (b.z > 0.4) { b.z = Math.max(0.4, b.z - 20 * (1 / 60)); }
-    if (!s.hasBall && dist(s.inbounder.p, b.p) < 2.6 && b.z < 5) s.hasBall = true;
+    // he picks it up once it has come down (off the bounce), not out of the net
+    const vz = b.st.kind === 'dead' ? b.st.vz : undefined;
+    if (!s.hasBall && dist(s.inbounder.p, b.p) < 2.6 && (vz !== undefined ? vz >= 0 && b.z < 3 : b.z < 5)) { s.hasBall = true; b.st = { kind: 'dead' }; }
     if (s.hasBall) { b.p = add(s.inbounder.p, scale(s.inbounder.face, 0.6)); b.z = 6.2; }
     const atSpot = dist(s.inbounder.p, s.spot) < 1.3;
     const recvReady = dist(s.receiver.p, s.recv) < 3.5 || this.time - s.start > 4.5;
@@ -431,23 +454,35 @@ export class GameSim {
   callPlay() {
     // "feature me equally" (testing): rotate who the set is run for across all five, including the user
     const off = this.offense();
-    let id = PlayRunner.pick(this.rng, this.cfg.allowedPlays, this.runner.lastPlayId);
+    const allowed = (pid: string) => !this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid);
+    const isIso = (pid: string) => PLAYS[pid].tags.includes('iso');
+    // iso sets are only for designated stars; everything else is the regular playbook
+    const regular = Object.keys(PLAYS).filter((pid) => !isIso(pid) && allowed(pid));
+    const isos = Object.keys(PLAYS).filter((pid) => isIso(pid) && allowed(pid) && pid !== this.runner.lastPlayId);
+    let id = PlayRunner.pick(this.rng, regular.length ? regular : this.cfg.allowedPlays, this.runner.lastPlayId);
     let swap: [string, string] | null = null;
     let focus: Player | null = null;
+    const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
     if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length === 5) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
       focus = off.find((p) => p.id === fid) ?? null;
-      if (focus) {
-        const fits = Object.keys(PLAYS).filter((pid) => PLAYS[pid].focus === focus!.role && pid !== this.runner.lastPlayId && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid)));
+      if (focus && focus.star && isos.length && this.rng.chance(0.4)) isoFor(focus);
+      else if (focus) {
+        const fits = regular.filter((pid) => PLAYS[pid].focus === focus!.role && pid !== this.runner.lastPlayId);
         if (fits.length) id = this.rng.pick(fits);
         else if (focus === this.user && PLAYS[id].focus) swap = [PLAYS[id].focus!, focus.role]; // run any set for the user by swapping roles
         else if (focus !== this.user) focus = null;
       }
+    } else {
+      // stars get their number called: about 30% of sets (half in the clutch) are an iso for one of them
+      const stars = off.filter((p) => p.star);
+      if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : 0.3)) isoFor(this.rng.pick(stars));
     }
     this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
-    this.emit({ kind: 'play', text: `Coach: "${this.runner.play!.name}"`, team: this.possession });
+    const fp = focus as Player | null;
+    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"` : `Coach: "${this.runner.play!.name}"`, team: this.possession });
   }
 
   // ---------- main tick ----------
@@ -732,6 +767,8 @@ export class GameSim {
       if (onO) {
         if (inp.y) { u.callForBallUntil = this.time + 1.4; this.emit({ kind: 'call', text: 'Calling for the ball…', pid: u.id }); }
         if (inp.b && !shotUp) this.setScreen(u);
+        // hold ○ = keep screening until released (capped so a stuck button can't freeze you)
+        if (inp.bHeld && u.state === 'screen') u.stateDur = Math.max(u.stateDur, Math.min(u.stateT + 0.15, SCREEN_HOLD_MAX));
         if (inp.a && this.ball.st.kind === 'loose') this.jump(u, 1);
       } else {
         if (inp.a) this.jump(u, 1);
@@ -746,10 +783,13 @@ export class GameSim {
   ux = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
   ux2 = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
 
-  /** Pump fake: picks up the dribble (if still dribbling), ball up, defenders may bite. Repeatable. */
+  /**
+   * Pump fake: ball up, defenders may bite. Repeatable. It picks up the dribble once you've dribbled; a fake on the
+   * catch (before the first dribble) keeps it, so you can still put it on the floor and attack the closeout.
+   */
   pumpFake(p: Player) {
     if (this.holder() !== p || p.busy) return;
-    if (!p.deadDribble) { p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
+    if (!p.deadDribble && p.dribbledSinceCatch) { p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
     p.pumpFakeAt = this.time;
     p.anim = { name: 'pumpfake', start: this.time, dur: PUMP_FAKE_S };
     p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = PUMP_FAKE_S; p.moveVel = v(); p.move = { id: 'pumpfake', dir: v(), t: 0 };
@@ -912,18 +952,32 @@ export class GameSim {
     }
   }
 
+  /**
+   * Where a pass from -> to would go and whether it's within the passer's safe range. Long balls to a teammate running
+   * the floor (in transition, or cutting to the rim with space) go overhead: led further, safe range x1.35.
+   */
+  passSafety(from: Player, to: Player): { lead: Vec; d: number; safe: number; overhead: boolean; ok: boolean } {
+    const toRim = norm(sub(this.rim(to.team), to.p));
+    const raw = dist(from.p, to.p);
+    const running = dot(to.vel, toRim) > 8;
+    const overhead = raw > 18 && (this.inTransition(from.team) || (running && this.openness(to) > 0.35));
+    const lead = clampToCourt(add(to.p, scale(to.vel, overhead ? Math.min(1.2, raw / from.passSpeed * 0.9 + 0.2) : 0.35)));
+    const d = dist(from.p, lead);
+    const safe = from.safePassDist * (overhead ? 1.35 : 1);
+    return { lead, d, safe, overhead, ok: d <= safe };
+  }
+
   pass(from: Player, to: Player) {
     if (this.holder() !== from || from.busy) return;
-    const lead = clampToCourt(add(to.p, scale(to.vel, 0.35)));
-    const d = dist(from.p, lead);
+    const ps = this.passSafety(from, to);
+    const { lead, d, safe, overhead } = ps;
     const driving = len(from.vel) > 9 || from.state === 'dribbleMove';
     const speed = from.passSpeed * (driving ? from.mods.pMult('drivePass') : 1);
     const lob = from.mods.pAdd('lob') > 0 && dist(lead, this.rim(from.team)) < 10 && len(to.vel) > 4;
-    const dur = (d / speed) * (lob ? 1.6 : 1) + 0.06;
-    const safe = from.safePassDist;
-    const magnet = !lob && d <= safe * 0.6;
-    const riskMult = magnet ? 0.15 : d <= safe ? 0.6 : 1.8 + (d - safe) / 20;
-    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult };
+    const dur = (d / speed) * (lob ? 1.6 : overhead ? 1.15 : 1) + 0.06;
+    const magnet = !lob && !overhead && d <= safe * 0.6;
+    const riskMult = magnet ? 0.15 : d <= safe ? (overhead ? 0.5 : 0.6) : 1.8 + (d - safe) / 20;
+    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead };
     this.lastPasser = from; this.lastPassAt = this.time;
     from.deadDribble = false;
     this.quiet('pass', { lob, dist: d }, from.id);
@@ -1005,7 +1059,8 @@ export class GameSim {
 
   setScreen(p: Player) {
     if (p.busy || this.time < p.screenCdUntil || this.holder() === p) return;
-    p.state = 'screen'; p.stateT = 0; p.stateDur = 1.1; p.want = v(); p.vel = v();
+    // AI screens hold 1.6 s; the user's screen lasts while ○ is held (see handleUser), at least 1.1 s
+    p.state = 'screen'; p.stateT = 0; p.stateDur = p.isUser ? 1.1 : 1.6; p.want = v(); p.vel = v();
     p.screenCdUntil = this.time + 1.6 * p.mods.pMult('screenCd');
     p.screenHit = false;
   }
@@ -1113,7 +1168,8 @@ export class GameSim {
           break;
         case 'shoot': p.vel = scale(p.vel, 0.985); break;
         default: {
-          const accel = p.z > 0 ? 1.5 : p === this.user && p.isUser ? 14 : 9;
+          // knocked back (screens, box-outs): low grip, the push slides him back instead of stopping at once
+          const accel = p.z > 0 ? 1.5 : this.time < p.bumpedUntil ? 3 : p === this.user && p.isUser ? 14 : 9;
           p.vel = add(p.vel, scale(sub(want, p.vel), Math.min(1, dt * accel)));
         }
       }
@@ -1169,12 +1225,15 @@ export class GameSim {
 
   private screenContact(scr: Player, def: Player, d: number) {
     if (scr.state !== 'screen' || d > 2.6 || this.time < def.screenedUntil + 0.6) return;
-    const stun = clamp((0.4 + (scr.sub.screen - def.sub.driveStability) / 99 * 0.8) * scr.mods.pMult('screenStun'), 0.15, 1.4);
+    const { stun, knock } = screenImpact(scr, def);
     def.screenedUntil = this.time + stun;
-    // knocked back off the screen: same stumble as losing a box-out
-    def.p = this.clampFor(def, add(def.p, scale(norm(sub(def.p, scr.p)), this.rng.range(0.8, 1.4))));
-    def.bumpedUntil = this.time + Math.min(stun, 0.6);
-    def.anim = { name: 'bumped', start: this.time, dur: Math.min(stun, 0.6) };
+    // knocked back off the screen (same stumble as losing a box-out): part of it at once, the rest as a slide
+    const away = norm(sub(def.p, scr.p));
+    const kd = knock * this.rng.range(0.85, 1.15);
+    def.p = this.clampFor(def, add(def.p, scale(away, kd * 0.4)));
+    def.vel = scale(away, kd * 0.6 / 0.3);
+    def.bumpedUntil = this.time + stun;
+    def.anim = { name: 'bumped', start: this.time, dur: stun };
     scr.lastScreenAt = this.time;
     this.quiet('screenHit', { stun }, scr.id);
     if (!scr.screenHit) {
@@ -1246,6 +1305,21 @@ export class GameSim {
     const b = this.ball;
     const st = b.st;
     switch (st.kind) {
+      case 'dead': {
+        if (st.vz === undefined || !st.vel) break;
+        // falling out of the net: gravity, a few bounces, then it rolls to a stop
+        b.p = add(b.p, scale(st.vel, dt));
+        st.vz -= 32 * dt; b.z += st.vz * dt;
+        if (b.z <= 0.4) {
+          b.z = 0.4; const impact = Math.abs(st.vz); st.vz = impact * 0.58;
+          if (impact > 2.5) this.quiet('bounce', { v: impact });
+          if (st.vz < 1.6) st.vz = 0;
+          st.vel = scale(st.vel, 0.8);
+        }
+        if (b.z <= 0.4 && st.vz === 0) st.vel = scale(st.vel, Math.max(0, 1 - dt * 1.5));
+        b.p = v(clamp(b.p.x, -4, 98), clamp(b.p.y, -3, 53));
+        break;
+      }
       case 'held': {
         const h = st.holder;
         b.p = add(h.p, scale(h.face, 0.9));
@@ -1258,7 +1332,7 @@ export class GameSim {
         // short passes home in on the receiver (re-aim at where he is now)
         if (st.magnet && st.to.state !== 'fallen') st.b = lerpV(st.b, add(st.to.p, scale(st.to.vel, 0.05)), Math.min(1, dt * 12));
         b.p = lerpV(st.a, st.b, k);
-        b.z = 4.5 + (st.lob ? 7 : 1.2) * Math.sin(Math.PI * k);
+        b.z = 4.5 + (st.lob ? 7 : st.overhead ? 5.8 : 1.2) * Math.sin(Math.PI * k);
         const passLen = dist(st.a, st.b);
         for (const d of this.opp(st.from.team)) {
           if (st.checked.has(d.id) || d.state === 'fallen') continue;
@@ -1394,6 +1468,10 @@ export class GameSim {
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
     }, s.id);
     if (st.made) {
+      // the ball drops out of the bottom of the net with a little drift toward the baseline, then bounces and rolls
+      const along = this.side(team), wob = ((this.time * 7.31) % 1) - 0.5; // cosmetic: no sim RNG
+      this.ball.p = { ...this.rim(team) }; this.ball.z = Math.min(this.ball.z, 8.4);
+      this.ball.st = { kind: 'dead', vel: v(along * (1.2 + Math.abs(wob)), wob * 2.4), vz: -7 };
       const before = t.score - this.teams[1 - team].score;
       const val = this.scoreValue(st.pts);
       t.score += val;
@@ -1420,7 +1498,7 @@ export class GameSim {
         return;
       }
       if (st.foul) { this.emit({ kind: 'foul', text: 'And-one!', team, big: true }); this.freeThrows(s, 1); }
-      this.deadBall((1 - team) as 0 | 1, 1.1, 'baseline');
+      this.deadBall((1 - team) as 0 | 1, this.cfg.mode === 'practice' ? 1.8 : 1.1, 'baseline');
     } else if (st.foul && this.cfg.oneOnOne) {
       this.emit({ kind: 'foul', text: 'Foul — ball back', team });
       this.deadBall(team, 1.1);

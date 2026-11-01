@@ -41,6 +41,15 @@ export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOn
     mine.push(user); // rookie: on the bench, rotation decides
   }
 
+  // your player earns star status (iso sets) with the coach's trust and a top-two rating on the team
+  if (mode === 'career' && c.trust.coach >= 85) {
+    const better = mine.filter((p) => p !== user && p.overall > user.overall).length;
+    if (better < 2) {
+      user.star = true;
+      const others = mine.filter((p) => p.star && p !== user).sort((a, b) => a.overall - b.overall);
+      if (others.length >= 2) others[0].star = false;
+    }
+  }
   const sim = new GameSim({
     mode: mode === 'practice' ? 'practice' : 'game',
     quarterLen: app.settings.quarterLen,

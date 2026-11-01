@@ -1,5 +1,5 @@
 {
-  "_doc": "Half-court sets. Spots are named in court.ts (top, lw, rw, lc, rc, le, re, lb, rb, ls/rs slots, rim, fl/fr free-throw-line corners, lwing_deep...). 'screen:N' = go set a screen on role N's defender. act: move | screen | cut | handle | hold. 'options' = roles the ball handler should look for in this phase (utility bonus). 'ball' = which role the play wants holding the ball at the start of the phase (the AI passes there). 'focus' = the role the set is built for; the coach can run it for another player by swapping roles.",
+  "_doc": "Half-court sets. Spots are named in court.ts (top, lw, rw, lc, rc, le, re, lb, rb, ls/rs slots, rim, fl/fr free-throw-line corners, lwing_deep...). 'screen:N' = go set a screen on role N's defender. act: move | screen | cut | handle | hold. 'options' = roles the ball handler should look for in this phase (utility bonus). 'ball' = which role the play wants holding the ball at the start of the phase (the AI passes there). 'focus' = the role the set is built for; the coach can run it for another player by swapping roles. Tag 'iso' = a clear-out for a designated star (Player.star); the coach only calls these for stars.",
   "highPnR": {
     "name": "High Pick & Roll", "focus": "1", "tags": ["pnr"],
     "phases": [
@@ -64,6 +64,20 @@
       { "dur": 2.0, "ball": "1", "roles": { "1": { "to": "ls", "act": "handle" }, "2": { "to": "lw", "act": "move" }, "3": { "to": "lc", "act": "move" }, "4": { "to": "fl", "act": "move" }, "5": { "to": "rb", "act": "move" } } },
       { "dur": 2.0, "roles": { "4": { "to": "le", "act": "move" }, "5": { "to": "rim", "act": "cut" } }, "options": ["4", "3", "5"] },
       { "dur": 2.0, "roles": { "1": { "to": "rs", "act": "move" }, "2": { "to": "top", "act": "move" } }, "options": ["2", "1", "3", "4", "5"] }
+    ]
+  },
+  "isoTop": {
+    "name": "Iso (top)", "focus": "1", "tags": ["iso"],
+    "phases": [
+      { "dur": 1.8, "ball": "1", "roles": { "1": { "to": "top", "act": "handle" }, "2": { "to": "lc", "act": "move" }, "3": { "to": "rc", "act": "move" }, "4": { "to": "lw", "act": "move" }, "5": { "to": "rdk", "act": "move" } } },
+      { "dur": 5.5, "roles": { "1": { "to": "top", "act": "handle" }, "4": { "to": "lc", "act": "hold" }, "2": { "to": "lw", "act": "hold" } }, "options": ["2", "3", "4"] }
+    ]
+  },
+  "isoWing": {
+    "name": "Iso (wing clear-out)", "focus": "3", "tags": ["iso"],
+    "phases": [
+      { "dur": 2.0, "ball": "3", "roles": { "1": { "to": "top", "act": "move" }, "2": { "to": "lc", "act": "move" }, "3": { "to": "rw", "act": "move" }, "4": { "to": "lw", "act": "move" }, "5": { "to": "ldk", "act": "move" } } },
+      { "dur": 5.5, "roles": { "3": { "to": "rw", "act": "handle" }, "1": { "to": "ls", "act": "hold" }, "4": { "to": "lw", "act": "hold" } }, "options": ["1", "2", "4"] }
     ]
   }
 }

@@ -19,6 +19,7 @@ describe('pump fake → Step-Through', () => {
     u.p = hc(1, 18, 0);
     d.p = add(u.p, scale(norm(sub(rimPos(1), u.p)), 4));
     d.p.y += 0.6; // a little to one side so the stride angle is defined
+    u.dribbledSinceCatch = true; // live dribble (a fake on the catch keeps the dribble)
     return { g, u, d };
   };
   const fake = (g: GameSim) => { g.update(1 / 60, { ...idle, a: true, aHeld: true }); g.update(1 / 60, idle); };

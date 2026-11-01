@@ -33,12 +33,26 @@ const AI_PERKS: Record<Position, string[]> = {
 export function generateRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size = 10): Player[] {
   const real = REAL_ROSTERS[team.id];
   if (real && real.length >= 5) {
-    return real.map((e, i) => new Player({
+    const out = real.map((e, i) => new Player({
       id: `${team.id}-${i}`, name: e.name, team: teamIdx, pos: e.pos, core: { ...e.core }, nodes: e.perks,
       number: e.number, skin: e.appearance.skin ?? 2, height: e.heightFt, appearance: withDefaults(e.appearance),
     }));
+    markStars(out, real.map((e) => e.tier));
+    return out;
   }
-  return generatedRoster(team, teamIdx, strength, size);
+  const gen = generatedRoster(team, teamIdx, strength, size);
+  markStars(gen);
+  return gen;
+}
+
+/**
+ * Designated stars (iso sets get run for them): roster tier 4-5 players, at most two, best first; a team with none
+ * gets its single best player. Generated rosters (no tiers): the best overall.
+ */
+export function markStars(players: Player[], tiers?: number[]) {
+  const rank = players.map((p, i) => ({ p, tier: tiers?.[i] ?? 0 })).sort((a, b) => b.tier - a.tier || b.p.overall - a.p.overall);
+  const picked = rank.filter((r) => r.tier >= 4).slice(0, 2);
+  for (const r of picked.length ? picked : rank.slice(0, 1)) r.p.star = true;
 }
 
 export function generatedRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size = 10): Player[] {

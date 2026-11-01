@@ -18,10 +18,11 @@ const R = 0.75; // rim radius, ft
 export function pickSeq(made: boolean, jumper: boolean, contest: number, rng: Rng): RimSeq {
   if (made) {
     const r = rng.next();
-    if (jumper && contest < 0.25 && r < 0.55) return 'swish';
-    if (r < 0.72) return jumper ? 'kissIn' : 'glassIn';
-    if (r < 0.86) return 'rimIn';
-    if (r < 0.95) return 'rollIn';
+    // plenty of swishes on clean looks, but makes also kiss the rim, bounce around and roll in
+    if (jumper && contest < 0.25 && r < 0.45) return 'swish';
+    if (r < 0.64) return jumper ? 'kissIn' : 'glassIn';
+    if (r < 0.82) return 'rimIn';
+    if (r < 0.94) return 'rollIn';
     return jumper ? 'swish' : 'glassIn';
   }
   return rng.pick(['rattleOut', 'rattleOut', 'inOut', 'backIron', 'frontRim', 'boardRim', 'highBounce'] as RimSeq[]);
@@ -40,7 +41,9 @@ function roll(t0: number, dur: number, a0: number, a1: number, n = 6): RimKey[] 
 export function buildPath(seq: RimSeq, rng: Rng): RimPath {
   const side = rng.chance(0.5) ? 1 : -1;
   const net: RimKey = { t: 0, dx: 0, dy: 0, z: 9.6, sound: 'net' };
-  const done = (keys: RimKey[], made: boolean, exit?: RimPath['exit']): RimPath => ({ seq, made, keys, exit });
+  // made: the ball keeps going down through the net and out of the bottom of it
+  const done = (keys: RimKey[], made: boolean, exit?: RimPath['exit']): RimPath =>
+    ({ seq, made, keys: made ? [...keys, { t: keys[keys.length - 1].t + 0.09, dx: 0.05, dy: 0, z: 8.4 }] : keys, exit });
   switch (seq) {
     case 'swish': return done([{ t: 0, dx: -0.1, dy: 0, z: 10.2 }, { ...net, t: 0.08 }], true);
     case 'kissIn': return done([{ t: 0, dx: -R, dy: 0, z: 10.15, sound: 'tick' }, { ...net, t: 0.14 }], true);

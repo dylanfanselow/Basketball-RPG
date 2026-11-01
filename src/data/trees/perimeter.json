@@ -8,6 +8,7 @@
     { "id": "pd_contest", "name": "Hand in Face", "type": "passive", "x": 74, "y": 68, "prereqs": ["pd_root"], "cost": 1, "desc": "Your jumper contests x1.15.", "effects": [{ "t": "contestOut", "types": ["mid", "three", "deep3"], "mult": 1.15 }] },
     { "id": "pd_close", "name": "Closeout King", "type": "passive", "x": 78, "y": 44, "prereqs": ["pd_contest"], "cost": 1, "desc": "Defensive speed +6, sprint cooldown x0.85.", "effects": [{ "t": "sub", "key": "speed", "add": 6 }, { "t": "param", "key": "burstCd", "mult": 0.85 }] },
     { "id": "pd_charge", "name": "Charge Magnet", "type": "ability", "x": 50, "y": 50, "prereqs": ["pd_root"], "cost": 1, "desc": "Feet get set faster when taking a charge, and the success window is bigger.", "effects": [{ "t": "param", "key": "chargeSet", "mult": 0.6 }, { "t": "sub", "key": "charge", "add": 10 }] },
+    { "id": "pd_navigate", "name": "Screen Navigator", "type": "passive", "x": 80, "y": 20, "prereqs": ["pd_close"], "cost": 1, "desc": "Fight over screens: screen stun on you x0.55, knock-back x0.6.", "effects": [{ "t": "param", "key": "screenStunTaken", "mult": 0.55 }, { "t": "param", "key": "screenKnock", "mult": 0.6 }] },
     { "id": "pd_flop", "name": "Floor Burn", "type": "passive", "x": 50, "y": 22, "prereqs": ["pd_charge", "pd_lanes"], "cost": 2, "desc": "Charges and steals give extra ult charge and coach trust.", "effects": [{ "t": "param", "key": "hustleBonus", "mult": 1.5 }] }
   ]
 }

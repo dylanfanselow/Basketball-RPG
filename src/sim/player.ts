@@ -16,6 +16,8 @@ export interface PlayerInit {
 export class Player {
   id: string; name: string; team: 0 | 1; pos: Position; role: string; number: number; skin: number;
   height: number; isUser: boolean; appearance: Appearance;
+  /** designated star: the coach calls iso sets for him */
+  star = false;
   core: CoreStats; nodes: Set<string>; extra: ModSource[];
   mods: ModSet; sub!: SubRatings;
 
@@ -25,7 +27,7 @@ export class Player {
   /** current dribble move */
   move: { id: string; dir: Vec; t: number } | null = null;
   lastMove: { id: string; endAt: number; dir: Vec } | null = null;
-  receivedAt = -99; dribbledSinceCatch = false; lastScreenAt = -99; screenCdUntil = 0;
+  receivedAt = -99; dribbledSinceCatch = false; catchReadFor = -99; lastScreenAt = -99; screenCdUntil = 0;
   pumpFakeAt = -99; openShotUntil = -99; openShotMult = 1;
   staggerUntil = 0; screenedUntil = -9; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
   ultCharge = 0;
@@ -91,7 +93,9 @@ export class Player {
   get ballSpeedMult() { return rmap(this.sub.ballSpeed, 0.82, 0.97); }
   get jumpVel() { return rmap(this.sub.jump, 11, 16.5); }
   get passSpeed() { return rmap(this.sub.passSpeed, 55, 90); }
-  get safePassDist() { return rmap(this.sub.passRange, 22, 52); }
+  get safePassDist() { return rmap(this.sub.passRange, 30, 60); }
+  /** simple overall: mean of the five core stats */
+  get overall() { const c = this.core; return (c.shooting + c.finishing + c.strength + c.mobility + c.playmaking) / 5; }
   get reach() { return this.height + 2.1; }
   get busy() { return this.state === 'shoot' || this.state === 'fallen' || this.state === 'stagger'; }
 }

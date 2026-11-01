@@ -109,6 +109,11 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   poly(ctx, [[cx - L(10), hipY], [cx + L(10), hipY], [cx + L(9.5), shinTop + 1], [cx - L(9.5), shinTop + 1]], lap);
   // torso / outfit
   const shY = hipY - L(28);
+  // long hair falls behind the head and shoulders: drawn before the body so the neck and collar stay in front of it
+  if (c.longHair) {
+    const hy0 = shY - L(12), back = shade(c.longHair, 0.85);
+    poly(ctx, [[cx - L(8.5), hy0 - L(5)], [cx + L(8.5), hy0 - L(5)], [cx + L(9.5), shY + L(2)], [cx + L(4), shY + L(4)], [cx - L(4), shY + L(4)], [cx - L(9.5), shY + L(2)]], back);
+  }
   const g = ctx.createLinearGradient(cx - L(12), shY, cx + L(12), hipY);
   g.addColorStop(0, hi); g.addColorStop(0.4, col); g.addColorStop(1, sh);
   const wide = c.outfit === 'fur' ? 3 : 0;
@@ -158,7 +163,6 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   }
   // long hair behind the head
   const hy = shY - L(12);
-  if (c.longHair) poly(ctx, [[cx - L(8.5), hy - L(5)], [cx + L(8.5), hy - L(5)], [cx + L(10), shY + L(8)], [cx - L(10), shY + L(8)]], shade(c.longHair, 0.85));
   line(ctx, [[cx, shY + L(1)], [cx, shY - L(5)]], L(6), shade(skin, 0.9)); // neck
   frontHead(ctx, cx, hy, c.a, k, { open: frame === 1, shades: frame === 3 ? null : c.shades });
   if (c.longHair) { poly(ctx, [[cx - L(8), hy - L(4)], [cx + L(8), hy - L(4)], [cx + L(7.5), hy - L(8)], [cx, hy - L(10.5)], [cx - L(7.5), hy - L(8)]], c.longHair); line(ctx, [[cx - L(8), hy - L(3)], [cx - L(9), hy + L(10)]], L(2.4), c.longHair); line(ctx, [[cx + L(8), hy - L(3)], [cx + L(9), hy + L(10)]], L(2.4), c.longHair); }

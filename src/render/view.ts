@@ -96,6 +96,7 @@ export function drawHoops(scene: Phaser.Scene) {
   const back = scene.add.graphics().setDepth(sy(23.5));
   const rimG = scene.add.graphics().setDepth(sy(25.4));
   const shotClocks: { x: number; y: number }[] = [];
+  const nets: NetHoop[] = [];
   for (const left of [true, false]) {
     const dir = left ? 1 : -1;
     const bx = left ? 0 : COURT_L;
@@ -150,20 +151,10 @@ export function drawHoops(scene: Phaser.Scene) {
       g.strokePath();
     };
     back.lineStyle(3, 0xb8430e, 1); ell(back, Math.PI, Math.PI * 2);
-    // net: tapered mesh hanging from the rim, strands crossing; back strands dimmer
-    const NET = 2.0 * S * 0.62, nbw = rw * 0.55, N = 8;
-    const top = (t: number): [number, number] => [rx - rw + 2 * rw * t, ry];
-    const bot = (t: number): [number, number] => [rx - nbw + 2 * nbw * t, ry + NET];
-    const mid = (t: number, f: number): [number, number] => { const a = top(t), b = bot(t); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; };
-    back.lineStyle(1.2, 0xc8ccd8, 0.55);
-    for (let k = 0; k <= N; k++) { const t = k / N; back.lineBetween(top(t)[0], ry - rh * 0.35, bot(t)[0], ry + NET); }
-    rimG.lineStyle(1.5, 0xffffff, 0.9);
-    for (let k = 0; k < N; k++) {
-      const a = k / N, b = (k + 1) / N;
-      rimG.lineBetween(...top(a), ...mid(b, 0.5)); rimG.lineBetween(...top(b), ...mid(a, 0.5));
-      rimG.lineBetween(...mid(a, 0.5), ...bot(b)); rimG.lineBetween(...mid(b, 0.5), ...bot(a));
-    }
-    rimG.lineBetween(...bot(0), ...bot(1));
+    // net: its own layers (back strands behind the ball, front mesh in front) so it can swish; see drawNet
+    const net: NetHoop = { rx, ry, rw, rh, back: scene.add.graphics().setDepth(sy(23.5) + 0.1), front: scene.add.graphics().setDepth(sy(25.4) - 0.1), drawn: '' };
+    drawNet(net, 0, 0, 0);
+    nets.push(net);
     rimG.lineStyle(3.5, 0xff6a1a, 1); ell(rimG, 0, Math.PI);
     rimG.lineStyle(1.2, 0xffb070, 1); ell(rimG, 0.35, Math.PI - 0.35, rw - 1, rh - 1, -1);
     // bracket: a short plate from the rim's back edge to the board
@@ -171,5 +162,42 @@ export function drawHoops(scene: Phaser.Scene) {
     rimG.fillStyle(0xd85a14, 1); rimG.fillRect(Math.min(edge, sx(boardX)), ry - 2, Math.abs(sx(boardX) - edge), 4);
     rimG.fillStyle(0x8a3a10, 1); rimG.fillRect(Math.min(edge, sx(boardX)), ry + 2, Math.abs(sx(boardX) - edge), 2);
   }
-  return { back, rimG, shotClocks };
+  return { back, rimG, shotClocks, nets };
+}
+
+/** One hoop's net: rim center/size in screen px and the two graphics layers it is drawn on. */
+export interface NetHoop { rx: number; ry: number; rw: number; rh: number; back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics; drawn: string }
+
+/**
+ * Tapered mesh hanging from the rim. stretch (0..1): pulled down by the ball going through (longer, bottom opens up);
+ * sway (-1..1): the bottom swinging sideways afterwards; bulge (0..1): mesh pushed out around the ball at that depth.
+ */
+export function drawNet(n: NetHoop, stretch: number, sway: number, bulge: number, bulgeAt = 0.5) {
+  const key = `${stretch.toFixed(2)}|${sway.toFixed(2)}|${bulge.toFixed(2)}|${bulgeAt.toFixed(2)}`;
+  if (key === n.drawn) return;
+  n.drawn = key;
+  const { rx, ry, rw, rh, back, front } = n;
+  back.clear(); front.clear();
+  const NET = 2.0 * S * 0.62 * (1 + 0.45 * stretch), nbw = rw * (0.55 + 0.35 * stretch), N = 8;
+  const swayPx = sway * 6;
+  // strand point at t (0..1 across), f (0..1 down): taper from the rim to the bottom ring, bulging around the ball
+  const at = (t: number, f: number): [number, number] => {
+    const w = rw + (nbw - rw) * f;
+    const push = 1 + bulge * 0.5 * Math.max(0, 1 - Math.abs(f - bulgeAt) / 0.45);
+    return [rx + (t * 2 - 1) * w * push + swayPx * f * f, ry + NET * f];
+  };
+  back.lineStyle(1.2, 0xc8ccd8, 0.55);
+  for (let k = 0; k <= N; k++) {
+    const t = k / N;
+    back.beginPath(); back.moveTo(at(t, 0)[0], ry - rh * 0.35);
+    for (const f of [0.35, 0.7, 1]) back.lineTo(...at(t, f));
+    back.strokePath();
+  }
+  front.lineStyle(1.5, 0xffffff, 0.9);
+  for (let k = 0; k < N; k++) {
+    const a = k / N, b = (k + 1) / N;
+    front.lineBetween(...at(a, 0), ...at(b, 0.5)); front.lineBetween(...at(b, 0), ...at(a, 0.5));
+    front.lineBetween(...at(a, 0.5), ...at(b, 1)); front.lineBetween(...at(b, 0.5), ...at(a, 1));
+  }
+  front.lineBetween(...at(0, 1), ...at(1, 1));
 }

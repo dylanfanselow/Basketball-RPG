@@ -5,7 +5,7 @@ import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
-import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
+import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
 import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
 import type { Appearance } from '../render/appearance';
@@ -45,6 +45,14 @@ const angPage = (key: string, n: number) => `${key}_ang${n}`;
 /** Sideline layout (court feet): benches toward each baseline, courtside celebrity rows between them and the table. */
 const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
 const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
+
+/** Knock-back clip progress: short hits play straight through; long ones stumble, stay off balance, then recover. */
+function bumpedU(e: number, dur: number): number {
+  if (dur <= 0.6) return e / Math.max(0.2, dur);
+  if (e < 0.33) return (e / 0.33) * 0.6;
+  if (e > dur - 0.28) return 0.6 + 0.4 * Math.min(1, (e - (dur - 0.28)) / 0.28);
+  return 0.6 - 0.08 * Math.abs(Math.sin(e * 7)); // wobbling, trying to get his feet back
+}
 
 export class GameScene extends Phaser.Scene {
   sim!: GameSim;
@@ -118,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     const [t0, t1] = this.sim.teams;
     drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
     const hoops = drawHoops(this);
+    this.nets = hoops.nets; this.netHits = [{ at: -9999, amp: 0 }, { at: -9999, amp: 0 }];
     this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
     this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed);
     this.buildSideline();
@@ -393,6 +402,7 @@ export class GameScene extends Phaser.Scene {
       case 'catch': sfx.catch(pan); break;
       case 'release': sfx.release(pan); break;
       case 'net':
+        this.netHits[sim.ball.p.x < 47 ? 0 : 1] = { at: this.time.now, amp: d.type === 'dunk' ? 1.1 : d.swish ? 1 : 0.75 };
         if (d.type === 'dunk') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
         else { d.swish ? sfx.swish(pan, true) : sfx.swish(pan, false); if (d.pts === 3) sfx.cheer(d.team === 0 ? 0.75 : 0.3); }
         break;
@@ -476,7 +486,7 @@ export class GameScene extends Phaser.Scene {
       if (p.state === 'shoot' || inPost) return { clip, u: shotU(c, now, a.start, p.state === 'shoot' ? a.release : a.release) };
     }
     if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
-    if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? (now - a.start) / Math.max(0.2, a.dur ?? 0.5) : 0.5 };
+    if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? bumpedU(now - a.start, a.dur ?? 0.5) : 0.5 };
     if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
     if (p.boxingOut) return { clip: now < p.leanedUntil ? 'boxoutPush' : 'boxout', u: now * 1.6 };
     if (p.state === 'stagger' || now < p.staggerUntil) return { clip: 'stagger', u: now * 2 };
@@ -623,12 +633,31 @@ export class GameScene extends Phaser.Scene {
     this.ballG.fillStyle(0xff9a4a, 1); this.ballG.fillRect(bx - 5, by - 6, 4, 3);
     this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 8, by, bx + 8, by); this.ballG.lineBetween(bx, by - 8, bx, by + 8);
 
+    this.updateNets();
     this.crowd.clutch = sim.clutch;
     this.crowd.update(cam.scrollX, VIEW_W);
     this.renderSideline();
     for (const t of this.shotClockTexts) t.setText(String(Math.max(0, Math.ceil(sim.shotClock))));
     this.drawOverlays();
     this.drawHud();
+  }
+
+  nets: NetHoop[] = [];
+  netHits: { at: number; amp: number }[] = [];
+  /** Nets: bulge around the ball while it goes through, then stretch, snap back and sway. */
+  updateNets() {
+    const b = this.sim.ball, now = this.time.now;
+    this.nets.forEach((n, i) => {
+      let stretch = 0, sway = 0, bulge = 0, bulgeAt = 0.5;
+      const inside = (b.st.kind === 'shot' || b.st.kind === 'dead') && Math.abs(sx(b.p.x) - n.rx) < n.rw * 1.3 && Math.abs(b.p.y - 25) < 1.4 && b.z > 7.9 && b.z < 10.1;
+      if (inside) { bulge = 1; bulgeAt = Math.min(1, Math.max(0, (10 - b.z) / 1.5)); stretch = 0.25 + 0.5 * bulgeAt; }
+      const h = this.netHits[i], e = (now - h.at) / 1000;
+      if (e >= 0 && e < 1.6) {
+        stretch = Math.max(stretch, h.amp * Math.exp(-e / 0.16) * (e < 0.06 ? e / 0.06 : 1));
+        sway = h.amp * Math.sin(e * 17) * Math.exp(-e / 0.35);
+      }
+      drawNet(n, stretch, sway, bulge, bulgeAt);
+    });
   }
 
   /** Scorer's table, officials, coaches and team benches along the far sideline. */
@@ -769,8 +798,10 @@ export class GameScene extends Phaser.Scene {
       for (const t of sim.iconTargets) {
         const m = sim.players.find((q) => q.id === t.pid); if (!m) continue;
         const x = sx(m.p.x), y = sy(m.p.y, m.z + m.height + 1.6);
-        gt.fillStyle(0x000000, 0.75); gt.fillCircle(x, y, 15);
-        gt.lineStyle(3, GL[t.btn][1], 1); gt.strokeCircle(x, y, 15);
+        // beyond your safe passing range: the badge flashes red
+        const unsafe = !!u && !sim.passSafety(u, m).ok, flash = unsafe && Math.floor(this.time.now / 160) % 2 === 0;
+        gt.fillStyle(flash ? 0x7a0000 : 0x000000, 0.75); gt.fillCircle(x, y, 15);
+        gt.lineStyle(3, unsafe ? 0xff2a2a : GL[t.btn][1], 1); gt.strokeCircle(x, y, 15);
         this.label(x, y, GL[t.btn][0], '#' + GL[t.btn][1].toString(16).padStart(6, '0'), 18);
       }
     }
@@ -871,8 +902,10 @@ export class GameScene extends Phaser.Scene {
       const t = sim.passTarget;
       if (t) {
         const px = sx(t.p.x), py = sy(t.p.y, t.z + t.height + 1.3);
-        gt.fillStyle(0x000000, 0.6); gt.fillCircle(px, py, 9);
-        gt.fillStyle(0xffe600, 1); gt.fillCircle(px, py, 6);
+        // out of your safe passing range: the dot flashes red
+        const unsafe = !sim.passSafety(u, t).ok, flash = unsafe && Math.floor(this.time.now / 160) % 2 === 0;
+        gt.fillStyle(0x000000, 0.6); gt.fillCircle(px, py, unsafe ? 11 : 9);
+        gt.fillStyle(unsafe ? (flash ? 0xff1a1a : 0x8a0000) : 0xffe600, 1); gt.fillCircle(px, py, unsafe ? 8 : 6);
       }
     }
     // chase-down lock-on reticle

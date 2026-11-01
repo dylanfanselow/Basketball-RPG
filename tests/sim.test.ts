@@ -11,6 +11,7 @@ import { newCareer, applyGameResult, spendStatPoint } from '../src/career/career
 import { canUnlock, unlock } from '../src/career/skilltree';
 import { makeGame, simToEnd } from './helpers';
 import { emptyBox } from '../src/sim/player';
+import { screenImpact } from '../src/sim/game';
 
 const core = (n = 60) => ({ shooting: n, finishing: n, strength: n, mobility: n, playmaking: n });
 const mk = (o: Partial<ConstructorParameters<typeof Player>[0]> = {}) => new Player({ id: 'p', name: 'P', team: 0, pos: 'SG', core: core(), ...o });
@@ -261,6 +262,7 @@ describe('playtest round 4 mechanics', () => {
   });
   it('a pump fake picks up the dribble: no moving or dribbling, but you can still pass or shoot', () => {
     const { g, u } = practice();
+    u.dribbledSinceCatch = true; // already dribbling (a fake on the catch keeps the dribble, see below)
     g.update(1 / 60, { ...idle, a: true, aHeld: true }); g.update(1 / 60, idle); // quick ✕ tap = pump fake
     for (let i = 0; i < 30; i++) g.update(1 / 60, idle);
     expect(u.deadDribble).toBe(true);
@@ -333,6 +335,7 @@ describe('tap vs hold controls', () => {
   };
   it('✕ tap = pump fake (repeatable, no shot); ✕ hold = shot', () => {
     const { g, u } = setup();
+    u.dribbledSinceCatch = true;
     for (let k = 0; k < 3; k++) { g.update(1 / 60, { ...idle, a: true, aHeld: true }); g.update(1 / 60, idle); for (let i = 0; i < 30; i++) g.update(1 / 60, idle); }
     expect(g.events.filter((e) => e.text === 'Pump Fake').length).toBe(3);
     expect(g.events.some((e) => e.kind === 'release')).toBe(false);
@@ -483,5 +486,93 @@ describe('basket-relative moves, fixed distances, screens, shot hang time', () =
     let grabbed = false;
     for (let i = 0; i < 60 * 6 && !grabbed; i++) { g.update(1 / 60, idle); grabbed = g.players.some((p) => p.anim?.name === 'rebound'); }
     expect(grabbed || g.events.some((e) => e.kind === 'net')).toBe(true);
+  });
+});
+
+describe('round 20: net, screens, passing reads, stars', () => {
+  const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+  it('after a make the ball drops out of the net, bounces on the floor, and the inbounder picks it up there', () => {
+    const g = makeGame({ seed: 4 });
+    let checked = false;
+    for (let i = 0; i < 60 * 400 && !checked; i++) {
+      const before = g.events.length;
+      g.update(1 / 60, idle);
+      if (!g.events.slice(before).some((e) => e.kind === 'net') || !g.inb) continue;
+      const st = g.ball.st;
+      expect(st.kind === 'dead' && st.vz !== undefined).toBe(true); // still falling, not parked in the net
+      const rim = g.ball.p;
+      let minZ = 99, bounces = 0;
+      for (let k = 0; k < 60 && !g.inb.hasBall; k++) {
+        const b2 = g.events.length; g.update(1 / 60, idle);
+        minZ = Math.min(minZ, g.ball.z); bounces += g.events.slice(b2).filter((e) => e.kind === 'bounce').length;
+      }
+      expect(minZ).toBeLessThan(0.6);
+      expect(bounces).toBeGreaterThan(0);
+      expect(Math.hypot(g.ball.p.x - rim.x, g.ball.p.y - rim.y)).toBeLessThan(6); // stays near the hoop
+      checked = true;
+    }
+    expect(checked).toBe(true);
+  });
+  it('screens: stronger screener / less mobile defender = longer stun and knock-back; perks scale it', () => {
+    const scr = mk({ core: { shooting: 50, finishing: 50, strength: 85, mobility: 50, playmaking: 50 } });
+    const weak = mk({ core: { shooting: 50, finishing: 50, strength: 45, mobility: 45, playmaking: 50 } });
+    const strong = mk({ core: { shooting: 50, finishing: 50, strength: 85, mobility: 80, playmaking: 50 } });
+    const a = screenImpact(scr, weak), b = screenImpact(scr, strong);
+    expect(a.stun).toBeGreaterThan(b.stun + 0.4);
+    expect(a.knock).toBeGreaterThan(b.knock);
+    const wall = mk({ core: scr.core, nodes: ['sc_root'] });
+    expect(screenImpact(wall, strong).stun).toBeGreaterThan(b.stun * 1.25);
+    const nav = mk({ core: weak.core, nodes: ['pd_root', 'pd_contest', 'pd_close', 'pd_navigate'] });
+    expect(screenImpact(scr, nav).stun).toBeLessThan(a.stun * 0.7);
+    expect(screenImpact(scr, nav).knock).toBeLessThan(a.knock * 0.7);
+  });
+  it('holding ○ keeps the screen up until it is released', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'C', core: core(70), isUser: true });
+    const g = makeGame({ seed: 3 }, u);
+    g.inbound(0);
+    for (let i = 0; i < 60 && g.holder() === u; i++) g.update(1 / 60, idle);
+    g.freezeAI = true; // nobody shoots or turns it over while we hold
+    g.update(1 / 60, { ...idle, b: true, bHeld: true });
+    expect(u.state).toBe('screen');
+    for (let i = 0; i < 150; i++) g.update(1 / 60, { ...idle, bHeld: true });
+    expect(u.state).toBe('screen'); // 2.5 s in, still holding
+    for (let i = 0; i < 20; i++) g.update(1 / 60, idle);
+    expect(u.state).not.toBe('screen');
+  });
+  it('safe passing range is longer, and overhead passes to runners in transition go further still', () => {
+    const p = mk({ core: core(60) });
+    expect(p.safePassDist).toBeGreaterThan(40);
+    const g = makeGame({ seed: 5 });
+    g.inbound(0);
+    const [a, b] = g.offense();
+    a.p = hc(1, 80, 0); b.p = hc(1, 30, 10); b.vel = { x: 0, y: 0 };
+    for (const d of g.defense()) d.p = hc(1, 90, 20);
+    const half = g.passSafety(a, b);
+    expect(half.overhead).toBe(false);
+    b.vel = scale(norm(sub(rimPos(1), b.p)), 18);
+    g.transitionUntil = g.time + 5; g.possession = a.team;
+    const fast = g.passSafety(a, b);
+    expect(fast.overhead).toBe(true);
+    expect(fast.safe).toBeGreaterThan(half.safe * 1.3);
+  });
+  it('a pump fake on the catch keeps the dribble; after dribbling it picks it up', () => {
+    const g = makeGame({ seed: 6 });
+    g.inbound(0);
+    const p = g.offense()[1];
+    g.giveBall(p);
+    g.pumpFake(p);
+    expect(p.deadDribble).toBe(false);
+    p.state = 'idle'; p.dribbledSinceCatch = true;
+    g.pumpFake(p);
+    expect(p.deadDribble).toBe(true);
+  });
+  it('every real roster has one or two designated stars, and the coach calls isos for them', () => {
+    const g = makeGame({ seed: 8 });
+    for (const t of g.teams) { const n = t.roster.filter((p) => p.star).length; expect(n).toBeGreaterThanOrEqual(1); expect(n).toBeLessThanOrEqual(2); }
+    simToEnd(g);
+    const isos = g.events.filter((e) => e.kind === 'play' && e.text.includes('Iso for')).length;
+    const plays = g.events.filter((e) => e.kind === 'play').length;
+    expect(isos).toBeGreaterThan(plays * 0.1);
+    expect(isos).toBeLessThan(plays * 0.5);
   });
 });

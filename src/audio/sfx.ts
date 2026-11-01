@@ -151,15 +151,24 @@ class Sfx {
     this.noiseHit({ type: 'bandpass', f: 900, f2: 2400, q: 1.5, peak: 0.07, a: 0.04, d: 0.2, pan });
   }
 
-  /** Big, satisfying net swish: a crisp snap, the net sweep, and the ball's whump through the cords. */
+  /**
+   * Net sound. big = a clean SWISH (nothing but net): loud and crisp — a sharp cord snap, a long airy "shhhh" sweeping
+   * up through the net, a cord rattle tail and the ball's soft whump. Otherwise a quieter net brush (rim-ins, kisses).
+   */
   swish(pan = 0, big = true) {
     if (!this.ok()) return;
-    const k = big ? 1 : 0.6;
-    this.noiseHit({ type: 'bandpass', f: 6500, q: 2.5, peak: 0.55 * k, a: 0.002, d: 0.04, pan });                       // snap
-    this.noiseHit({ type: 'highpass', f: 2200, f2: 7500, peak: 0.6 * k, a: 0.025, d: 0.45, pan: pan - 0.15 });          // net sweep (L)
-    this.noiseHit({ type: 'highpass', f: 2600, f2: 8000, peak: 0.45 * k, a: 0.035, d: 0.42, pan: pan + 0.15, at: 0.012 }); // net sweep (R)
-    this.noiseHit({ type: 'bandpass', f: 4200, q: 4, peak: 0.25 * k, a: 0.05, d: 0.32, pan, at: 0.05 });                // cord rustle
-    this.tone({ f: 150, f2: 70, peak: 0.28 * k, a: 0.01, d: 0.16, pan });                                               // whump
+    if (!big) {
+      this.noiseHit({ type: 'highpass', f: 2400, f2: 6500, peak: 0.32, a: 0.02, d: 0.3, pan });
+      this.noiseHit({ type: 'bandpass', f: 4200, q: 4, peak: 0.14, a: 0.04, d: 0.22, pan, at: 0.04 });
+      this.tone({ f: 140, f2: 70, peak: 0.16, a: 0.01, d: 0.12, pan });
+      return;
+    }
+    this.noiseHit({ type: 'bandpass', f: 7000, q: 3, peak: 1.0, a: 0.0015, d: 0.05, pan });                              // snap
+    this.noiseHit({ type: 'bandpass', f: 1800, f2: 7800, q: 0.8, peak: 1.1, a: 0.03, d: 0.55, pan: pan - 0.2 });         // the "shhh" sweeping up (L)
+    this.noiseHit({ type: 'bandpass', f: 2100, f2: 8500, q: 0.8, peak: 0.95, a: 0.04, d: 0.6, pan: pan + 0.2, at: 0.015 }); // (R)
+    this.noiseHit({ type: 'highpass', f: 5000, f2: 9000, peak: 0.55, a: 0.06, d: 0.75, pan, at: 0.05 });                  // airy tail
+    for (let i = 0; i < 4; i++) this.noiseHit({ type: 'bandpass', f: rand(3500, 5200), q: 6, peak: 0.28 / (i + 1), a: 0.004, d: 0.07, pan: pan + rand(-0.2, 0.2), at: 0.08 + i * 0.06 }); // cord rattle
+    this.tone({ f: 160, f2: 70, peak: 0.4, a: 0.008, d: 0.18, pan });                                                     // whump
   }
   /** Light rim contact during a roll or rattle. */
   rimTick(pan = 0) {
@@ -185,7 +194,7 @@ class Sfx {
   rimIn(pan = 0) {
     if (!this.ok()) return;
     this.metal(pan, 0.18, 0.35);
-    this.swish(pan);
+    this.swish(pan, false);
   }
   clank(pan = 0, board = false) {
     if (!this.ok()) return;
