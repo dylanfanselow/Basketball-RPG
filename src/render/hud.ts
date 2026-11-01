@@ -4,7 +4,7 @@ import type { InputMapper } from '../input/input';
 import { availableMoves } from '../sim/moves';
 import { MOVES } from '../sim/data';
 import { norm, sub, len } from '../sim/math';
-import { Sheet, FRAME_W, FRAME_H, frameRect } from './sprites';
+import { Sheet, frameRect, ART } from './sprites';
 import { CLIP, frameAt } from './anim';
 
 const FONT = '"Courier New", monospace';
@@ -89,7 +89,7 @@ export class ControllerHud {
       const idx = sheet.index[cl.name].start + frameAt(cl, u);
       const r = frameRect(idx);
       // zoom on the upper body + arms (the part that shows the action); legs fall off the bottom of the circle
-      const crop = { x: 8, y: 22, w: 48, h: 72 };
+      const crop = { x: 8 * ART, y: 22 * ART, w: 48 * ART, h: 72 * ART };
       ctx.drawImage(sheet.canvas, r.x + crop.x, r.y + crop.y, crop.w, crop.h, 0, -2, ICON, ICON * (crop.h / crop.w));
     }
     ctx.restore();

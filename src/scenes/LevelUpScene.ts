@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { title, FONT, COL } from './ui';
+import { title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { CORE_STATS, CoreStat, STAT_INFLUENCE } from '../sim/data';
 import { spendStatPoint, STAT_POINT_VALUE } from '../career/career';
@@ -18,6 +18,7 @@ export class LevelUpScene extends Phaser.Scene {
   inp!: InputMapper; idx = 0; rows: Phaser.GameObjects.Text[] = []; g!: Phaser.GameObjects.Graphics; info!: Phaser.GameObjects.Text; pts!: Phaser.GameObjects.Text;
   constructor() { super('LevelUp'); }
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
     title(this, 'LEVEL UP', `Each point = +${STAT_POINT_VALUE} to a core stat. Then spend perk points in the trees.  ✕/Enter: add · ○/Esc: back`);

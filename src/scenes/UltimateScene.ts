@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { FONT, COL, title } from './ui';
+import { FONT, COL, title, hiRes } from './ui';
 import { app } from '../state';
 import { ULTIMATES } from '../sim/data';
 
@@ -8,6 +8,7 @@ export class UltimateScene extends Phaser.Scene {
   inp!: InputMapper; idx = 0; body!: Phaser.GameObjects.Text; g!: Phaser.GameObjects.Graphics;
   constructor() { super('Ultimate'); }
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor('#07070c');
     this.inp = new InputMapper(this);
     this.g = this.add.graphics();

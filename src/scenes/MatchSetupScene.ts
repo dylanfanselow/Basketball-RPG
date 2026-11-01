@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { FONT, COL, title } from './ui';
+import { FONT, COL, title, hiRes } from './ui';
 import { TEAMS } from '../sim/data';
 import { REAL_ROSTERS } from '../career/roster';
 import { app } from '../state';
@@ -19,6 +19,7 @@ export class MatchSetupScene extends Phaser.Scene {
   constructor() { super('MatchSetup'); }
 
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
     try {

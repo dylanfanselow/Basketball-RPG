@@ -9,6 +9,8 @@
 - Post-up moves (Strength currently only affects contact, screens, box-outs).
 
 ## Known gaps / polish
+- Courtside celebrities and bench players only have seated / standing / phone / shock frames (no walking).
+- Players are still strictly side-on (no 3/4 turn); faces are small at game zoom.
 - 1v1: benches/coaches still show both full rosters; no "clear the ball" rule (stops just check it up top); P2 has no on-screen
   controller HUD or own shot cone.
 - Substitutes appear instantly instead of walking from the bench.
@@ -19,6 +21,8 @@
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
 
 ## Not verified in this environment
+- Frame rate and sheet-build time at 1920×1080 on real hardware (headless here: software GL, 4 cores).
+- Web Workers inside the hosted artifact page (falls back to main-thread drawing, which is slower to load).
 - Audio by ear (all sounds are procedural; only the AudioContext state was checked).
 - A physical PlayStation controller (tested with a simulated pad; standard mapping assumed).
 - Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).

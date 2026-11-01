@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { MenuList, title, FONT, COL } from './ui';
+import { MenuList, title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 
@@ -8,6 +8,7 @@ export class MenuScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
   constructor() { super('Menu'); }
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
     // the scene object is reused: texts from the last visit were destroyed with it, so make fresh ones
@@ -15,15 +16,16 @@ export class MenuScene extends Phaser.Scene {
     this.soundText = this.add.text(80, 668, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
     title(this, 'HOOP CAREER', 'gameplay-first vertical slice  ·  5v5 career basketball RPG');
     const c = app.career;
-    this.menu = new MenuList(this, 80, 180, [
+    this.menu = new MenuList(this, 80, 140, [
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: '1v1 · Make It, Take It', action: () => this.scene.start('OneOnOneSetup'), hint: 'Half court, pick any NBA player; P2 = second controller/keyboard or CPU.' },
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
-    ]);
-    this.add.text(80, 392, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
-    this.add.text(80, 422, [
+      { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
+    ], 20);
+    this.add.text(80, 370, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
+    this.add.text(80, 398, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
       '✕  shoot  |  block                    K / Space',
@@ -32,9 +34,10 @@ export class MenuScene extends Phaser.Scene {
       '□  ultimate                           J',
       'R2 sprint burst (tap)  Options pause  Shift / Enter',
       'L1  back / quit (in game: L1 twice)  Esc',
+      'L2 (hold) icon pass: ✕○□△ = teammate  Q',
       'Create+Options  dev tools             F1 or `',
-      '                                      M  mute',
-    ].join('\n'), { fontFamily: FONT, fontSize: '15px', color: COL.text, lineSpacing: 4 });
+      '                                      F fullscreen · M mute',
+    ].join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
   }
   padText!: Phaser.GameObjects.Text;
   soundText!: Phaser.GameObjects.Text;

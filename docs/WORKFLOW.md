@@ -34,6 +34,12 @@ npm run build:single # single-file build for the browser link
 - Phaser scenes are reused between games: clear per-game maps in `GameScene.init`; textures persist in
   `SHEET_CACHE`. **Never lazily create game objects in `update()` behind `if (!this.x)`**: on re-entry the field
   still points at the destroyed object, `setText` throws, and the scene freezes (this was the "can't leave a menu" bug).
+- The canvas is **1920×1080** but every scene lays out in **1280×720** units: call `hiRes(this)` first in any new
+  scene's `create()`. Don't `setBounds` the main camera (with origin 0 its clamp is off); clamp scroll manually.
+- Sprite sheets are built **asynchronously** (workers). Anything that needs a sheet must handle `null` until ready
+  (`GameScene.sheetFor`). Sheet-drawing code must work on an `OffscreenCanvas` (no `document` in workers).
+- Headless Chromium renders WebGL in software here: fps/load numbers from Playwright are far worse than on a real
+  machine; JS profiling showed ~98% of frame time in native rendering.
 - `src/state.ts` touches `window`, so anything tests import must not import it (that's why `sim/oneOnOne.ts` exists).
 - Official NBA/roster sites are blocked from the cloud environment; use web search results.
 - Stick space = court space (x along the court, y across it); move directions are relative to the player→rim vector.

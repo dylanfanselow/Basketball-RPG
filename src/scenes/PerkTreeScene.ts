@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { FONT, COL } from './ui';
+import { FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { TREES, TreeNode } from '../sim/data';
 import { canUnlock, unlock } from '../career/skilltree';
@@ -15,6 +15,7 @@ export class PerkTreeScene extends Phaser.Scene {
   constructor() { super('PerkTree'); }
   init(d: { back?: string }) { this.back = d.back ?? 'Hub'; }
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor('#05060d');
     this.inp = new InputMapper(this);
     for (let i = 0; i < 160; i++) this.stars.push({ x: Math.random() * 1280, y: Math.random() * 720, tw: Math.random() * 6 });

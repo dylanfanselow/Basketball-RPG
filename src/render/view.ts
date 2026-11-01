@@ -33,21 +33,29 @@ export function drawCourt(scene: Phaser.Scene, paintColors: [string, string]) {
   const g = scene.add.graphics().setDepth(-1000);
   const W = WORLD_W + 400;
   // arena backdrop
-  g.fillGradientStyle(0x0d0f1a, 0x0d0f1a, 0x1c2033, 0x1c2033, 1); g.fillRect(-200, 0, W, FLOOR_TOP);
-  // stands: risers (the fans themselves are an animated layer, see crowd.ts)
+  // deep purple-navy arena: dark up top, a little warmer near the floor where the lights spill
+  g.fillGradientStyle(0x0a0818, 0x0a0818, 0x231b46, 0x231b46, 1); g.fillRect(-200, 0, W, FLOOR_TOP);
+  // stands: risers (the fans themselves are an animated layer, see crowd.ts); back rows sit in shadow
   for (let row = 0; row < CROWD_ROWS; row++) {
     const y = CROWD_TOP + row * CROWD_ROW_H;
-    g.fillStyle(row % 2 ? 0x161a29 : 0x1a1f31, 1); g.fillRect(-200, y, W, CROWD_ROW_H);
-    g.fillStyle(0x0f121d, 1); g.fillRect(-200, y + CROWD_ROW_H - 4, W, 4);
+    const lit = row / (CROWD_ROWS - 1);
+    const c = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(0x120e26), Phaser.Display.Color.ValueToColor(0x2a2150), 100, lit * 100);
+    g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1); g.fillRect(-200, y, W, CROWD_ROW_H);
+    g.fillStyle(0x0b0919, 0.9); g.fillRect(-200, y + CROWD_ROW_H - 3, W, 3);
   }
   // LED ad ribbon along the front of the stands
   g.fillStyle(0x0a0c14, 1); g.fillRect(-200, FLOOR_TOP - 66, W, 26);
   for (let x = 0; x < W; x += 300) { g.fillStyle(x % 600 === 0 ? 0x24335a : 0x5a2433, 1); g.fillRect(x + 8, FLOOR_TOP - 62, 284, 18); }
   // apron (floor around the court, incl. behind the baselines and the far sideline where the table and benches sit)
-  g.fillStyle(0x7a4f2d, 1); g.fillRect(-200, FLOOR_TOP - 40, W, COURT_W * D + 110);
-  g.fillStyle(0xc89458, 1); g.fillRect(sx(0), FLOOR_TOP, COURT_L * S, COURT_W * D);
-  for (let i = 0; i < COURT_W; i += 1.25) { g.fillStyle(i % 2.5 === 0 ? 0xbf8a50 : 0xcf9c62, 1); g.fillRect(sx(0), sy(i), COURT_L * S, 2); }
-  for (let x = 0; x < COURT_L; x += 6) { g.fillStyle(0xb98450, 1); g.fillRect(sx(x + ((x / 6) % 2) * 3), sy(0), 1, COURT_W * D); }
+  // apron in a deep team-neutral navy (like a painted out-of-bounds border), court in warm glossy maple
+  g.fillStyle(0x23204a, 1); g.fillRect(-200, FLOOR_TOP - 40, W, COURT_W * D + 110);
+  g.fillGradientStyle(0x2c2858, 0x2c2858, 0x1a1838, 0x1a1838, 1); g.fillRect(-200, FLOOR_TOP - 40, W, 40);
+  g.fillGradientStyle(0xd9a064, 0xd9a064, 0xc0803f, 0xc0803f, 1); g.fillRect(sx(0), FLOOR_TOP, COURT_L * S, COURT_W * D);
+  for (let i = 0; i < COURT_W; i += 1.25) { g.fillStyle(i % 2.5 === 0 ? 0x000000 : 0xffffff, i % 2.5 === 0 ? 0.05 : 0.04); g.fillRect(sx(0), sy(i), COURT_L * S, 2); }
+  for (let x = 0; x < COURT_L; x += 6) { g.fillStyle(0x8a5a2a, 0.35); g.fillRect(sx(x + ((x / 6) % 2) * 3), sy(0), 1, COURT_W * D); }
+  // gloss: soft light pools under the arena lights and a bright sheen band near the far sideline
+  for (const lx of [14, 47, 80]) { g.fillStyle(0xfff2d8, 0.07); g.fillEllipse(sx(lx), sy(20), 40 * S, 30 * D); g.fillStyle(0xfff2d8, 0.06); g.fillEllipse(sx(lx), sy(18), 22 * S, 16 * D); }
+  g.fillStyle(0xffffff, 0.06); g.fillRect(sx(0), sy(0.6), COURT_L * S, 1.6 * D);
 
   // painted keys
   const paint = (left: boolean, col: string) => {

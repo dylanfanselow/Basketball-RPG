@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
+import { hiRes } from './ui';
 import { GameSim, GameEvent, UserInput } from '../sim/game';
 import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
-import { buildSheet, Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, PIXEL, frameRect, buildFrontSheet, FRONT_W, FRONT_H } from '../render/sprites';
+import { requestSheet } from '../render/sheetPool';
+import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
+import type { Appearance } from '../render/appearance';
+import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H } from '../render/sprites';
 import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
@@ -20,12 +24,18 @@ import { ultLevelName } from '../sim/ultimates';
 
 const FONT = '"Courier New", monospace';
 const SHEET_CACHE = new Map<string, Sheet>();
+const SHEETS_LOADING = new Set<string>();
+const MAX_SHEETS = 16;
+/** Sideline layout (court feet): benches toward each baseline, courtside celebrity rows between them and the table. */
+const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
+const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
 
 export class GameScene extends Phaser.Scene {
   sim!: GameSim;
   mode: Mode = 'practice';
   input2!: InputMapper;
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
+  reflections = new Map<string, Phaser.GameObjects.Sprite>();
   shadows!: Phaser.GameObjects.Graphics;
   overlay!: Phaser.GameObjects.Graphics;
   overlayTop!: Phaser.GameObjects.Graphics;
@@ -51,9 +61,11 @@ export class GameScene extends Phaser.Scene {
   crowd!: Crowd;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
-  coaches: { team: 0 | 1; sprite: Phaser.GameObjects.Sprite; sheet: Sheet; home: number; x: number; act: string; actUntil: number }[] = [];
+  coaches: { team: 0 | 1; key: string; look: Appearance; kit: Kit; sprite: Phaser.GameObjects.Sprite | null; sheet: Sheet | null; home: number; x: number; act: string; actUntil: number }[] = [];
   benchCheerUntil: [number, number] = [0, 0];
   paused = false;
+  ready = false;
+  loadText!: Phaser.GameObjects.Text;
   pauseText!: Phaser.GameObjects.Text;
   pauseIdx = 0;
   ended = false;
@@ -68,12 +80,13 @@ export class GameScene extends Phaser.Scene {
   init(data: GameInit) {
     this.initData = data;
     this.mode = data.mode ?? 'practice';
-    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ended = false; this.paused = false; this.feed = [];
+    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
-    this.sprites.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear();
+    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear();
   }
 
   create() {
+    hiRes(this);
     this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne);
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
@@ -90,7 +103,6 @@ export class GameScene extends Phaser.Scene {
     this.overlayTop = this.add.graphics().setDepth(5000);
     this.ballG = this.add.graphics();
     this.buildSprites();
-    this.cameras.main.setBounds(0, 0, WORLD_W, VIEW_H);
     this.cameras.main.setBackgroundColor('#0d0f1a');
     this.makeHud();
     this.events.on('shutdown', () => { app.sim = null; });
@@ -113,23 +125,63 @@ export class GameScene extends Phaser.Scene {
     for (const p of this.sim.players) this.ensureSprite(p);
   }
 
+  /**
+   * A cached sprite sheet (+ texture), or null while it's being drawn in the background (sheet workers).
+   * Textures outlive scenes, so the frame/ball data is cached alongside them. Least-recently-used sheets of
+   * players who aren't on the floor are dropped to keep memory in check (~28 MB each).
+   */
+  sheetFor(key: string, heightFt: number, look: Appearance, kit: Kit): Sheet | null {
+    const cached = SHEET_CACHE.get(key);
+    if (cached && this.textures.exists(key)) { SHEET_CACHE.delete(key); SHEET_CACHE.set(key, cached); return cached; }
+    if (!SHEETS_LOADING.has(key)) {
+      SHEETS_LOADING.add(key);
+      requestSheet(heightFt, look, kit).then((sheet) => {
+        SHEETS_LOADING.delete(key);
+        const tm = this.sys.game.textures;
+        if (tm.exists(key)) tm.remove(key);
+        const tex = tm.addCanvas(key, sheet.canvas)!;
+        for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
+        SHEET_CACHE.set(key, sheet);
+        this.evictSheets();
+      });
+    }
+    return null;
+  }
+
+  evictSheets() {
+    if (SHEET_CACHE.size <= MAX_SHEETS) return;
+    const inUse = new Set<string>();
+    if (this.sys.isActive()) {
+      for (const p of this.sim.players) { const e = this.sheets.get(p.id); if (e) inUse.add(e.key); }
+      for (const c of this.coaches) inUse.add(c.key);
+    }
+    for (const key of [...SHEET_CACHE.keys()]) {
+      if (SHEET_CACHE.size <= MAX_SHEETS) break;
+      if (inUse.has(key)) continue;
+      SHEET_CACHE.delete(key);
+      for (const [id, e] of this.sheets) if (e.key === key) { this.sheets.delete(id); this.sprites.get(id)?.destroy(); this.sprites.delete(id); this.reflections.get(id)?.destroy(); this.reflections.delete(id); }
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+  }
+
+  /** Every on-court player and coach has a sheet (the game waits for this at tip-off). */
+  sheetsReady(): boolean {
+    let ok = true;
+    for (const p of this.sim.players) { this.ensureSprite(p); if (!this.sheets.has(p.id)) ok = false; }
+    for (const c of this.coaches) if (!c.sheet) ok = false;
+    return ok;
+  }
+
   ensureSprite(p: Player) {
     const kit = this.kitFor(p);
     const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}`;
     const cur = this.sheets.get(p.id);
-    if (cur?.key === key) return;
-    // textures outlive scenes, so keep the frame/ball data alongside them
-    let sheet = SHEET_CACHE.get(key);
-    if (!sheet || !this.textures.exists(key)) {
-      sheet = buildSheet(p.height, p.appearance, kit);
-      if (this.textures.exists(key)) this.textures.remove(key);
-      const tex = this.textures.addCanvas(key, sheet.canvas)!;
-      for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
-      SHEET_CACHE.set(key, sheet);
-    }
+    if (cur?.key === key && this.textures.exists(key)) return;
+    const sheet = this.sheetFor(key, p.height, p.appearance, kit);
+    if (!sheet) return;
     this.sheets.set(p.id, { key, sheet });
     let s = this.sprites.get(p.id);
-    if (!s) { s = this.add.sprite(0, 0, key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(PIXEL); this.sprites.set(p.id, s); }
+    if (!s) { s = this.add.sprite(0, 0, key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE); this.sprites.set(p.id, s); }
     else s.setTexture(key, 0);
   }
 
@@ -145,6 +197,7 @@ export class GameScene extends Phaser.Scene {
     this.feedText = fixed(this.add.text(VIEW_W - 16, 100, '', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'right', lineSpacing: 3 }).setOrigin(1, 0).setDepth(9001));
     this.benchText = fixed(this.add.text(VIEW_W / 2, 260, '', { fontFamily: FONT, fontSize: '22px', color: '#ffffff', align: 'center', backgroundColor: '#000000aa', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(9002));
     this.bigText = fixed(this.add.text(VIEW_W / 2, 200, '', { fontFamily: FONT, fontSize: '40px', color: '#ffdd33', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(9003).setAlpha(0));
+    this.loadText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2 - 40, 'Lacing up…', { fontFamily: FONT, fontSize: '26px', color: '#ffe680', fontStyle: 'bold', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9600));
     this.pauseText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2, '', { fontFamily: FONT, fontSize: '24px', color: '#ffffff', align: 'center', backgroundColor: '#000000dd', padding: { x: 30, y: 20 } }).setOrigin(0.5).setDepth(9500).setVisible(false));
   }
 
@@ -154,10 +207,16 @@ export class GameScene extends Phaser.Scene {
     if (this.input2.pressed('mute')) this.feed.unshift({ text: sfx.toggleMute() ? 'Sound off (M)' : 'Sound on (M)', t: this.time.now, color: '#ffffff' });
     if (this.ended) return;
     if (this.paused) { this.updatePause(); return; }
+    // tip-off waits until every player's sprite sheet has been drawn (built in parallel in the background)
+    if (!this.ready) {
+      this.ready = this.sheetsReady();
+      this.loadText.setVisible(!this.ready).setText(`Lacing up…  ${this.sim.players.filter((p) => this.sheets.has(p.id)).length}/${this.sim.players.length}`);
+      if (!this.ready) { this.render(); return; }
+    }
     // Options/Enter = pause menu; L1/Esc = pause menu with "Quit" highlighted (press L1 again to leave)
     for (const inp of this.inputs()) {
       if (inp.pressed('start') && !inp.held('back')) { this.openPause(0); return; }
-      if (inp.pressed('escape')) { this.openPause(2); return; }
+      if (inp.pressed('escape')) { this.openPause(3); return; }
     }
 
     const sim = this.sim;
@@ -185,7 +244,7 @@ export class GameScene extends Phaser.Scene {
 
   openPause(idx: number) { this.paused = true; this.pauseIdx = idx; this.drawPause(); }
 
-  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : 'Quit to Menu']; }
+  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : 'Quit to Menu']; }
 
   drawPause() {
     const opts = this.pauseOptions();
@@ -208,6 +267,7 @@ export class GameScene extends Phaser.Scene {
         this.pauseText.setVisible(false);
         if (this.pauseIdx === 0) this.paused = false;
         else if (this.pauseIdx === 1) this.scene.restart(this.initData);
+        else if (this.pauseIdx === 2) { (window as any).__toggleFullscreen?.(); this.pauseText.setVisible(true); }
         else this.leaveGame();
         return;
       }
@@ -260,6 +320,12 @@ export class GameScene extends Phaser.Scene {
     if (team === 1 && power > 0.5) this.crowd.react(worldX, power * 0.6, true, true); // home fans boo the visitors' big play
     this.benchCheerUntil[team] = this.time.now + 1800;
     for (const c of this.coaches) if (c.team === team && power > 0.5) { c.act = 'cheer'; c.actUntil = this.time.now + 1300; }
+    // the famous front row reacts too: big plays bring them out of their seats, the rest film or gasp
+    if (power >= 0.5) for (const c of this.celebs) {
+      const r = (c.phase * 7.3 + this.time.now / 997) % 1;
+      c.frame = team === 0 ? (r < 0.6 ? 1 : r < 0.85 ? 2 : 3) : r < 0.5 ? 3 : 2;
+      c.until = this.time.now + 1400 + r * 900;
+    }
   }
 
   onEvent(e: GameEvent) {
@@ -374,6 +440,7 @@ export class GameScene extends Phaser.Scene {
     const onCourt = new Set(sim.players.map((p) => p.id));
     this.shadows.clear();
     for (const [id, s] of this.sprites) s.setVisible(onCourt.has(id));
+    for (const [id, r] of this.reflections) r.setVisible(onCourt.has(id));
     this.heldBall = null;
     const holder = sim.holder();
     for (const p of sim.players) {
@@ -392,8 +459,14 @@ export class GameScene extends Phaser.Scene {
       const flip = p.face.x < 0;
       s.setFlipX(flip);
       const bo = sh.sheet.ball[idx];
-      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * PIXEL, y: s.y - bo[1] * PIXEL };
+      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: s.y - bo[1] * SPRITE_SCALE };
       s.setDepth(sy(p.p.y));
+      // glossy hardwood: a faint, squashed, upside-down reflection under each player
+      let r = this.reflections.get(p.id);
+      if (!r) { r = this.add.sprite(0, 0, sh.key, idx).setOrigin(CX / FRAME_W, (FRAME_H - FOOT_Y) / FRAME_H).setFlipY(true).setAlpha(0.1).setTint(0x6a4a2a).setDepth(-450); this.reflections.set(p.id, r); }
+      if (r.texture.key !== sh.key) r.setTexture(sh.key, idx);
+      r.setFrame(idx).setScale(SPRITE_SCALE, SPRITE_SCALE * 0.5).setFlipX(flip).setPosition(s.x, sy(p.p.y) + p.z * S * 0.5)
+        .setVisible(p.p.x > 0 && p.p.x < 94 && p.p.y > 0.5);
       const ghost = sim.time < p.screenedUntil;
       s.setTint(ghost ? 0xb0b0ff : 0xffffff);
       this.shadows.fillStyle(0x000000, 0.28);
@@ -437,8 +510,21 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(Phaser.Display.Color.HexStringToColor(t1.def.colors[0]).color, 1); g.fillRect((x0 + x1) / 2, yF - h, (x1 - x0) / 2, 6);
     g.fillStyle(0x05060a, 1); g.fillRect(x0 + 6, yF - h + 14, x1 - x0 - 12, 22);
     this.tableText = this.add.text((x0 + x1) / 2, yF - h + 25, '', { fontFamily: FONT, fontSize: '14px', color: '#ffb02e', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(-4.5));
-    // bench chairs
-    for (const [a, b] of [[20, 40], [54, 74]]) for (let x = a; x <= b; x += 2.2) { g.fillStyle(0x3a3f4d, 1); g.fillRect(sx(x) - 9, sy(-3.9) - 30, 18, 4); g.fillRect(sx(x) - 9, sy(-3.9) - 30, 3, 30); }
+    // bench chairs toward each baseline
+    // (the chairs themselves are drawn into the seated bench / celebrity sprites)
+    // courtside seats between each bench and the scorer's table: plush red chairs for the famous faces
+    this.celebs = [];
+    const crng = new Rng(sim.teams[0].def.seed * 97 + 13);
+    for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
+      const look = randomCeleb(() => crng.next());
+      const key = `celeb_${hashStr(JSON.stringify(look))}`;
+      if (!this.textures.exists(key)) {
+        const tex = this.textures.addCanvas(key, buildCelebSheet(look))!;
+        for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+      }
+      const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE).setDepth(sy(-3.9));
+      this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0 });
+    }
     // coaches in suits
     this.coaches = [];
     ([0, 1] as const).forEach((team) => {
@@ -447,22 +533,14 @@ export class GameScene extends Phaser.Scene {
       const look = randomAppearance(() => rng.next());
       Object.assign(look, { armSleeve: 'both', sleeveColor: '#1d1f2a', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false, headband: null, shoe: '#111111', shoeAccent: '#111111', socks: 'low', sockColor: '#111111', hair: rng.pick(['bald', 'buzz', 'fade', 'waves']) });
       const kit: Kit = { jersey: '#1d1f2a', jerseyShade: '#14161e', trim: def.colors[0], shorts: '#22242e', number: -1, pants: true };
-      const key = `coach_${def.id}`;
-      let sheet = SHEET_CACHE.get(key);
-      if (!sheet || !this.textures.exists(key)) {
-        sheet = buildSheet(6.2, look, kit);
-        if (this.textures.exists(key)) this.textures.remove(key);
-        const tex = this.textures.addCanvas(key, sheet.canvas)!;
-        for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
-        SHEET_CACHE.set(key, sheet);
-      }
-      const home = team === 0 ? 39 : 55;
-      const sprite = this.add.sprite(sx(home), sy(-1.6), key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(PIXEL).setDepth(sy(-1.6));
-      this.coaches.push({ team, sprite, sheet, home, x: home, act: 'idle', actUntil: 0 });
+      const key = `coach_${def.id}_${hashStr(JSON.stringify(look))}`;
+      const home = team === 0 ? 26.5 : 67.5;
+      this.coaches.push({ team, key, look, kit, sprite: null, sheet: this.sheetFor(key, 6.2, look, kit), home, x: home, act: 'idle', actUntil: 0 });
     });
   }
 
   frontSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  celebs: { sprite: Phaser.GameObjects.Sprite; phase: number; x: number; frame: number; until: number }[] = [];
   /** Front-facing sprite for a bench player (looks at the court). */
   frontSprite(p: Player): Phaser.GameObjects.Sprite {
     const kit = this.kitFor(p);
@@ -472,7 +550,7 @@ export class GameScene extends Phaser.Scene {
       tex.add(0, 0, 0, 0, FRONT_W, FRONT_H); tex.add(1, 0, FRONT_W, 0, FRONT_W, FRONT_H);
     }
     let fs = this.frontSprites.get(p.id);
-    if (!fs) { fs = this.add.sprite(0, 0, key, 0).setOrigin(0.5, 1).setScale(PIXEL); this.frontSprites.set(p.id, fs); }
+    if (!fs) { fs = this.add.sprite(0, 0, key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE); this.frontSprites.set(p.id, fs); }
     else if (fs.texture.key !== key) fs.setTexture(key, 0);
     return fs;
   }
@@ -487,7 +565,7 @@ export class GameScene extends Phaser.Scene {
     const onCourt = new Set(sim.players.map((p) => p.id));
     ([0, 1] as const).forEach((team) => {
       const bench = sim.teams[team].roster.filter((p) => !onCourt.has(p.id));
-      const start = team === 0 ? 20 : 54;
+      const start = BENCH_X[team][0];
       bench.forEach((p, i) => {
         const fs = this.frontSprite(p);
         const cheering = now < this.benchCheerUntil[team];
@@ -496,16 +574,27 @@ export class GameScene extends Phaser.Scene {
       });
     });
     for (const [id, fs] of this.frontSprites) fs.setVisible(fs.visible && !onCourt.has(id));
+    for (const c of this.celebs) {
+      if (now > c.until) {
+        // idle: mostly seated, now and then someone films the action or checks the jumbotron
+        const t = Math.sin(now / 1700 + c.phase * 3);
+        c.frame = t > 0.93 ? 2 : 0;
+      }
+      const bob = c.frame === 1 ? -Math.abs(Math.sin(now / 150 + c.phase)) * 3 : 0;
+      c.sprite.setFrame(c.frame).setPosition(sx(c.x), sy(-3.9) + bob);
+    }
     // coaches pace the sideline, point when calling a play, celebrate big plays
     for (const c of this.coaches) {
+      if (!c.sheet) { c.sheet = this.sheetFor(c.key, 6.2, c.look, c.kit); if (!c.sheet) continue; }
+      if (!c.sprite) c.sprite = this.add.sprite(sx(c.x), sy(-1.6), c.key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE).setDepth(sy(-1.6));
       let clip = 'idle', u = now / 2000;
       if (now < c.actUntil) { clip = c.act; u = c.act === 'cheer' ? now / 400 : 1 - (c.actUntil - now) / 1100; }
       else {
         const target = c.home + Math.sin(now / 2600 + c.team * 2) * 2.5;
         const dx = target - c.x;
-        if (Math.abs(dx) > 0.15) { c.x += Math.sign(dx) * Math.min(Math.abs(dx), 0.05); clip = 'jog'; u = c.x / 3; c.sprite.setFlipX(dx < 0); }
+        if (Math.abs(dx) > 0.15) { c.x += Math.sign(dx) * Math.min(Math.abs(dx), 0.05); clip = 'jog'; u = c.x / 3; c.sprite!.setFlipX(dx < 0); }
       }
-      c.sprite.setPosition(sx(c.x), sy(-1.6)).setFrame(c.sheet.index[clip].start + frameAt(CLIP[clip], u));
+      c.sprite!.setPosition(sx(c.x), sy(-1.6)).setFrame(c.sheet.index[clip].start + frameAt(CLIP[clip], u));
     }
   }
 

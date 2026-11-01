@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
-import { MenuList, title, FONT, COL } from './ui';
+import { MenuList, title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { xpToNext } from '../career/career';
 import { minutesFor } from '../sim/rotation';
@@ -10,6 +10,7 @@ export class HubScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
   constructor() { super('Hub'); }
   create() {
+    hiRes(this);
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
     const c = app.career;

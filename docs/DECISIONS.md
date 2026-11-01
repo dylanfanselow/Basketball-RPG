@@ -30,12 +30,20 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Every dribble move travels a fixed distance**, regardless of stick angle/tilt. The stick picks move + side only.
 - **○ while a shot is in the air = box out.**
 
-- **Step-Through input:** pump fake, then within 1 s **hold the stick toward the rim + shoot**. It **stays perk-only**
-  (`fi_stepthru`). A defender who jumped on the fake gets ×0.15 contest and can't block it.
+- **Step-Through input:** pump fake, then within 1.5 s **hold the stick toward the rim + shoot**. ~~Perk-only~~
+  → **superseded (round 9): everyone, from any range** (close = finish, far = stride into a pull-up jumper); the
+  `fi_stepthru` perk is an upgrade (7 ft stride, ×1.12). A defender who jumped on the fake gets ×0.15 contest and
+  can't block it.
+- **L2 = icon pass:** hold L2 (keyboard Q), teammates wear ✕ ○ □ △ (by role), press one to pass to him; other
+  actions are paused while L2 is held.
+- **Blocks/steals:** the ball flies (block) or pops (steal) with a short no-grab window; the victim is stunned
+  ~1 s with an animation and can't regrab it.
+- **Passes:** faster (55–90 ft/s); short passes home in and are rarely picked; long passes are riskier.
 - **L1 = escape:** back in every menu; in a game the first L1 opens pause with Quit highlighted, a second L1 quits.
   (Column/tab switching moved to R1 / L2 / d-pad.)
 
 ## HUD
+- **Fullscreen:** F key, a ⛶ button, and a menu/pause item.
 - Bottom-right **button diamond** (△○✕□) with round badges showing the user's own sprite doing the action + label
   underneath (style reference: Dunk City "Backboard" badge). Badges visibly press in.
 - Bottom-left **movement stick**; **holding ○ highlights arc edges** for each available move, labeled; chain moves
@@ -58,6 +66,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   Career.**
 
 ## Presentation
+- **Art direction (round 9):** match the owner's reference (90s 2D arcade basketball look): shaded, muscular players
+  with bigger detailed heads, dark purple-navy arena, dense crowd, glossy floor with reflections.
+- **Same framing, more detail:** keep the player-to-court size and what's on screen; render at **1920×1080** with a
+  1.5× camera and 1.5× art resolution (owner's choice over zooming in).
+- **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
+  between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
 - Rounder chest; shorts fitted around each leg.
 - Smooth animation with many in-betweens; distinct jumper / floater / hook / layup / euro / dunk animations; very

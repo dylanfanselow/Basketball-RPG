@@ -1,6 +1,6 @@
-# What's built (as of round 8, 2026-11-01)
+# What's built (as of round 9, 2026-11-01)
 
-All 67 Vitest tests pass. Modes: **Practice** (half court, configurable defenders/teammates), **Quick 5v5**
+All 74 Vitest tests pass. Modes: **Practice** (half court, configurable defenders/teammates), **Quick 5v5**
 (team/opponent/player select), **1v1 Make It, Take It** (pick any NBA player per side, P2 human or CPU, scoring
 options, result screen with rematch), **Career** (hub, level up, perk trees, ultimate panel, bench → earn minutes).
 
@@ -30,9 +30,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   between-the-legs, behind-the-back, shammgod, snatch-back, spin, step-back, hesi blow-by, hesi pull-back.
 - Basket-relative stick classification, fixed distances, sell → plant → burst, input buffering, chain windows,
   ankle breaks / stagger vs nearest defender, defenders bite on pump fakes.
-- Pump fake: 0.42 s sell with its own 14-frame clip (a shot cuts it short). Step-Through (perk): fake + stick toward
-  rim + shoot → grounded stride angled around the defender, lift at 55% of the gather; bitten defenders ×0.15
-  contest and no block; "STEP-THROUGH! X bit" callout.
+- Pump fake: 0.42 s sell with its own 14-frame clip (a shot cuts it short). Step-Through (everyone, 1.5 s window, any
+  range ≤ 28 ft): fake + stick toward rim + shoot → grounded lunge angled around the defender, lift at 55% of the
+  gather; ≤ 11 ft after the stride = one-hand finish, else `stepThroughJumper` pull-up; bitten defenders ×0.15
+  contest and no block; "STEP-THROUGH! X bit" callout; ✕ badge reads Step-Through when lined up.
+- Blocks launch the ball 20–26 ft/s with a 0.7 s no-grab window; strips pop it past the stealer; the victim is
+  stunned (`stunnedUntil`, `stripped`/`blockedLand` clips, stars) and can't regrab.
+- Passing 55–90 ft/s; short passes (≤ 0.6 × safe range) home in, ×0.15 pick chance; long ones riskier with wider
+  deflection lanes. L2 icon pass.
 
 ## Team play & AI
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me
@@ -58,6 +63,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Dev panel "NBA player looks" editor + "Save look to rosters.json" (works only under `npm run dev`).
 
 ## Art, animation, arena, audio
+- Rendered at 1920×1080 with a 1.5× camera (scenes still lay out in 1280×720 units); Text at resolution 2.
+- Sprites (`sprites.ts`) drawn at 1.5× art resolution with canvas paths: tapered shaded limbs with muscle bulges,
+  3-tone fabric, trims, high-tops, big shaded heads; `crispen()` snaps alpha + darkens silhouette edges. Sheets are
+  built in Web Workers (`sheetPool.ts`/`sheetWorker.ts`, OffscreenCanvas; main-thread fallback); LRU eviction keeps
+  ≤ 16 (~28 MB each); the game waits ("Lacing up…") until on-court sheets exist.
+- Arena: purple-navy backdrop, glossy maple with light pools, floor reflections, dense shaded crowd (wave kept),
+  benches near the baselines with chairs, courtside celebrity row (`celebs.ts`), fullscreen (F / ⛶ / menus).
 - Procedural pixel sprites (`sprites.ts`): skeleton poses, layered limbs (sleeves/socks/shoes), shaped torso,
   fitted shorts, 12×13 heads with faces/hair/gear; front-view bench sprites; coaches in suits.
 - Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,

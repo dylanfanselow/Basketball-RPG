@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
 
+/** Game canvas is 1920x1080; scenes keep laying out in 1280x720 units and the camera zooms 1.5x. */
+export const HI_RES = 1.5;
+export function hiRes(scene: Phaser.Scene) { scene.cameras.main.setZoom(HI_RES).setOrigin(0, 0); }
+
 export const FONT = '"Courier New", monospace';
 export const COL = { bg: '#0d0f1a', panel: 0x161a2b, accent: '#ffcc33', dim: '#8892b0', text: '#e8ecff', good: '#7dff9a', bad: '#ff7d7d' };
 
