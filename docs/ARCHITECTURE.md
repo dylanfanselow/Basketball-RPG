@@ -33,6 +33,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
+| `render/celebArt.ts` | Fixed celeb cast (`CELEB_CAST` = 16, `castLook(i)`), art source per member: local editor draft → `src/art/celebs/celeb_NN.png` (bundled inline) → generated. |
 | `render/pose3d.ts` | Multi-angle: `lift` (side pose → 3D, `lat` spread), `project`/`view` at a yaw (+ per-joint depth), `DIRS`. |
 | `render/frameCache.ts` | `FrameCache` (on-demand angled frames: request/drain/get, pages, LRU) and `yawFor` (angle → drawn yaw + mirror). |
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
@@ -47,6 +48,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `audio/sfx.ts` | Procedural Web Audio engine. |
 | `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `l2` (L2/Q, icon pass), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
 | `dev/devPanel.ts` | DOM dev tools overlay. |
+| `dev/pixelEditor.ts` | Celeb pixel editor overlay (dev panel button or `?editor`); "Save to repo" POSTs to the dev-only `/__dev/save-art` endpoint in `vite.config.ts`. |
 
 ## Data (`src/data`) — tune feel here
 `statInfluence.json`, `shotTypes.json`, `moves.json` (dist/plantAt/dur/ankle/chains), `trees/*.json`,

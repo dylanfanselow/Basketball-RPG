@@ -45,11 +45,25 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 ## Team play & AI
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me
   role swap; freelance 5-out + backdoor cuts.
+- Stars + isos: `Player.star` (roster tier ≥ 4, max 2, else the best player; `markStars` in `career/roster.ts`; the
+  career user at coach trust ≥ 85 with a top-2 rating). Iso sets `isoTop` / `isoWing` (tag `iso`) only for stars,
+  ~30% of calls (50% clutch); the star attacks more and kicks out only when help commits.
+- Reads (`ai/offense.ts`): open-man read (`openForPass`, timing/chance by `readSkill`), catch read (`catchRead`:
+  catch-and-shoot / pump fake / attack the closeout, once per catch), fast-break throw-aheads to anyone past his man.
+- Passing: `GameSim.passSafety` (lead point, safe range `rmap(passRange, 30, 60)`, overhead ×1.35 for runners /
+  transition; overhead passes arc over the middle). Unsafe targets flash red (dot + L2 icons).
 - Handler utility AI: shot EV vs pass value (openness, separation, ahead-of-defense, lane risk, trust) vs drive.
 - Transition reads: throw ahead, attack numbers, outlet, fill lanes; otherwise walk it up.
 - Walk-out inbounds (baseline after makes by C/PF, sideline otherwise, midcourt for quarters).
 - Defense: man-to-man with help, drop coverage, optional switch-all, closeouts, steals, charges, get-back in transition.
 - Rebounding: crash roles, box-out stance, strength push-back with bumped animation, screen knockbacks.
+- Screens: hold ○ to keep screening (≤ 6 s); AI screens 1.6 s. `screenImpact` (game.ts): stun 0.3–2.4 s and
+  knock-back 0.6–2.8 ft from screen rating, strength gap, defender mobility, `screenStun` (Brick Wall ×1.3, Screen
+  Assassin ×1.5) and `screenStunTaken` / `screenKnock` (Screen Navigator `pd_navigate`). Knock-back slides; long
+  stuns hold the stumble pose (`bumpedU` in GameScene).
+- Made shots: rim path continues below the net, then a falling `dead` ball (gravity, bounces, roll); the inbounder
+  picks it up off the bounce. Animated nets (`drawNet` in view.ts, `updateNets` in GameScene). Loud `sfx.swish` only
+  on clean swishes. A pump fake before the first dribble after a catch keeps the dribble.
 - Trust model (`ai/trust.ts`) and rotation/minutes from coach trust (`rotation.ts`).
 
 ## Progression
@@ -123,4 +137,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 Live readout, core stat sliders, perk grant/remove per tree, ultimate unlock/equip/evolve/fill, appearance editor,
 NBA player look editor, game controls (give ball, spawn defender in cone, freeze AI, clutch, switch-all,
 feature-me, shot/game clock, call any play), practice config, trust/minutes, debug draw, audio volumes and test
-buttons, presets. When playing as a real NBA player, edits apply to that player for the game only.
+buttons, presets, big-game crowd toggle. When playing as a real NBA player, edits apply to that player for the game only.
+**Pixel editor** (button at the top of the dev panel, or `?editor`): the 16-celeb cast, 4 frames each; pencil, eraser,
+fill, picker, line, undo/redo, zoom, grid, copy frame to all, mirror, in-game preview; drafts in localStorage (used by
+the game, dropped when the art underneath changes); "Save to repo" (dev server) → `src/art/celebs/celeb_NN.png`.

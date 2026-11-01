@@ -21,6 +21,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Sprint = tap** for a timed burst, then a cooldown driven by stats; gust/speed lines while active.
 - **Pump fake = short tap of ✕** (< ~0.18s); **hold ✕ past that = shoot**. Repeatable fakes.
 - **A pump fake picks up the dribble:** no moving or dribbling; you can **pass or shoot** (Step-Through still works).
+  **Round 20:** except a fake **on the catch, before the first dribble** — that keeps the dribble (attack the closeout).
 - **○ moves:** press ○ with the stick pushed = move now; **hold ○ and drag** = move per flick (chains on later
   flicks while held); quick neutral ○ tap = **Jab Step** (keeps dribble).
 - **Side Drive** (lateral ○) is a hard, long drive that creates real separation; **flicking the stick the other way
@@ -90,6 +91,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 19:** a row of plain fans drawn like the celebs but less eye-catching sits right behind the bench / celebs /
   table and bridges into the blob stands (replaces the lower-bowl blob rows). Fans dress in the **home team's**
   colors: only some in a regular game, nearly all in big games (playoffs).
+- **Round 20:** made shots go **through the net** (net stretches/sways), drop, bounce and get picked up for the
+  inbound; makes mix swishes with rim-ins/rolls; a clean swish plays a **loud swish** sound. **Hold ○ = keep
+  screening until release.** Screen stun/knock-back scale with screen rating, **strength gap and the defender's
+  mobility**; Brick Wall adds stun, new Perimeter perk **Screen Navigator** reduces it. **Designated stars** (top
+  roster tier, at most 2; the user earns it at coach trust ≥ 85 + top-2 rating) get **iso** sets (~30%, 50% clutch).
+  AI makes the **open-man read** (sooner/more often for better passers), throws ahead on breaks (overhead lead
+  passes, ×1.35 range), and receivers read the catch (shoot / pump fake / attack the closeout). Safe pass range
+  30–60 ft; an unsafe pass target **flashes red** (dot and L2 icons). **Celebs are a fixed cast of 16**, hand-editable
+  in the dev panel's **pixel editor**; saved edits live in `src/art/celebs/` and replace the generated sprites.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
