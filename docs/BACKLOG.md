@@ -1,14 +1,16 @@
 # Backlog / known gaps
 
-## Start here next session (after round 9)
-1. **Ask the owner how round 9 runs on the Mac**: frame rate in a 5v5 game, how long "Lacing up…" shows before
-   tip-off, and whether the hosted browser link loads quickly (sheet workers may be blocked there → slower
-   main-thread fallback). Headless numbers here are meaningless (software GL, 4 cores).
-2. **Ask whether the Step-Through now feels right** from the arc (pull-up) and close in (finish), and whether the
-   new stun/steal/block behavior and pass speed feel good.
-3. **Ask for art feedback** against their reference image (player shading/size, faces, crowd, celebs, reflections).
-4. Open polish: players are strictly side-on (no 3/4 turn), faces are small at game zoom, celebs/bench have no
-   walking frames, 1v1 shows both full benches, P2 in two-player 1v1 has no on-screen controller HUD or own cone.
+## Start here next session (after round 18)
+1. **Ask how multi-angle players run on the owner's Mac**: frame rate in Quick 5v5 with 10 players turning, any
+   stutter in the first seconds while angled frames are drawn (dev panel → "Multi-angle players" shows cached frames
+   and ms per new frame), and how the angles look in-game. Headless numbers here (~4 ms/frame) are pessimistic.
+2. **Known multi-angle follow-ups**: jersey numbers read mirrored on left-facing players (draw left views natively
+   instead of flipping); three-quarter faces are a first pass; shoes switch profile↔front at ~60° instead of turning;
+   shots/moves/passes/box-outs are still side view only; celebs and bench have no angles.
+3. Polish carried over: faces are small at game zoom, celebs/bench have no walking frames, 1v1 shows both full
+   benches, P2 in two-player 1v1 has no on-screen controller HUD or own cone.
+4. Still unanswered from round 9: does the Step-Through feel right (pull-up and close finish), and do the
+   stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)
 - Ultimate unlock **story event + cutscene** (backstory-specific 1v1, then position-based ult choice).
