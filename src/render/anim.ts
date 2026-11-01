@@ -13,8 +13,8 @@ export type JointName = (typeof JOINTS)[number];
  * then in a front view: x = screen left/right, F = the side toward the man (+x), B = the other side; the hip joint is
  * the pelvis center (legs hang from hip.x +/- OPEN_HIP).
  */
-export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; open?: boolean };
-type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; open?: boolean };
+export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; open?: boolean; lat?: Partial<Record<JointName, number>> };
+type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; open?: boolean; lat?: Partial<Record<JointName, number>> };
 
 export const BASE: Pose = {
   head: [1, 91], neck: [0, 82], sF: [2, 79], sB: [-2, 79], eF: [4, 65], eB: [-3, 65], hF: [5, 52], hB: [-3, 52],
@@ -489,6 +489,7 @@ export function sampleClip(c: Clip, u: number): Pose {
   out.ball = ba && bb ? cr(prev.pose.ball ?? ba, ba, bb, next.pose.ball ?? bb, t) : t < 0.5 ? ba ?? null : bb ?? null;
   out.backView = t < 0.5 ? !!a.pose.backView : !!b.pose.backView;
   out.open = t < 0.5 ? !!a.pose.open : !!b.pose.open;
+  out.lat = (t < 0.5 ? a.pose.lat : b.pose.lat) ?? a.pose.lat ?? b.pose.lat;
   return out;
 }
 

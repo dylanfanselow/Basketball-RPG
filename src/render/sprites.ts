@@ -10,6 +10,7 @@
  */
 import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP, OPEN_HIP } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
+import { view, toRad, SHOULDER_HALF, HIP_HALF, projX } from './pose3d';
 
 export const ART = 1.5;
 export const FRAME_W = 96;
@@ -369,8 +370,9 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
  * Draw one pose: arms lowered/re-rigged by `rigArms` (ballClip = the clip carries the ball somewhere), jersey top
  * lowered by TORSO_DROP. ox/oy = the frame's top-left in the sheet. Returns the ball offset (art px, origin-relative, +y up).
  */
-export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip = false): J | null {
+export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip = false, yawDeg = 0): J | null {
   if (keyed.open) { drawOpen(ctx, ox, oy, keyed, H, a, kit); return null; }
+  if (yawDeg !== 0) return drawPoseYaw(ctx, ox, oy, keyed, H, a, kit, ballClip, yawDeg);
   const pose = rigArms(keyed, ballClip);
   const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
   const u = H / 100;
@@ -390,6 +392,99 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: numbe
   drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, k);
   return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+}
+
+/**
+ * Any-angle player (pose3d): the side-view skeleton lifted to 3D and turned by yaw (deg, +90 = facing the camera,
+ * -90 = facing away). Limbs are drawn far -> near by depth around the torso; the torso is a projected volume; the head
+ * turns (profile -> three-quarter -> front, or the back of the head when facing away).
+ */
+function drawPoseYaw(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit, ballClip: boolean, yawDeg: number): J | null {
+  const yaw = toRad(yawDeg), c = Math.cos(yaw), sn = Math.sin(yaw);
+  const rigged = rigArms(keyed, ballClip);
+  const { pose, depth } = view(rigged, yaw);
+  const u = H / 100, k = H / 99;
+  const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
+  const p = Object.fromEntries(Object.entries(pose).map(([key, v]) => [key, Array.isArray(v) ? T(v as J) : v])) as unknown as Pose;
+  const [tdx, tdy] = dropToward(keyed, TORSO_DROP);
+  // torso centerline: top between the (dropped) shoulders, bottom at the pelvis; legs hang from the hip sockets
+  const top = T([((keyed.sF[0] + keyed.sB[0]) / 2 + tdx) * c, Math.max(keyed.sF[1], keyed.sB[1]) + tdy]);
+  const hipC = p.hip;
+  const sock = (side: number): J => T([projX([keyed.hip[0], side * HIP_HALF, 0], yaw), keyed.hip[1]]);
+  const S = skinRamp(a);
+  const away = sn < -0.35;
+  const sleeveF = a.armSleeve !== 'none', sleeveB = a.armSleeve === 'both';
+  const frontShoe = Math.abs(c) < 0.55;
+  const avg = (...ks: (keyof typeof depth)[]) => ks.reduce((t, kk) => t + depth[kk], 0) / ks.length;
+  type Item = { d: number; draw: (far: boolean) => void };
+  const items: Item[] = [
+    { d: avg('sB', 'eB', 'hB'), draw: (far: boolean) => drawArm(ctx, p.sB, p.eB, p.hB, a, kit, far, sleeveB, k) },
+    { d: avg('sF', 'eF', 'hF'), draw: (far: boolean) => drawArm(ctx, p.sF, p.eF, p.hF, a, kit, far, sleeveF, k) },
+    { d: avg('kB', 'fB') - 0.01, draw: (far: boolean) => drawLeg(ctx, sock(-1), p.kB, p.fB, a, kit, far, a.legSleeve === 'both', false, k, frontShoe ? (sn >= 0 ? 1 : -1) : undefined) },
+    { d: avg('kF', 'fF'), draw: (far: boolean) => drawLeg(ctx, sock(1), p.kF, p.fF, a, kit, far, a.legSleeve !== 'none', a.kneePad, k, frontShoe ? (sn >= 0 ? -1 : 1) : undefined) },
+  ].sort((x, y) => x.d - y.d);
+  for (const it of items) if (it.d < 0) it.draw(true);
+  // shorts crotch when the legs are seen apart
+  if (Math.abs(sn) > 0.3) {
+    const P0 = ramp(kit.shorts), hA = sock(1), hB = sock(-1), mx = (hA[0] + hB[0]) / 2;
+    poly(ctx, [[Math.min(hA[0], hB[0]) - 2 * k, hA[1] - 1 * k], [Math.max(hA[0], hB[0]) + 2 * k, hA[1] - 1 * k], [mx + 3 * k, hA[1] + 9 * k], [mx - 3 * k, hA[1] + 9 * k]], P0.base);
+  }
+  tube(ctx, top, [p.head[0] - 1.5 * k * c, p.head[1] + 8 * k], () => 3.8 * k, S);
+  drawTorsoYaw(ctx, top, hipC, yaw, kit, a, k);
+  if (yawDeg <= -30) drawHead(ctx, p.head[0], p.head[1], a, k, true);
+  else if (yawDeg < 25) drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
+  else frontHead(ctx, p.head[0], p.head[1], a, k * 1.25, { turn: Math.max(0, Math.min(1, c * 1.35)) });
+  for (const it of items) if (it.d >= 0) it.draw(false);
+  void away; void SHOULDER_HALF;
+  return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+}
+
+/** Torso seen at a yaw: the chest/back profile widths and a lateral (shoulder-span) width projected together. */
+function drawTorsoYaw(ctx: Ctx, top: J, hip: J, yaw: number, kit: Kit, a: Appearance, k: number) {
+  const c = Math.cos(yaw), sn = Math.sin(yaw);
+  const L = hip[1] - top[1];
+  const prof = (t: number): [number, number, number] => { // [front, back, lateral] half-widths
+    if (t < 0.06) return [7.4, 7.4, 8];
+    if (t < 0.14) return [9.8, 9.6, 10.8];
+    if (t < 0.4) return [11.4, 10.4, 11.4];
+    if (t < 0.86) return [11.4 - (t - 0.4) * 7, 10.4 - (t - 0.4) * 5, 11.4 - (t - 0.4) * 5];
+    return [8.4, 8.1, 9.2];
+  };
+  const N = 16, R: J[] = [], Lf: J[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, [af, ab, b] = prof(t);
+    let lo = Infinity, hi = -Infinity;
+    for (let q = 0; q < 24; q++) {
+      const ph = (q / 24) * Math.PI * 2, cf = Math.cos(ph);
+      const x = (cf > 0 ? af : ab) * cf * c - b * Math.sin(ph) * sn;
+      lo = Math.min(lo, x); hi = Math.max(hi, x);
+    }
+    const cx = top[0] + (hip[0] - top[0]) * t, cy = top[1] + L * t;
+    R.push([cx + hi * k, cy]); Lf.push([cx + lo * k, cy]);
+  }
+  const J0 = ramp(kit.jersey), Tr = ramp(kit.trim);
+  const mid = lerp2(top, hip, 0.35);
+  const grad = ctx.createLinearGradient(mid[0] + 10 * k, mid[1] - 6 * k, mid[0] - 10 * k, mid[1] + 6 * k);
+  grad.addColorStop(0, J0.hi); grad.addColorStop(0.35, J0.base); grad.addColorStop(0.75, J0.sh); grad.addColorStop(1, J0.deep);
+  poly(ctx, [...R, ...Lf.slice().reverse()], grad);
+  // side panels along the visible side seams
+  stroke(ctx, Lf.slice(3, 15).map((q) => [q[0] + 1.2 * k, q[1]] as J), 1.6 * k, Tr.sh, 0.9);
+  if (Math.abs(sn) > 0.5) stroke(ctx, R.slice(3, 15).map((q) => [q[0] - 1.2 * k, q[1]] as J), 1.6 * k, Tr.sh, 0.9);
+  // collar: v-neck on the chest when it faces us, a round back collar when it faces away
+  const S = skinRamp(a);
+  if (sn > -0.35) {
+    const vx = top[0] + 2.75 * k * c, hw = 2.25 * k * (0.6 + 0.6 * Math.abs(sn));
+    poly(ctx, [[vx - hw, top[1]], [vx + hw, top[1]], [vx + 0.85 * k * c, top[1] + 4.5 * k]], S.base);
+    stroke(ctx, [[vx - hw - 0.2 * k, top[1]], [vx + 0.85 * k * c, top[1] + 4.6 * k], [vx + hw + 0.2 * k, top[1]]], 1.4, Tr.base);
+  } else stroke(ctx, [[top[0] - 3 * k, top[1] + 0.5], [top[0], top[1] + 1.5 * k], [top[0] + 3 * k, top[1] + 0.5]], 1.4, Tr.base);
+  // armhole trims at both shoulders
+  for (const q of [R[1], Lf[1]]) stroke(ctx, [[q[0], q[1] - 1 * k], [q[0] + (q === R[1] ? -2 : 2) * k, q[1] + 5 * k], [q[0] + (q === R[1] ? -1 : 1) * k, q[1] + 9 * k]], 1.2, Tr.base);
+  // waistband and number (chest when facing us, back when facing away)
+  const wbL = Lf[N - 0], wbR = R[N - 0], wy = lerp2(top, hip, 0.97)[1];
+  const P = ramp(kit.shorts);
+  poly(ctx, [[wbL[0] + 0.4 * k, wy], [wbR[0] - 0.4 * k, wy], [wbR[0] - 0.2 * k, wy + 4 * k], [wbL[0] + 0.2 * k, wy + 4 * k]], P.base);
+  stroke(ctx, [[wbL[0] + 0.4 * k, wy + 0.5], [wbR[0] - 0.4 * k, wy + 0.5]], 1.2, Tr.base);
+  if (kit.number >= 0) digits(ctx, top[0] + (hip[0] - top[0]) * 0.4 + 2 * k * c, top[1] + L * 0.26, kit.number, Tr.base, J0.deep);
 }
 
 /**
@@ -497,18 +592,28 @@ export function buildFrontSheet(heightFt: number, a: Appearance, kit: Kit): HTML
 }
 
 /** Front-facing head (bench players, fans). Shared with the courtside crowd. */
-export function frontHead(ctx: Ctx, cx: number, hy: number, a: Appearance, k: number, opts: { open?: boolean; shades?: string | null } = {}) {
+/** turn (0..1): 0 = straight at the camera, toward 1 = turned to screen-right (three-quarter): the face slides right. */
+export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: number, opts: { open?: boolean; shades?: string | null; turn?: number } = {}) {
   const S = skinRamp(a), H = ramp(a.hairColor);
   const rx = 7.2 * k, ry = 8.6 * k;
-  if (a.hair === 'afro') ellipse(ctx, cx, hy - ry * 0.35, rx * 1.6, ry * 1.25, H.base);
-  if (a.hair === 'dreads' || a.hair === 'braids') for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) stroke(ctx, [[cx + sx * (rx * 0.8 + i * 1.2 * k), hy - ry * 0.4], [cx + sx * (rx * 0.9 + i * 1.3 * k), hy + ry * 1.0]], 1.6 * k, i % 2 ? H.base : H.sh);
-  ellipse(ctx, cx - rx, hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh); ellipse(ctx, cx + rx, hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh); // ears
-  const rg = ctx.createRadialGradient(cx - rx * 0.3, hy - ry * 0.35, 1, cx, hy, rx * 1.3);
+  const turn = opts.turn ?? 0;
+  const cx = cx0 + turn * rx * 0.42; // face features (eyes, nose, mouth, facial hair) ride toward the turned side
+  if (a.hair === 'afro') ellipse(ctx, cx0, hy - ry * 0.35, rx * 1.6, ry * 1.25, H.base);
+  if (a.hair === 'dreads' || a.hair === 'braids') for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) stroke(ctx, [[cx0 + sx * (rx * 0.8 + i * 1.2 * k), hy - ry * 0.4], [cx0 + sx * (rx * 0.9 + i * 1.3 * k), hy + ry * 1.0]], 1.6 * k, i % 2 ? H.base : H.sh);
+  ellipse(ctx, cx0 - rx * (1 - 0.3 * turn), hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh); // ears (the far one hides as the head turns)
+  if (turn < 0.3) ellipse(ctx, cx0 + rx, hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh);
+  const rg = ctx.createRadialGradient(cx0 - rx * 0.3 + turn * rx * 0.5, hy - ry * 0.35, 1, cx0, hy, rx * 1.3);
   rg.addColorStop(0, S.hi); rg.addColorStop(0.45, S.base); rg.addColorStop(0.85, S.sh); rg.addColorStop(1, S.deep);
-  ellipse(ctx, cx, hy, rx, ry, rg);
-  poly(ctx, [[cx - rx * 0.85, hy + ry * 0.35], [cx - rx * 0.35, hy + ry * 1.02], [cx + rx * 0.35, hy + ry * 1.02], [cx + rx * 0.85, hy + ry * 0.35]], S.base);
+  ellipse(ctx, cx0, hy, rx, ry, rg);
+  poly(ctx, [[cx0 - rx * 0.85 + turn * rx * 0.3, hy + ry * 0.35], [cx - rx * 0.35, hy + ry * 1.02], [cx + rx * 0.35, hy + ry * 1.02], [cx0 + rx * 0.85 + turn * rx * 0.12, hy + ry * 0.35]], S.base); // jaw
+  if (turn > 0.25) poly(ctx, [[cx + rx * 0.3, hy - ry * 0.05], [cx + rx * (0.62 + 0.25 * turn), hy + ry * 0.32], [cx + rx * 0.32, hy + ry * 0.38]], S.base); // nose in profile past the cheek
   const ey = hy - ry * 0.05 + a.eyeY * k;
-  for (const sx of [-1, 1]) { ellipse(ctx, cx + sx * rx * 0.42, ey + 0.4, 2 * k, 1.3 * k, S.sh); px(ctx, cx + sx * rx * 0.42 - 1, ey, '#f2efe8', 2, 1); px(ctx, cx + sx * rx * 0.42 + (sx > 0 ? 0 : -1) + 0.5, ey, a.eyeColor, 1, 1); for (let r = 0; r < a.brow; r++) stroke(ctx, [[cx + sx * rx * 0.2, ey - 2.2 * k - r], [cx + sx * rx * 0.7, ey - 2 * k - r]], 1.1, shade(a.hairColor, 0.85)); }
+  for (const sx of [-1, 1]) {
+    const sq = sx > 0 ? 1 - 0.55 * turn : 1; // the eye on the turned side foreshortens
+    const ex = cx + sx * rx * 0.42 * (1 - 0.35 * turn);
+    ellipse(ctx, ex, ey + 0.4, 2 * k * sq, 1.3 * k, S.sh); px(ctx, ex - 1, ey, '#f2efe8', sq > 0.6 ? 2 : 1, 1); px(ctx, ex + (sx > 0 ? 0 : -1) + 0.5 + turn, ey, a.eyeColor, 1, 1);
+    for (let r = 0; r < a.brow; r++) stroke(ctx, [[ex - rx * 0.22 * sq, ey - 2.2 * k - r], [ex + rx * 0.28 * sq, ey - 2 * k - r]], 1.1, shade(a.hairColor, 0.85));
+  }
   stroke(ctx, [[cx, ey + 1], [cx + 0.6, ey + 3.4 * k]], 1, S.sh); px(ctx, cx - 1, ey + 3.6 * k, S.deep, a.nose === 'wide' ? 3 : 2, 1);
   const my = hy + ry * 0.55 + a.mouthY * k;
   if (opts.open || a.mouth === 'open') ellipse(ctx, cx, my + 0.6 * k, 2.2 * k, 1.8 * k, '#2a0d0d');
@@ -517,9 +622,9 @@ export function frontHead(ctx: Ctx, cx: number, hy: number, a: Appearance, k: nu
   if (a.facial === 'goatee' || a.facial === 'mustache' || a.facial === 'beard') stroke(ctx, [[cx - 2.4 * k, my - 1.3 * k], [cx + 2.4 * k, my - 1.3 * k]], 1.4 * k, a.hairColor);
   if (a.facial === 'goatee') ellipse(ctx, cx, my + 2.8 * k, 1.8 * k, 2 * k, a.hairColor);
   // hair
-  const g = ctx.createLinearGradient(cx - rx, hy - ry * 1.3, cx + rx, hy);
+  const g = ctx.createLinearGradient(cx0 - rx, hy - ry * 1.3, cx0 + rx, hy);
   g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.deep);
-  const capTo = (y: number, puff = 1.05) => { ctx.save(); ctx.beginPath(); ctx.ellipse(cx, hy, rx * puff, ry * puff, 0, 0, Math.PI * 2); ctx.clip(); poly(ctx, [[cx - rx * 2, hy - ry * 2], [cx + rx * 2, hy - ry * 2], [cx + rx * 2, hy + ry * y], [cx - rx * 2, hy + ry * y]], g); ctx.restore(); };
+  const capTo = (y: number, puff = 1.05) => { ctx.save(); ctx.beginPath(); ctx.ellipse(cx0, hy, rx * puff, ry * puff, 0, 0, Math.PI * 2); ctx.clip(); poly(ctx, [[cx0 - rx * 2, hy - ry * 2], [cx0 + rx * 2, hy - ry * 2], [cx0 + rx * 2, hy + ry * y], [cx0 - rx * 2, hy + ry * y]], g); ctx.restore(); };
   switch (a.hair) {
     case 'bald': ellipse(ctx, cx - rx * 0.3, hy - ry * 0.6, 2 * k, 1.1 * k, S.hi); break;
     case 'hightop': poly(ctx, [[cx - rx * 0.95, hy - ry * 0.5], [cx - rx * 0.9, hy - ry * 1.9], [cx + rx * 0.9, hy - ry * 1.9], [cx + rx * 0.95, hy - ry * 0.5]], g); capTo(-0.45); break;
