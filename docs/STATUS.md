@@ -88,6 +88,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Side drive (`move_lateral`) uses fixed-length arms too (ball bounces up to the hand). Sprint bursts play their own
   `burst` / `dribbleBurst` clips (big forward lean, long stride, high knee drive, arm pump; `clipFor` while
   `now < burstUntil`).
+- Defensive movement (`GameScene.defStance`): near their man and slower than a walk, defenders face him (render-only
+  facing with hysteresis) and play the `slide` shuffle (planted trail foot, lead foot steps out) from 0.4 ft/s,
+  phased by distance (cycle = 0.16 × height, ≤ 3 cycles/s), reversed when retreating; idle `defend` below that.
 - Lower bowl: `FRONT_ROWS` (2) of bigger anonymous fans (`crowd.ts`) fill the space behind the bench and celebs;
   the old LED ribbon is gone.
 - Sideline scale: bench players `BENCH_SCALE` (0.92×) and courtside celebs `CELEB_SCALE` (0.82×) of on-court sprites.

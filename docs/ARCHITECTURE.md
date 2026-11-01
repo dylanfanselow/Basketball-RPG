@@ -38,7 +38,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |
 | `render/crowd.ts` | Animated crowd: stands rows + `FRONT_ROWS` lower-bowl fans behind the sideline (same reactions). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
-| `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
+| `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
 | Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |

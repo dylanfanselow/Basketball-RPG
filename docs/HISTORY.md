@@ -16,6 +16,7 @@
 | 11 | `b7a2f8b` | Shoulders still too high; arms too long when dribbling/moves but good on defense/off-ball; elbows bending inward on dribbles/shots; remove the hands | Arms drop 6 / jersey top 4.5; ball clips keep keyed arms (rigid move, no IK), free clips keep long arms; finger overlay removed |
 | 12 | `1a1f6cb` | Arms lengthen while holding the dribble (ball should come up to the hand); jumper too slow, ball should rise from the dribble into a pocket in front then release; defense arms jut out, needs a slight squat; better rim/backboard; bench + celebs slightly smaller (celebs shorter than players) | Fixed-length limb helper and re-keyed dribbles; faster jumper windups (×0.7) and new pocket path; squat stance with down-angled arms; glass-pane hoop with split rim + mesh net; bench 0.92× / celebs 0.82× |
 | 13 | `9afd8b8` | Side-drive arm still reaches low to the ball; empty space between the crowd and the sideline people; sprint should lean in with longer strides | Side drive re-keyed with fixed-length arms; 2 lower-bowl fan rows; new `burst`/`dribbleBurst` clips |
+| 14 | `e69eac4` | Defenders look like they are weirdly sliding | Real planted-foot shuffle clip; defenders face their man and step from 0.4 ft/s with distance-matched phase |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
