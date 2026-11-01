@@ -8,7 +8,7 @@
   "floater":  { "name": "Floater",   "base": [[4, 0.48], [12, 0.36]],                "sub": "floater", "windup": 0.32, "contestW": 0.55, "pts": 2 },
   "hook":     { "name": "Hook Shot", "base": [[3, 0.58], [11, 0.44]],                "sub": "hook",   "windup": 0.40, "contestW": 0.50, "pts": 2 },
   "push":     { "name": "Push Shot", "base": [[5, 0.52], [11, 0.44]],                "sub": "floater", "windup": 0.34, "contestW": 0.80, "pts": 2 },
-  "mid":      { "name": "Midrange",  "base": [[10, 0.47], [22, 0.40]],               "sub": "mid",    "windup": 0.45, "contestW": 1.0, "pts": 2 },
-  "three":    { "name": "3PT",       "base": [[22, 0.40], [26, 0.36]],               "sub": "three",  "windup": 0.50, "contestW": 1.0, "pts": 3 },
-  "deep3":    { "name": "Deep 3",    "base": [[26, 0.33], [32, 0.24], [40, 0.08]],   "sub": "three",  "windup": 0.55, "contestW": 1.0, "pts": 3 }
+  "mid":      { "name": "Midrange",  "base": [[10, 0.47], [22, 0.40]],               "sub": "mid",    "windup": 0.32, "contestW": 1.0, "pts": 2 },
+  "three":    { "name": "3PT",       "base": [[22, 0.40], [26, 0.36]],               "sub": "three",  "windup": 0.35, "contestW": 1.0, "pts": 3 },
+  "deep3":    { "name": "Deep 3",    "base": [[26, 0.33], [32, 0.24], [40, 0.08]],   "sub": "three",  "windup": 0.39, "contestW": 1.0, "pts": 3 }
 }

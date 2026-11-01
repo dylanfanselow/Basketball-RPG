@@ -112,31 +112,63 @@ export function drawHoops(scene: Phaser.Scene) {
     back.fillStyle(0x4a5068, 1); back.fillRect(sx(postX) - pw / 2, sy(25, 12.6), pw, (12.6 - 3.2) * S);
     back.fillStyle(0x1f2a44, 1); back.fillRect(sx(postX) - pw / 2 - 2, sy(25, 6.5), pw + 4, 3.3 * S);
     // support arm out to the backboard (top + angled brace)
-    back.lineStyle(7, 0x4a5068, 1); back.lineBetween(sx(postX), sy(25, 12.4), sx(boardX), sy(25, 12.2));
-    back.lineStyle(5, 0x3e4359, 1); back.lineBetween(sx(postX), sy(25, 9.4), sx(boardX - dir * 0.3), sy(25, 11.8));
-    // backboard (slightly angled so it reads as a pane) + padding + shot clock on top
-    back.fillStyle(0xe8f0ff, 0.95);
-    const tilt = 0.9 * dir;
-    back.beginPath();
-    back.moveTo(sx(boardX - tilt), sy(22, 13.5)); back.lineTo(sx(boardX + tilt), sy(28, 13.5));
-    back.lineTo(sx(boardX + tilt), sy(28, 9.5)); back.lineTo(sx(boardX - tilt), sy(22, 9.5)); back.closePath(); back.fillPath();
-    back.fillStyle(0x1f2a44, 1); back.fillRect(sx(boardX) - 6, sy(25, 9.5), 12, 6);
-    back.lineStyle(2, 0xd04040, 1);
-    back.strokeRect(sx(boardX) - 5, sy(25, 11.4), 10, 26);
-    back.fillStyle(0x111111, 1); back.fillRect(sx(boardX) - 15, sy(25, 15.1), 30, 1.4 * S);
-    shotClocks.push({ x: sx(boardX), y: sy(25, 14.4) });
-    // rim + net
-    rimG.lineStyle(2, 0xffffff, 0.9);
-    const ry = sy(25, 10);
-    for (let i = 0; i <= 6; i++) {
-      const t = i / 6;
-      const x0 = sx(rimX) - 0.75 * S + t * 1.5 * S;
-      const x1 = sx(rimX) - 0.45 * S + t * 0.9 * S;
-      rimG.lineBetween(x0, ry, x1, ry + 26);
+    // support arm: a boxed beam out to the board with a lighter top face, plus an angled brace underneath
+    const armL = Math.min(sx(postX), sx(boardX)), armW = Math.abs(sx(boardX) - sx(postX));
+    back.fillStyle(0x3e4359, 1); back.fillRect(armL, sy(25, 12.75), armW, 0.55 * S);
+    back.fillStyle(0x5a6280, 1); back.fillRect(armL, sy(25, 12.75), armW, 3);
+    back.lineStyle(5, 0x3e4359, 1); back.lineBetween(sx(postX), sy(25, 9.6), sx(boardX - dir * 1.4), sy(25, 12.25));
+    // backboard: one glass pane (6 ft across the court, 3.5 ft tall, bottom at 9.6 ft) turned slightly toward the
+    // camera; every board element is placed through pane() so it all sits on the same plane
+    const tilt = 0.8 * dir;
+    const pane = (y: number, z: number): [number, number] => [sx(boardX + (tilt * (y - 25)) / 3), sy(y, z)];
+    const quad = (g: Phaser.GameObjects.Graphics, pts: [number, number][]) => {
+      g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const q of pts.slice(1)) g.lineTo(q[0], q[1]); g.closePath();
+    };
+    const Y0 = 22, Y1 = 28, Z0 = 9.6, Z1 = 13.1;
+    const board: [number, number][] = [pane(Y0, Z1), pane(Y1, Z1), pane(Y1, Z0), pane(Y0, Z0)];
+    // support arm meets the back of the board at mid height; small shot clock mounted on top
+    back.fillStyle(0x1f2a44, 1); back.fillRect(sx(boardX) - 4, sy(25, 12.4) - 3, 8, 6);
+    // glass: translucent tint, a soft diagonal sheen, then a solid white frame
+    back.fillStyle(0xcfe4ff, 0.32); quad(back, board); back.fillPath();
+    back.fillStyle(0xffffff, 0.18); quad(back, [pane(Y0, Z1), pane(Y0 + 1.6, Z1), pane(Y0 + 4.2, Z0), pane(Y0 + 2.6, Z0)]); back.fillPath();
+    back.lineStyle(3, 0xf4f7ff, 1); quad(back, board); back.strokePath();
+    back.lineStyle(1, 0x8a96b8, 1); quad(back, [pane(Y0 + 0.25, Z1 - 0.12), pane(Y1 - 0.25, Z1 - 0.12), pane(Y1 - 0.25, Z0 + 0.12), pane(Y0 + 0.25, Z0 + 0.12)]); back.strokePath();
+    // shooter's square (2 ft x 1.5 ft) just above the rim, and the padded bottom edge
+    back.lineStyle(2.5, 0xffffff, 1); quad(back, [pane(24, 11.5), pane(26, 11.5), pane(26, 10.05), pane(24, 10.05)]); back.strokePath();
+    back.fillStyle(0x1f2a44, 1); quad(back, [pane(Y0, Z0 + 0.22), pane(Y1, Z0 + 0.22), pane(Y1, Z0 - 0.12), pane(Y0, Z0 - 0.12)]); back.fillPath();
+    const [cx, cy] = pane(25, Z1);
+    back.fillStyle(0x3e4359, 1); back.fillRect(cx - 2, cy - 8, 4, 8);
+    back.fillStyle(0x111111, 1); back.fillRect(cx - 15, cy - 8 - 1.3 * S, 30, 1.3 * S);
+    shotClocks.push({ x: cx, y: cy - 8 - 0.65 * S });
+    // rim: back half behind the ball (back layer), front half in front of it (rimG); bracket plate to the board
+    const ry = sy(25, 10), rx = sx(rimX), rw = 0.75 * S, rh = 0.75 * D * 1.4;
+    // elliptical arc (the rim is a flat circle seen from above): a in [PI, 2PI] = far half, [0, PI] = near half
+    const ell = (g: Phaser.GameObjects.Graphics, a0: number, a1: number, ex = rw, ey = rh, oy = 0) => {
+      g.beginPath();
+      for (let k = 0; k <= 16; k++) { const a = a0 + ((a1 - a0) * k) / 16; const px = rx + Math.cos(a) * ex, py = ry + oy + Math.sin(a) * ey; if (k) g.lineTo(px, py); else g.moveTo(px, py); }
+      g.strokePath();
+    };
+    back.lineStyle(3, 0xb8430e, 1); ell(back, Math.PI, Math.PI * 2);
+    // net: tapered mesh hanging from the rim, strands crossing; back strands dimmer
+    const NET = 2.0 * S * 0.62, nbw = rw * 0.55, N = 8;
+    const top = (t: number): [number, number] => [rx - rw + 2 * rw * t, ry];
+    const bot = (t: number): [number, number] => [rx - nbw + 2 * nbw * t, ry + NET];
+    const mid = (t: number, f: number): [number, number] => { const a = top(t), b = bot(t); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; };
+    back.lineStyle(1.2, 0xc8ccd8, 0.55);
+    for (let k = 0; k <= N; k++) { const t = k / N; back.lineBetween(top(t)[0], ry - rh * 0.35, bot(t)[0], ry + NET); }
+    rimG.lineStyle(1.5, 0xffffff, 0.9);
+    for (let k = 0; k < N; k++) {
+      const a = k / N, b = (k + 1) / N;
+      rimG.lineBetween(...top(a), ...mid(b, 0.5)); rimG.lineBetween(...top(b), ...mid(a, 0.5));
+      rimG.lineBetween(...mid(a, 0.5), ...bot(b)); rimG.lineBetween(...mid(b, 0.5), ...bot(a));
     }
-    rimG.lineStyle(4, 0xff6a1a, 1);
-    rimG.strokeEllipse(sx(rimX), ry, 1.5 * S, 1.5 * D * 1.4);
-    rimG.lineBetween(sx(rimX - dir * 0.75), ry, sx(boardX), ry);
+    rimG.lineBetween(...bot(0), ...bot(1));
+    rimG.lineStyle(3.5, 0xff6a1a, 1); ell(rimG, 0, Math.PI);
+    rimG.lineStyle(1.2, 0xffb070, 1); ell(rimG, 0.35, Math.PI - 0.35, rw - 1, rh - 1, -1);
+    // bracket: a short plate from the rim's back edge to the board
+    const edge = rx - dir * rw;
+    rimG.fillStyle(0xd85a14, 1); rimG.fillRect(Math.min(edge, sx(boardX)), ry - 2, Math.abs(sx(boardX) - edge), 4);
+    rimG.fillStyle(0x8a3a10, 1); rimG.fillRect(Math.min(edge, sx(boardX)), ry + 2, Math.abs(sx(boardX) - edge), 2);
   }
   return { back, rimG, shotClocks };
 }

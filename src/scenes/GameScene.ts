@@ -22,6 +22,11 @@ import { norm, sub, dist, len, segDist } from '../sim/math';
 import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
 
+/** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
+ * players, courtside celebs (regular-height people) smaller again. */
+const BENCH_SCALE = SPRITE_SCALE * 0.92;
+const CELEB_SCALE = SPRITE_SCALE * 0.82;
+
 const FONT = '"Courier New", monospace';
 const SHEET_CACHE = new Map<string, Sheet>();
 const SHEETS_LOADING = new Set<string>();
@@ -522,7 +527,7 @@ export class GameScene extends Phaser.Scene {
         const tex = this.textures.addCanvas(key, buildCelebSheet(look))!;
         for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
       }
-      const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE).setDepth(sy(-3.9));
+      const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
       this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0 });
     }
     // coaches in suits
@@ -550,7 +555,7 @@ export class GameScene extends Phaser.Scene {
       tex.add(0, 0, 0, 0, FRONT_W, FRONT_H); tex.add(1, 0, FRONT_W, 0, FRONT_W, FRONT_H);
     }
     let fs = this.frontSprites.get(p.id);
-    if (!fs) { fs = this.add.sprite(0, 0, key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE); this.frontSprites.set(p.id, fs); }
+    if (!fs) { fs = this.add.sprite(0, 0, key, 0).setOrigin(0.5, 1).setScale(BENCH_SCALE); this.frontSprites.set(p.id, fs); }
     else if (fs.texture.key !== key) fs.setTexture(key, 0);
     return fs;
   }

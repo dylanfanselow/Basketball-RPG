@@ -36,6 +36,49 @@ const dribLow = P({ eF: [8, 60], hF: [11, 43], ball: [12, 4], eB: [-1, 65], hB: 
 const chest = P({ hF: [7, 60], hB: [5, 59], eF: [5, 66], eB: [1, 66], ball: [8, 61] });
 /** Triple threat after picking up the dribble: the hold loop, the pump fake and the step-through all start here. */
 const TRIPLE = P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] });
+// ---------- fixed-length limbs (authoring-time two-bone solve) ----------
+/** Arm and leg bone lengths for re-keyed clips (about BASE's). */
+export const ARM_U = 14, ARM_F = 13.5, THIGH = 24, SHIN = 27;
+/**
+ * Two-bone solve: the middle joint (elbow/knee) for a root->end span with bone lengths l1/l2, bending to an explicit
+ * side (+1 = counter-clockwise of root->end, so it never flips). Out of reach: the limb straightens toward the target
+ * and `end` is pulled in to where the straight limb ends.
+ */
+export function limb(root: J, end: J, l1: number, l2: number, side: 1 | -1): { mid: J; end: J } {
+  const dx = end[0] - root[0], dy = end[1] - root[1], d0 = Math.hypot(dx, dy);
+  const ux = d0 > 1e-6 ? dx / d0 : 0, uy = d0 > 1e-6 ? dy / d0 : -1;
+  if (d0 >= l1 + l2) return { mid: [root[0] + ux * l1, root[1] + uy * l1], end: [root[0] + ux * (l1 + l2), root[1] + uy * (l1 + l2)] };
+  const d = Math.max(d0, Math.abs(l1 - l2) + 1e-3);
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  return { mid: [root[0] + ux * a - uy * h * side, root[1] + uy * a + ux * h * side], end };
+}
+/** Put the hands at fixed arm length (elbows solved; -1 = natural elbow: behind for low hands, in front overhead). */
+export function arms(p: Pose, hF?: J | null, hB?: J | null, side: [1 | -1, 1 | -1] = [-1, -1]): Pose {
+  const o: Pose = { ...p };
+  if (hF) { const r = limb(p.sF, hF, ARM_U, ARM_F, side[0]); o.eF = r.mid; o.hF = r.end; }
+  if (hB) { const r = limb(p.sB, hB, ARM_U, ARM_F, side[1]); o.eB = r.mid; o.hB = r.end; }
+  return o;
+}
+/** Put the feet at fixed leg length (knees bend forward). */
+export function legs(p: Pose, fF?: J | null, fB?: J | null): Pose {
+  const o: Pose = { ...p };
+  if (fF) { const r = limb(p.hip, fF, THIGH, SHIN, 1); o.kF = r.mid; o.fF = r.end; }
+  if (fB) { const r = limb(p.hip, fB, THIGH, SHIN, 1); o.kB = r.mid; o.fB = r.end; }
+  return o;
+}
+
+/** Crouched stance for the crossing ready dribble. */
+const READY = P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70] });
+/** Stationary dribble: the hand stays around the hip (elbow bent) and the ball comes back up to it. */
+const dribAt = (hand: J, ball: J, guard: J = [5, 60]): Pose => ({ ...arms(athletic, hand, guard), ball });
+/** Defensive stance: slight squat (hips back, knees bent over the toes), arms out and angled down with soft elbows. */
+const defPose = (o: { hip?: number; fF?: J; fB?: J; hF?: J; hB?: J; dip?: number } = {}): Pose => {
+  const dip = o.dip ?? 0;
+  // hips sit back, feet roughly level (side by side in depth), torso leans in over the knees
+  const torso = P({ hip: [-2, (o.hip ?? 45) - dip], head: [4, 84 - dip], neck: [3, 75 - dip], sF: [3, 72 - dip], sB: [-1, 72 - dip] });
+  return arms(legs(torso, o.fF ?? [6, 0], o.fB ?? [-5, 0]), o.hF ?? [21, 53 - dip], o.hB ?? [-16, 51 - dip]);
+};
+
 const lowStance = P({ head: [3, 85], neck: [2, 76], sF: [3, 73], sB: [-1, 73], hip: [0, 44], kF: [7, 22], kB: [-6, 22], fF: [9, 0], fB: [-8, 0] });
 
 // jog / sprint keys (front leg forward, passing, back leg forward, passing)
@@ -57,25 +100,32 @@ const [jogA, jogB] = stride(1, 2, 8);
 const [sprA, sprB] = stride(1.35, 6, 16);
 // running dribble: legs from the jog, front arm pumping the ball
 const runDrib = (legs: Pose, hand: J, ball: J): Pose => ({ ...legs, eF: [9, 62], hF: hand, ball, eB: [0, 66], hB: [6, 60] });
+/** Running dribble with a fixed-length arm: the hand stays at the hip and the ball comes back up to it. */
+const runDribK = (lg: Pose, hand: J, ball: J): Pose => ({ ...arms(lg, hand, [6, 62]), ball });
 
 export const CLIPS: Clip[] = [
   // ---------- locomotion ----------
   { name: 'idle', frames: 4, loop: true, keys: [{ t: 0, pose: BASE }, { t: 0.5, pose: P({ head: [1, 90.3], neck: [0, 81.3], sF: [2, 78.4], sB: [-2, 78.4], hip: [0, 50.5] }) }, { t: 1, pose: BASE }] },
   { name: 'jog', frames: 8, loop: true, keys: cycle(jogA, jogB) },
   { name: 'sprint', frames: 8, loop: true, keys: cycle(sprA, sprB) },
-  { name: 'defend', frames: 4, loop: true, keys: [
-    { t: 0, pose: P({ eF: [10, 71], hF: [17, 75], eB: [-9, 71], hB: [-14, 76] }, lowStance) },
-    { t: 0.5, pose: P({ hip: [0, 43], head: [3, 84], neck: [2, 75], eF: [10, 70], hF: [17, 72], eB: [-9, 70], hB: [-14, 73] }, lowStance) },
-    { t: 1, pose: P({ eF: [10, 71], hF: [17, 75], eB: [-9, 71], hB: [-14, 76] }, lowStance) }] },
+  { name: 'defend', frames: 6, loop: true, keys: [
+    { t: 0, pose: defPose() },
+    { t: 0.5, pose: defPose({ dip: 1.5, hF: [22, 56], hB: [-17, 54] }) },
+    { t: 1, pose: defPose() }] },
   { name: 'slide', frames: 6, loop: true, keys: [
-    { t: 0, pose: P({ eF: [10, 71], hF: [17, 75], eB: [-9, 71], hB: [-14, 76] }, lowStance) },
-    { t: 0.5, pose: P({ kF: [4, 22], kB: [-3, 22], fF: [4, 1], fB: [-4, 0], hip: [0, 46], eF: [10, 71], hF: [17, 76], eB: [-9, 71], hB: [-14, 77] }, lowStance) },
-    { t: 1, pose: P({ eF: [10, 71], hF: [17, 75], eB: [-9, 71], hB: [-14, 76] }, lowStance) }] },
-  { name: 'dribble', frames: 6, loop: true, bounce: [0.5], keys: [{ t: 0, pose: dribHigh }, { t: 0.5, pose: dribLow }, { t: 1, pose: dribHigh }] },
+    { t: 0, pose: defPose() },
+    { t: 0.5, pose: defPose({ hip: 46, fF: [2, 1], fB: [-2, 0], hF: [21, 54], hB: [-16, 52] }) },
+    { t: 1, pose: defPose() }] },
+  { name: 'dribble', frames: 8, loop: true, bounce: [0.5], keys: [
+    { t: 0, pose: dribAt([11, 56], [12, 51]) },
+    { t: 0.2, pose: dribAt([12, 52], [13, 45]) },
+    { t: 0.5, pose: dribAt([11, 55], [12, 4]) },
+    { t: 0.78, pose: dribAt([11, 57], [12, 34]) },
+    { t: 1, pose: dribAt([11, 56], [12, 51]) }] },
   { name: 'dribbleRun', frames: 8, loop: true, bounce: [0.25, 0.75], keys: [
-    { t: 0, pose: runDrib(jogA, [11, 47], [12, 42]) }, { t: 0.25, pose: runDrib(jogB, [11, 42], [13, 3]) },
-    { t: 0.5, pose: runDrib(mirrorLegsArms(jogA), [11, 47], [12, 42]) }, { t: 0.75, pose: runDrib(mirrorLegsArms(jogB), [11, 42], [13, 3]) },
-    { t: 1, pose: runDrib(jogA, [11, 47], [12, 42]) }] },
+    { t: 0, pose: runDribK(jogA, [12, 55], [13, 50]) }, { t: 0.25, pose: runDribK(jogB, [12, 52], [13, 3]) },
+    { t: 0.5, pose: runDribK(mirrorLegsArms(jogA), [12, 55], [13, 50]) }, { t: 0.75, pose: runDribK(mirrorLegsArms(jogB), [12, 52], [13, 3]) },
+    { t: 1, pose: runDribK(jogA, [12, 55], [13, 50]) }] },
 
   // ---------- dribble moves ----------
   // Each move: sell (lean / ball out), plant (dip, ball hits the floor), action (ball changes hands /
@@ -187,13 +237,16 @@ export const CLIPS: Clip[] = [
     { t: 1, pose: P({ hip: [0, 44], head: [5, 84], neck: [4, 75], hF: [12, 42], ball: [13, 36], kF: [8, 22], fF: [11, 0] }, athletic) }] },
 
   // ---------- shots ----------
-  { name: 'shot_jumper', frames: 12, release: 0.58, post: 0.55, keys: [
-    { t: 0, pose: chest },
-    { t: 0.22, pose: P({ hip: [0, 44], kF: [6, 22], kB: [1, 22], head: [2, 86], neck: [1, 77], sF: [2, 74], sB: [-2, 74], ball: [6, 58], hF: [6, 60], hB: [4, 58], eF: [6, 66], eB: [3, 66] }) },
-    { t: 0.42, pose: P({ hip: [0, 53], kF: [2, 29], fF: [2, 1], kB: [-1, 29], fB: [-2, 1], ball: [3, 100], hF: [3, 97], eF: [7, 87], hB: [0, 96], eB: [-4, 87] }) },
-    { t: 0.58, pose: P({ hip: [0, 53], kF: [2, 28], fF: [2, -1], kB: [-1, 28], fB: [-2, -1], ball: [6, 114], hF: [5, 110], eF: [4, 98], hB: [2, 99], eB: [-3, 90] }) },
-    { t: 0.78, pose: P({ hip: [0, 53], kF: [3, 28], kB: [-1, 28], hF: [8, 107], eF: [5, 98], hB: [3, 96], eB: [-2, 88] }) },
-    { t: 1, pose: P({ hip: [0, 48], kF: [4, 25], kB: [-2, 25], hF: [7, 82], eF: [7, 76], hB: [2, 80], eB: [-1, 74] }) }] },
+  // jumper: ball rises from the dribble into the shooting pocket (in front, chest/chin), then up to the set point
+  // and release, all quickly; short follow-through. Arms keep a fixed length throughout.
+  { name: 'shot_jumper', frames: 14, release: 0.58, post: 0.35, keys: [
+    { t: 0, pose: { ...arms(athletic, [11, 56], [5, 60]), ball: [12, 51] } },
+    { t: 0.15, pose: { ...arms(P({ hip: [0, 45], kF: [6, 23], kB: [-3, 23], fF: [5, 0], fB: [-5, 0], head: [2, 87], neck: [1, 78], sF: [2, 75], sB: [-2, 75] }), [12, 59], [7, 55]), ball: [11, 60] } },
+    { t: 0.3, pose: { ...arms(P({ hip: [0, 43], kF: [7, 21], kB: [-2, 21], fF: [5, 0], fB: [-4, 0], head: [2, 85], neck: [1, 76], sF: [2, 73], sB: [-2, 73] }), [5, 64], [11, 63]), ball: [9, 68] } },
+    { t: 0.45, pose: { ...arms(P({ hip: [0, 51], kF: [3, 27], kB: [-1, 27], fF: [2, 1], fB: [-2, 1], head: [2, 90], neck: [1, 81], sF: [2, 78], sB: [-2, 78] }), [4, 93], [9, 95]), ball: [6, 98] } },
+    { t: 0.58, pose: { ...arms(P({ hip: [0, 53], kF: [2, 28], fF: [2, -1], kB: [-1, 28], fB: [-2, -1] }), [5, 105], [8, 97]), ball: [6, 110] } },
+    { t: 0.78, pose: arms(P({ hip: [0, 53], kF: [3, 28], kB: [-1, 28] }), [10, 102], [5, 94]) },
+    { t: 1, pose: arms(P({ hip: [0, 48], kF: [4, 25], kB: [-2, 25] }), [8, 72], [4, 68]) }] },
   { name: 'shot_push', frames: 8, release: 0.55, post: 0.4, keys: [
     { t: 0, pose: chest },
     { t: 0.3, pose: P({ hip: [0, 46], kF: [5, 23], kB: [0, 23], ball: [6, 70], hF: [6, 72], hB: [4, 70] }) },
@@ -329,12 +382,13 @@ export const CLIPS: Clip[] = [
     { t: 0.55, pose: P({ hip: [0, 52], kF: [5, 34], fF: [3, 12], kB: [-3, 32], fB: [-5, 10], hF: [6, 92], eF: [9, 84], hB: [3, 91], eB: [-3, 84], ball: [5, 95] }) },
     { t: 0.8, pose: P({ hip: [0, 42], kF: [8, 21], fF: [10, 0], kB: [-7, 21], fB: [-10, 0], head: [2, 82], neck: [1, 73], sF: [2, 70], sB: [-2, 70], hF: [6, 72], hB: [4, 71], eF: [13, 70], eB: [-7, 70], ball: [6, 73] }) },
     { t: 1, pose: P({ hip: [0, 44], kF: [7, 22], fF: [9, 0], kB: [-6, 22], fB: [-9, 0], head: [2, 84], neck: [1, 75], sF: [2, 72], sB: [-2, 72], hF: [6, 72], hB: [4, 71], eF: [12, 70], eB: [-6, 70], ball: [6, 73] }) }] },
+  // crossing dribble while holding ○: both hands stay at the hips, the ball goes hand -> floor -> other hand
   { name: 'dribbleReady', frames: 8, loop: true, bounce: [0.25, 0.75], keys: [
-    { t: 0, pose: P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70], hF: [11, 40], eF: [9, 56], hB: [3, 46], eB: [1, 58], ball: [11, 34] }) },
-    { t: 0.25, pose: P({ hip: [0, 41], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 81], neck: [2, 72], sF: [3, 69], sB: [-1, 69], hF: [8, 22], eF: [8, 46], hB: [4, 22], eB: [2, 46], ball: [6, 4] }) },
-    { t: 0.5, pose: P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70], hB: [9, 40], eB: [7, 56], hF: [4, 46], eF: [5, 58], ball: [9, 34] }) },
-    { t: 0.75, pose: P({ hip: [0, 41], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 81], neck: [2, 72], sF: [3, 69], sB: [-1, 69], hF: [8, 22], eF: [8, 46], hB: [4, 22], eB: [2, 46], ball: [6, 4] }) },
-    { t: 1, pose: P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70], hF: [11, 40], eF: [9, 56], hB: [3, 46], eB: [1, 58], ball: [11, 34] }) }] },
+    { t: 0, pose: { ...arms(READY, [11, 46], [3, 48]), ball: [11, 40] } },
+    { t: 0.25, pose: { ...arms(READY, [9, 44], [5, 45]), ball: [6, 4] } },
+    { t: 0.5, pose: { ...arms(READY, [4, 48], [9, 46]), ball: [9, 40] } },
+    { t: 0.75, pose: { ...arms(READY, [5, 45], [7, 44]), ball: [6, 4] } },
+    { t: 1, pose: { ...arms(READY, [11, 46], [3, 48]), ball: [11, 40] } }] },
   // ---------- dead ball / inbounds / sideline ----------
   { name: 'hold', frames: 4, loop: true, keys: [
     { t: 0, pose: TRIPLE },

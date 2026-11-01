@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
@@ -34,7 +34,7 @@ describe('arm rig', () => {
       expect(d(r.hF, r.ball!)).toBeCloseTo(d(pose.hF, pose.ball!), 5);
       expect(d(pose.hF, pose.ball!)).toBeLessThan(HOLD_NEAR);
     }
-    const low = CLIP.dribble.keys[1].pose, r = rigArms(low, true);
+    const low = CLIP.dribble.keys.find((k) => k.pose.ball![1] < 10)!.pose, r = rigArms(low, true);
     expect(r.ball).toEqual(low.ball);
   });
   it('free clips (defense, off-ball) get full-length arms with the same shape', () => {
@@ -44,6 +44,45 @@ describe('arm rig', () => {
       expect(d(r[s], r[e]) + d(r[e], r[h])).toBeGreaterThanOrEqual(UPPER_ARM + FOREARM - 0.01);
       expect(d(r[s], r[h])).toBeGreaterThan(d(def[s], def[h]));
     }
+  });
+});
+
+describe('round 12 clips', () => {
+  const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  it('limb keeps its bone lengths and reaches the target when it can', () => {
+    const r = limb([0, 0], [10, -15], ARM_U, ARM_F, -1);
+    expect(d([0, 0], r.mid)).toBeCloseTo(ARM_U, 5); expect(d(r.mid, r.end)).toBeCloseTo(ARM_F, 5);
+    expect(r.end).toEqual([10, -15]);
+    const far = limb([0, 0], [0, -80], ARM_U, ARM_F, -1);
+    expect(d([0, 0], far.end)).toBeCloseTo(ARM_U + ARM_F, 5);
+  });
+  it('dribbling arms keep a constant length (the ball comes up to the hand)', () => {
+    for (const name of ['dribble', 'dribbleRun', 'dribbleReady']) {
+      const c = CLIP[name];
+      for (let i = 0; i < c.frames; i++) {
+        const p = sampleClip(c, i / c.frames);
+        expect(d(p.sF, p.eF) + d(p.eF, p.hF)).toBeGreaterThan(ARM_U + ARM_F - 1);
+        expect(d(p.sF, p.eF) + d(p.eF, p.hF)).toBeLessThan(ARM_U + ARM_F + 0.5);
+        expect(p.hF[1]).toBeGreaterThan(36); // hand stays around the hip, never down at the knee
+      }
+    }
+  });
+  it('jumper: ball rises from the dribble through a pocket in front of the chest to the release', () => {
+    const c = CLIP.shot_jumper, keys = c.keys.filter((k) => k.pose.ball);
+    for (let i = 1; i < keys.length; i++) expect(keys[i].pose.ball![1]).toBeGreaterThan(keys[i - 1].pose.ball![1]);
+    const pocket = keys.find((k) => k.pose.ball![1] > 62 && k.pose.ball![1] < 76)!;
+    expect(pocket.pose.ball![0]).toBeGreaterThan(6);
+    expect(keys[keys.length - 1].t).toBe(c.release);
+  });
+  it('defense is a slight squat: hips below standing and both knees bent', () => {
+    const p = CLIP.defend.keys[0].pose;
+    expect(p.hip[1]).toBeLessThan(47); // standing hip is 51
+    const ang = (a: number[], b: number[], c: number[]) => {
+      const u = [a[0] - b[0], a[1] - b[1]], v = [c[0] - b[0], c[1] - b[1]];
+      return (Math.acos((u[0] * v[0] + u[1] * v[1]) / (Math.hypot(u[0], u[1]) * Math.hypot(v[0], v[1]))) * 180) / Math.PI;
+    };
+    expect(ang(p.hip, p.kF, p.fF)).toBeLessThan(165);
+    expect(ang(p.hip, p.kB, p.fB)).toBeLessThan(165);
   });
 });
 
