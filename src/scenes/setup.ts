@@ -4,13 +4,20 @@ import { generateRoster } from '../career/roster';
 import { careerPlayer, careerUlt } from '../career/career';
 import { planRotation } from '../sim/rotation';
 import { app } from '../state';
+import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
+export type { OneOnOneSetup } from '../sim/oneOnOne';
+export { DEFAULT_1V1 } from '../sim/oneOnOne';
 
-export type Mode = 'practice' | 'quick' | 'career';
+export type Mode = 'practice' | 'quick' | 'career' | 'oneOnOne';
 
 /** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
-export function createSim(mode: Mode, setupOpts?: MatchSetup): GameSim {
+/** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup }
+
+export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup): GameSim {
+  if (mode === 'oneOnOne') return buildOneOnOne(oneOnOne ?? DEFAULT_1V1, Math.floor(Math.random() * 1e9));
   const c = app.career;
   const myTeam = TEAMS.find((t) => t.id === (setupOpts?.myTeam ?? c.teamId)) ?? TEAMS[13];
   const oppId = setupOpts?.oppTeam ?? (mode === 'career' ? c.season.schedule[c.season.gameNo % c.season.schedule.length] : TEAMS[(TEAMS.indexOf(myTeam) + 1) % TEAMS.length].id);

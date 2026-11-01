@@ -32,6 +32,8 @@ npm run build:single # single-file build for the browser link
 - The user can be any roster player in Quick 5v5: never assume the user id is `'USER'`; use `sim.user`.
 - Cosmetic randomness must not consume `sim.rng` (it changes whole games and breaks seeded tests).
 - Phaser scenes are reused between games: clear per-game maps in `GameScene.init`; textures persist in
-  `SHEET_CACHE`.
+  `SHEET_CACHE`. **Never lazily create game objects in `update()` behind `if (!this.x)`**: on re-entry the field
+  still points at the destroyed object, `setText` throws, and the scene freezes (this was the "can't leave a menu" bug).
+- `src/state.ts` touches `window`, so anything tests import must not import it (that's why `sim/oneOnOne.ts` exists).
 - Official NBA/roster sites are blocked from the cloud environment; use web search results.
 - Stick space = court space (x along the court, y across it); move directions are relative to the player→rim vector.

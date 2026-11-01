@@ -19,6 +19,14 @@ export function contestReach(type: string): number {
   return 6;
 }
 
+/** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
+export const STEP_THROUGH_WINDOW = 1.0;
+
+/** Did this defender leave his feet on the shooter's most recent pump fake (and is still paying for it)? */
+export function bitOnFake(def: Player, shooter: Player, now: number): boolean {
+  return shooter.pumpFakeAt > -50 && def.lastJumpAt >= shooter.pumpFakeAt - 0.05 && now - def.lastJumpAt < 1.2;
+}
+
 /** Pick a shot type from location + stick (Dunk City style: hold back = floater, sideways = hook / euro). */
 export function selectShotType(p: Player, side: Side, stick: Vec, now: number): string {
   const rim = rimPos(side);
@@ -31,7 +39,8 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   const side_ = lateral > 0.65 && Math.abs(toward) < 0.6;
   const speedToRim = dot(p.vel, toRim);
 
-  if (now - p.pumpFakeAt < 0.9 && p.hasShot('stepThrough') && d < 15) return 'stepThrough';
+  // Step-Through (perk): right after a pump fake, hold the stick toward the rim and shoot
+  if (now - p.pumpFakeAt < STEP_THROUGH_WINDOW && p.hasShot('stepThrough') && d < 15 && toward > 0.5) return 'stepThrough';
   if (d <= 6.5) {
     if (back && d >= 3) return 'floater';
     if (side_) return p.hasShot('euro') && d >= 2.5 ? 'euro' : 'hook';
@@ -80,6 +89,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     let state = 1;
     if (d.state === 'stagger' || now < d.staggerUntil) state = 0.35;
     if (now < d.screenedUntil) state = Math.min(state, 0.5);
+    if (type === 'stepThrough' && bitOnFake(d, shooter, now)) state = Math.min(state, 0.15); // bit on the fake: stepped right past him
     const c = 0.62 * closeness * angF * heightF * handUp * skill * state * d.mods.contestOutMult(type);
     if (c > 0.01) { by.push({ name: d.name, dist: r, c }); keep *= 1 - clamp(c, 0, 0.95); }
   }

@@ -2,7 +2,7 @@ import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake } from './shooting';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
@@ -20,6 +20,10 @@ export interface UserInput {
 }
 /** ✕ taps shorter than this are pump fakes; ○ taps shorter than this with no direction are jab steps. */
 export const TAP_S = 0.18;
+/** Length of the pump-fake sell (state and animation). A shot pressed during it cuts it short. */
+export const PUMP_FAKE_S = 0.42;
+/** Step-Through: share of the gather spent striding on the floor before lifting off, and stride length (ft). */
+export const STEP_LIFT = 0.55, STEP_STRIDE_FT = 5.5;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
 export interface TeamState { def: TeamDef; side: Side; score: number; roster: Player[]; onCourt: Player[] }
@@ -38,6 +42,10 @@ export interface GameConfig {
   autopilotUser?: boolean;
   switchAll?: boolean;
   allowedPlays?: string[];
+  /** second human (two-player 1v1) */
+  user2Id?: string;
+  /** half-court 1v1, make it take it (mode must be 'practice') */
+  oneOnOne?: { target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean };
   featureUser?: boolean;
 }
 
@@ -72,6 +80,8 @@ export class GameSim {
   events: GameEvent[] = [];
   private evCursor = 0;
   user: Player | null = null;
+  /** second human player (two-player 1v1); null otherwise */
+  user2: Player | null = null;
   userOnCourt = false;
   preview: ShotEval | null = null;
   lastShot: { ev: ShotEval; made: boolean; name: string; user: boolean; blocked?: boolean; at: number } | null = null;
@@ -92,6 +102,7 @@ export class GameSim {
   focusQueue: string[] = [];
   /** user's last stick for previews */
   stick: Vec = v();
+  stick2: Vec = v();
 
   constructor(cfg: GameConfig) {
     this.cfg = cfg;
@@ -108,7 +119,13 @@ export class GameSim {
     this.user = cfg.userId ? [...cfg.rosters[0], ...cfg.rosters[1]].find((p) => p.id === cfg.userId) ?? null : null;
     if (this.user) this.user.isUser = !cfg.autopilotUser;
 
-    if (cfg.mode === 'practice') {
+    if (cfg.mode === 'practice' && cfg.oneOnOne) {
+      this.teams[0].onCourt = cfg.rosters[0].slice(0, 1);
+      this.teams[1].onCourt = cfg.rosters[1].slice(0, 1);
+      this.teams[1].side = this.teams[0].side; // both attack the same hoop
+      this.user2 = cfg.user2Id ? cfg.rosters[1].find((p) => p.id === cfg.user2Id) ?? null : null;
+      if (this.user2) this.user2.isUser = true;
+    } else if (cfg.mode === 'practice') {
       const pr = cfg.practice ?? { defenders: 1, teammates: 0, runPlays: false };
       const off = this.teams[0];
       const user = this.user!;
@@ -122,7 +139,11 @@ export class GameSim {
     }
     this.refreshOnCourt();
     this.assignMatchups();
-    if (cfg.mode === 'practice') this.practiceReset();
+    if (cfg.oneOnOne) {
+      this.pendingInbound = this.rng.chance(0.5) ? 0 : 1;
+      this.practiceReset();
+      this.emit({ kind: 'period', text: `${this.teams[this.possession].onCourt[0].name} has the ball first`, big: true });
+    } else if (cfg.mode === 'practice') this.practiceReset();
     else this.startGame();
   }
 
@@ -144,7 +165,9 @@ export class GameSim {
   byPlayRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => this.playRole(p) === role) ?? null; }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(4, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
-  isAI(p: Player) { return !(p === this.user && this.user.isUser); }
+  isAI(p: Player) { return !((p === this.user && this.user.isUser) || (p === this.user2 && this.user2.isUser)); }
+  /** Is this player controlled by a person (P1 or P2)? */
+  isHuman(p: Player | null) { return !!p && !this.isAI(p); }
   emit(e: Omit<GameEvent, 't'>) { this.events.push({ t: this.time, ...e }); }
   drainEvents(): GameEvent[] { const out = this.events.slice(this.evCursor); this.evCursor = this.events.length; return out; }
   defenderOf(p: Player): Player | null { return this.opp(p.team).find((d) => d.guarding === p.id) ?? null; }
@@ -221,7 +244,44 @@ export class GameSim {
     this.assignMatchups();
   }
 
+  /** 1v1 check ball: the team with the ball checks it at the top of the key, defender 4 ft off toward the rim. */
+  checkBall(team: 0 | 1) {
+    this.possession = team;
+    this.shotClock = 14;
+    this.runner.reset();
+    this.inb = null;
+    const off = this.teams[team].onCourt[0], def = this.teams[1 - team].onCourt[0];
+    for (const p of [off, def]) {
+      p.vel = v(); p.state = 'idle'; p.z = 0; p.vz = 0; p.staggerUntil = 0; p.screenedUntil = 0; p.bumpedUntil = -9;
+      p.move = null; p.pendingShot = null; p.liftAt = 0; p.jumpAt = 0;
+    }
+    off.p = hc(this.side(team), 30, 0);
+    this.assignMatchups();
+    def.p = add(off.p, scale(norm(sub(this.rim(team), off.p)), 4));
+    off.face = norm(sub(this.rim(team), off.p)); def.face = scale(off.face, -1);
+    this.giveBall(off);
+    this.live = true;
+    this.pendingInbound = null;
+  }
+
+  /** Points a make is worth (1v1 "1s & 2s": inside the arc = 1, three = 2). */
+  scoreValue(pts: number): number {
+    if (this.cfg.oneOnOne?.scoring === '1s2s') return pts >= 3 ? 2 : 1;
+    return pts;
+  }
+
+  /** 1v1: end the game when someone reaches the target (and leads by 2 if win-by-2 is on). */
+  private checkWin(): boolean {
+    const o = this.cfg.oneOnOne;
+    if (!o) return false;
+    const [a, b] = [this.teams[0].score, this.teams[1].score];
+    const hi = Math.max(a, b), lead = Math.abs(a - b);
+    if (hi >= o.target && (!o.winBy2 || lead >= 2)) { this.finish(); return true; }
+    return false;
+  }
+
   practiceReset() {
+    if (this.cfg.oneOnOne) { this.checkBall(this.pendingInbound ?? this.possession); return; }
     const side = this.side(0);
     this.possession = 0;
     this.shotClock = 24;
@@ -348,7 +408,8 @@ export class GameSim {
     this.shotClock = 24;
     this.runner.reset();
     this.assignMatchups();
-    if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
+    if (this.cfg.oneOnOne) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
+    else if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
     else this.transitionUntil = this.time + 5; // live turnover / defensive board: read the break
   }
 
@@ -375,7 +436,7 @@ export class GameSim {
   }
 
   // ---------- main tick ----------
-  update(dt: number, input: UserInput) {
+  update(dt: number, input: UserInput, input2?: UserInput) {
     if (this.over) return;
     this.time += dt;
     for (const p of this.players) p.mods.expire(this.time);
@@ -390,7 +451,8 @@ export class GameSim {
       for (const p of this.players) p.box.secs += dt;
     }
 
-    if (this.user && this.userOnCourt && this.user.isUser) this.handleUser(input);
+    if (this.user && this.userOnCourt && this.user.isUser) this.handleUser(this.user, input, this.ux);
+    if (this.user2 && this.user2.isUser && this.players.includes(this.user2)) this.handleUser(this.user2, input2 ?? emptyInput(), this.ux2);
     if (!this.freezeAI) {
       for (const p of this.players) if (this.isAI(p) || this.inb?.inbounder === p) this.think(p, dt);
     } else for (const p of this.players) if (this.isAI(p)) p.target = { ...p.p };
@@ -455,7 +517,8 @@ export class GameSim {
       const won = this.teams[u.team].score > this.teams[1 - u.team].score;
       if (won && this.lastGoAhead?.pid === u.id && this.lastGoAhead.quarter >= 4 && this.lastGoAhead.clock < 5) this.milestones.push('gameWinner');
     }
-    this.emit({ kind: 'final', text: `FINAL ${this.teams[0].def.name} ${this.teams[0].score} - ${this.teams[1].score} ${this.teams[1].def.name}`, big: true });
+    const nm = (i: 0 | 1) => (this.cfg.oneOnOne ? this.teams[i].onCourt[0].name : this.teams[i].def.name);
+    this.emit({ kind: 'final', text: `FINAL ${nm(0)} ${this.teams[0].score} - ${this.teams[1].score} ${nm(1)}`, big: true });
   }
 
   // ---------- play calling & grading ----------
@@ -594,10 +657,10 @@ export class GameSim {
   }
 
   // ---------- user ----------
-  private handleUser(inp: UserInput) {
-    const u = this.user!;
+  private handleUser(u: Player, inp: UserInput, ux: GameSim['ux']) {
     if (this.inb?.inbounder === u) return; // walking it out of bounds is automatic
-    this.stick = inp.move;
+    const primary = u === this.user;
+    if (primary) this.stick = inp.move; else this.stick2 = inp.move;
     const hasBall = this.holder() === u;
     const onO = u.team === this.possession;
     if (inp.sprint && this.live) {
@@ -614,7 +677,8 @@ export class GameSim {
       if (lat * u.flickDir < -0.6) this.flickCross(u, Math.sign(lat));
     }
 
-    this.passTarget = hasBall ? this.pickPassTarget(u, inp.move) : null;
+    const passTarget = hasBall ? this.pickPassTarget(u, inp.move) : null;
+    if (primary) this.passTarget = passTarget;
     if (!this.live) return;
 
     if (inp.x) tryActivateUlt(this, u);
@@ -623,22 +687,22 @@ export class GameSim {
     u.boxingOut = u.boxOutHeld && u.z === 0;
     if (hasBall) {
       // ✕: tap = pump fake (repeatable), hold past TAP_S = shoot
-      if (inp.a) { this.ux.aDownAt = this.time; this.ux.aPending = true; }
-      if (this.ux.aPending) {
-        if (inp.aHeld && this.time - this.ux.aDownAt >= TAP_S) { this.ux.aPending = false; this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time)); }
-        else if (!inp.aHeld) { this.ux.aPending = false; this.pumpFake(u); }
+      if (inp.a) { ux.aDownAt = this.time; ux.aPending = true; }
+      if (ux.aPending) {
+        if (inp.aHeld && this.time - ux.aDownAt >= TAP_S) { ux.aPending = false; this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time)); }
+        else if (!inp.aHeld) { ux.aPending = false; this.pumpFake(u); }
       }
-      if (inp.y && this.passTarget && !this.ux.aPending) this.pass(u, this.passTarget);
+      if (inp.y && passTarget && !ux.aPending) this.pass(u, passTarget);
       // ○: press with the stick pushed = move now; hold ○ and drag = move per flick; quick neutral tap = jab step
       if (inp.b) {
-        this.ux.bDownAt = this.time; this.ux.bMoved = false;
-        if (len(inp.move) > 0.35) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; } else this.ux.bNeedNeutral = false;
+        ux.bDownAt = this.time; ux.bMoved = false;
+        if (len(inp.move) > 0.35) { this.dribbleMove(u, inp.move); ux.bMoved = true; ux.bNeedNeutral = true; } else ux.bNeedNeutral = false;
       } else if (inp.bHeld) {
-        if (!this.ux.bNeedNeutral && len(inp.move) > 0.5) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; }
-        else if (this.ux.bNeedNeutral && len(inp.move) < 0.25) this.ux.bNeedNeutral = false;
-      } else if (this.ux.bWasHeld && !this.ux.bMoved && this.time - this.ux.bDownAt < TAP_S) this.dribbleMove(u, v());
+        if (!ux.bNeedNeutral && len(inp.move) > 0.5) { this.dribbleMove(u, inp.move); ux.bMoved = true; ux.bNeedNeutral = true; }
+        else if (ux.bNeedNeutral && len(inp.move) < 0.25) ux.bNeedNeutral = false;
+      } else if (ux.bWasHeld && !ux.bMoved && this.time - ux.bDownAt < TAP_S) this.dribbleMove(u, v());
     } else {
-      this.ux.aPending = false;
+      ux.aPending = false;
       if (onO) {
         if (inp.y) { u.callForBallUntil = this.time + 1.4; this.emit({ kind: 'call', text: 'Calling for the ball…', pid: u.id }); }
         if (inp.b && !shotUp) this.setScreen(u);
@@ -649,19 +713,20 @@ export class GameSim {
         if (inp.b && !shotUp) this.takeCharge(u);
       }
     }
-    this.ux.bWasHeld = inp.bHeld;
+    ux.bWasHeld = inp.bHeld;
   }
 
   /** Per-user button timing state (tap vs hold). */
   ux = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
+  ux2 = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
 
   /** Pump fake: picks up the dribble (if still dribbling), ball up, defenders may bite. Repeatable. */
   pumpFake(p: Player) {
     if (this.holder() !== p || p.busy) return;
     if (!p.deadDribble) { p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
     p.pumpFakeAt = this.time;
-    p.anim = { name: 'pumpfake', start: this.time, dur: 0.4 };
-    p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = 0.32; p.moveVel = v(); p.move = { id: 'pumpfake', dir: v(), t: 0 };
+    p.anim = { name: 'pumpfake', start: this.time, dur: PUMP_FAKE_S };
+    p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = PUMP_FAKE_S; p.moveVel = v(); p.move = { id: 'pumpfake', dir: v(), t: 0 };
     this.emit({ kind: 'move', text: 'Pump Fake', pid: p.id });
     for (const def of this.opp(p.team)) {
       const dd = dist(def.p, p.p);
@@ -694,6 +759,7 @@ export class GameSim {
     const def = SHOT_TYPES[type];
     const jumper = ['mid', 'three', 'deep3'].includes(type);
     const windMult = jumper ? p.mods.pMult('release') : p.mods.pMult('gather');
+    if (p.move?.id === 'pumpfake') p.move = null; // a shot cuts the fake short
     p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
     p.pendingShot = { type, override };
     p.anim = { name: `shot_${type}`, start: this.time, release: this.time + p.stateDur };
@@ -709,12 +775,36 @@ export class GameSim {
     }
     p.vz = type === 'dunk' ? p.jumpVel * 0.95 : jumper ? 8 : 9.5;
     p.face = norm(sub(rim, p.p));
+    if (type === 'stepThrough') this.stepThrough(p, rim, d);
     // defenders react
     for (const d2 of this.opp(p.team)) {
       if (this.isAI(d2) && dist(d2.p, p.p) < 7.5 && d2.z === 0 && !d2.busy) {
         d2.jumpAt = this.time + this.rng.range(0.1, 0.28) * (1.4 - d2.sub.block / 99 * 0.6);
       }
     }
+  }
+
+  /**
+   * Step-Through: one long grounded stride past the defender (angled away from his side), then lift off.
+   * A defender who jumped on the fake can't contest or block it.
+   */
+  private stepThrough(p: Player, rim: Vec, d: number) {
+    const toRim = norm(sub(rim, p.p));
+    const nd = this.nearestDefender(p);
+    let dir = toRim;
+    if (nd.d && nd.dist < 7) {
+      const lat = cross(toRim, sub(nd.d.p, p.p));
+      // angle to the open side: enough to clear his body (~2.4 ft), 20°-50°
+      const a = (lat >= 0 ? -1 : 1) * clamp(Math.asin(Math.min(0.95, 2.4 / Math.max(1, nd.dist))), 0.35, 0.87);
+      dir = { x: toRim.x * Math.cos(a) - toRim.y * Math.sin(a), y: toRim.x * Math.sin(a) + toRim.y * Math.cos(a) };
+    }
+    const strideT = Math.max(0.1, p.stateDur * STEP_LIFT);
+    const stride = Math.min(STEP_STRIDE_FT, Math.max(1, d - 2.5));
+    p.vel = scale(dir, stride / strideT / 0.9); // /0.9: shoot-state drag over the stride
+    p.vz = 0; p.liftAt = this.time + strideT;
+    const bit = this.opp(p.team).find((q) => bitOnFake(q, p, this.time));
+    if (bit) this.emit({ kind: 'move', text: `STEP-THROUGH! ${bit.name} bit`, pid: p.id, big: true, good: true });
+    else this.emit({ kind: 'move', text: 'Step-Through', pid: p.id });
   }
 
   private releaseShot(p: Player) {
@@ -731,6 +821,7 @@ export class GameSim {
     // blocks
     for (const d of this.opp(p.team)) {
       if (d.z < 0.6 || d.state === 'fallen') continue;
+      if (ps.type === 'stepThrough' && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
       const dd = dist(d.p, p.p);
       if (dd > 4.8) continue;
       const toRim = norm(sub(rim, p.p));
@@ -780,7 +871,7 @@ export class GameSim {
     }
     this.lastShot = { ev, made, name: p.name, user: p === this.user, at: this.time };
     p.box.usage++;
-    if (p === this.user) {
+    if (p === this.user && !this.cfg.oneOnOne) {
       if (ev.pct < 0.28 && ev.contest > 0.3 && this.shotClock > 4) { applyTrust(this.trust, 'badShot'); this.emit({ kind: 'grade', text: '✗ Forced a bad shot', good: false, pid: p.id }); }
       else if (ev.pct >= 0.45 || ev.conds.has('open')) applyTrust(this.trust, 'goodShot');
     }
@@ -884,7 +975,7 @@ export class GameSim {
   jump(p: Player, power: number) {
     if (p.z > 0 || p.busy) return;
     if (this.time < p.blockCdUntil) return;
-    p.vz = p.jumpVel * power; p.state = 'jump';
+    p.vz = p.jumpVel * power; p.state = 'jump'; p.lastJumpAt = this.time;
     p.blockCdUntil = this.time + 0.9;
   }
 
@@ -948,6 +1039,10 @@ export class GameSim {
         }
       }
       if (p.jumpAt && this.time >= p.jumpAt) { p.jumpAt = 0; this.jump(p, 0.9); }
+      if (p.liftAt && this.time >= p.liftAt) {
+        p.liftAt = 0;
+        if (p.state === 'shoot') { p.vz = 9.5; p.vel = scale(p.vel, 0.45); } // plant the stride foot and rise
+      }
 
       let want = p.want;
       if (p.deadDribble && this.holder() === p && p.state !== 'shoot') want = v();
@@ -1241,8 +1336,9 @@ export class GameSim {
     }, s.id);
     if (st.made) {
       const before = t.score - this.teams[1 - team].score;
-      t.score += st.pts;
-      s.box.pts += st.pts; s.box.fgm++; if (st.pts === 3) s.box.tpm++;
+      const val = this.scoreValue(st.pts);
+      t.score += val;
+      s.box.pts += val; s.box.fgm++; if (st.pts === 3) s.box.tpm++;
       const after = t.score - this.teams[1 - team].score;
       if (before <= 0 && after > 0) this.lastGoAhead = { pid: s.id, clock: this.clock, quarter: this.quarter };
       const ast = this.assistCand && this.assistCand.receiver === s && this.time - this.assistCand.at < 5 ? this.assistCand.passer : null;
@@ -1250,15 +1346,25 @@ export class GameSim {
       this.gainUlt(s, ULT_GAINS.score + (st.pts === 3 ? 4 : 0));
       if (s === this.user) applyTrust(this.trust, 'madeShot');
       const name = SHOT_TYPES[st.ev.type].name;
-      this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${st.pts}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
+      this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
         if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
       }
       this.checkLeftMan(s);
       this.assistCand = null;
+      if (this.cfg.oneOnOne) {
+        // make it, take it: scorer checks it again (fouls just count the bucket, no free throws)
+        if (st.foul) this.emit({ kind: 'foul', text: 'Foul — bucket counts', team });
+        if (this.checkWin()) return;
+        this.deadBall(team, 1.1);
+        return;
+      }
       if (st.foul) { this.emit({ kind: 'foul', text: 'And-one!', team, big: true }); this.freeThrows(s, 1); }
       this.deadBall((1 - team) as 0 | 1, 1.1, 'baseline');
+    } else if (st.foul && this.cfg.oneOnOne) {
+      this.emit({ kind: 'foul', text: 'Foul — ball back', team });
+      this.deadBall(team, 1.1);
     } else if (st.foul) {
       this.emit({ kind: 'foul', text: `Shooting foul — ${st.pts} free throws`, team });
       const made = this.freeThrows(s, st.pts);
@@ -1290,15 +1396,17 @@ export class GameSim {
 
   private checkLeftMan(scorer: Player) {
     const u = this.user;
+    if (this.cfg.oneOnOne) return; // no team trust in 1v1
     if (!u || !this.userOnCourt || u.team === scorer.team || u.guarding !== scorer.id) return;
     if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored — you left him', good: false, pid: u.id }); }
   }
 
   // ---------- HUD support ----------
   private updatePreview() {
-    const u = this.user;
-    if (u && this.holder() === u && u.state !== 'shoot') {
-      const type = selectShotType(u, this.side(u.team), this.stick, this.time);
+    const h = this.holder();
+    const u = h && this.isHuman(h) && (h === this.user || h === this.user2) ? h : null;
+    if (u && u.state !== 'shoot') {
+      const type = selectShotType(u, this.side(u.team), u === this.user ? this.stick : this.stick2, this.time);
       const ov = this.ult.active && this.ult.active.pid === u.id ? this.ult.active.shotOverride : undefined;
       this.preview = evaluateShot(u, this.opp(u.team), this.side(u.team), type, { now: this.time, clutch: this.clutch, override: ov });
     } else this.preview = null;

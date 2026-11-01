@@ -9,6 +9,8 @@
 - Post-up moves (Strength currently only affects contact, screens, box-outs).
 
 ## Known gaps / polish
+- 1v1: benches/coaches still show both full rosters; no "clear the ball" rule (stops just check it up top); P2 has no on-screen
+  controller HUD or own shot cone.
 - Substitutes appear instantly instead of walking from the bench.
 - Camera doesn't pan to an inbounder behind the far baseline.
 - Rosters: starters solid; deep bench, some jersey numbers and many looks are best guesses (sources were
@@ -19,4 +21,5 @@
 ## Not verified in this environment
 - Audio by ear (all sounds are procedural; only the AudioContext state was checked).
 - A physical PlayStation controller (tested with a simulated pad; standard mapping assumed).
+- Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).
 - Long-session performance of the animated crowd on slower machines.

@@ -123,3 +123,34 @@ describe('round 6 animation', () => {
     }
   });
 });
+
+describe('pump fake + step-through animation', () => {
+  it('both clips are smooth (14+ frames) and the fake starts/ends exactly on the hold pose', () => {
+    expect(CLIP.pumpfake.frames).toBe(14);
+    expect(CLIP.shot_stepThrough.frames).toBeGreaterThanOrEqual(14);
+    const hold = sampleClip(CLIP.hold, 0);
+    for (const u of [0, 1]) {
+      const p = sampleClip(CLIP.pumpfake, u);
+      for (const j of JOINTS) expect(p[j]).toEqual(hold[j]);
+    }
+    expect(sampleClip(CLIP.shot_stepThrough, 0).ball).toEqual(hold.ball);
+  });
+  it('the fake sells high (ball above the head at the top) and no joint jumps between frames', () => {
+    const top = sampleClip(CLIP.pumpfake, 0.5);
+    expect(top.ball![1]).toBeGreaterThan(top.head[1]);
+    for (const name of ['pumpfake', 'shot_stepThrough']) {
+      const c = CLIP[name];
+      for (let i = 1; i < c.frames; i++) {
+        const a = sampleClip(c, (i - 1) / (c.frames - 1)), b = sampleClip(c, i / (c.frames - 1));
+        for (const j of JOINTS) expect(Math.hypot(a[j][0] - b[j][0], a[j][1] - b[j][1])).toBeLessThan(14);
+      }
+    }
+  });
+  it('the step-through stays on the floor through the stride (feet down until lift-off)', () => {
+    const c = CLIP.shot_stepThrough;
+    for (const u of [0.26, 0.37]) {
+      const p = sampleClip(c, u);
+      expect(Math.min(p.fF[1], p.fB[1])).toBeLessThanOrEqual(4);
+    }
+  });
+});

@@ -25,7 +25,7 @@ export class MatchSetupScene extends Phaser.Scene {
       const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null') as MatchSetup | null;
       if (saved) this.sel = [Math.max(0, TEAMS.findIndex((t) => t.id === saved.myTeam)), Math.max(0, TEAMS.findIndex((t) => t.id === saved.oppTeam)), saved.playAs === 'me' ? 5 : saved.playAs];
     } catch { /* first time */ }
-    title(this, 'QUICK 5v5', 'Stick/D-pad: move · L1/R1 or ←/→: switch column · ✕/Enter: start · ○/Esc: back');
+    title(this, 'QUICK 5v5', 'Stick/D-pad: move · ←/→ or R1/L2: switch column · ✕/Enter: start · ○/L1/Esc: back');
     this.g = this.add.graphics();
     ['YOUR TEAM', 'OPPONENT', 'PLAY AS'].forEach((h, i) => this.add.text(70 + i * 400, 128, h, { fontFamily: FONT, fontSize: '18px', color: COL.accent, fontStyle: 'bold' }));
     this.info = this.add.text(870, 470, '', { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 4, wordWrap: { width: 380 } });
@@ -86,8 +86,8 @@ export class MatchSetupScene extends Phaser.Scene {
     if (inp.pressed('dev')) (window as any).__toggleDev?.();
     if (inp.pressed('down')) this.move(this.col, 1);
     if (inp.pressed('up')) this.move(this.col, -1);
-    if (inp.pressed('rb') || inp.pressed('right')) { this.col = (this.col + 1) % 3; this.redraw(); }
-    if (inp.pressed('lb') || inp.pressed('left')) { this.col = (this.col + 2) % 3; this.redraw(); }
+    if (inp.pressed('tabNext') || inp.pressed('right')) { this.col = (this.col + 1) % 3; this.redraw(); }
+    if (inp.pressed('tabPrev') || inp.pressed('left')) { this.col = (this.col + 2) % 3; this.redraw(); }
     if (inp.confirm()) this.start();
     if (inp.cancel()) this.scene.start('Menu');
   }

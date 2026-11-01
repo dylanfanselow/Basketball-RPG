@@ -15,6 +15,6 @@
 
     { "id": "fi_float", "name": "Teardrop", "type": "passive", "x": 80, "y": 58, "prereqs": ["fi_fork"], "cost": 1, "desc": "Floaters x1.10.", "effects": [{ "t": "shot", "types": ["floater"], "mult": 1.10 }] },
     { "id": "fi_hook", "name": "Sky Hook", "type": "passive", "x": 82, "y": 38, "prereqs": ["fi_float"], "cost": 1, "desc": "Hooks x1.10, contest on hooks x0.85.", "effects": [{ "t": "shot", "types": ["hook"], "mult": 1.10 }, { "t": "contestIn", "types": ["hook"], "mult": 0.85 }] },
-    { "id": "fi_stepthru", "name": "Step-Through", "type": "ability", "x": 84, "y": 16, "prereqs": ["fi_hook"], "cost": 2, "desc": "After a pump fake (○ with no stick direction), Shoot = Step-Through.", "effects": [{ "t": "shotType", "shot": "stepThrough" }] }
+    { "id": "fi_stepthru", "name": "Step-Through", "type": "ability", "x": 84, "y": 16, "prereqs": ["fi_hook"], "cost": 2, "desc": "Within 1s of a pump fake (tap ✕), hold the stick toward the rim + shoot = Step-Through: one long stride past your man, then finish. A defender who bit on the fake can't contest or block it.", "effects": [{ "t": "shotType", "shot": "stepThrough" }] }
   ]
 }

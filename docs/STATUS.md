@@ -1,7 +1,8 @@
-# What's built (as of commit 4109854, 2026-11-01)
+# What's built (as of round 8, 2026-11-01)
 
-All 56 Vitest tests pass. Modes: **Practice** (half court, configurable defenders/teammates), **Quick 5v5**
-(team/opponent/player select), **Career** (hub, level up, perk trees, ultimate panel, bench → earn minutes).
+All 67 Vitest tests pass. Modes: **Practice** (half court, configurable defenders/teammates), **Quick 5v5**
+(team/opponent/player select), **1v1 Make It, Take It** (pick any NBA player per side, P2 human or CPU, scoring
+options, result screen with rematch), **Career** (hub, level up, perk trees, ultimate panel, bench → earn minutes).
 
 ## Controls & HUD
 - Tap/hold ✕ (fake/shoot), hold-○ drag moves with chains, jab tap, R2 burst sprint with cooldown pill,
@@ -11,7 +12,11 @@ All 56 Vitest tests pass. Modes: **Practice** (half court, configurable defender
   flash on the move just done.
 - Live shot-equation bar, score/clock/shot clock, trust bars (top left), play call line ("for YOU"), event feed,
   pass target dot, own contest cone, matchup cone on defense, play-assignment ghost path.
-- Gamepad read straight from the browser Gamepad API (hot-plug notice), keyboard fallback.
+- Gamepad read straight from the browser Gamepad API (hot-plug notice), keyboard fallback. Two-player split
+  (`InputMapper` slot 1/2: pad 1 / pad 2, keyboard to the first slot without a pad). Keyboard state comes from
+  window events. Buttons held when a scene starts are ignored until released. Presses are latched until a sim
+  step uses them (slow motion no longer drops them).
+- L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 
 ## Shooting
 - Shot types: dunk, layup, euro, step-through, floater, hook, push, mid, three, deep3 (`shotTypes.json`).
@@ -25,6 +30,9 @@ All 56 Vitest tests pass. Modes: **Practice** (half court, configurable defender
   between-the-legs, behind-the-back, shammgod, snatch-back, spin, step-back, hesi blow-by, hesi pull-back.
 - Basket-relative stick classification, fixed distances, sell → plant → burst, input buffering, chain windows,
   ankle breaks / stagger vs nearest defender, defenders bite on pump fakes.
+- Pump fake: 0.42 s sell with its own 14-frame clip (a shot cuts it short). Step-Through (perk): fake + stick toward
+  rim + shoot → grounded stride angled around the defender, lift at 55% of the gather; bitten defenders ×0.15
+  contest and no block; "STEP-THROUGH! X bit" callout.
 
 ## Team play & AI
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

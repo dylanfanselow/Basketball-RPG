@@ -30,6 +30,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Every dribble move travels a fixed distance**, regardless of stick angle/tilt. The stick picks move + side only.
 - **○ while a shot is in the air = box out.**
 
+- **Step-Through input:** pump fake, then within 1 s **hold the stick toward the rim + shoot**. It **stays perk-only**
+  (`fi_stepthru`). A defender who jumped on the fake gets ×0.15 contest and can't block it.
+- **L1 = escape:** back in every menu; in a game the first L1 opens pause with Quit highlighted, a second L1 quits.
+  (Column/tab switching moved to R1 / L2 / d-pad.)
+
 ## HUD
 - Bottom-right **button diamond** (△○✕□) with round badges showing the user's own sprite doing the action + label
   underneath (style reference: Dunk City "Backboard" badge). Badges visibly press in.
@@ -66,3 +71,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   takedown risk). Repo was made **public** by the owner.
 - Quick 5v5: pick **your team, opponent, and play as any real starter or "My Player"**.
 - Quick/Practice use a sandbox trust (60) that doesn't touch the career save.
+- **1v1 Make It, Take It:** half court, each side picks any real roster player; **P2 = human or CPU toggle**
+  (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
+  screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
+  14 s shot clock, no ultimates, no trust grading.

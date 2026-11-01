@@ -40,6 +40,10 @@ export class Player {
   movePlantAt = 0.3; movePlanted = false;
   allowOobUntil = 0;
   bHolding = false; leanedUntil = 0;
+  /** when this player last left the floor on a jump (pump-fake bites, blocks) */
+  lastJumpAt = -9;
+  /** step-through: grounded stride, then lift off at this time (0 = none) */
+  liftAt = 0;
   lastBitAt = 0; boxOutHeld = false; bumpedUntil = -9; crashing = false; boxingOut = false; lastBumpAt = -9;
   burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
   /** pump fake picked up the dribble: can only pass or shoot */

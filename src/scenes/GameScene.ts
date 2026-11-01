@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { GameSim, GameEvent } from '../sim/game';
+import { GameSim, GameEvent, UserInput } from '../sim/game';
 import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
-import { createSim, Mode, MatchSetup } from './setup';
+import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { buildSheet, Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, PIXEL, frameRect, buildFrontSheet, FRONT_W, FRONT_H } from '../render/sprites';
 import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
@@ -61,17 +61,24 @@ export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
   matchSetup?: MatchSetup;
-  init(data: { mode: Mode; setup?: MatchSetup }) {
+  oneOnOne?: OneOnOneSetup;
+  initData!: GameInit;
+  inputP2: InputMapper | null = null;
+  latched: [UserInput | null, UserInput | null] = [null, null];
+  init(data: GameInit) {
+    this.initData = data;
     this.mode = data.mode ?? 'practice';
-    this.matchSetup = data.setup; this.ended = false; this.paused = false; this.feed = [];
+    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
     this.sprites.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear();
   }
 
   create() {
-    this.sim = createSim(this.mode, this.matchSetup);
+    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne);
     app.sim = this.sim;
-    this.input2 = new InputMapper(this);
+    const twoHumans = !!this.sim.user2;
+    this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
+    this.inputP2 = twoHumans ? new InputMapper(this, 2) : null;
     const [t0, t1] = this.sim.teams;
     drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
     const hoops = drawHoops(this);
@@ -142,42 +149,70 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_t: number, deltaMs: number) {
-    this.input2.poll();
+    this.input2.poll(); this.inputP2?.poll();
     if (this.input2.pressed('dev')) (window as any).__toggleDev?.();
     if (this.input2.pressed('mute')) this.feed.unshift({ text: sfx.toggleMute() ? 'Sound off (M)' : 'Sound on (M)', t: this.time.now, color: '#ffffff' });
     if (this.ended) return;
-    if (this.input2.pressed('start') && !this.input2.held('back')) { this.paused = !this.paused; this.pauseIdx = 0; }
     if (this.paused) { this.updatePause(); return; }
+    // Options/Enter = pause menu; L1/Esc = pause menu with "Quit" highlighted (press L1 again to leave)
+    for (const inp of this.inputs()) {
+      if (inp.pressed('start') && !inp.held('back')) { this.openPause(0); return; }
+      if (inp.pressed('escape')) { this.openPause(2); return; }
+    }
 
     const sim = this.sim;
     const speed = app.settings.timeScale * (sim.userOnCourt || sim.cfg.mode === 'practice' ? 1 : app.settings.benchSpeed);
     const step = 1 / 60;
     this.acc += Math.min(0.1, deltaMs / 1000) * speed;
-    let first = true;
+    // button presses are latched until a sim step consumes them (in slow motion a frame can pass without a step)
+    this.latched = [latch(this.latched[0], this.input2.gameInput()), this.inputP2 ? latch(this.latched[1], this.inputP2.gameInput()) : null];
     while (this.acc >= step) {
-      sim.update(step, first ? this.input2.gameInput() : { ...this.input2.gameInput(), a: false, b: false, x: false, y: false });
-      first = false;
+      const [i1, i2] = this.latched;
+      sim.update(step, i1!, i2 ?? undefined);
+      this.latched = [clearEdges(i1!), i2 ? clearEdges(i2) : null];
       this.acc -= step;
     }
     for (const e of sim.drainEvents()) this.onEvent(e);
     this.render();
     if (sim.over && !this.ended) {
       this.ended = true;
-      this.time.delayedCall(1800, () => this.scene.start('PostGame', { mode: this.mode, sim: this.sim }));
+      this.time.delayedCall(1800, () => this.scene.start('PostGame', { mode: this.mode, sim: this.sim, replay: this.initData }));
     }
   }
 
+  /** Every human's input mapper (P1, plus P2 in two-player 1v1). */
+  inputs(): InputMapper[] { return this.inputP2 ? [this.input2, this.inputP2] : [this.input2]; }
+
+  openPause(idx: number) { this.paused = true; this.pauseIdx = idx; this.drawPause(); }
+
+  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : 'Quit to Menu']; }
+
+  drawPause() {
+    const opts = this.pauseOptions();
+    this.pauseText.setVisible(true).setText('PAUSED\n\n' + opts.map((o, i) => (i === this.pauseIdx ? '> ' : '  ') + o).join('\n') + '\n\n✕ select · ○ / Options resume · L1 quit');
+  }
+
+  leaveGame() {
+    this.paused = false; this.pauseText.setVisible(false);
+    this.scene.start(this.mode === 'career' ? 'Hub' : this.mode === 'oneOnOne' ? 'OneOnOneSetup' : 'Menu');
+  }
+
   updatePause() {
-    const opts = ['Resume', 'Restart', this.mode === 'career' ? 'Forfeit to Hub' : 'Quit to Menu'];
-    if (this.input2.pressed('down')) this.pauseIdx = (this.pauseIdx + 1) % opts.length;
-    if (this.input2.pressed('up')) this.pauseIdx = (this.pauseIdx + opts.length - 1) % opts.length;
-    this.pauseText.setVisible(true).setText('PAUSED\n\n' + opts.map((o, i) => (i === this.pauseIdx ? '> ' : '  ') + o).join('\n'));
-    if (this.input2.confirm()) {
-      this.pauseText.setVisible(false);
-      if (this.pauseIdx === 0) this.paused = false;
-      else if (this.pauseIdx === 1) this.scene.restart({ mode: this.mode, setup: this.matchSetup });
-      else this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
+    const opts = this.pauseOptions();
+    for (const inp of this.inputs()) {
+      if (inp.pressed('down')) this.pauseIdx = (this.pauseIdx + 1) % opts.length;
+      if (inp.pressed('up')) this.pauseIdx = (this.pauseIdx + opts.length - 1) % opts.length;
+      if (inp.pressed('escape')) { this.leaveGame(); return; }
+      if (inp.pressed('b') || inp.pressed('start')) { this.paused = false; this.pauseText.setVisible(false); return; }
+      if (inp.pressed('a')) {
+        this.pauseText.setVisible(false);
+        if (this.pauseIdx === 0) this.paused = false;
+        else if (this.pauseIdx === 1) this.scene.restart(this.initData);
+        else this.leaveGame();
+        return;
+      }
     }
+    this.drawPause();
   }
 
   /** Stereo pan for a world x position relative to the camera. */
@@ -241,7 +276,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.playSound(e);
     if (e.quiet) return;
-    const mine = !!e.pid && e.pid === this.sim.user?.id;
+    const mine = !!e.pid && (e.pid === this.sim.user?.id || e.pid === this.sim.user2?.id);
     const color = e.good === false ? '#ff8080' : e.good ? '#9dff9d' : e.team === 1 ? '#ffd0d0' : e.team === 0 ? '#d0e4ff' : '#ffffff';
     if (e.kind === 'move' && !mine) return;
     this.feed.unshift({ text: e.text, t: this.time.now, color });
@@ -262,6 +297,8 @@ export class GameScene extends Phaser.Scene {
     const phase = (p.number * 0.137) % 1; // so players don't dribble in lockstep
     if (p.state === 'fallen') return { clip: a?.name === 'ankleFall' ? 'ankleFall' : 'fall', u: a ? (now - a.start) / 0.65 : 1 };
     if (sim.inb?.inbounder === p && sim.inb.hasBall && len(p.vel) < 2) return { clip: 'inbound', u: now };
+    // the fake picks up the dribble, so it must be checked before the dead-dribble hold
+    if (p.state === 'dribbleMove' && a?.name === 'pumpfake') return { clip: 'pumpfake', u: (now - a.start) / (a.dur ?? 0.42) };
     if (hasBall && p.deadDribble && p.state !== 'shoot') return { clip: 'hold', u: now * 1.5 };
     if (a && a.name.startsWith('shot_')) {
       const clip = SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper';
@@ -269,7 +306,6 @@ export class GameScene extends Phaser.Scene {
       const inPost = a.release !== undefined && now >= a.release && (now - a.release < (c.post ?? 0.5) || p.z > 0.05);
       if (p.state === 'shoot' || inPost) return { clip, u: shotU(c, now, a.start, p.state === 'shoot' ? a.release : a.release) };
     }
-    if (p.state === 'dribbleMove' && a?.name === 'pumpfake') return { clip: 'pumpfake', u: (now - a.start) / (a.dur ?? 0.4) };
     if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
     if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? (now - a.start) / Math.max(0.2, a.dur ?? 0.5) : 0.5 };
     if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
@@ -499,6 +535,15 @@ export class GameScene extends Phaser.Scene {
     }
     if (dbg.aiTargets) for (const p of sim.players) { g.lineStyle(1, p.team === 0 ? 0x66aaff : 0xff6666, 0.5); g.lineBetween(sx(p.p.x), sy(p.p.y), sx(p.target.x), sy(p.target.y)); }
     if (dbg.hitboxes) for (const p of sim.players) { g.lineStyle(1, 0xffffff, 0.6); g.strokeEllipse(sx(p.p.x), sy(p.p.y), 2.2 * S, 2.2 * D); }
+    // 1v1: P2 (or CPU) ring + tag; P1 gets a tag too
+    if (sim.cfg.oneOnOne) {
+      const p2 = sim.teams[1].onCourt[0];
+      if (p2) {
+        g.lineStyle(3, 0xff8a3d, 0.95); g.strokeEllipse(sx(p2.p.x), sy(p2.p.y), 2.6 * S, 2.6 * D);
+        this.label(sx(p2.p.x), sy(p2.p.y, p2.z + p2.height + 1.0) - 14, sim.user2 ? 'P2' : 'CPU', '#ff9f6a', 14);
+      }
+      if (u) this.label(sx(u.p.x), sy(u.p.y, u.z + u.height + 1.0) - 22, 'P1', '#7dffb8', 14);
+    }
     if (!u || !sim.userOnCourt) return;
 
     // user ring + arrow
@@ -599,13 +644,19 @@ export class GameScene extends Phaser.Scene {
     let eq = '';
     if (prev) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
     else if (ls && sim.time - ls.at < 4) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
+    else if (sim.cfg.oneOnOne) eq = 'MAKE IT, TAKE IT — score and you keep it; stops and defensive boards check it back up top.  Pump fake = tap ✕';
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     this.eqText.setText(eq);
 
     const [a, b] = sim.teams;
     const clock = sim.cfg.mode === 'practice' ? 'PRACTICE' : `${sim.quarter <= 4 ? 'Q' + sim.quarter : 'OT'} ${Math.floor(Math.max(0, sim.clock) / 60)}:${String(Math.floor(Math.max(0, sim.clock) % 60)).padStart(2, '0')}`;
-    this.scoreText.setText(`${a.def.id} ${a.score}  –  ${b.score} ${b.def.id}    ${clock}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}`);
-    h.fillStyle(0x000000, 0.55); h.fillRect(0, 60, 560, 32);
+    const o = sim.cfg.oneOnOne;
+    if (o) {
+      const n0 = a.onCourt[0]?.name ?? a.def.id, n1 = b.onCourt[0]?.name ?? b.def.id;
+      const ball = sim.possession === 0 ? '● ' : '  ', ball1 = sim.possession === 1 ? ' ●' : '  ';
+      this.scoreText.setText(`${ball}${n0} ${a.score}  –  ${b.score} ${n1}${ball1}    to ${o.target}${o.winBy2 ? ' (win by 2)' : ''} · ${o.scoring === '1s2s' ? '1s & 2s' : '2s & 3s'}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}`);
+    } else this.scoreText.setText(`${a.def.id} ${a.score}  –  ${b.score} ${b.def.id}    ${clock}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}`);
+    h.fillStyle(0x000000, 0.55); h.fillRect(0, 60, Math.max(560, this.scoreText.width + 24), 32);
 
     const asg = sim.userAssignment();
     const playName = sim.runner.play ? sim.runner.play.name : '';
@@ -614,11 +665,13 @@ export class GameScene extends Phaser.Scene {
 
     // trust bars (top left, under the score)
     const tr = sim.trust;
-    this.trustText.setText(`TEAM  ${tr.team.toFixed(0)}\nCOACH ${tr.coach.toFixed(0)}`);
-    h.fillStyle(0x000000, 0.5); h.fillRect(0, 92, 200, 38);
-    h.fillStyle(0x223344, 1); h.fillRect(92, 98, 100, 9); h.fillRect(92, 114, 100, 9);
-    h.fillStyle(0x4fc3ff, 1); h.fillRect(92, 98, tr.team, 9);
-    h.fillStyle(0xffc34f, 1); h.fillRect(92, 114, tr.coach, 9);
+    this.trustText.setText(o ? '' : `TEAM  ${tr.team.toFixed(0)}\nCOACH ${tr.coach.toFixed(0)}`);
+    if (!o) {
+      h.fillStyle(0x000000, 0.5); h.fillRect(0, 92, 200, 38);
+      h.fillStyle(0x223344, 1); h.fillRect(92, 98, 100, 9); h.fillRect(92, 114, 100, 9);
+      h.fillStyle(0x4fc3ff, 1); h.fillRect(92, 98, tr.team, 9);
+      h.fillStyle(0xffc34f, 1); h.fillRect(92, 114, tr.coach, 9);
+    }
     // ultimate name (the charge ring lives on the □ button)
     const st = sim.ult.state;
     const uu = sim.user;
@@ -639,6 +692,13 @@ export class GameScene extends Phaser.Scene {
 
   }
 }
+
+/** Merge this frame's input with presses not yet consumed by a sim step. */
+function latch(prev: UserInput | null, cur: UserInput): UserInput {
+  if (!prev) return cur;
+  return { ...cur, sprint: cur.sprint || prev.sprint, a: cur.a || prev.a, b: cur.b || prev.b, x: cur.x || prev.x, y: cur.y || prev.y };
+}
+const clearEdges = (i: UserInput): UserInput => ({ ...i, sprint: false, a: false, b: false, x: false, y: false });
 
 function fmtEq(e: import('../sim/shooting').ShotEval): string {
   return e.terms.map((t) => (t.kind === 'base' ? `${(t.value * 100).toFixed(0)}% ${t.label}` : `× ${t.value.toFixed(2)} ${t.label}`)).join('  ') + `  =  ${(e.pct * 100).toFixed(1)}%  (${e.pts}PT)`;

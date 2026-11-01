@@ -34,6 +34,8 @@ const athletic = P({ head: [2, 89], neck: [1, 80], sF: [2, 77], sB: [-2, 77], hi
 const dribHigh = P({ eF: [8, 63], hF: [11, 49], ball: [12, 45], eB: [-1, 65], hB: [5, 58] }, athletic);
 const dribLow = P({ eF: [8, 60], hF: [11, 43], ball: [12, 4], eB: [-1, 65], hB: [5, 58] }, athletic);
 const chest = P({ hF: [7, 60], hB: [5, 59], eF: [5, 66], eB: [1, 66], ball: [8, 61] });
+/** Triple threat after picking up the dribble: the hold loop, the pump fake and the step-through all start here. */
+const TRIPLE = P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] });
 const lowStance = P({ head: [3, 85], neck: [2, 76], sF: [3, 73], sB: [-1, 73], hip: [0, 44], kF: [7, 22], kB: [-6, 22], fF: [9, 0], fB: [-8, 0] });
 
 // jog / sprint keys (front leg forward, passing, back leg forward, passing)
@@ -162,11 +164,16 @@ export const CLIPS: Clip[] = [
     { t: 0.3, pose: P({ kF: [12, 22], fF: [17, 0], kB: [-5, 24], fB: [-8, 0], hip: [2, 44], head: [7, 84], neck: [6, 76], sF: [6, 73], sB: [2, 73], hF: [12, 30], eF: [10, 52], ball: [13, 14] }, athletic) },
     { t: 0.5, pose: P({ kF: [11, 22], fF: [16, 0], kB: [-5, 24], fB: [-8, 0], hip: [2, 44], head: [6, 84], neck: [5, 76], hF: [12, 26], ball: [13, 4] }, athletic) },
     { t: 1, pose: dribHigh }] },
-  { name: 'pumpfake', frames: 8, keys: [
-    { t: 0, pose: chest },
-    { t: 0.35, pose: P({ hip: [0, 52], kF: [3, 28], kB: [-2, 28], ball: [4, 96], hF: [4, 93], hB: [2, 92], eF: [7, 82], eB: [-2, 82], head: [1, 92] }) },
-    { t: 0.55, pose: P({ hip: [0, 52], kF: [3, 28], kB: [-2, 28], ball: [4, 98], hF: [4, 95], hB: [2, 94], eF: [7, 84], eB: [-2, 84], head: [1, 92] }) },
-    { t: 1, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) }] },
+  // Pump fake: load, sell it hard (ball snaps above the forehead, eyes up, up on the toes, feet stay planted),
+  // a beat at the top, then rip it back down into the triple threat the hold loop starts from.
+  { name: 'pumpfake', frames: 14, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.12, pose: P({ hip: [0, 45], kF: [7, 21], fF: [9, 0], kB: [-6, 21], fB: [-9, 0], head: [3, 87], neck: [1, 79], sF: [3, 76], sB: [-1, 76], ball: [8, 63], hF: [7, 62], hB: [5, 61], eF: [8, 57], eB: [4, 57] }) },
+    { t: 0.3, pose: P({ hip: [0, 51], kF: [5, 27], fF: [9, 0], kB: [-4, 27], fB: [-9, 1], head: [2, 92], neck: [1, 83], sF: [2, 80], sB: [-2, 80], ball: [5, 91], hF: [5, 88], hB: [3, 87], eF: [7, 78], eB: [0, 77] }) },
+    { t: 0.45, pose: P({ hip: [0, 53], kF: [4, 29], fF: [9, 1], kB: [-3, 29], fB: [-9, 2], head: [1, 93], neck: [0, 84], sF: [2, 81], sB: [-2, 81], ball: [4, 99], hF: [4, 96], hB: [2, 95], eF: [7, 85], eB: [-1, 84] }) },
+    { t: 0.6, pose: P({ hip: [0, 53], kF: [4, 29], fF: [9, 1], kB: [-3, 29], fB: [-9, 2], head: [1, 93], neck: [0, 84], sF: [2, 81], sB: [-2, 81], ball: [4, 98], hF: [4, 95], hB: [2, 94], eF: [7, 84], eB: [-1, 83] }) },
+    { t: 0.8, pose: P({ hip: [0, 48], kF: [6, 24], fF: [9, 0], kB: [-5, 24], fB: [-9, 0], head: [2, 90], neck: [1, 81], sF: [2, 78], sB: [-2, 78], ball: [7, 77], hF: [7, 75], hB: [5, 74], eF: [9, 67], eB: [4, 67] }) },
+    { t: 1, pose: TRIPLE }] },
   { name: 'move_retreat', frames: 8, bounce: [0.5], keys: [
     { t: 0, pose: runDrib(jogB, [11, 45], [12, 40]) },
     { t: 0.25, pose: P({ head: [-2, 88], hB: [5, 62], hF: [10, 34], ball: [11, 24] }, jogA) },
@@ -217,10 +224,18 @@ export const CLIPS: Clip[] = [
     { t: 0.5, pose: P({ head: [5, 89], kF: [9, 46], fF: [6, 28], hip: [0, 52], ball: [8, 88], hF: [8, 86], eF: [7, 74], hB: [-6, 72] }) },
     { t: 0.65, pose: P({ kF: [9, 48], fF: [6, 30], hip: [0, 53], ball: [13, 114], hF: [12, 110], eF: [9, 96], hB: [-7, 74] }) },
     { t: 1, pose: P({ hF: [7, 78], eF: [7, 70] }, athletic) }] },
-  { name: 'shot_stepThrough', frames: 9, release: 0.62, post: 0.45, keys: [
-    { t: 0, pose: P({ ball: [4, 90], hF: [4, 88], hB: [2, 87], eF: [6, 78], eB: [-2, 78] }) },
-    { t: 0.35, pose: P({ kF: [10, 25], fF: [16, 1], kB: [-5, 25], fB: [-11, 3], hip: [1, 46], head: [5, 86], neck: [4, 77], ball: [8, 66], hF: [8, 66], hB: [6, 64] }) },
-    { t: 0.62, pose: P({ kF: [8, 44], fF: [5, 26], hip: [0, 52], ball: [11, 110], hF: [10, 106], eF: [8, 94], hB: [-4, 76] }) },
+  // Step-Through: rip the ball low across the hip, one long stride past the defender (still on the floor),
+  // plant, drive the back knee up and finish high with one hand. Lift-off (STEP_LIFT of the gather) is at u≈0.37.
+  { name: 'shot_stepThrough', frames: 16, release: 0.68, post: 0.5, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.12, pose: P({ hip: [1, 45], head: [4, 86], neck: [3, 78], sF: [4, 75], sB: [0, 75], kF: [9, 30], fF: [12, 8], kB: [-5, 23], fB: [-9, 0], ball: [3, 52], hF: [4, 53], hB: [2, 52], eF: [6, 62], eB: [1, 62] }) },
+    { t: 0.26, pose: P({ hip: [3, 43], head: [7, 84], neck: [6, 76], sF: [7, 73], sB: [3, 73], kF: [14, 24], fF: [19, 3], kB: [-6, 22], fB: [-11, 0], ball: [6, 55], hF: [6, 55], hB: [4, 54], eF: [8, 63], eB: [3, 63] }) },
+    { t: 0.37, pose: P({ hip: [4, 45], head: [6, 86], neck: [5, 78], sF: [6, 75], sB: [2, 75], kF: [11, 22], fF: [14, 0], kB: [-3, 25], fB: [-6, 4], ball: [8, 66], hF: [8, 66], hB: [6, 65], eF: [8, 72], eB: [4, 72] }) },
+    { t: 0.45, pose: P({ hip: [3, 49], head: [5, 89], neck: [4, 80], sF: [5, 77], sB: [1, 77], kF: [7, 24], fF: [8, 0], kB: [3, 34], fB: [-1, 16], ball: [9, 79], hF: [9, 78], hB: [6, 77], eF: [9, 74], eB: [4, 73] }) },
+    { t: 0.56, pose: P({ hip: [1, 53], head: [3, 92], neck: [2, 83], sF: [3, 80], sB: [-1, 80], kF: [2, 26], fF: [1, 2], kB: [8, 46], fB: [5, 28], ball: [10, 92], hF: [10, 90], hB: [6, 88], eF: [9, 78], eB: [3, 76] }) },
+    { t: 0.68, pose: P({ hip: [1, 54], head: [3, 93], neck: [2, 84], sF: [3, 81], sB: [-1, 81], kF: [1, 27], fF: [0, 4], kB: [8, 48], fB: [5, 30], ball: [12, 112], hF: [11, 108], eF: [9, 95], hB: [-3, 80], eB: [-2, 72] }) },
+    { t: 0.83, pose: P({ hip: [0, 53], kF: [2, 27], fF: [1, 2], kB: [6, 40], fB: [4, 22], hF: [12, 106], eF: [9, 95], hB: [-4, 76], eB: [-2, 70] }) },
+    { t: 0.92, pose: P({ hip: [0, 51], kF: [3, 26], fF: [2, 1], kB: [3, 31], fB: [0, 11], hF: [10, 93], eF: [8, 85], hB: [-2, 62], eB: [-2, 66] }) },
     { t: 1, pose: P({ hF: [7, 80], eF: [7, 72] }, athletic) }] },
   { name: 'shot_dunk', frames: 11, release: 0.7, post: 0.6, keys: [
     { t: 0, pose: P({ kF: [8, 26], fF: [13, 1], kB: [-4, 28], fB: [-10, 6], ball: [7, 60], hF: [7, 60], hB: [5, 59] }) },
@@ -294,9 +309,9 @@ export const CLIPS: Clip[] = [
     { t: 1, pose: P({ hip: [0, 42], kF: [9, 20], fF: [13, 0], kB: [-8, 20], fB: [-12, 0], head: [3, 82], neck: [2, 73], sF: [3, 70], sB: [-1, 70], hF: [11, 40], eF: [9, 56], hB: [3, 46], eB: [1, 58], ball: [11, 34] }) }] },
   // ---------- dead ball / inbounds / sideline ----------
   { name: 'hold', frames: 4, loop: true, keys: [
-    { t: 0, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) },
+    { t: 0, pose: TRIPLE },
     { t: 0.5, pose: P({ hip: [1, 47], kF: [7, 23], fF: [10, 0], kB: [-6, 23], fB: [-8, 1], hF: [6, 66], hB: [4, 65], eF: [8, 60], eB: [4, 60], ball: [7, 67], head: [3, 89] }) },
-    { t: 1, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) }] },
+    { t: 1, pose: TRIPLE }] },
   { name: 'inbound', frames: 4, loop: true, keys: [
     { t: 0, pose: P({ hF: [3, 104], hB: [1, 103], eF: [5, 92], eB: [-2, 92], ball: [3, 109], kF: [5, 26], fF: [7, 0], kB: [-4, 26], fB: [-6, 0] }) },
     { t: 0.5, pose: P({ hF: [5, 103], hB: [3, 102], eF: [6, 91], eB: [0, 91], ball: [5, 108], head: [2, 91], kF: [5, 26], fF: [7, 0], kB: [-4, 26], fB: [-6, 0] }) },

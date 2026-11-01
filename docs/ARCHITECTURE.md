@@ -6,7 +6,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 ## Sim (`src/sim`)
 | File | Role |
 |---|---|
-| `game.ts` | `GameSim`: the whole game loop. `update(dt, input)` → user input (`handleUser`, tap/hold logic in `ux`), AI `think`, ults, `physics`, `collisions` (screens, charges, box-outs), `updateBall` (pass/shot/rim/loose/dead), plays, `rules`. Also `startShot`/`releaseShot`/`resolveShot`, `pass`, `dribbleMove`, `pumpFake`, `flickCross`, `startBurst`, `setScreen`, `swipe`, `takeCharge`, inbound system (`deadBall` → `startInbound` → `updateInbound`, `thinkInbound`, `clampFor`), `chaseBall` (rebounding), `boxOut`, `callPlay` (feature-me rotation + role swap), `playRole`. Emits events (`emit`, `quiet` for audio/anim-only). |
+| `game.ts` | `GameSim`: the whole game loop. `update(dt, input)` → user input (`handleUser`, tap/hold logic in `ux`), AI `think`, ults, `physics`, `collisions` (screens, charges, box-outs), `updateBall` (pass/shot/rim/loose/dead), plays, `rules`. Also `startShot`/`releaseShot`/`resolveShot`, `pass`, `dribbleMove`, `pumpFake`, `flickCross`, `startBurst`, `setScreen`, `swipe`, `takeCharge`, inbound system (`deadBall` → `startInbound` → `updateInbound`, `thinkInbound`, `clampFor`), `chaseBall` (rebounding), `boxOut`, `callPlay` (feature-me rotation + role swap), `playRole`. Emits events (`emit`, `quiet` for audio/anim-only). 1v1: `cfg.oneOnOne` (mode stays `'practice'`), both teams share a side, `checkBall(team)` replaces `practiceReset`, `scoreValue`, `checkWin`; second human `user2` + `ux2`, `update(dt, input, input2?)`, `handleUser(u, inp, ux)`, `isHuman`. Step-through: `stepThrough()` + `liftAt` in `physics`. |
 | `player.ts` | `Player` state: core/sub ratings, `mods`, position/velocity/z, state machine, timers (many default to −9 so "time < x" checks work at t=0), box score, anim record. |
 | `attributes.ts` | Core stats → sub-ratings via `statInfluence.json`; `statFactor`, `rmap`. |
 | `modifiers.ts` | Effect/hook system (`sub`, `shot`, `contestIn`, `contestOut`, `param`, `move`, `shotType`; code hooks with expiry). |
@@ -19,6 +19,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
+| `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
 ## Career (`src/career`)
@@ -35,7 +36,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |
 | `render/crowd.ts` | Animated crowd. |
 | `scenes/GameScene.ts` | Main renderer: sprite sheets cache, `clipFor` (anim selection), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
-| `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode. |
+| `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
+| `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
 | Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |
 | `input/input.ts` | `InputMapper` (Gamepad API + keyboard, edge detection). |
@@ -47,6 +49,6 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## Tests (`tests/`)
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
-`rosters.test.ts` (roster validity, play reset), `helpers.ts` (`makeGame`, `simToEnd`).
+`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through, 1v1 rules, two humans), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).

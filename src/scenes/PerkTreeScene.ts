@@ -22,7 +22,7 @@ export class PerkTreeScene extends Phaser.Scene {
     this.header = this.add.text(40, 20, '', { fontFamily: FONT, fontSize: '30px', color: COL.accent, fontStyle: 'bold' });
     this.tabs = this.add.text(40, 70, '', { fontFamily: FONT, fontSize: '14px', color: COL.text });
     this.info = this.add.text(910, 150, '', { fontFamily: FONT, fontSize: '15px', color: COL.text, wordWrap: { width: 340 }, lineSpacing: 5 });
-    this.add.text(40, 690, 'L1/R1 or Q/E: switch tree   Stick/WASD: select   ✕/Enter: unlock   ○/Esc: back   (mouse works too)', { fontFamily: FONT, fontSize: '13px', color: COL.dim });
+    this.add.text(40, 690, 'L2/R1 or Q/E: switch tree   Stick/WASD: select   ✕/Enter: unlock   ○/L1/Esc: back   (mouse works too)', { fontFamily: FONT, fontSize: '13px', color: COL.dim });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const n = this.nodeAt(p.x, p.y);
       if (n >= 0) { if (n === this.sel) this.tryUnlock(); else this.sel = n; }
@@ -54,8 +54,8 @@ export class PerkTreeScene extends Phaser.Scene {
   update(t: number) {
     const inp = this.inp; inp.poll();
     if (inp.pressed('dev')) (window as any).__toggleDev?.();
-    if (inp.pressed('rb')) { this.treeIdx = (this.treeIdx + 1) % TREES.length; this.sel = 0; }
-    if (inp.pressed('lb')) { this.treeIdx = (this.treeIdx + TREES.length - 1) % TREES.length; this.sel = 0; }
+    if (inp.pressed('tabNext')) { this.treeIdx = (this.treeIdx + 1) % TREES.length; this.sel = 0; }
+    if (inp.pressed('tabPrev')) { this.treeIdx = (this.treeIdx + TREES.length - 1) % TREES.length; this.sel = 0; }
     if (inp.pressed('up')) this.navigate(0, -1);
     if (inp.pressed('down')) this.navigate(0, 1);
     if (inp.pressed('left')) this.navigate(-1, 0);

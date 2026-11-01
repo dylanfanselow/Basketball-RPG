@@ -5,16 +5,18 @@ import { app } from '../state';
 import { applyGameResult, xpToNext } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
+import type { GameInit } from './setup';
 
 export class PostGameScene extends Phaser.Scene {
-  inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null;
+  inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null; replay?: GameInit;
   constructor() { super('PostGame'); }
-  init(d: { mode: string; sim: GameSim }) { this.mode = d.mode; this.sim = d.sim; }
+  init(d: { mode: string; sim: GameSim; replay?: GameInit }) { this.mode = d.mode; this.sim = d.sim; this.replay = d.replay; }
   create() {
     this.cameras.main.setBackgroundColor(COL.bg);
     this.inp = new InputMapper(this);
     const sim = this.sim;
     if (!sim) { this.scene.start('Menu'); return; }
+    if (this.mode === 'oneOnOne') { this.oneOnOne(sim); return; }
     const [a, b] = sim.teams;
     title(this, 'FINAL', `${a.def.city} ${a.def.name} ${a.score} – ${b.score} ${b.def.city} ${b.def.name}`);
     const u = sim.user!;
@@ -45,5 +47,29 @@ export class PostGameScene extends Phaser.Scene {
     this.add.text(60, 130, lines.join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
     this.add.text(1220, 690, '✕ / Enter: continue', { fontFamily: FONT, fontSize: '14px', color: COL.dim }).setOrigin(1, 0);
   }
-  update() { this.inp.poll(); if (this.inp.confirm()) this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu'); }
+  /** 1v1 result: winner, both stat lines, rematch / change players / menu. */
+  oneOnOne(sim: GameSim) {
+    const [a, b] = sim.teams;
+    const pa = a.onCourt[0], pb = b.onCourt[0];
+    const winner = a.score > b.score ? pa : pb;
+    const o = sim.cfg.oneOnOne!;
+    title(this, `${winner.name.toUpperCase()} WINS`, `${pa.name} ${a.score} – ${b.score} ${pb.name}   ·   to ${o.target}, ${o.scoring === '1s2s' ? '1s & 2s' : '2s & 3s'}${o.winBy2 ? ', win by 2' : ''}`);
+    const line = (tag: string, p: typeof pa) => {
+      const x = p.box;
+      return `${tag.padEnd(4)}${p.name.padEnd(24)} ${String(x.pts).padStart(3)} pts   FG ${x.fgm}/${x.fga}   3PT ${x.tpm}/${x.tpa}   REB ${x.reb}   STL ${x.stl}   BLK ${x.blk}   TOV ${x.tov}`;
+    };
+    this.add.text(60, 150, [line('P1', pa), line(sim.user2 ? 'P2' : 'CPU', pb), '', '(1v1 games don\'t affect your career save.)'].join('\n'), { fontFamily: FONT, fontSize: '16px', color: COL.text, lineSpacing: 6 });
+    this.add.text(60, 330, '✕ / Enter   Rematch\n○ / L1      Change players\n△ / I       Main menu', { fontFamily: FONT, fontSize: '20px', color: COL.accent, lineSpacing: 10 });
+  }
+
+  update() {
+    this.inp.poll();
+    if (this.mode === 'oneOnOne') {
+      if (this.inp.confirm()) this.scene.start('Game', this.replay ?? { mode: 'oneOnOne' });
+      else if (this.inp.cancel()) this.scene.start('OneOnOneSetup');
+      else if (this.inp.pressed('y')) this.scene.start('Menu');
+      return;
+    }
+    if (this.inp.confirm()) this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
+  }
 }
