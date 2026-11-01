@@ -9,6 +9,7 @@ import { PostGameScene } from './scenes/PostGameScene';
 import { MatchSetupScene } from './scenes/MatchSetupScene';
 import { OneOnOneSetupScene } from './scenes/OneOnOneSetupScene';
 import { initDevPanel } from './dev/devPanel';
+import { openPixelEditor } from './dev/pixelEditor';
 import { activePad } from './input/input';
 import { sfx } from './audio/sfx';
 import './state';
@@ -32,6 +33,8 @@ const game = new Phaser.Game({
 });
 (window as any).__phaser = game;
 initDevPanel();
+// ?editor opens the celeb pixel editor straight away
+if (new URLSearchParams(location.search).has('editor')) setTimeout(openPixelEditor, 300);
 
 // Controller connect/disconnect notice. Browsers only reveal a controller after one of its buttons is pressed.
 const toast = document.createElement('div');

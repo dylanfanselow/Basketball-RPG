@@ -7,7 +7,11 @@ import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
-import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
+import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
+import { CELEB_CAST, castSheet } from '../render/celebArt';
+
+/** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
+export const celebTexKey = (i: number) => `celebcast_${i}`;
 import type { Appearance } from '../render/appearance';
 import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
 import { FrameCache, yawFor } from '../render/frameCache';
@@ -684,11 +688,15 @@ export class GameScene extends Phaser.Scene {
     // courtside seats between each bench and the scorer's table: plush red chairs for the famous faces
     this.celebs = [];
     const crng = new Rng(sim.teams[0].def.seed * 97 + 13);
+    // a fixed cast (hand-editable in the pixel editor), seated in a different order each home arena
+    const order = Array.from({ length: CELEB_CAST }, (_, i) => i).sort(() => crng.next() - 0.5);
+    let seat = 0;
     for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
-      const look = randomCeleb(() => crng.next());
-      const key = `celeb_${hashStr(JSON.stringify(look))}`;
+      const ci = order[seat++ % CELEB_CAST];
+      const key = celebTexKey(ci);
       if (!this.textures.exists(key)) {
-        const tex = this.textures.addCanvas(key, buildCelebSheet(look))!;
+        let tex: Phaser.Textures.CanvasTexture | null = null;
+        tex = this.textures.addCanvas(key, castSheet(ci, () => tex?.refresh()))!;
         for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
       }
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));

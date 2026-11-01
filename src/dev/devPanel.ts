@@ -7,6 +7,7 @@ import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_
 import { sfx } from '../audio/sfx';
 import { REAL_ROSTERS } from '../career/roster';
 import { withDefaults } from '../render/appearance';
+import { openPixelEditor } from './pixelEditor';
 
 /**
  * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
@@ -112,6 +113,7 @@ export function initDevPanel() {
     root.innerHTML = '';
     if (c !== app.career) root.append(el('div', { class: 'note', style: 'color:#ffcc33' }, `Editing ${livePlayer()?.name} for this game (not your career save).`));
     root.append(el('div', { class: 'hdr' }, el('b', {}, 'DEV TOOLS'), el('span', {}, '  F1 / ` / Create+Options to close'), btn('×', toggle)));
+    root.append(el('div', { class: 'row' }, btn('🎨 Pixel editor (courtside celebs)', () => { toggle(); openPixelEditor(); }, 'Hand-edit the celebrity sprites')));
 
     liveBox = el('pre', { class: 'live' });
     root.append(section('Live readout', liveBox));
