@@ -13,4 +13,4 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-01 (round 8: pump fake / step-through, 1v1 mode, L1 escape).
+Last updated: 2026-11-01 (round 9: step-through for all, stuns, passing, arcade art at 1080p, celebs, fullscreen).
