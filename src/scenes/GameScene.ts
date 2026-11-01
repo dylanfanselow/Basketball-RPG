@@ -119,7 +119,7 @@ export class GameScene extends Phaser.Scene {
     drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
     const hoops = drawHoops(this);
     this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
-    this.crowd = new Crowd(this, t0.def.colors[0], t1.def.colors[0]);
+    this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed);
     this.buildSideline();
     this.shadows = this.add.graphics().setDepth(-500);
     this.overlay = this.add.graphics().setDepth(-400);

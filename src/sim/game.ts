@@ -52,6 +52,8 @@ export interface GameConfig {
   /** half-court 1v1, make it take it (mode must be 'practice') */
   oneOnOne?: { target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean };
   featureUser?: boolean;
+  /** big game (playoffs): the home crowd dresses in team colors */
+  bigGame?: boolean;
 }
 
 export type BallState =

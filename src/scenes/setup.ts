@@ -53,6 +53,7 @@ export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOn
     ult: careerUlt(c),
     practice: app.settings.practice,
     featureUser: mode !== 'career',
+    bigGame: app.settings.bigGame,
     rotation: mode === 'career' ? planRotation(c.trust.coach, app.settings.quarterLen, c.forceStarter) : undefined,
   });
   return sim;

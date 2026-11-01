@@ -242,6 +242,7 @@ export function initDevPanel() {
           el('option', { value: '' }, '—'), ...Object.entries(PLAYS).map(([id, p]) => el('option', { value: id }, p.name)))));
     } else gc.append('Start a game or practice to use these.');
     gc.append(slider('time scale', 0.25, 1, 0.05, app.settings.timeScale, (v) => { app.settings.timeScale = v; }));
+    gc.append(check('Big game crowd (playoffs, next game)', app.settings.bigGame, (v) => { app.settings.bigGame = v; }));
     gc.append(slider('bench sim speed', 1, 16, 1, app.settings.benchSpeed, (v) => { app.settings.benchSpeed = v; }));
     gc.append(slider('quarter length (s)', 30, 720, 30, app.settings.quarterLen, (v) => { app.settings.quarterLen = v; }));
     root.append(section('Game controls', gc));
