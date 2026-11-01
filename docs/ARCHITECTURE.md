@@ -33,7 +33,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks + 4-frame front sheets. |
-| `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`. |
+| `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; arm rig `rigArms` (lower shoulders, full-length free arms, IK for ball hands) + `grippingHands`. |
 | `render/appearance.ts` | Appearance type, random generator, defaults. |
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |
 | `render/crowd.ts` | Animated crowd. |
