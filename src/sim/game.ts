@@ -11,12 +11,15 @@ import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
 import { UltState, UltRuntime, tryActivateUlt, tickUlt, ULT_GAINS } from './ultimates';
 import { PlayRole } from './data';
+import { RimPath, pickSeq, buildPath, sampleRim, pathEnd } from './rim';
 
 export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
   a: boolean; b: boolean; x: boolean; y: boolean; // edge-triggered this tick
   aHeld: boolean; bHeld: boolean;
 }
+/** ✕ taps shorter than this are pump fakes; ○ taps shorter than this with no direction are jab steps. */
+export const TAP_S = 0.18;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
 export interface TeamState { def: TeamDef; side: Side; score: number; roster: Player[]; onCourt: Player[] }
@@ -41,7 +44,9 @@ export interface GameConfig {
 export type BallState =
   | { kind: 'held'; holder: Player }
   | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string>; inbound?: boolean }
-  | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean }
+  | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
+      /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
+      airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number } }
   | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1 }
   | { kind: 'dead' };
 
@@ -522,9 +527,10 @@ export class GameSim {
 
   // ---------- AI ----------
   private think(p: Player, dt: number) {
+    p.boxingOut = false;
     if (p.state === 'fallen' || p.state === 'shoot') return;
     const bs = this.ball.st;
-    if (bs.kind === 'loose' || (bs.kind === 'shot' && bs.t > bs.dur * 0.6)) { this.chaseBall(p); return; }
+    if (bs.kind === 'loose' || (bs.kind === 'shot' && bs.t > bs.dur * 0.35)) { this.chaseBall(p); return; }
     if (!this.live) {
       if (this.inb) { this.thinkInbound(p); return; }
       p.target = { ...p.p }; this.steer(p, p.target, false); return;
@@ -533,16 +539,41 @@ export class GameSim {
     else thinkDefense(this, p, dt);
   }
 
+  /**
+   * Rebounding. While the shot is up (or on the rim): the shooting team's crashers go to the glass,
+   * everyone else on that team gets back; defenders find a body and box out. Once it's loose, the
+   * players near it (and the two closest per team) go get it.
+   */
   private chaseBall(p: Player) {
     const bs = this.ball.st;
-    const landing = bs.kind === 'shot' ? this.rim(bs.shooter.team) : this.ball.p;
-    // the two closest per team go get it, the rest box out / hold
+    const shooters = bs.kind === 'shot' ? bs.shooter.team : this.possession;
+    const rim = this.rim(shooters);
+    if (bs.kind === 'shot') {
+      if (p.team === shooters) {
+        if (p.crashing) {
+          const ang = Math.atan2(p.p.y - rim.y, p.p.x - rim.x);
+          this.steer(p, add(rim, v(Math.cos(ang) * 5, Math.sin(ang) * 5)), true);
+        } else this.steer(p, hc(this.side(shooters), 62, (p.p.y - 25) * 0.5), false, 0.8);
+        return;
+      }
+      // defense: seal the nearest crasher (or your man) between him and the rim
+      const opps = this.opp(p.team);
+      let tgt = opps.find((o) => o.id === p.guarding) ?? null;
+      const crasher = opps.filter((o) => o.crashing && dist(o.p, rim) < 14).sort((a, b) => dist(a.p, p.p) - dist(b.p, p.p))[0];
+      if (crasher && (!tgt || !tgt.crashing) && dist(crasher.p, p.p) < 8) tgt = crasher;
+      if (tgt && dist(tgt.p, rim) < 18) {
+        const pos = add(tgt.p, scale(norm(sub(rim, tgt.p)), 1.9));
+        this.steer(p, pos, true);
+        if (dist(p.p, pos) < 1.6) { p.boxingOut = true; p.face = norm(sub(tgt.p, p.p)); }
+      } else this.steer(p, add(rim, scale(norm(sub(p.p, rim)), 6)), false);
+      return;
+    }
+    const landing = this.ball.p;
     const mates = this.teams[p.team].onCourt.slice().sort((a, b) => dist(a.p, landing) - dist(b.p, landing));
     const rank = mates.indexOf(p);
-    if (rank < 2) {
-      const to = bs.kind === 'shot' ? add(landing, scale(norm(sub(p.p, landing)), 4)) : landing;
-      this.steer(p, to, true);
-      if (bs.kind === 'loose' && dist(p.p, this.ball.p) < 3 && this.ball.z > p.reach - 1 && p.z === 0 && this.rng.chance(0.08)) this.jump(p, 0.85);
+    if (rank < 2 || dist(p.p, landing) < 9) {
+      this.steer(p, landing, true);
+      if (dist(p.p, this.ball.p) < 3 && this.ball.z > p.reach - 1 && p.z === 0 && this.rng.chance(0.08)) this.jump(p, 0.85);
     } else {
       const back = hc(this.side(p.team), 40, 0);
       this.steer(p, lerpV(p.p, back, 0.15), false);
@@ -556,7 +587,7 @@ export class GameSim {
     const d = len(to);
     if (d < 0.35) { p.want = v(); return; }
     const hasBall = this.holder() === p;
-    if (urgent && d > 12 && this.live) this.startBurst(p); // AI uses the same burst + cooldown rules
+    if (urgent && d > 20 && this.live) this.startBurst(p); // AI uses the same burst + cooldown rules (long sprints only)
     const max = (urgent || d > 6 ? this.topSpeed(p) : p.walkSpeed) * (hasBall ? p.ballSpeedMult : 1) * speedMult;
     const sp = Math.min(max, d * 3.2);
     p.want = scale(norm(to), sp);
@@ -583,18 +614,60 @@ export class GameSim {
     if (!this.live) return;
 
     if (inp.x) tryActivateUlt(this, u);
+    const shotUp = this.ball.st.kind === 'shot';
+    u.boxOutHeld = shotUp && inp.bHeld; // ○ held while a shot is in the air = box out (either side)
+    u.boxingOut = u.boxOutHeld && u.z === 0;
     if (hasBall) {
-      if (inp.a) this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time));
-      else if (inp.y && this.passTarget) this.pass(u, this.passTarget);
-      else if (inp.b) this.dribbleMove(u, inp.move);
-    } else if (onO) {
-      if (inp.y) { u.callForBallUntil = this.time + 1.4; this.emit({ kind: 'call', text: 'Calling for the ball…', pid: u.id }); }
-      if (inp.b) this.setScreen(u);
-      if (inp.a && this.ball.st.kind === 'loose') this.jump(u, 1);
+      // ✕: tap = pump fake (repeatable), hold past TAP_S = shoot
+      if (inp.a) { this.ux.aDownAt = this.time; this.ux.aPending = true; }
+      if (this.ux.aPending) {
+        if (inp.aHeld && this.time - this.ux.aDownAt >= TAP_S) { this.ux.aPending = false; this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time)); }
+        else if (!inp.aHeld) { this.ux.aPending = false; this.pumpFake(u); }
+      }
+      if (inp.y && this.passTarget && !this.ux.aPending) this.pass(u, this.passTarget);
+      // ○: press with the stick pushed = move now; hold ○ and drag = move per flick; quick neutral tap = jab step
+      if (inp.b) {
+        this.ux.bDownAt = this.time; this.ux.bMoved = false;
+        if (len(inp.move) > 0.6) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; } else this.ux.bNeedNeutral = false;
+      } else if (inp.bHeld) {
+        if (!this.ux.bNeedNeutral && len(inp.move) > 0.6) { this.dribbleMove(u, inp.move); this.ux.bMoved = true; this.ux.bNeedNeutral = true; }
+        else if (this.ux.bNeedNeutral && len(inp.move) < 0.3) this.ux.bNeedNeutral = false;
+      } else if (this.ux.bWasHeld && !this.ux.bMoved && this.time - this.ux.bDownAt < TAP_S) this.dribbleMove(u, v());
     } else {
-      if (inp.a) this.jump(u, 1);
-      if (inp.y) this.swipe(u);
-      if (inp.b) this.takeCharge(u);
+      this.ux.aPending = false;
+      if (onO) {
+        if (inp.y) { u.callForBallUntil = this.time + 1.4; this.emit({ kind: 'call', text: 'Calling for the ball…', pid: u.id }); }
+        if (inp.b && !shotUp) this.setScreen(u);
+        if (inp.a && this.ball.st.kind === 'loose') this.jump(u, 1);
+      } else {
+        if (inp.a) this.jump(u, 1);
+        if (inp.y) this.swipe(u);
+        if (inp.b && !shotUp) this.takeCharge(u);
+      }
+    }
+    this.ux.bWasHeld = inp.bHeld;
+  }
+
+  /** Per-user button timing state (tap vs hold). */
+  ux = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
+
+  /** Pump fake: picks up the dribble (if still dribbling), ball up, defenders may bite. Repeatable. */
+  pumpFake(p: Player) {
+    if (this.holder() !== p || p.busy) return;
+    if (!p.deadDribble) { p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
+    p.pumpFakeAt = this.time;
+    p.anim = { name: 'pumpfake', start: this.time, dur: 0.4 };
+    p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = 0.32; p.moveVel = v(); p.move = { id: 'pumpfake', dir: v(), t: 0 };
+    this.emit({ kind: 'move', text: 'Pump Fake', pid: p.id });
+    for (const def of this.opp(p.team)) {
+      const dd = dist(def.p, p.p);
+      if (dd > 6 || def.z > 0 || def.state === 'fallen') continue;
+      const ratio = (p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20);
+      const prox = clamp01(1 - (dd - 2) / 4);
+      if (this.isAI(def) && this.rng.chance((0.22 + 0.3 * ratio * prox) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? 0.4 : 1))) {
+        def.lastBitAt = this.time; this.jump(def, 0.9);
+        this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id });
+      }
     }
   }
 
@@ -688,7 +761,19 @@ export class GameSim {
     const made = this.rng.next() < ev.pct;
     const d = ev.dist;
     const dur = ps.type === 'dunk' ? 0.16 : 0.42 + d * 0.022;
-    this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0: p.z + p.height + 0.8, t: 0, dur, made, pts: ev.pts, ev, foul };
+    const jumper = ['mid', 'three', 'deep3'].includes(ps.type);
+    // bad enough shots can airball (never touches iron)
+    const bad = (ev.pct < 0.25 && ev.contest > 0.4) || d > 30;
+    const airball = !made && !foul && bad && ps.type !== 'dunk' && this.rng.chance(0.1 + Math.max(0, 0.25 - ev.pct) * 0.8);
+    const toShooter = norm(sub(p.p, rim));
+    const target = airball ? add(rim, scale(toShooter, this.rng.chance(0.6) ? 3 + this.rng.range(0, 2.5) : -(2 + this.rng.range(0, 2)))) : undefined;
+    const rimPath = airball ? undefined : ps.type === 'dunk' ? buildPath(made ? 'kissIn' : this.rng.pick(['frontRim', 'backIron'] as const), this.rng) : buildPath(pickSeq(made, jumper, ev.contest, this.rng), this.rng);
+    this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0: p.z + p.height + 0.8, t: 0, dur, made, pts: ev.pts, ev, foul, rim: rimPath, rimT: 0, rimKey: 0, airball, target };
+    // decide who crashes the offensive glass on this shot
+    for (const m of this.teams[p.team].onCourt) {
+      const crashP = m.role === '5' ? 0.95 : m.role === '4' ? (m.sub.three < 65 ? 0.85 : 0.2) : m.sub.finishing > m.sub.three + 8 ? 0.2 : 0.05;
+      m.crashing = m !== p && this.rng.chance(crashP);
+    }
     this.lastShot = { ev, made, name: p.name, user: p === this.user, at: this.time };
     p.box.usage++;
     if (p === this.user) {
@@ -857,6 +942,8 @@ export class GameSim {
       if (p.deadDribble && this.holder() === p && p.state !== 'shoot') want = v();
       if (this.time < p.staggerUntil) want = scale(want, 0.25);
       if (this.time < p.screenedUntil) want = scale(want, 0.15);
+      if (this.time < p.bumpedUntil) want = scale(want, 0.12);
+      if (p.boxingOut) want = scale(want, 0.35); // low, wide shuffle
       if (p.boxedOut) { want = scale(want, p.boxedOut); p.boxedOut = 0; }
 
       switch (p.state) {
@@ -959,15 +1046,35 @@ export class GameSim {
     }
   }
 
+  /**
+   * Box-outs. The player closer to the ball slows whoever is behind him. If he's in a box-out stance
+   * and the man behind tries to go through him, it's a strength battle: the loser gets knocked back
+   * (bumped animation) or slides around.
+   */
   private boxOut(a: Player, b: Player, d: number) {
     if (d > 3) return;
-    const target = this.ball.st.kind === 'shot' ? this.rim((this.ball.st as any).shooter.team) : this.ball.p;
+    const st = this.ball.st;
+    const target = st.kind === 'shot' ? this.rim(st.shooter.team) : this.ball.p;
     const [front, back] = dist(a.p, target) < dist(b.p, target) ? [a, b] : [b, a];
     const power = 0.35 + 0.25 * front.mods.pAdd('boxOut') + front.sub.rebound / 400;
     back.boxedOut = clamp(1 - power, 0.2, 0.9);
-    if (front.mods.pAdd('boxOut') > 0) {
-      // Get Low: wider angle, shove the guy behind you a bit further from the ball
-      back.p = clampToCourt(add(back.p, scale(norm(sub(back.p, front.p)), 0.06 * front.mods.pAdd('boxOut'))));
+    if (!front.boxingOut || d > 2.7 || this.time < back.bumpedUntil + 0.35 || this.time - back.lastBumpAt < 0.8) return;
+    const toT = norm(sub(target, back.p));
+    if (dot(back.want, toT) < 3 && dot(back.vel, toT) < 2) return; // not trying to get past
+    back.lastBumpAt = this.time;
+    const boxer = front.core.strength + front.sub.rebound / 2 + 25 * front.mods.pAdd('boxOut') + 10;
+    const mover = back.core.strength + back.sub.driveStability / 2 + this.rng.range(0, 20);
+    const away = norm(sub(back.p, front.p));
+    if (boxer >= mover) {
+      back.p = this.clampFor(back, add(back.p, scale(away, this.rng.range(1.5, 2.5))));
+      back.vel = scale(away, 5);
+      back.bumpedUntil = this.time + 0.5;
+      back.anim = { name: 'bumped', start: this.time, dur: 0.5 };
+      this.quiet('contact', { hard: true }, back.id);
+      if (front === this.user || back === this.user) this.emit({ kind: 'boxout', text: front === this.user ? `Boxed out ${back.name}!` : `${front.name} boxed you out`, pid: front.id, good: front === this.user });
+    } else {
+      const side = cross(toT, away) > 0 ? 1 : -1;
+      back.p = this.clampFor(back, add(back.p, scale(v(-away.y, away.x), 0.9 * side)));
     }
   }
 
@@ -1022,10 +1129,39 @@ export class GameSim {
         st.t += dt;
         const k = clamp01(st.t / st.dur);
         const rim = this.rim(st.shooter.team);
-        b.p = lerpV(st.a, rim, k);
-        const apex = st.ev.type === 'dunk' ? 0 : Math.min(6, 2 + st.ev.dist * 0.18);
-        b.z = st.z0 + (10 - st.z0) * k + apex * Math.sin(Math.PI * k);
-        if (k >= 1) this.resolveShot(st);
+        if (k < 1 || !st.rim) {
+          const end = st.target ?? rim;
+          b.p = lerpV(st.a, end, k);
+          const apex = st.ev.type === 'dunk' ? 0 : Math.min(6, 2 + st.ev.dist * 0.18);
+          b.z = st.z0 + ((st.airball ? 8.6 : 10) - st.z0) * k + apex * Math.sin(Math.PI * k);
+        }
+        if (k < 1) break;
+        if (st.airball) {
+          const dir = norm(sub(st.target!, st.a));
+          st.exit = { vel: scale(dir, 9), vz: -4 };
+          this.emit({ kind: 'airball', text: 'AIR BALL', team: st.shooter.team, pid: st.shooter.id, big: true });
+          this.resolveShot(st);
+          break;
+        }
+        if (!st.rim) { this.resolveShot(st); break; }
+        // live rim: follow the scripted bounce/roll, play each contact, then score or come off as a rebound
+        st.rimT = (st.rimT ?? 0) + dt;
+        const along = this.side(st.shooter.team); // +dx = toward the backboard = toward the baseline
+        const sp = sampleRim(st.rim, st.rimT);
+        b.p = v(rim.x + sp.dx * along, rim.y + sp.dy);
+        b.z = sp.z;
+        while ((st.rimKey ?? 0) < st.rim.keys.length && st.rim.keys[st.rimKey!].t <= st.rimT) {
+          const key = st.rim.keys[st.rimKey!];
+          if (key.sound && key.sound !== 'net') this.quiet('rimHit', { kind: key.sound });
+          st.rimKey = st.rimKey! + 1;
+        }
+        if (st.rimT >= pathEnd(st.rim)) {
+          if (st.rim.exit) {
+            const e = st.rim.exit;
+            st.exit = { vel: scale(norm(v(e.dx * along, e.dy)), e.speed), vz: e.vz };
+          }
+          this.resolveShot(st);
+        }
         break;
       }
       case 'loose': {
@@ -1080,8 +1216,8 @@ export class GameSim {
     const team = s.team;
     const t = this.teams[team];
     if (!st.foul || st.made) { s.box.fga++; if (st.pts === 3) s.box.tpa++; }
-    this.quiet(st.made ? 'net' : 'rim', {
-      type: st.ev.type, swish: st.made && st.ev.contest < 0.2 && ['mid', 'three', 'deep3'].includes(st.ev.type),
+    if (!st.airball) this.quiet(st.made ? 'net' : 'rim', {
+      type: st.ev.type, swish: st.made && (st.rim ? st.rim.seq === 'swish' : st.ev.contest < 0.2 && ['mid', 'three', 'deep3'].includes(st.ev.type)), seq: st.rim?.seq,
       // cosmetic only: must not consume sim RNG
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
     }, s.id);
@@ -1111,10 +1247,15 @@ export class GameSim {
       this.deadBall((1 - team) as 0 | 1, made ? 1.1 : 1.4, 'baseline');
     } else {
       const rim = this.rim(team);
-      const out = norm(add(sub(s.p, rim), v(this.rng.range(-8, 8), this.rng.range(-8, 8))));
-      this.ball.st = { kind: 'loose', vel: scale(out, this.rng.range(6, 13)), vz: this.rng.range(3, 8), lastTeam: team };
-      this.ball.p = add(rim, scale(out, 0.8));
-      this.ball.z = 10;
+      if (st.exit) {
+        // ball keeps going from wherever the rim sequence (or airball) left it
+        this.ball.st = { kind: 'loose', vel: st.exit.vel, vz: st.exit.vz, lastTeam: team };
+      } else {
+        const out = norm(add(sub(s.p, rim), v(this.rng.range(-8, 8), this.rng.range(-8, 8))));
+        this.ball.st = { kind: 'loose', vel: scale(out, this.rng.range(6, 13)), vz: this.rng.range(3, 8), lastTeam: team };
+        this.ball.p = add(rim, scale(out, 0.8));
+        this.ball.z = 10;
+      }
       this.wasShotRebound = true;
       this.assistCand = null;
     }

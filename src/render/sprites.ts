@@ -72,7 +72,13 @@ function drawLeg(ctx: Ctx, hip: J, knee: J, foot: J, a: Appearance, kit: Kit, ba
   line(ctx, hip[0], hip[1], knee[0], knee[1], 6, sk);
   line(ctx, knee[0], knee[1], foot[0], foot[1] - 2, 5, sk);
   if (kit.pants) { line(ctx, hip[0], hip[1], knee[0], knee[1], 6, dim(kit.shorts)); part(ctx, knee, foot, 0, 0.95, 5, dim(kit.shorts)); }
-  else part(ctx, hip, knee, 0, 0.58, 8, dim(kit.shorts));               // shorts
+  else {
+    // shorts: a fitted tube around each thigh, slightly tapered, with a trim hem
+    part(ctx, hip, knee, 0, 0.3, 8, dim(kit.shorts));
+    part(ctx, hip, knee, 0.28, 0.55, 7, dim(kit.shorts));
+    const hx = hip[0] + (knee[0] - hip[0]) * 0.55, hy = hip[1] + (knee[1] - hip[1]) * 0.55;
+    rect(ctx, Math.round(hx) - 3, Math.round(hy) + 2, 7, 1, dim(kit.trim)); // thin hem line
+  }
   if (sleeve) { part(ctx, hip, knee, 0.55, 1, 6, dim(a.legSleeveColor)); part(ctx, knee, foot, 0, 0.7, 5, dim(a.legSleeveColor)); }
   if (pad) part(ctx, hip, knee, 0.85, 1, 5, dim('#20232a')), part(ctx, knee, foot, 0, 0.12, 5, dim('#20232a'));
   const sockFrom = a.socks === 'high' ? 0.35 : a.socks === 'crew' ? 0.68 : 0.9;
@@ -96,23 +102,39 @@ function drawArm(ctx: Ctx, sh: J, el: J, hand: J, a: Appearance, kit: Kit, back:
   rect(ctx, sh[0] - 3, sh[1] - 1, 6, 4, dim(kit.jersey)); // jersey strap over the shoulder
 }
 
+/**
+ * Torso as a shaped silhouette: rounded shoulder caps, a fuller chest at the front, lats at the
+ * back, a taper to the waist and a slight hem flare. Shading on the back edge and arm-hole give it volume.
+ */
 function drawTorso(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit) {
   const top: J = [(sF[0] + sB[0]) / 2, Math.min(sF[1], sB[1]) - 1];
-  const len = Math.max(1, hip[1] - top[1]);
-  for (let i = 0; i <= Math.abs(len); i++) {
-    const t = i / Math.abs(len || 1);
+  const len = Math.max(1, Math.abs(hip[1] - top[1]));
+  // half-widths [front, back] along the torso (t = 0 shoulders .. 1 hips)
+  const prof = (t: number): [number, number] => {
+    if (t < 0.06) return [4.5, 4.5];                       // shoulder cap (rounded)
+    if (t < 0.14) return [6, 6];
+    if (t < 0.4) return [7, 6.5];                          // chest / lats
+    if (t < 0.85) return [7 - (t - 0.4) * 4.5, 6.5 - (t - 0.4) * 3.3]; // taper to the waist
+    return [5.4, 5.3];                                     // hem flare
+  };
+  const hi = shade(kit.jersey, 1.12);
+  for (let i = 0; i <= len; i++) {
+    const t = i / len;
     const cx = top[0] + (hip[0] - top[0]) * t;
-    const cy = top[1] + (hip[1] - top[1]) * t;
-    const w = 14 - t * 2.5;
-    rect(ctx, cx - w / 2, cy, Math.round(w), 1, kit.jersey);
-    rect(ctx, cx - w / 2, cy, 2, 1, kit.jerseyShade);
+    const cy = Math.round(top[1] + (hip[1] - top[1]) * t);
+    const [wf, wb] = prof(t);
+    const x0 = Math.round(cx - wb), x1 = Math.round(cx + wf);
+    rect(ctx, x0, cy, x1 - x0 + 1, 1, kit.jersey);
+    rect(ctx, x0, cy, t < 0.12 ? 1 : 2, 1, kit.jerseyShade);                     // back-edge shadow
+    if (t > 0.1 && t < 0.42) px(ctx, x1, cy, hi);                                  // chest highlight
+    if (t > 0.08 && t < 0.3) px(ctx, Math.round(cx - 1), cy, kit.jerseyShade);    // arm-hole shading
   }
-  rect(ctx, top[0] - 2, top[1], 5, 1, kit.trim);           // collar
-  rect(ctx, hip[0] - 7, hip[1] - 2, 14, 7, kit.shorts);    // shorts waist
-  rect(ctx, hip[0] - 7, hip[1] - 2, 14, 1, kit.trim);
-  if (kit.number >= 0) digits(ctx, top[0] + (hip[0] - top[0]) * 0.4, top[1] + (hip[1] - top[1]) * 0.25, kit.number, kit.trim);
+  rect(ctx, top[0] - 2, top[1], 5, 1, kit.trim);                                   // collar
+  // waistband only; the shorts themselves wrap each leg (drawLeg)
+  rect(ctx, hip[0] - 5, hip[1] - 1, 11, 4, kit.shorts);
+  rect(ctx, hip[0] - 5, hip[1] - 1, 11, 1, kit.trim);
+  if (kit.number >= 0) digits(ctx, top[0] + (hip[0] - top[0]) * 0.4 + 1, top[1] + (hip[1] - top[1]) * 0.25, kit.number, kit.trim);
   else { rect(ctx, top[0] - 1, top[1], 3, Math.round((hip[1] - top[1]) * 0.6), '#f4f4f4'); px(ctx, top[0], top[1] + 2, kit.trim); } // shirt + tie
-  line(ctx, neck[0], neck[1], top[0], top[1], 4, 'transparent');
 }
 
 // ---------- head ----------
@@ -243,3 +265,95 @@ export function buildSheet(heightFt: number, a: Appearance, kit: Kit): Sheet {
 
 export const frameRect = (i: number) => ({ x: (i % COLS) * FRAME_W, y: Math.floor(i / COLS) * FRAME_H });
 export type { Clip };
+
+// ---------- front view (bench players facing the court) ----------
+export const FRONT_W = 32, FRONT_H = 80;
+
+/** Two frames, facing the camera: 0 = seated, 1 = standing and cheering. */
+export function buildFrontSheet(heightFt: number, a: Appearance, kit: Kit): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = FRONT_W * 2; c.height = FRONT_H;
+  const ctx = c.getContext('2d')!;
+  const s = figureHeight(heightFt) / 66; // scale relative to a 6'6" player
+  drawFront(ctx, 0, a, kit, false, s);
+  drawFront(ctx, FRONT_W, a, kit, true, s);
+  return c;
+}
+
+function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, standing: boolean, s: number) {
+  const [skin, skinSh] = SKIN_TONES[a.skin % SKIN_TONES.length];
+  const cx = ox + 16, floor = FRONT_H - 3;
+  const L = (n: number) => Math.round(n * s);
+  // legs
+  const shinTop = standing ? floor - L(26) : floor - L(17);
+  for (const lx of [cx - 5, cx + 2]) {
+    rect(ctx, lx, shinTop, 3, floor - 3 - shinTop, skin);
+    const sockH = a.socks === 'high' ? L(11) : a.socks === 'crew' ? L(6) : 2;
+    rect(ctx, lx, floor - 3 - sockH, 3, sockH, a.sockColor);
+    if (a.legSleeve === 'both' || (a.legSleeve === 'one' && lx > cx)) rect(ctx, lx, shinTop, 3, L(8), a.legSleeveColor);
+    rect(ctx, lx - 1, floor - 3, 5, 3, a.shoe); rect(ctx, lx, floor - 2, 3, 1, a.shoeAccent);
+  }
+  // thighs / shorts: seated thighs point at the camera (short block); standing they hang down
+  const hipY = standing ? shinTop - L(16) : shinTop - L(5);
+  rect(ctx, cx - 7, hipY, 15, shinTop - hipY + (standing ? 0 : 1), kit.shorts);
+  rect(ctx, cx, hipY + 2, 1, shinTop - hipY - 1, shade(kit.shorts, 0.75));                  // leg split
+  rect(ctx, cx - 7, shinTop - 1, 6, 1, kit.trim); rect(ctx, cx + 2, shinTop - 1, 6, 1, kit.trim);
+  if (!standing) { rect(ctx, cx - 6, shinTop - 2, 4, 3, skin); rect(ctx, cx + 3, shinTop - 2, 4, 3, skin); } // knees
+  // torso
+  const shY = hipY - L(19);
+  for (let y = shY; y <= hipY; y++) {
+    const t = (y - shY) / Math.max(1, hipY - shY);
+    const w = t < 0.08 ? 11 : t < 0.4 ? 15 : 15 - (t - 0.4) * 5;
+    rect(ctx, Math.round(cx - w / 2), y, Math.round(w), 1, kit.jersey);
+  }
+  rect(ctx, cx - 7, shY + 3, 1, hipY - shY - 4, kit.jerseyShade); rect(ctx, cx + 7, shY + 3, 1, hipY - shY - 4, kit.jerseyShade);
+  rect(ctx, cx - 2, shY, 5, 2, skin); rect(ctx, cx - 3, shY, 1, 3, kit.trim); rect(ctx, cx + 3, shY, 1, 3, kit.trim); // v-neck
+  if (kit.number >= 0) digits(ctx, cx + 0.5, shY + 5, kit.number, kit.trim);
+  // arms: resting on the knees, or raised when cheering
+  for (const side of [-1, 1]) {
+    const axO = cx + side * 8;
+    const sleeve = a.armSleeve === 'both' || (a.armSleeve === 'shooting' && side === 1);
+    if (standing) {
+      line(ctx, axO, shY + 2, axO + side * 3, shY - L(14), 3, skin);
+      if (sleeve) line(ctx, axO, shY + 2, axO + side * 2, shY - L(8), 3, a.sleeveColor);
+      rect(ctx, axO + side * 3 - 1, shY - L(14) - 3, 4, 4, skin);
+    } else {
+      line(ctx, axO, shY + 2, axO + side * 1, hipY + 1, 3, skin);
+      if (sleeve) line(ctx, axO, shY + 2, axO + side * 1, hipY - 2, 3, a.sleeveColor);
+      if (a.wristband) rect(ctx, axO + side - 1, hipY - 2, 3, 2, a.wristband);
+      rect(ctx, axO + side * 1 - 1, hipY + 1, 3, 3, skin);
+    }
+  }
+  // neck + head
+  const hy = shY - 8;
+  rect(ctx, cx - 2, shY - 3, 5, 4, skinSh);
+  for (let y = -6; y <= 6; y++) { const w = y < -4 || y > 4 ? 7 : 11; rect(ctx, cx - Math.floor(w / 2), hy + y, w, 1, skin); }
+  rect(ctx, cx - 6, hy - 1, 1, 3, skinSh); rect(ctx, cx + 6, hy - 1, 1, 3, skinSh);                    // ears
+  const ey = hy - 1 + a.eyeY;
+  for (const ex of [cx - 3, cx + 2]) { px(ctx, ex, ey, '#f4f4f4'); px(ctx, ex + 1, ey, a.eyeColor); }
+  for (let r = 0; r < a.brow; r++) { rect(ctx, cx - 4, ey - 2 - r, 3, 1, shade(a.hairColor, 0.9)); rect(ctx, cx + 2, ey - 2 - r, 3, 1, shade(a.hairColor, 0.9)); }
+  px(ctx, cx, ey + 2, skinSh); if (a.nose === 'wide') { px(ctx, cx - 1, ey + 2, skinSh); px(ctx, cx + 1, ey + 2, skinSh); }
+  const my = hy + 4 + a.mouthY, lip = '#5a1f1f';
+  if (a.mouth === 'open' || standing) rect(ctx, cx - 1, my, 3, 2, '#2a0d0d'); else rect(ctx, cx - 1, my, 3, 1, lip);
+  if (a.mouth === 'smile' && !standing) { px(ctx, cx - 2, my - 1, lip); px(ctx, cx + 2, my - 1, lip); }
+  if (a.facial === 'beard') { rect(ctx, cx - 5, hy + 2, 2, 4, a.hairColor); rect(ctx, cx + 4, hy + 2, 2, 4, a.hairColor); rect(ctx, cx - 3, hy + 6, 7, 1, a.hairColor); }
+  if (a.facial === 'goatee' || a.facial === 'beard' || a.facial === 'mustache') rect(ctx, cx - 2, my - 1, 5, 1, a.hairColor);
+  if (a.facial === 'goatee') rect(ctx, cx - 1, my + 2, 3, 2, a.hairColor);
+  // hair from the front
+  const hc = a.hairColor;
+  switch (a.hair) {
+    case 'bald': break;
+    case 'afro': rect(ctx, cx - 8, hy - 11, 17, 8, hc); rect(ctx, cx - 7, hy - 3, 2, 4, hc); rect(ctx, cx + 6, hy - 3, 2, 4, hc); break;
+    case 'hightop': rect(ctx, cx - 5, hy - 13, 11, 8, hc); break;
+    case 'mohawk': rect(ctx, cx - 1, hy - 11, 3, 6, hc); break;
+    case 'bun': rect(ctx, cx - 5, hy - 7, 11, 2, hc); rect(ctx, cx - 2, hy - 10, 5, 3, hc); break;
+    case 'dreads': case 'braids':
+      rect(ctx, cx - 5, hy - 8, 11, 3, hc);
+      for (const x of [-6, -5, 5, 6]) rect(ctx, cx + x, hy - 5, 1, a.hair === 'dreads' ? 12 : 9, hc);
+      break;
+    case 'twists': case 'curly': rect(ctx, cx - 5, hy - 9, 11, 4, hc); for (let x = -5; x <= 5; x += 2) px(ctx, cx + x, hy - 10, hc); break;
+    default: rect(ctx, cx - 5, hy - 7, 11, 2 + (a.hair === 'fade' || a.hair === 'waves' ? 1 : 0), hc);
+  }
+  if (a.headband) rect(ctx, cx - 5, hy - 4, 11, 2, a.headband);
+  if (a.goggles) { rect(ctx, cx - 6, ey, 13, 1, '#222'); rect(ctx, cx - 4, ey - 1, 4, 3, '#222'); rect(ctx, cx + 1, ey - 1, 4, 3, '#222'); px(ctx, cx - 3, ey, '#8fd3ff'); px(ctx, cx + 2, ey, '#8fd3ff'); }
+}

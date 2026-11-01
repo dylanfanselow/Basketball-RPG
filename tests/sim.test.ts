@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeSubRatings, statFactor } from '../src/sim/attributes';
 import { evaluateShot, selectShotType, computeContest } from '../src/sim/shooting';
-import { resolveMove } from '../src/sim/moves';
+import { resolveMove, availableMoves } from '../src/sim/moves';
 import { passProbability } from '../src/sim/ai/trust';
 import { planRotation } from '../src/sim/rotation';
 import { Player } from '../src/sim/player';
@@ -174,9 +174,10 @@ describe('input buffering', () => {
     const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
     const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } }); // dribble down the screen
-    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true });                  // stick up + B = crossover
+    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true, bHeld: true });     // stick up + ○ = crossover
     for (let i = 0; i < 10; i++) g.update(1 / 60, idle);
-    g.update(1 / 60, { ...idle, b: true }); // press mid-move
+    g.update(1 / 60, { ...idle, b: true, bHeld: true }); // quick ○ tap mid-move…
+    g.update(1 / 60, idle);                              // …released: queued as the chain
     for (let i = 0; i < 40; i++) g.update(1 / 60, idle);
     const moves = g.events.filter((e) => e.kind === 'move').map((e) => e.text);
     expect(moves).toEqual(['Crossover', 'Behind-the-Back']);
@@ -190,9 +191,9 @@ describe('three-move chain', () => {
     const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     const run = (n: number) => { for (let i = 0; i < n; i++) g.update(1 / 60, idle); };
     for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } });
-    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true }); run(26);
-    g.update(1 / 60, { ...idle, b: true }); run(26);
-    g.update(1 / 60, { ...idle, move: { x: -1, y: 0 }, b: true }); run(30);
+    g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true, bHeld: true }); run(26);
+    g.update(1 / 60, { ...idle, b: true, bHeld: true }); run(26);
+    g.update(1 / 60, { ...idle, move: { x: -1, y: 0 }, b: true, bHeld: true }); run(30);
     expect(g.events.filter((e) => e.kind === 'move').map((e) => e.text)).toEqual(['Crossover', 'Behind-the-Back', 'Snatch-Back']);
   });
 });
@@ -260,15 +261,16 @@ describe('playtest round 4 mechanics', () => {
   });
   it('a pump fake picks up the dribble: no moving or dribbling, but you can still pass or shoot', () => {
     const { g, u } = practice();
-    g.update(1 / 60, { ...idle, b: true }); // neutral stick = pump fake
+    g.update(1 / 60, { ...idle, a: true, aHeld: true }); g.update(1 / 60, idle); // quick ✕ tap = pump fake
     for (let i = 0; i < 30; i++) g.update(1 / 60, idle);
     expect(u.deadDribble).toBe(true);
     const p0 = { ...u.p };
     for (let i = 0; i < 30; i++) g.update(1 / 60, { ...idle, move: { x: 1, y: 0 } });
     expect(Math.hypot(u.p.x - p0.x, u.p.y - p0.y)).toBeLessThan(0.3);
-    g.update(1 / 60, { ...idle, move: { x: 0, y: 1 }, b: true });
+    g.update(1 / 60, { ...idle, move: { x: 0, y: 1 }, b: true, bHeld: true });
     expect(g.events.filter((e) => e.kind === 'move').length).toBe(1);
-    g.update(1 / 60, { ...idle, a: true });
+    g.update(1 / 60, { ...idle, a: true, aHeld: true });
+    for (let i = 0; i < 12; i++) g.update(1 / 60, { ...idle, aHeld: true });
     expect(u.state).toBe('shoot');
   });
 });
@@ -320,5 +322,116 @@ describe('inbounds, transition, equal touches', () => {
     for (let i = 0; i < 10; i++) { g.callPlay(); if (g.runner.focusPid === 'USER') break; }
     expect(g.runner.focusPid).toBe('USER');
     expect(g.playRole(u)).toBe('2'); // Floppy is run for the 2-man
+  });
+});
+
+describe('tap vs hold controls', () => {
+  const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+  const setup = (nodes: string[] = []) => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), nodes, isUser: true });
+    return { g: makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u), u };
+  };
+  it('✕ tap = pump fake (repeatable, no shot); ✕ hold = shot', () => {
+    const { g, u } = setup();
+    for (let k = 0; k < 3; k++) { g.update(1 / 60, { ...idle, a: true, aHeld: true }); g.update(1 / 60, idle); for (let i = 0; i < 30; i++) g.update(1 / 60, idle); }
+    expect(g.events.filter((e) => e.text === 'Pump Fake').length).toBe(3);
+    expect(g.events.some((e) => e.kind === 'release')).toBe(false);
+    expect(u.deadDribble).toBe(true);
+    g.update(1 / 60, { ...idle, a: true, aHeld: true });
+    for (let i = 0; i < 9; i++) { g.update(1 / 60, { ...idle, aHeld: true }); expect(i < 9 && u.state === 'shoot' ? i >= 9 : true).toBe(true); }
+    for (let i = 0; i < 3; i++) g.update(1 / 60, { ...idle, aHeld: true });
+    expect(u.state).toBe('shoot');
+  });
+  it('hold ○ and flick: crossover, then flick back for the double crossover', () => {
+    const { g } = setup(['dr_cross', 'dr_dbl']);
+    for (let i = 0; i < 20; i++) g.update(1 / 60, { ...idle, move: { x: 0, y: 1 } }); // dribbling down
+    g.update(1 / 60, { ...idle, b: true, bHeld: true });                              // ○ down, stick neutral
+    g.update(1 / 60, { ...idle, bHeld: true, move: { x: 0, y: -1 } });                // flick up = cross
+    for (let i = 0; i < 6; i++) g.update(1 / 60, { ...idle, bHeld: true });           // back to neutral
+    for (let i = 0; i < 22; i++) g.update(1 / 60, { ...idle, bHeld: true, move: { x: 0, y: 1 } }); // flick down = double cross
+    expect(g.events.filter((e) => e.kind === 'move').map((e) => e.text)).toEqual(['Crossover', 'Double Crossover']);
+  });
+  it('a quick neutral ○ tap is a jab step that keeps the dribble', () => {
+    const { g, u } = setup();
+    g.update(1 / 60, { ...idle, b: true, bHeld: true }); g.update(1 / 60, idle);
+    expect(g.events.filter((e) => e.kind === 'move').map((e) => e.text)).toEqual(['Jab Step']);
+    expect(u.deadDribble).toBe(false);
+  });
+  it('the HUD move list matches what the resolver fires', () => {
+    const { g, u } = setup(['dr_cross', 'dr_stepback']);
+    u.vel = { x: 0, y: 8 };
+    const toRim = { x: 1, y: 0 };
+    const list = availableMoves(u, toRim, g.time, 3);
+    for (const m of list) expect(resolveMove(u, m.dir, toRim, g.time, 3)).toBe(m.id);
+    expect(list.find((m) => m.dir.y < 0)!.id).toBe('crossover');
+    expect(list.find((m) => m.dir.x < 0)!.id).toBe('stepback');
+  });
+});
+
+describe('rebounding: live rim, airballs, box-outs, crash roles', () => {
+  it('misses play several different rim sequences and makes still count normally', async () => {
+    const { pickSeq, buildPath } = await import('../src/sim/rim');
+    const { Rng } = await import('../src/sim/math');
+    const r = new Rng(3);
+    const seqs = new Set<string>();
+    for (let i = 0; i < 200; i++) seqs.add(buildPath(pickSeq(false, true, 0.3, r), r).seq);
+    expect(seqs.size).toBeGreaterThanOrEqual(4);
+    for (let i = 0; i < 50; i++) expect(buildPath(pickSeq(true, true, 0.1, r), r).made).toBe(true);
+  });
+  it('in real games, airballs only come from bad shots', () => {
+    let air = 0;
+    for (const seed of [1, 2, 3]) {
+      const g = makeGame({ seed });
+      const shots: { pct: number; contest: number; dist: number; air: boolean }[] = [];
+      const idle = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
+      let lastShot: any = null;
+      for (let t = 0; t < 60 * 900 && !g.over; t++) {
+        g.update(1 / 60, idle);
+        const st = g.ball.st as any;
+        if (st.kind === 'shot' && st !== lastShot) { lastShot = st; shots.push({ pct: st.ev.pct, contest: st.ev.contest, dist: st.ev.dist, air: !!st.airball }); }
+      }
+      for (const s of shots) if (s.air) { air++; expect(s.pct < 0.25 || s.dist > 30).toBe(true); }
+    }
+    expect(air).toBeGreaterThanOrEqual(0);
+  });
+  it('a strong boxer knocks back a weaker player trying to go through him; a weak one gets beaten', () => {
+    const run = (boxStr: number, moveStr: number) => {
+      const g = makeGame({ seed: 5 });
+      g.inbound(0);
+      const shooter = g.offense()[0];
+      const boxer = g.defense()[0], mover = g.offense()[1];
+      boxer.core.strength = boxStr; boxer.recompute(); mover.core.strength = moveStr; mover.recompute();
+      const rim = g.rim(0);
+      for (const p of g.players) p.p = { x: 50, y: 5 + Math.random() };
+      boxer.p = { x: rim.x - 6, y: rim.y }; mover.p = { x: rim.x - 8.2, y: rim.y };
+      g.ball.st = { kind: 'shot', shooter, a: { ...rim }, z0: 9, t: 0, dur: 9, made: false, pts: 2, ev: { type: 'mid', dist: 15, pts: 2, pct: 0.4, contest: 0, terms: [], conds: new Set(), contestBy: [] }, foul: false } as any;
+      g.freezeAI = true;
+      boxer.boxingOut = true;
+      mover.want = { x: 12, y: 0 }; mover.vel = { x: 10, y: 0 };
+      (g as any).boxOut(boxer, mover, 2.2);
+      return { bumped: mover.bumpedUntil > g.time, d: Math.hypot(mover.p.x - boxer.p.x, mover.p.y - boxer.p.y) };
+    };
+    const strong = run(95, 40);
+    expect(strong.bumped).toBe(true);
+    expect(strong.d).toBeGreaterThan(3);
+    expect(run(30, 95).bumped).toBe(false);
+  });
+  it('centers crash the glass; shooting power forwards mostly get back', () => {
+    const g = makeGame({ seed: 8 });
+    g.inbound(0);
+    const team = g.teams[0].onCourt;
+    const c = team.find((p) => p.role === '5')!, pf = team.find((p) => p.role === '4')!;
+    const shooter = team.find((p) => p.role === '1')!;
+    let cc = 0, pfShooter = 0, pfBig = 0;
+    for (let i = 0; i < 200; i++) {
+      pf.core.shooting = 95; pf.recompute();
+      g.giveBall(shooter); shooter.state = 'idle'; shooter.pendingShot = { type: 'mid' }; (g as any).releaseShot(shooter);
+      if (c.crashing) cc++; if (pf.crashing) pfShooter++;
+      pf.core.shooting = 35; pf.recompute();
+      g.giveBall(shooter); shooter.state = 'idle'; shooter.pendingShot = { type: 'mid' }; (g as any).releaseShot(shooter);
+      if (pf.crashing) pfBig++;
+    }
+    expect(cc / 200).toBeGreaterThan(0.9);
+    expect(pfShooter).toBeLessThan(pfBig);
   });
 });

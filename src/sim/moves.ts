@@ -39,12 +39,28 @@ export function resolveMove(p: Player, stick: Vec, toRim: Vec, now: number, defD
   return def ? def[0] : 'hesi';
 }
 
+/** Representative stick directions shown on the HUD stick (screen up/down, toward/away from the hoop). */
+export function availableMoves(p: Player, toRim: Vec, now: number, defDist: number): { dir: Vec; id: string; chain: boolean }[] {
+  const tx = Math.sign(toRim.x) || 1;
+  const dirs: Vec[] = [v(0, -1), v(0, 1), v(tx, 0), v(-tx, 0)];
+  // mid-move, show what the next press chains into (it gets buffered and fires as this move ends)
+  const saved = p.lastMove;
+  if (p.state === 'dribbleMove' && p.move) p.lastMove = { id: p.move.id, endAt: now, dir: p.move.dir };
+  const out = dirs.map((d) => {
+    const id = resolveMove(p, d, toRim, now, defDist);
+    return { dir: d, id, chain: !!MOVES[id]?.chainFrom };
+  });
+  p.lastMove = saved;
+  return out;
+}
+
 /** World-space burst direction for a move. */
 export function moveDirection(id: string, p: Player, stick: Vec, toRim: Vec, defPos: Vec | null): Vec {
   const m = MOVES[id];
   const s = len(stick) > 0.3 ? norm(stick) : p.face;
   switch (m.burstDir) {
     case 'none': return v();
+    case 'toward': return toRim;
     case 'reverseLast': {
       const last = p.lastMove?.dir ?? s;
       const lat = cross(toRim, last);

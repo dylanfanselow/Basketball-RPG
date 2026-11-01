@@ -1,7 +1,7 @@
 import { app } from '../state';
 import { CORE_STATS, TREES, ULTIMATES, PLAYS, NODES } from '../sim/data';
 import { POSITIONS, HEIGHTS } from '../sim/attributes';
-import { newCareer } from '../career/career';
+import { newCareer, CareerState } from '../career/career';
 import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
@@ -29,9 +29,31 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string,
 function livePlayer(): Player | null { return app.sim?.user ?? null; }
 
 /** Push career core/nodes/extra into the live sim player. */
+/**
+ * When you're playing as a real NBA player (Quick 5v5), the dev panel edits *that* player live
+ * instead of your career save. `editProxy` stands in for the career object while that's the case.
+ */
+let editProxy: (CareerState & { __pid?: string }) | null = null;
+function editTarget(): CareerState {
+  const p = livePlayer();
+  if (p && p.id !== 'USER') {
+    if (!editProxy || editProxy.__pid !== p.id) editProxy = { ...app.career, __pid: p.id, core: p.core, nodes: [...p.nodes], appearance: p.appearance, number: p.number, pos: p.pos } as CareerState & { __pid?: string };
+    return editProxy;
+  }
+  editProxy = null;
+  return app.career;
+}
+
 function syncLive() {
   const p = livePlayer();
-  const c = app.career;
+  const c = editTarget();
+  if (p && c !== app.career) {
+    // editing the real player you're controlling: apply to him only
+    p.core = { ...c.core }; p.nodes = new Set(c.nodes); p.appearance = c.appearance; p.number = c.number; p.recompute();
+    if (app.sim) app.sim.ult.state = { unlocked: !!app.career.flags.ult_unlocked, id: app.career.ult.id, level: app.career.ult.level };
+    app.changed();
+    return;
+  }
   if (p) {
     p.core = { ...c.core };
     p.nodes = new Set(c.nodes);
@@ -85,9 +107,10 @@ export function initDevPanel() {
   }
 
   function render() {
-    const c = app.career;
+    const c = editTarget();
     const s = app.sim;
     root.innerHTML = '';
+    if (c !== app.career) root.append(el('div', { class: 'note', style: 'color:#ffcc33' }, `Editing ${livePlayer()?.name} for this game (not your career save).`));
     root.append(el('div', { class: 'hdr' }, el('b', {}, 'DEV TOOLS'), el('span', {}, '  F1 / ` / Create+Options to close'), btn('×', toggle)));
 
     liveBox = el('pre', { class: 'live' });

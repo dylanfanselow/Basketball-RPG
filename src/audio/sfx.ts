@@ -151,10 +151,36 @@ class Sfx {
     this.noiseHit({ type: 'bandpass', f: 900, f2: 2400, q: 1.5, peak: 0.07, a: 0.04, d: 0.2, pan });
   }
 
-  swish(pan = 0) {
+  /** Big, satisfying net swish: a crisp snap, the net sweep, and the ball's whump through the cords. */
+  swish(pan = 0, big = true) {
     if (!this.ok()) return;
-    this.noiseHit({ type: 'highpass', f: 2800, f2: 6000, peak: 0.28, a: 0.03, d: 0.32, pan });
-    this.noiseHit({ type: 'bandpass', f: 5200, q: 3, peak: 0.12, a: 0.05, d: 0.25, pan, at: 0.04 });
+    const k = big ? 1 : 0.6;
+    this.noiseHit({ type: 'bandpass', f: 6500, q: 2.5, peak: 0.55 * k, a: 0.002, d: 0.04, pan });                       // snap
+    this.noiseHit({ type: 'highpass', f: 2200, f2: 7500, peak: 0.6 * k, a: 0.025, d: 0.45, pan: pan - 0.15 });          // net sweep (L)
+    this.noiseHit({ type: 'highpass', f: 2600, f2: 8000, peak: 0.45 * k, a: 0.035, d: 0.42, pan: pan + 0.15, at: 0.012 }); // net sweep (R)
+    this.noiseHit({ type: 'bandpass', f: 4200, q: 4, peak: 0.25 * k, a: 0.05, d: 0.32, pan, at: 0.05 });                // cord rustle
+    this.tone({ f: 150, f2: 70, peak: 0.28 * k, a: 0.01, d: 0.16, pan });                                               // whump
+  }
+  /** Light rim contact during a roll or rattle. */
+  rimTick(pan = 0) {
+    if (!this.ok()) return;
+    this.metal(pan, 0.12, 0.18);
+  }
+  /** Ball sailing wide: whoosh, then the crowd's two-note "air-ball" chant. */
+  airball(pan = 0) {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'bandpass', f: 700, f2: 300, q: 1.2, peak: 0.18, a: 0.08, d: 0.5, pan });
+    const ctx = this.ctx!;
+    for (let rep = 0; rep < 2; rep++) for (const [i, f] of [[0, 392], [1, 330]] as const) {
+      const t0 = 0.6 + rep * 0.9 + i * 0.35;
+      for (const det of [0.99, 1, 1.012]) {
+        const osc = ctx.createOscillator(); const g = ctx.createGain(); const flt = ctx.createBiquadFilter();
+        osc.type = 'sawtooth'; osc.frequency.value = f * det; flt.type = 'lowpass'; flt.frequency.value = 1100;
+        const t = ctx.currentTime + t0;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+        osc.connect(flt).connect(g).connect(this.crowdBus); osc.start(t); osc.stop(t + 0.4);
+      }
+    }
   }
   rimIn(pan = 0) {
     if (!this.ok()) return;
@@ -192,10 +218,12 @@ class Sfx {
     this.noiseHit({ type: 'lowpass', f: hard ? 520 : 380, peak: hard ? 0.55 : 0.35, d: hard ? 0.18 : 0.11, pan });
     this.tone({ f: hard ? 95 : 80, f2: 45, peak: hard ? 0.5 : 0.3, d: 0.14, pan });
   }
+  /** Loud palm-on-leather clap with a short room tail. */
   block(pan = 0) {
     if (!this.ok()) return;
-    this.noiseHit({ type: 'highpass', f: 1800, peak: 0.45, d: 0.05, pan });
-    this.tone({ f: 160, f2: 70, peak: 0.45, d: 0.12, pan });
+    for (const [at, f, peak] of [[0, 1800, 0.95], [0.006, 2500, 0.7], [0.013, 1200, 0.6]] as const) this.noiseHit({ type: 'bandpass', f, q: 1.4, peak, a: 0.001, d: 0.045, pan, at });
+    this.noiseHit({ type: 'bandpass', f: 1500, q: 0.8, peak: 0.22, a: 0.01, d: 0.28, pan, at: 0.02 }); // room tail
+    this.tone({ f: 150, f2: 60, peak: 0.55, d: 0.14, pan });
   }
   steal(pan = 0) {
     if (!this.ok()) return;

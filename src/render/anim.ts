@@ -153,12 +153,16 @@ export const CLIPS: Clip[] = [
     { t: 0.25, pose: P({ hip: [0, 43], kF: [10, 21], fF: [14, 0], head: [5, 84], hF: [12, 26], ball: [13, 12] }, athletic) },
     { t: 0.55, pose: P({ head: [-3, 89], neck: [-3, 80], hip: [-1, 47], kF: [6, 25], fF: [8, 2], kB: [-7, 24], fB: [-12, 0], hF: [5, 40], ball: [5, 34] }, athletic) },
     { t: 1, pose: P({ ball: [6, 58], hF: [6, 58], hB: [4, 56] }, athletic) }] },
-  { name: 'move_jab', frames: 8, keys: [
+  { name: 'move_jab', frames: 8, bounce: [0.5], keys: [
+    { t: 0, pose: dribHigh },
+    { t: 0.3, pose: P({ kF: [12, 22], fF: [17, 0], kB: [-5, 24], fB: [-8, 0], hip: [2, 44], head: [7, 84], neck: [6, 76], sF: [6, 73], sB: [2, 73], hF: [12, 30], eF: [10, 52], ball: [13, 14] }, athletic) },
+    { t: 0.5, pose: P({ kF: [11, 22], fF: [16, 0], kB: [-5, 24], fB: [-8, 0], hip: [2, 44], head: [6, 84], neck: [5, 76], hF: [12, 26], ball: [13, 4] }, athletic) },
+    { t: 1, pose: dribHigh }] },
+  { name: 'pumpfake', frames: 8, keys: [
     { t: 0, pose: chest },
-    { t: 0.3, pose: P({ kF: [9, 23], fF: [14, 0], hip: [1, 47], head: [5, 87], neck: [4, 78], ball: [9, 58], hF: [9, 58], hB: [7, 56] }) },
-    { t: 0.5, pose: P({ ball: [4, 95], hF: [4, 92], hB: [2, 91], eF: [6, 80], eB: [-2, 80], head: [1, 92], hip: [0, 52] }) },
-    { t: 0.75, pose: P({ ball: [7, 62], hF: [7, 62], hB: [5, 60], hip: [0, 48] }) },
-    { t: 1, pose: chest }] },
+    { t: 0.35, pose: P({ hip: [0, 52], kF: [3, 28], kB: [-2, 28], ball: [4, 96], hF: [4, 93], hB: [2, 92], eF: [7, 82], eB: [-2, 82], head: [1, 92] }) },
+    { t: 0.55, pose: P({ hip: [0, 52], kF: [3, 28], kB: [-2, 28], ball: [4, 98], hF: [4, 95], hB: [2, 94], eF: [7, 84], eB: [-2, 84], head: [1, 92] }) },
+    { t: 1, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) }] },
   { name: 'move_retreat', frames: 8, bounce: [0.5], keys: [
     { t: 0, pose: runDrib(jogB, [11, 45], [12, 40]) },
     { t: 0.25, pose: P({ head: [-2, 88], hB: [5, 62], hF: [10, 34], ball: [11, 24] }, jogA) },
@@ -259,6 +263,14 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: P({ hF: [12, 66], eF: [8, 68], hB: [10, 65], eB: [5, 67], ball: [14, 66] }) },
     { t: 1, pose: chest }] },
 
+  { name: 'boxout', frames: 4, loop: true, keys: [
+    { t: 0, pose: P({ hip: [0, 40], head: [-3, 80], neck: [-2, 71], sF: [-1, 68], sB: [-3, 68], eF: [8, 66], hF: [14, 70], eB: [-11, 66], hB: [-17, 70], kF: [7, 20], fF: [11, 0], kB: [-8, 20], fB: [-12, 0] }) },
+    { t: 0.5, pose: P({ hip: [-1, 39], head: [-4, 79], neck: [-3, 70], sF: [-2, 67], sB: [-4, 67], eF: [8, 65], hF: [15, 68], eB: [-12, 65], hB: [-18, 68], kF: [8, 20], fF: [12, 1], kB: [-8, 20], fB: [-12, 0] }) },
+    { t: 1, pose: P({ hip: [0, 40], head: [-3, 80], neck: [-2, 71], sF: [-1, 68], sB: [-3, 68], eF: [8, 66], hF: [14, 70], eB: [-11, 66], hB: [-17, 70], kF: [7, 20], fF: [11, 0], kB: [-8, 20], fB: [-12, 0] }) }] },
+  { name: 'bumped', frames: 6, keys: [
+    { t: 0, pose: P({ head: [-8, 86], neck: [-6, 77], sF: [-4, 75], sB: [-8, 75], eF: [4, 82], hF: [10, 92], eB: [-14, 80], hB: [-20, 88], kF: [4, 30], fF: [8, 6], kB: [-5, 26], fB: [-9, 0] }) },
+    { t: 0.4, pose: P({ head: [-10, 84], neck: [-8, 75], sF: [-6, 73], sB: [-10, 73], eF: [2, 70], hF: [8, 62], eB: [-16, 72], hB: [-22, 64], kF: [2, 26], fF: [3, 0], kB: [-7, 24], fB: [-12, 2] }) },
+    { t: 1, pose: athletic }] },
   // ---------- dead ball / inbounds / sideline ----------
   { name: 'hold', frames: 4, loop: true, keys: [
     { t: 0, pose: P({ hip: [0, 47], kF: [6, 23], fF: [9, 0], kB: [-6, 23], fB: [-9, 0], hF: [7, 66], hB: [5, 65], eF: [8, 60], eB: [4, 60], ball: [8, 67], head: [2, 89] }) },

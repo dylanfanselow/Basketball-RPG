@@ -7,16 +7,26 @@ import { app } from '../state';
 
 export type Mode = 'practice' | 'quick' | 'career';
 
-export function createSim(mode: Mode): GameSim {
+/** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
+export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
+
+export function createSim(mode: Mode, setupOpts?: MatchSetup): GameSim {
   const c = app.career;
-  const myTeam = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[13];
-  const oppId = mode === 'career' ? c.season.schedule[c.season.gameNo % c.season.schedule.length] : TEAMS[(TEAMS.indexOf(myTeam) + 1) % TEAMS.length].id;
+  const myTeam = TEAMS.find((t) => t.id === (setupOpts?.myTeam ?? c.teamId)) ?? TEAMS[13];
+  const oppId = setupOpts?.oppTeam ?? (mode === 'career' ? c.season.schedule[c.season.gameNo % c.season.schedule.length] : TEAMS[(TEAMS.indexOf(myTeam) + 1) % TEAMS.length].id);
   const oppTeam = TEAMS.find((t) => t.id === oppId)!;
-  const user = careerPlayer(c, 0);
+  let user = careerPlayer(c, 0);
   const mine = generateRoster(myTeam, 0);
   const theirs = generateRoster(oppTeam, 1);
 
-  if (mode === 'quick' || mode === 'practice') {
+  if (mode === 'quick' && setupOpts && setupOpts.playAs !== 'me') {
+    // control a real starter: his own ratings, perks and look
+    user = mine[setupOpts.playAs];
+    user.isUser = true;
+  } else if (mode === 'quick' && setupOpts && setupOpts.playAs === 'me') {
+    const idx = Math.max(0, mine.findIndex((p) => p.pos === user.pos));
+    mine.splice(idx < 5 ? idx : 0, 1, user);
+  } else if (mode === 'quick' || mode === 'practice') {
     // user starts in place of the same-position starter
     const idx = mine.findIndex((p) => p.pos === user.pos);
     mine.splice(idx, 1, user);

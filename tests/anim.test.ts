@@ -106,7 +106,8 @@ describe('audio/animation events from the sim', () => {
     g.update(1 / 60, { ...idle, move: { x: 0, y: -1 }, b: true });
     expect(u.anim?.name).toBe('move_crossover');
     for (let i = 0; i < 40; i++) g.update(1 / 60, idle);
-    g.update(1 / 60, { ...idle, a: true });
+    g.update(1 / 60, { ...idle, a: true, aHeld: true });
+    for (let i = 0; i < 12; i++) g.update(1 / 60, { ...idle, aHeld: true });
     expect(u.anim?.name.startsWith('shot_')).toBe(true);
     for (let i = 0; i < 60; i++) g.update(1 / 60, idle);
     expect(u.anim?.release).toBeDefined();

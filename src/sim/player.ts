@@ -39,6 +39,7 @@ export class Player {
   anim: { name: string; start: number; release?: number; dur?: number } | null = null;
   movePlantAt = 0.3; movePlanted = false;
   allowOobUntil = 0;
+  lastBitAt = 0; boxOutHeld = false; bumpedUntil = -9; crashing = false; boxingOut = false; lastBumpAt = -9;
   burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
   /** pump fake picked up the dribble: can only pass or shoot */
   deadDribble = false; deadDribbleAt = 0; deadWarned = false;

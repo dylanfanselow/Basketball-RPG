@@ -14,7 +14,7 @@ export class MenuScene extends Phaser.Scene {
     const c = app.career;
     this.menu = new MenuList(this, 80, 180, [
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
-      { label: 'Quick 5v5 Game (you start)', action: () => this.scene.start('Game', { mode: 'quick' }) },
+      { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
     ]);

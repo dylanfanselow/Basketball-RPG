@@ -6,6 +6,7 @@ import { LevelUpScene } from './scenes/LevelUpScene';
 import { PerkTreeScene } from './scenes/PerkTreeScene';
 import { UltimateScene } from './scenes/UltimateScene';
 import { PostGameScene } from './scenes/PostGameScene';
+import { MatchSetupScene } from './scenes/MatchSetupScene';
 import { initDevPanel } from './dev/devPanel';
 import { activePad } from './input/input';
 import { sfx } from './audio/sfx';
@@ -19,7 +20,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   backgroundColor: '#0d0f1a',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene],
+  scene: [MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene],
 });
 (window as any).__phaser = game;
 initDevPanel();
