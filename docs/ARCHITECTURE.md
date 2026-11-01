@@ -30,7 +30,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | File | Role |
 |---|---|
 | `render/view.ts` | Projection (`S`=22 px/ft, `D`=6.4, `OOB_FT`=10, `sx/sy`), court, hoops (`drawHoops`: glass pane via `pane()`, split rim on `back`/`rimG`, mesh net, stanchions). |
-| `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
+| `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks + 4-frame front sheets. |
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
