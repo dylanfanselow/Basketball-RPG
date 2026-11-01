@@ -96,8 +96,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   Shots/moves/passes stay side view. Angled frames are drawn on demand by `FrameCache` (`frameCache.ts`) into 8×6
   canvas-texture pages (≤ 6 per look, LRU), ≤ ~4 ms a frame (your player first) plus idle prewarm; the side-view
   frame shows until ready. Ball drawn behind the body when it's on the far side. Dev panel: force angle + readout.
-- Angled-view clothing: legs always draw under the torso (waistband visible, spanning the shorts), an inseam line
-  and shadowed notch split the shorts' legs, side-seam stripes in front/back views.
+- Angled-view clothing: legs always draw under the torso; the shorts' waistband is drawn with the shorts (same
+  shading, full width); an inseam line and a soft notch (only when the legs touch) split the shorts' legs; side-seam
+  stripes in front/back views. Defensive elbows are placed (not solved) so both point at the floor from any angle.
 - Defensive stance: profile squat with a `lat` spread (feet wide, knees out, arms out to the sides) — reads as an
   open stance when turned; `defend` is alive (bounce, weight shift, hands); `slide` steps sideways.
 - Defensive movement (`GameScene.defStance`): near their man and slower than a walk, defenders face him (render-only
