@@ -12,6 +12,9 @@ where you have to *earn* the ball.
 npm install
 npm run dev      # http://localhost:5173
 npm test         # sim unit tests + a headless AI-vs-AI game
+
+cd Basketball-RPG && git pull
+npm run dev
 ```
 
 ## Controls (gamepad, PlayStation layout)
