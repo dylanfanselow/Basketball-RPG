@@ -79,6 +79,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   jersey top `TORSO_DROP` (4.5) below the keys so the neck shows. Ball clips (any key has the ball) move arms rigidly
   with their keyed shape/length and carry a held ball down with the hands; free clips (defense, off-ball) scale arms
   to ≥ `UPPER_ARM + FOREARM`. No IK, no finger overlay.
+- Fixed-length limbs (`anim.ts` `limb`/`arms`/`legs`, authoring time, explicit bend side): `dribble`, `dribbleRun`,
+  `dribbleReady` keep a constant arm length (hand at the hip, ball comes up to it); `shot_jumper` goes dribble →
+  gather → pocket in front of the chest → set point → release (jumper windups mid 0.32 / three 0.35 / deep3 0.39 s,
+  0.35 s follow-through); `defend`/`slide` are a slight squat with arms out and angled down.
+- Hoops (`view.ts` `drawHoops`): glass pane (frame, shooter's square, padding all through one `pane()` mapping),
+  elliptical rim with the far half behind the ball and the near half in front, mesh net, boxed support arm.
+- Sideline scale: bench players `BENCH_SCALE` (0.92×) and courtside celebs `CELEB_SCALE` (0.82×) of on-court sprites.
 - Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,
   block/swipe/screen/charge/falls, box-out(+push), bumped, rebound, pump fake, hold, inbound, sit/cheer/point,
   ready crossing dribble.

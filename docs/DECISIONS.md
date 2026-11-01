@@ -72,6 +72,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   1.5× camera and 1.5× art resolution (owner's choice over zooming in).
 - **Body proportions (rounds 10–11):** shoulders well below the chin (neck visible). Arms are long on defense and
   off-ball, but dribbles/moves/shots keep their hand-keyed arm length and bend. **No finger overlay** on the ball.
+- **Round 12:** jumpers release fast (mid 0.32 / three 0.35 / deep3 0.39 s windup; owner chose a real gameplay
+  speed-up over animation-only). Dribbling hand stays at the hip and the ball comes up to it (arm length constant).
+  Defense = slight squat, arms not jutting. Bench players and celebs are slightly smaller than on-court players
+  (perspective), celebs shorter than players.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
