@@ -32,13 +32,13 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/view.ts` | Projection (`S`=22 px/ft, `D`=6.4, `OOB_FT`=10, `sx/sy`), court, hoops (`drawHoops`: glass pane via `pane()`, split rim on `back`/`rimG`, mesh net, stanchions). |
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
-| `render/celebs.ts` | Courtside celebrity looks + 4-frame front sheets. |
+| `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
 | `render/pose3d.ts` | Multi-angle: `lift` (side pose → 3D, `lat` spread), `project`/`view` at a yaw (+ per-joint depth), `DIRS`. |
 | `render/frameCache.ts` | `FrameCache` (on-demand angled frames: request/drain/get, pages, LRU) and `yawFor` (angle → drawn yaw + mirror). |
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
 | `render/appearance.ts` | Appearance type, random generator, defaults. |
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |
-| `render/crowd.ts` | Animated crowd: stands rows + `FRONT_ROWS` lower-bowl fans behind the sideline (same reactions). |
+| `render/crowd.ts` | Animated crowd: blob stands rows + `FanRow` (plain sprite fans behind the sideline), shared `reaction()` ripple, home-colored shirts (`bigGame` = mostly home colors). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |

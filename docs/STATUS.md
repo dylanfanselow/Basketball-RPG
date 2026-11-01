@@ -104,8 +104,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Defensive movement (`GameScene.defStance`): near their man and slower than a walk, defenders face him (render-only
   facing with hysteresis) and play the `slide` shuffle (planted trail foot, lead foot steps out) from 0.4 ft/s,
   phased by distance (cycle = 0.16 × height, ≤ 3 cycles/s), reversed when retreating; idle `defend` below that.
-- Lower bowl: `FRONT_ROWS` (2) of bigger anonymous fans (`crowd.ts`) fill the space behind the bench and celebs;
-  the old LED ribbon is gone.
+- Fan row (`crowd.ts` `FanRow`): one row of plain sprite fans (tees, hoodies, team jackets via `randomFan` in
+  `celebs.ts`; 0.7× scale, dimmed tint, dark arena seats, riser wall hides their feet) right behind the bench, celebs
+  and table; they stand / film / cover their faces off the same reaction ripple as the blob stands (`Crowd.reaction`).
+  The old lower-bowl blob rows are gone; stand blobs grow slightly toward the front.
+- Crowd colors follow the **home team** (teams[0]): ~35% home colors / 8% visitors in a regular game, ~85% home in a
+  big game (`GameConfig.bigGame`; dev panel "Big game crowd" until playoffs exist).
 - Sideline scale: bench players `BENCH_SCALE` (0.92×) and courtside celebs `CELEB_SCALE` (0.82×) of on-court sprites.
 - Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,
   block/swipe/screen/charge/falls, box-out(+push), bumped, rebound, pump fake, hold, inbound, sit/cheer/point,

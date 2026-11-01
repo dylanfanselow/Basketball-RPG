@@ -87,6 +87,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   round-15 front-view stance.
 - **Round 17:** defensive stance is calm (small hand drift, no flicker between stance/shuffle or between views);
   shorts keep a visible waistband and leg split from every angle.
+- **Round 19:** a row of plain fans drawn like the celebs but less eye-catching sits right behind the bench / celebs /
+  table and bridges into the blob stands (replaces the lower-bowl blob rows). Fans dress in the **home team's**
+  colors: only some in a regular game, nearly all in big games (playoffs).
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
