@@ -8,7 +8,7 @@ import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
 import { buildCelebSheet, randomCeleb, CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
-import type { Appearance } from '../render/appearance';
+import { SKIN_TONES, type Appearance } from '../render/appearance';
 import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H } from '../render/sprites';
 import { CLIP, SHOT_CLIP, frameAt, shotU } from '../render/anim';
 import { sfx } from '../audio/sfx';
@@ -57,7 +57,8 @@ export class GameScene extends Phaser.Scene {
   sheets = new Map<string, { key: string; sheet: Sheet }>();
   animMem = new Map<string, { clip: string; u: number }>();
   lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
-  heldBall: { x: number; y: number } | null = null;
+  /** held ball spot plus the holder's gripping hands (screen space, [front, back]) and skin, for finger overlays */
+  heldBall: { x: number; y: number; hands: [number, number][]; back: boolean[]; skin: string } | null = null;
   crowd!: Crowd;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
@@ -459,7 +460,14 @@ export class GameScene extends Phaser.Scene {
       const flip = p.face.x < 0;
       s.setFlipX(flip);
       const bo = sh.sheet.ball[idx];
-      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: s.y - bo[1] * SPRITE_SCALE };
+      if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) {
+        const toScreen = (j: [number, number]): [number, number] => [s.x + (flip ? -j[0] : j[0]) * SPRITE_SCALE, s.y - j[1] * SPRITE_SCALE];
+        const grip = sh.sheet.hands?.[idx] ?? [null, null];
+        const hands: [number, number][] = [], back: boolean[] = [];
+        grip.forEach((h, i) => { if (h) { hands.push(toScreen(h)); back.push(i === 1); } });
+        const [hx, hy] = toScreen(bo);
+        this.heldBall = { x: hx, y: hy, hands, back, skin: SKIN_TONES[p.appearance.skin % SKIN_TONES.length][0] };
+      }
       s.setDepth(sy(p.p.y));
       // glossy hardwood: a faint, squashed, upside-down reflection under each player
       let r = this.reflections.get(p.id);
@@ -482,6 +490,7 @@ export class GameScene extends Phaser.Scene {
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);
     this.ballG.fillStyle(0xff9a4a, 1); this.ballG.fillRect(bx - 5, by - 6, 4, 3);
     this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 8, by, bx + 8, by); this.ballG.lineBetween(bx, by - 8, bx, by + 8);
+    if (inHand) this.drawFingers(bx, by, this.heldBall!);
 
     this.crowd.clutch = sim.clutch;
     this.crowd.update(cam.scrollX, VIEW_W);
@@ -489,6 +498,36 @@ export class GameScene extends Phaser.Scene {
     for (const t of this.shotClockTexts) t.setText(String(Math.max(0, Math.ceil(sim.shotClock))));
     this.drawOverlays();
     this.drawHud();
+  }
+
+  /**
+   * Fingers wrapping the held ball (the ball is drawn over the sprite, so the grip is drawn over the ball): for each
+   * gripping hand, four fingers fan out from the side of the ball the hand is on and lie across its face, plus a thumb.
+   */
+  drawFingers(bx: number, by: number, held: NonNullable<GameScene['heldBall']>) {
+    const g = this.ballG, R = 8;
+    held.hands.forEach(([hx, hy], i) => {
+      const far = held.back[i];
+      const skin = far ? shade(held.skin, 0.78) : held.skin;
+      const fill = parseInt(skin.slice(1), 16), edge = parseInt(shade(skin, 0.55).slice(1), 16);
+      const dx = hx - bx, dy = hy - by;
+      const th = Math.hypot(dx, dy) > 0.5 ? Math.atan2(dy, dx) : Math.PI / 2;
+      const len = far ? 0.35 : 0.55; // how far across the ball the fingers reach (back hand: mostly hidden)
+      // one finger: from the ball's edge at th+d inward, the tips fanning a little narrower than the knuckles
+      const seg = (d: number, r0: number, r1: number, w: number, c: number) => {
+        g.lineStyle(w, c, 1);
+        g.lineBetween(bx + Math.cos(th + d) * r0, by + Math.sin(th + d) * r0, bx + Math.cos(th + d * 0.8) * r1, by + Math.sin(th + d * 0.8) * r1);
+      };
+      const spread = [-0.6, -0.2, 0.2, 0.6];
+      for (const d of spread) seg(d, R + 0.5, R * (1 - len), 3.2, edge);
+      for (const d of spread) seg(d, R + 0.3, R * (1 - len) + 0.4, 2, fill);
+      // thumb on the leading side, shorter
+      seg(-1.05, R + 0.5, R * (1 - len * 0.6), 3.4, edge);
+      seg(-1.05, R + 0.3, R * (1 - len * 0.6) + 0.4, 2.2, fill);
+      // palm heel on the ball's edge
+      g.fillStyle(edge, 1); g.fillCircle(bx + Math.cos(th) * (R + 0.6), by + Math.sin(th) * (R + 0.6), 3.4);
+      g.fillStyle(fill, 1); g.fillCircle(bx + Math.cos(th) * (R + 0.4), by + Math.sin(th) * (R + 0.4), 2.6);
+    });
   }
 
   /** Scorer's table, officials, coaches and team benches along the far sideline. */

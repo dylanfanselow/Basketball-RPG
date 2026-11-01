@@ -8,7 +8,7 @@
  * Sprites are drawn at ART x detail and shown at PIXEL / ART scale; the game camera runs at 1.5x, so each art
  * pixel ends up PIXEL device pixels: same size on screen as before, 1.5x the detail.
  */
-import { CLIPS, Clip, Pose, J, sampleClip, frameTime } from './anim';
+import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, grippingHands } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
 
 export const ART = 1.5;
@@ -23,7 +23,8 @@ export const COLS = 20;
 
 /** number < 0 hides the number; pants = full-length trousers (coaches) */
 export interface Kit { jersey: string; jerseyShade: string; trim: string; shorts: string; number: number; pants?: boolean }
-export interface Sheet { canvas: HTMLCanvasElement; index: Record<string, { start: number; count: number }>; ball: (J | null)[]; total: number }
+/** ball/hands per frame: art px, origin-relative, +y up (hands = the ones gripping the ball, for finger overlays) */
+export interface Sheet { canvas: HTMLCanvasElement; index: Record<string, { start: number; count: number }>; ball: (J | null)[]; hands: [J | null, J | null][]; total: number }
 
 /** Art-pixel figure height for a player height in feet (6'6" -> ~99 art px). */
 export const figureHeight = (heightFt: number) => Math.round(heightFt * 10.2 * ART);
@@ -352,8 +353,12 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
 }
 
 // ---------- figure ----------
-/** Draw one pose. ox/oy = the frame's top-left in the sheet. Returns the ball offset (art px, origin-relative, +y up). */
-export function drawPose(ctx: Ctx, ox: number, oy: number, pose: Pose, H: number, a: Appearance, kit: Kit): J | null {
+/**
+ * Draw one pose (shoulders lowered + arms re-rigged by `rigArms`). ox/oy = the frame's top-left in the sheet.
+ * Returns the ball offset and gripping hands (art px, origin-relative, +y up).
+ */
+export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: number, a: Appearance, kit: Kit): { ball: J | null; hands: [J | null, J | null] } {
+  const pose = rigArms(keyed);
   const u = H / 100;
   const k = H / 99; // detail scale relative to a 6'6" player
   const T = (j: J): J => [ox + CX + j[0] * u, oy + FOOT_Y - j[1] * u];
@@ -361,14 +366,16 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, pose: Pose, H: number
   const sleeveF = a.armSleeve !== 'none', sleeveB = a.armSleeve === 'both';
   drawArm(ctx, p.sB, p.eB, p.hB, a, kit, true, sleeveB, k);
   drawLeg(ctx, p.hip, p.kB, p.fB, a, kit, true, a.legSleeve === 'both', false, k);
-  drawTorso(ctx, p.neck, p.hip, p.sF, p.sB, kit, a, k);
-  drawLeg(ctx, p.hip, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad, k);
+  // neck runs from between the (lowered) shoulders up into the head, tucked under the jersey
   const S = skinRamp(a);
   const headBase: J = [p.head[0] - 1.5 * k, p.head[1] + 8 * k];
-  tube(ctx, p.neck, headBase, () => 3.8 * k, S);
+  tube(ctx, [(p.sF[0] + p.sB[0]) / 2, (p.sF[1] + p.sB[1]) / 2], headBase, () => 3.8 * k, S);
+  drawTorso(ctx, p.neck, p.hip, p.sF, p.sB, kit, a, k);
+  drawLeg(ctx, p.hip, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad, k);
   drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, k);
-  return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
+  const toOut = (j: J): J => [j[0] * u, j[1] * u];
+  return { ball: pose.ball ? toOut(pose.ball) : null, hands: grippingHands(pose).map((h) => (h ? toOut(h) : null)) as [J | null, J | null] };
 }
 
 /**
@@ -399,7 +406,7 @@ export function buildSheet(heightFt: number, a: Appearance, kit: Kit): Sheet {
   const canvas = makeCanvas(FRAME_W * COLS, FRAME_H * rows);
   const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
   const index: Sheet['index'] = {};
-  const ball: (J | null)[] = [];
+  const ball: (J | null)[] = [], hands: [J | null, J | null][] = [];
   let i = 0;
   for (const c of CLIPS) {
     index[c.name] = { start: i, count: c.frames };
@@ -407,12 +414,13 @@ export function buildSheet(heightFt: number, a: Appearance, kit: Kit): Sheet {
       const pose = sampleClip(c, frameTime(c, f));
       const fx = (i % COLS) * FRAME_W, fy = Math.floor(i / COLS) * FRAME_H;
       ctx.save(); ctx.beginPath(); ctx.rect(fx, fy, FRAME_W, FRAME_H); ctx.clip();
-      ball.push(drawPose(ctx, fx, fy, pose, H, a, kit));
+      const r = drawPose(ctx, fx, fy, pose, H, a, kit);
+      ball.push(r.ball); hands.push(r.hands);
       ctx.restore();
     }
   }
   crispen(canvas);
-  return { canvas, index, ball, total };
+  return { canvas, index, ball, hands, total };
 }
 
 export const frameRect = (i: number) => ({ x: (i % COLS) * FRAME_W, y: Math.floor(i / COLS) * FRAME_H });

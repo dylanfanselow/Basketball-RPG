@@ -29,7 +29,7 @@ function pool() {
             const canvas = document.createElement('canvas');
             canvas.width = d.bmp.width; canvas.height = d.bmp.height;
             canvas.getContext('2d')!.drawImage(d.bmp, 0, 0); d.bmp.close();
-            job.resolve({ canvas, index: d.index, ball: d.ball, total: d.total });
+            job.resolve({ canvas, index: d.index, ball: d.ball, hands: d.hands, total: d.total });
           }
         }
         pump();
