@@ -81,6 +81,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 14:** defenders shuffle with planted feet and face their man; they only turn and run when faster than a walk.
 - **Round 15:** defenders in their stance are drawn **three-quarter / open to the camera** (owner's pick over a
   profile stance) with live motion (active hands, weight shifts, bounce); head in profile toward the man.
+- **Round 16: multi-angle players** (owner's idea, approved from a turntable preview): 5 drawn yaws + mirror; turning
+  clips only (locomotion, stances, dribbles, hold) — shots/moves stay side view toward the rim; defenders face their
+  man turned toward the camera; angled frames drawn on demand (never block, side view until ready). Supersedes the
+  round-15 front-view stance.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.

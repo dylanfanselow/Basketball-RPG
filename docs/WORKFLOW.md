@@ -38,6 +38,9 @@ npm run build:single # single-file build for the browser link
   scene's `create()`. Don't `setBounds` the main camera (with origin 0 its clamp is off); clamp scroll manually.
 - Sprite sheets are built **asynchronously** (workers). Anything that needs a sheet must handle `null` until ready
   (`GameScene.sheetFor`). Sheet-drawing code must work on an `OffscreenCanvas` (no `document` in workers).
+- **Angled frames are lazy** (`FrameCache`): never assume an angled frame exists — go through `cache.get` and fall
+  back to the side-view sheet frame. New turning clips must be added to `ANGLED` in GameScene; a pose's sideways
+  spread goes in `Pose.lat` (invisible at yaw 0). Headless draws ~4 ms per angled frame (software canvas).
 - Headless Chromium renders WebGL in software here: fps/load numbers from Playwright are far worse than on a real
   machine; JS profiling showed ~98% of frame time in native rendering.
 - `src/state.ts` touches `window`, so anything tests import must not import it (that's why `sim/oneOnOne.ts` exists).

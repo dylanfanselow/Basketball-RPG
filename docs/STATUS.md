@@ -88,10 +88,16 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Side drive (`move_lateral`) uses fixed-length arms too (ball bounces up to the hand). Sprint bursts play their own
   `burst` / `dribbleBurst` clips (big forward lean, long stride, high knee drive, arm pump; `clipFor` while
   `now < burstUntil`).
-- Open defensive stance (`Pose.open`, `anim.ts` `openPose`, `sprites.ts` `drawOpen`): `defend`/`slide` are drawn
-  three-quarter / front view — chest to the camera with the number centered, wide base with knees out, arms spread
-  (man-side hand up, lane hand low), head in profile toward the man. `defend` is alive (weight shift, bounce,
-  pumping/waggling hands); `slide` is the open-stance shuffle.
+- **Multi-angle players** (preview: `docs/previews/turntable-preview.png`): `pose3d.ts` lifts each side-view pose to
+  3D (near/far limbs to ± lateral, optional per-pose `lat` spread) and projects it at a yaw; `sprites.ts`
+  `drawAngled` draws limbs far→near around a projected torso with a turning head (front / ¾ / back). Turning clips
+  (`ANGLED` in GameScene: idle, jog, sprint, burst, defend, slide, dribbles, hold) show one of 5 drawn yaws (+ mirror)
+  chosen by `viewFor` (`yawFor` snapping with hysteresis); defenders face their man turned 35° toward the camera.
+  Shots/moves/passes stay side view. Angled frames are drawn on demand by `FrameCache` (`frameCache.ts`) into 8×6
+  canvas-texture pages (≤ 6 per look, LRU), ≤ ~4 ms a frame (your player first) plus idle prewarm; the side-view
+  frame shows until ready. Ball drawn behind the body when it's on the far side. Dev panel: force angle + readout.
+- Defensive stance: profile squat with a `lat` spread (feet wide, knees out, arms out to the sides) — reads as an
+  open stance when turned; `defend` is alive (bounce, weight shift, hands); `slide` steps sideways.
 - Defensive movement (`GameScene.defStance`): near their man and slower than a walk, defenders face him (render-only
   facing with hysteresis) and play the `slide` shuffle (planted trail foot, lead foot steps out) from 0.4 ft/s,
   phased by distance (cycle = 0.16 × height, ≤ 3 cycles/s), reversed when retreating; idle `defend` below that.

@@ -33,6 +33,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks + 4-frame front sheets. |
+| `render/pose3d.ts` | Multi-angle: `lift` (side pose → 3D, `lat` spread), `project`/`view` at a yaw (+ per-joint depth), `DIRS`. |
+| `render/frameCache.ts` | `FrameCache` (on-demand angled frames: request/drain/get, pages, LRU) and `yawFor` (angle → drawn yaw + mirror). |
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
 | `render/appearance.ts` | Appearance type, random generator, defaults. |
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |

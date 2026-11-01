@@ -63,5 +63,6 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, E
 - `src/career/**`: level/XP/stat points, skill tree rules, rotation/minutes, plus stubs for story, random events and backstories.
 - `src/render/anim.ts`: keyframed animation clips (jumper, floater, hook, layup, Euro, dunk, every dribble move…), sampled into smooth in-between frames.
 - `src/render/sprites.ts` + `appearance.ts`: procedural pixel players with hair, faces and gear (sleeves, socks, goggles, masks, shoes); `anim.ts` `rigArms` sets shoulder height and arm length.
+- `src/render/pose3d.ts` + `frameCache.ts`: multi-angle players (poses turned to any of 8 directions; angled frames drawn on demand).
 - `src/audio/sfx.ts`: all sound effects and crowd synthesized with Web Audio (no audio files).
 - `src/dev/devPanel.ts`: the dev tools overlay, including Appearance and Audio sections.
