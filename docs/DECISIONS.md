@@ -76,6 +76,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   speed-up over animation-only). Dribbling hand stays at the hip and the ball comes up to it (arm length constant).
   Defense = slight squat, arms not jutting. Bench players and celebs are slightly smaller than on-court players
   (perspective), celebs shorter than players.
+- **Round 13:** sprint bursts get their own forward-leaning, long-stride run (with and without the ball); anonymous
+  lower-bowl fans fill the space behind the bench and celebs.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.

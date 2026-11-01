@@ -36,7 +36,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
 | `render/appearance.ts` | Appearance type, random generator, defaults. |
 | `render/hud.ts` | `ControllerHud`: button diamond, icons, sprint pill, ult ring, stick + move arcs + flash. |
-| `render/crowd.ts` | Animated crowd. |
+| `render/crowd.ts` | Animated crowd: stands rows + `FRONT_ROWS` lower-bowl fans behind the sideline (same reactions). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |

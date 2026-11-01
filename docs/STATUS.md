@@ -85,6 +85,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   0.35 s follow-through); `defend`/`slide` are a slight squat with arms out and angled down.
 - Hoops (`view.ts` `drawHoops`): glass pane (frame, shooter's square, padding all through one `pane()` mapping),
   elliptical rim with the far half behind the ball and the near half in front, mesh net, boxed support arm.
+- Side drive (`move_lateral`) uses fixed-length arms too (ball bounces up to the hand). Sprint bursts play their own
+  `burst` / `dribbleBurst` clips (big forward lean, long stride, high knee drive, arm pump; `clipFor` while
+  `now < burstUntil`).
+- Lower bowl: `FRONT_ROWS` (2) of bigger anonymous fans (`crowd.ts`) fill the space behind the bench and celebs;
+  the old LED ribbon is gone.
 - Sideline scale: bench players `BENCH_SCALE` (0.92×) and courtside celebs `CELEB_SCALE` (0.82×) of on-court sprites.
 - Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,
   block/swipe/screen/charge/falls, box-out(+push), bumped, rebound, pump fake, hold, inbound, sit/cheer/point,
