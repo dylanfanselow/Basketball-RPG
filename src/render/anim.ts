@@ -130,9 +130,13 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: defPose() },
     { t: 0.5, pose: defPose({ dip: 1.5, hF: [22, 56], hB: [-17, 54] }) },
     { t: 1, pose: defPose() }] },
-  { name: 'slide', frames: 6, loop: true, keys: [
+  // defensive shuffle: lead foot steps out in the air while the trail foot stays planted (sliding back relative to the
+  // hips by the body's travel), then the trail foot closes. One cycle = 16 figure units of travel (see GameScene).
+  { name: 'slide', frames: 8, loop: true, keys: [
     { t: 0, pose: defPose() },
-    { t: 0.5, pose: defPose({ hip: 46, fF: [2, 1], fB: [-2, 0], hF: [21, 54], hB: [-16, 52] }) },
+    { t: 0.25, pose: defPose({ dip: 0.5, fF: [10, 5], fB: [-9, 0], hF: [21, 55] }) },
+    { t: 0.5, pose: defPose({ dip: 1.5, fF: [14, 0], fB: [-13, 0] }) },
+    { t: 0.75, pose: defPose({ dip: 0.5, fF: [10, 0], fB: [-9, 4], hB: [-16, 53] }) },
     { t: 1, pose: defPose() }] },
   { name: 'dribble', frames: 8, loop: true, bounce: [0.5], keys: [
     { t: 0, pose: dribAt([11, 56], [12, 51]) },

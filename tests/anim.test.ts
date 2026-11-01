@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
@@ -102,6 +102,21 @@ describe('round 13 clips', () => {
     const b = CLIP.burst.keys[0].pose, s = CLIP.sprint.keys[0].pose;
     expect(b.neck[0]).toBeGreaterThan(s.neck[0] + 3);
     expect(b.fF[0] - b.fB[0]).toBeGreaterThan(s.fF[0] - s.fB[0] + 5);
+  });
+});
+
+describe('round 14: defensive shuffle', () => {
+  const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  it('steps with one foot planted at a time and is widest mid-cycle', () => {
+    const c = CLIP.slide, at = (t: number) => sampleClip(c, t);
+    expect(at(0.25).fF[1]).toBeGreaterThan(2); expect(at(0.25).fB[1]).toBeLessThan(0.5);
+    expect(at(0.75).fB[1]).toBeGreaterThan(2); expect(at(0.75).fF[1]).toBeLessThan(0.5);
+    const w = (t: number) => at(t).fF[0] - at(t).fB[0];
+    expect(w(0.5)).toBeGreaterThan(w(0) + 10);
+    for (let i = 0; i < c.frames; i++) {
+      const p = at(i / c.frames);
+      for (const [k, f] of [['kF', 'fF'], ['kB', 'fB']] as const) expect(Math.abs(d(p.hip, p[k]) + d(p[k], p[f]) - (THIGH + SHIN))).toBeLessThan(1.5);
+    }
   });
 });
 

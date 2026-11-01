@@ -59,6 +59,9 @@ export class GameScene extends Phaser.Scene {
   feed: { text: string; t: number; color: string }[] = [];
   acc = 0;
   runDist = new Map<string, number>();
+  /** defensive shuffle phase (cycles) and drawn facing (true = facing -x) per defender, see defStance */
+  slidePhase = new Map<string, number>();
+  defFlip = new Map<string, boolean>();
   sheets = new Map<string, { key: string; sheet: Sheet }>();
   animMem = new Map<string, { clip: string; u: number }>();
   lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
@@ -87,7 +90,7 @@ export class GameScene extends Phaser.Scene {
     this.mode = data.mode ?? 'practice';
     this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
-    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear();
+    this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear();
   }
 
   create() {
@@ -361,7 +364,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Which animation clip a player is in right now, and how far through it (u). */
-  clipFor(p: Player): { clip: string; u: number } {
+  clipFor(p: Player): { clip: string; u: number; flip?: boolean } {
     const sim = this.sim, now = sim.time, a = p.anim;
     const hasBall = sim.holder() === p;
     const dist = this.runDist.get(p.id) ?? 0;
@@ -393,15 +396,36 @@ export class GameScene extends Phaser.Scene {
     if (hasBall && p.bHolding && p.state !== 'dribbleMove') return { clip: 'dribbleReady', u: now * 1.3 };
     // sprint burst (R2): its own forward-leaning, long-stride run
     if (sp > 2.5 && now < p.burstUntil) return hasBall ? { clip: 'dribbleBurst', u: dist / 12 + phase } : { clip: 'burst', u: dist / 12 };
+    const stance = hasBall ? null : this.defStance(p, sp);
+    if (stance) return stance;
     if (sp > 2.5) {
       if (hasBall) return { clip: 'dribbleRun', u: dist / 8 + phase };
-      const man = p.guarding ? sim.players.find((q) => q.id === p.guarding) : null;
-      if (p.team !== sim.possession && man && sp < p.walkSpeed * 1.05 && Math.hypot(man.p.x - p.p.x, man.p.y - p.p.y) < 8) return { clip: 'slide', u: dist / 5 };
       return sp > p.walkSpeed * 1.1 ? { clip: 'sprint', u: dist / 9.5 } : { clip: 'jog', u: dist / 7 };
     }
     if (hasBall) return { clip: 'dribble', u: now * 1.7 + phase };
     if (p.team !== sim.possession && sim.live) return { clip: 'defend', u: now * 1.2 + phase };
     return { clip: 'idle', u: now * 0.5 + phase };
+  }
+
+  /**
+   * On-ball style defense near your man: face him (drawn facing only, with hysteresis) and shuffle with planted feet.
+   * The shuffle phase advances with distance travelled (one cycle = 16 figure units = 0.16 x height), capped at
+   * 3 cycles/s; moving away from the facing plays it in reverse (retreat shuffle). Faster than a walk -> null (run).
+   */
+  defStance(p: Player, sp: number): { clip: string; u: number; flip: boolean } | null {
+    const sim = this.sim;
+    if (p.team === sim.possession || !sim.live || !p.guarding) return null;
+    const man = sim.players.find((q) => q.id === p.guarding);
+    if (!man || Math.hypot(man.p.x - p.p.x, man.p.y - p.p.y) > 8 || sp > p.walkSpeed * 1.05) return null;
+    const dx = man.p.x - p.p.x;
+    let flip = this.defFlip.get(p.id) ?? dx < 0;
+    if (dx > 0.5) flip = false; else if (dx < -0.5) flip = true;
+    this.defFlip.set(p.id, flip);
+    if (sp <= 0.4) return { clip: 'defend', u: sim.time * 1.2 + (p.number * 0.137) % 1, flip };
+    const ph = (this.slidePhase.get(p.id) ?? 0) + Math.min(sp / (0.16 * p.height), 3) / 60;
+    this.slidePhase.set(p.id, ph);
+    const along = p.vel.x * (flip ? -1 : 1);
+    return { clip: 'slide', u: along < -0.3 * sp ? -ph : ph, flip };
   }
 
   /** Dribble bounce sounds synced to the animation: fire when the clip passes a bounce point. */
@@ -456,14 +480,14 @@ export class GameScene extends Phaser.Scene {
       const sh = this.sheets.get(p.id);
       if (!s || !sh) continue;
       this.runDist.set(p.id, (this.runDist.get(p.id) ?? 0) + len(p.vel) / 60);
-      const { clip, u } = this.clipFor(p);
+      const { clip, u, flip: flipTo } = this.clipFor(p);
       const c = CLIP[clip];
       const idx = sh.sheet.index[clip].start + frameAt(c, u);
       this.dribbleSound(p, clip, u);
       this.cutSound(p);
       s.setFrame(idx);
       s.setPosition(sx(p.p.x), sy(p.p.y, p.z));
-      const flip = p.face.x < 0;
+      const flip = flipTo ?? p.face.x < 0;
       s.setFlipX(flip);
       const bo = sh.sheet.ball[idx];
       if (bo && (holder === p || p.state === 'shoot' || (sim.inb?.inbounder === p && sim.inb.hasBall))) this.heldBall = { x: s.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: s.y - bo[1] * SPRITE_SCALE };
