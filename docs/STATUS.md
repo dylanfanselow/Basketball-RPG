@@ -1,0 +1,67 @@
+# What's built (as of commit 4109854, 2026-11-01)
+
+All 56 Vitest tests pass. Modes: **Practice** (half court, configurable defenders/teammates), **Quick 5v5**
+(team/opponent/player select), **Career** (hub, level up, perk trees, ultimate panel, bench → earn minutes).
+
+## Controls & HUD
+- Tap/hold ✕ (fake/shoot), hold-○ drag moves with chains, jab tap, R2 burst sprint with cooldown pill,
+  flick-cross during Side Drive, ○ box-out during shots, △ pass with target dot / call / steal, □ ultimate.
+- Controller diamond with player-action icon badges (context labels; press-in effect; □ charge ring or padlock).
+- Movement stick widget: basket-relative move arcs while ○ held (white base, gold chains, cyan flick window),
+  flash on the move just done.
+- Live shot-equation bar, score/clock/shot clock, trust bars (top left), play call line ("for YOU"), event feed,
+  pass target dot, own contest cone, matchup cone on defense, play-assignment ghost path.
+- Gamepad read straight from the browser Gamepad API (hot-plug notice), keyboard fallback.
+
+## Shooting
+- Shot types: dunk, layup, euro, step-through, floater, hook, push, mid, three, deep3 (`shotTypes.json`).
+- Equation: base(distance) × stat factor × (1 − contest) × contact × fatigue × perk/ult terms.
+- Contest cone per defender (distance, angle, height, hand up, perimeter/post D, stagger/screen state).
+- Slower flight (0.6 + 0.03·dist s), live rim sequences (`src/sim/rim.ts`), airballs on bad shots, shooting fouls,
+  and-ones, free throws, blocks (chase-down rules), assists.
+
+## Dribbling
+- Moves (`moves.json`): hesi, retreat, jab, Side Drive, change of direction, crossover, double cross, in-and-out,
+  between-the-legs, behind-the-back, shammgod, snatch-back, spin, step-back, hesi blow-by, hesi pull-back.
+- Basket-relative stick classification, fixed distances, sell → plant → burst, input buffering, chain windows,
+  ankle breaks / stagger vs nearest defender, defenders bite on pump fakes.
+
+## Team play & AI
+- 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me
+  role swap; freelance 5-out + backdoor cuts.
+- Handler utility AI: shot EV vs pass value (openness, separation, ahead-of-defense, lane risk, trust) vs drive.
+- Transition reads: throw ahead, attack numbers, outlet, fill lanes; otherwise walk it up.
+- Walk-out inbounds (baseline after makes by C/PF, sideline otherwise, midcourt for quarters).
+- Defense: man-to-man with help, drop coverage, optional switch-all, closeouts, steals, charges, get-back in transition.
+- Rebounding: crash roles, box-out stance, strength push-back with bumped animation, screen knockbacks.
+- Trust model (`ai/trust.ts`) and rotation/minutes from coach trust (`rotation.ts`).
+
+## Progression
+- 5 core stats → ~28 sub-ratings via `statInfluence.json`; level-up screen; 8 perk constellations (`data/trees`);
+  modifier/hook system (`modifiers.ts`) drives perks, traits, backstories, ultimates.
+- Ultimates: Deep Step-Back, FT-Line Takeoff, Chase-Down Block, each with 3 evolution levels; locked "???" panel
+  until `flags.ult_unlocked`; milestone evo points.
+- Career: XP/levels, stat & perk points, season schedule (10 games), post-game XP, save in localStorage (v2 with
+  migration). Backstory effects wired but not selectable yet.
+
+## Rosters & looks
+- `src/data/rosters.json`: 30 teams, 323 players (2026-27, compiled from preseason depth-chart reporting via web
+  search; deep bench/numbers/looks partly guessed). Fallback procedural rosters exist.
+- Dev panel "NBA player looks" editor + "Save look to rosters.json" (works only under `npm run dev`).
+
+## Art, animation, arena, audio
+- Procedural pixel sprites (`sprites.ts`): skeleton poses, layered limbs (sleeves/socks/shoes), shaped torso,
+  fitted shorts, 12×13 heads with faces/hair/gear; front-view bench sprites; coaches in suits.
+- Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,
+  block/swipe/screen/charge/falls, box-out(+push), bumped, rebound, pump fake, hold, inbound, sit/cheer/point,
+  ready crossing dribble.
+- Court zoomed out with out-of-bounds space, stanchions with shot clocks, scorer's table with LED, benches,
+  coaches, animated crowd (wave reactions, boos, clutch standing, flashes).
+- Procedural audio (`sfx.ts`): dribbles synced to animation, squeaks, swish (big), rim ticks/clanks/board,
+  dunk rattle, thuds, block clap, steals, whistles, buzzer, crowd murmur/cheers/groans, airball chant.
+
+## Dev tools (F1 or `)
+Live readout, core stat sliders, perk grant/remove per tree, ultimate unlock/equip/evolve/fill, appearance editor,
+NBA player look editor, game controls (give ball, spawn defender in cone, freeze AI, clutch, switch-all,
+feature-me, shot/game clock, call any play), practice config, trust/minutes, debug draw, audio volumes and test
+buttons, presets. When playing as a real NBA player, edits apply to that player for the game only.

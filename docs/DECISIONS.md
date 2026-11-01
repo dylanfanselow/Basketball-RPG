@@ -1,0 +1,68 @@
+# Owner decisions (don't re-ask)
+
+Chronological. "Superseded" marks decisions later changed by the owner.
+
+## Platform & scope
+- **Tech:** browser game, TypeScript + Phaser 3 + Vite, Vitest. Runs locally via `npm run dev`; also hosted as a
+  private single-file artifact.
+- **Scope:** vertical slice first, gameplay most important, but built with skill trees/abilities in mind.
+- **Control:** you control **only your career player**; AI teammates; you must earn the ball (see VISION).
+- **No shot meter.** Instead a **cone** points from the shooter to the rim; defenders inside it reduce accuracy; the
+  **full shot equation** (base × rating × (1−contest) × fatigue × perks…) is shown at the top of the screen.
+- **Dev tools are high priority:** quick grant/remove of moves, abilities, stats, ultimates (dev panel, F1 / `).
+- Random events / story: not now, just don't block them.
+
+## Controls (PlayStation labels; standard gamepad mapping)
+- ✕ (bottom) = shoot / block; △ (top) = pass (to the player the stick points at, shown by a dot) / call for ball /
+  swipe steal; ○ (right) = dribble move / screen / take charge; □ (left) = ultimate; left stick = move;
+  R2 = sprint. Keyboard mirrors: K=✕, L=○, J=□, I=△, WASD, Shift, Enter, M mute, F1/` dev.
+- Near the rim, shot type by stick: hold back = floater, sideways = hook (or euro if unlocked).
+- **Labels are PlayStation** (switched from Xbox at the owner's request).
+- **Sprint = tap** for a timed burst, then a cooldown driven by stats; gust/speed lines while active.
+- **Pump fake = short tap of ✕** (< ~0.18s); **hold ✕ past that = shoot**. Repeatable fakes.
+- **A pump fake picks up the dribble:** no moving or dribbling; you can **pass or shoot** (Step-Through still works).
+- **○ moves:** press ○ with the stick pushed = move now; **hold ○ and drag** = move per flick (chains on later
+  flicks while held); quick neutral ○ tap = **Jab Step** (keeps dribble).
+- **Side Drive** (lateral ○) is a hard, long drive that creates real separation; **flicking the stick the other way
+  during it (no button) = crossover** (basic change of direction without the Crossover perk).
+- **Crossover input:** first "up/down on screen only" → **superseded**: directions are **relative to the
+  player→basket line** (toward = hesi, away = step-back, across = crossover/side drive).
+- **Every dribble move travels a fixed distance**, regardless of stick angle/tilt. The stick picks move + side only.
+- **○ while a shot is in the air = box out.**
+
+## HUD
+- Bottom-right **button diamond** (△○✕□) with round badges showing the user's own sprite doing the action + label
+  underneath (style reference: Dunk City "Backboard" badge). Badges visibly press in.
+- Bottom-left **movement stick**; **holding ○ highlights arc edges** for each available move, labeled; chain moves
+  (e.g. Double Crossover after a cross) in **gold**; the arc of the move just performed **flashes**.
+- On defense, show **your matchup's shot cone** (colored by how much you contest him).
+
+## AI / basketball behavior
+- Coach calls real sets; when a set ends without a shot and the shot clock is >7s: **reset (swing to the top),
+  then call a different play**.
+- **Pass to the open man** over running the play (half court and transition). Fast breaks: throw ahead to runners.
+  But not every possession is a break: after makes, **a C or PF walks out of bounds and inbounds to the PG**.
+- **Rebounding:** C almost always crashes; PF crashes only if he's not a good shooter; guards get back.
+- Box-outs: crouched, arms out; stronger boxer knocks the other player back (stun animation). **Screens knock
+  defenders back with the same animation.**
+- Shots fly **slower** to give time for rebounding position. Misses play **live rim sequences** (rattles, rolls,
+  in-and-outs, high bounces); bad shots can **airball**.
+- **Floaters** have an accuracy penalty; **contest cones are shorter** (jumpers 5.5 ft, floaters 4 ft).
+- For testing, **"feature me equally"**: the coach runs plays for the user ~1/5 of the time (roles swapped so the
+  user gets the featured role at any position) and teammates treat trust as ≥70. **On in Practice/Quick, off in
+  Career.**
+
+## Presentation
+- **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
+- Rounder chest; shorts fitted around each leg.
+- Smooth animation with many in-betweens; distinct jumper / floater / hook / layup / euro / dunk animations; very
+  smooth crossover.
+- Zoomed out enough to see out-of-bounds; hoops on a **stanchion** (not floating).
+- Scorer's table, coaches in suits, benches with real bench players **facing the court**; dynamic crowd.
+- **Audio:** procedural Web Audio; crowd + whistles + buzzer ON. Swish must be loud and satisfying; blocks a loud clap.
+
+## Rosters & modes
+- **Real 2026-27 NBA rosters** with look-alike appearances, **committed to the public repo** (owner accepted the
+  takedown risk). Repo was made **public** by the owner.
+- Quick 5v5: pick **your team, opponent, and play as any real starter or "My Player"**.
+- Quick/Practice use a sandbox trust (60) that doesn't touch the career save.
