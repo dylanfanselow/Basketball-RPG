@@ -4,6 +4,7 @@
   "layup":    { "name": "Layup",     "base": [[0, 0.72], [6, 0.60]],                 "sub": "layup",  "windup": 0.40, "contestW": 0.85, "pts": 2, "contact": true },
   "euro":     { "name": "Euro Step", "base": [[0, 0.70], [7, 0.60]],                 "sub": "craft",  "windup": 0.55, "contestW": 0.55, "pts": 2, "contact": true },
   "stepThrough": { "name": "Step-Through", "base": [[0, 0.66], [10, 0.54]],          "sub": "stepThrough", "windup": 0.52, "contestW": 0.45, "pts": 2 },
+  "stepThroughJumper": { "name": "Step-Through Jumper", "base": [[8, 0.50], [16, 0.44], [23, 0.38], [27, 0.33]], "sub": "mid", "windup": 0.62, "contestW": 0.9, "pts": 3 },
   "floater":  { "name": "Floater",   "base": [[4, 0.48], [12, 0.36]],                "sub": "floater", "windup": 0.32, "contestW": 0.55, "pts": 2 },
   "hook":     { "name": "Hook Shot", "base": [[3, 0.58], [11, 0.44]],                "sub": "hook",   "windup": 0.40, "contestW": 0.50, "pts": 2 },
   "push":     { "name": "Push Shot", "base": [[5, 0.52], [11, 0.44]],                "sub": "floater", "windup": 0.34, "contestW": 0.80, "pts": 2 },

@@ -17,7 +17,7 @@ const GLYPH_COLOR: Record<BtnKey, string> = { a: '#7fb4ff', b: '#ff7f8f', x: '#f
 
 /** Which sprite frame (clip + normalized time) illustrates each action. */
 const ACTION_POSE: Record<string, [string, number]> = {
-  Shoot: ['shot_jumper', 0.58], 'Shoot / Fake': ['pumpfake', 0.5], Pass: ['pass', 0.6], Dribble: ['move_crossover', 0.4],
+  Shoot: ['shot_jumper', 0.58], 'Shoot / Fake': ['pumpfake', 0.5], 'Step-Through': ['shot_stepThrough', 0.26], Pass: ['pass', 0.6], Dribble: ['move_crossover', 0.4],
   Ultimate: ['shot_dunk', 0.6], Block: ['block', 0.6], Steal: ['swipe', 0.5], Charge: ['charge', 1], Screen: ['screen', 1],
   Call: ['cheer', 0], 'Box Out': ['boxout', 0], Rebound: ['block', 0.5],
 };
@@ -35,6 +35,7 @@ export class ControllerHud {
   ultRing: Phaser.GameObjects.Graphics;
   sprintPill: Phaser.GameObjects.Graphics;
   sprintText: Phaser.GameObjects.Text;
+  l2Text: Phaser.GameObjects.Text;
   private iconKeys = new Map<string, string>();
   readonly cx: number; readonly cy: number;
   readonly sx0 = 112; readonly sy0: number;
@@ -54,6 +55,7 @@ export class ControllerHud {
     }
     this.ultRing = scene.add.graphics().setScrollFactor(0).setDepth(9101);
     this.sprintPill = scene.add.graphics().setScrollFactor(0).setDepth(9100);
+    this.l2Text = scene.add.text(this.cx, this.cy - 136, 'hold L2  ICON PASS', { fontFamily: FONT, fontSize: '11px', color: '#cfe8ff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
     this.sprintText = scene.add.text(this.cx, this.cy - 112, 'R2  SPRINT', { fontFamily: FONT, fontSize: '12px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
     this.stickG = scene.add.graphics().setScrollFactor(0).setDepth(9100);
     for (let i = 0; i < 4; i++) this.arcLabels.push(scene.add.text(0, 0, '', { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#ffffff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101));
@@ -106,10 +108,11 @@ export class ControllerHud {
     const shotUp = sim.ball.st.kind === 'shot';
     const ult = sim.ult.state;
     const actions: Record<BtnKey, string> = hasBall
-      ? { a: u!.deadDribble ? 'Shoot / Fake' : 'Shoot', y: 'Pass', b: 'Dribble', x: 'Ultimate' }
+      ? { a: sim.stepThroughReady(u!) ? 'Step-Through' : u!.deadDribble ? 'Shoot / Fake' : 'Shoot', y: 'Pass', b: 'Dribble', x: 'Ultimate' }
       : shotUp ? { a: 'Rebound', y: onO ? 'Call' : 'Steal', b: 'Box Out', x: 'Ultimate' }
       : onO ? { a: 'Rebound', y: 'Call', b: 'Screen', x: 'Ultimate' }
       : { a: 'Block', y: 'Steal', b: 'Charge', x: 'Ultimate' };
+    this.l2Text.setVisible(hasBall && sim.mates(u!).length > 0).setColor(inp.held('l2') ? '#ffe14d' : '#cfe8ff');
     for (const b of this.btns) {
       b.c.setVisible(onCourt);
       if (!onCourt) continue;

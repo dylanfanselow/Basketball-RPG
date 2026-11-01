@@ -237,6 +237,16 @@ export const CLIPS: Clip[] = [
     { t: 0.83, pose: P({ hip: [0, 53], kF: [2, 27], fF: [1, 2], kB: [6, 40], fB: [4, 22], hF: [12, 106], eF: [9, 95], hB: [-4, 76], eB: [-2, 70] }) },
     { t: 0.92, pose: P({ hip: [0, 51], kF: [3, 26], fF: [2, 1], kB: [3, 31], fB: [0, 11], hF: [10, 93], eF: [8, 85], hB: [-2, 62], eB: [-2, 66] }) },
     { t: 1, pose: P({ hF: [7, 80], eF: [7, 72] }, athletic) }] },
+  // Step-Through Jumper: same rip + long grounded stride as the finish, then plant both feet, square up and pull up.
+  { name: 'shot_stepThroughJumper', frames: 16, release: 0.7, post: 0.55, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.12, pose: P({ hip: [1, 45], head: [4, 86], neck: [3, 78], sF: [4, 75], sB: [0, 75], kF: [9, 30], fF: [12, 8], kB: [-5, 23], fB: [-9, 0], ball: [3, 52], hF: [4, 53], hB: [2, 52], eF: [6, 62], eB: [1, 62] }) },
+    { t: 0.26, pose: P({ hip: [3, 43], head: [7, 84], neck: [6, 76], sF: [7, 73], sB: [3, 73], kF: [14, 24], fF: [19, 3], kB: [-6, 22], fB: [-11, 0], ball: [6, 55], hF: [6, 55], hB: [4, 54], eF: [8, 63], eB: [3, 63] }) },
+    { t: 0.385, pose: P({ hip: [2, 44], head: [3, 86], neck: [2, 77], sF: [3, 74], sB: [-1, 74], kF: [8, 22], fF: [10, 0], kB: [-2, 22], fB: [-3, 0], ball: [6, 60], hF: [6, 62], hB: [4, 60], eF: [6, 66], eB: [3, 66] }) },
+    { t: 0.55, pose: P({ hip: [0, 53], kF: [2, 29], fF: [2, 1], kB: [-1, 29], fB: [-2, 1], ball: [3, 100], hF: [3, 97], eF: [7, 87], hB: [0, 96], eB: [-4, 87] }) },
+    { t: 0.7, pose: P({ hip: [0, 53], kF: [2, 28], fF: [2, -1], kB: [-1, 28], fB: [-2, -1], ball: [6, 114], hF: [5, 110], eF: [4, 98], hB: [2, 99], eB: [-3, 90] }) },
+    { t: 0.86, pose: P({ hip: [0, 53], kF: [3, 28], kB: [-1, 28], hF: [8, 107], eF: [5, 98], hB: [3, 96], eB: [-2, 88] }) },
+    { t: 1, pose: P({ hip: [0, 48], kF: [4, 25], kB: [-2, 25], hF: [7, 82], eF: [7, 76], hB: [2, 80], eB: [-1, 74] }) }] },
   { name: 'shot_dunk', frames: 11, release: 0.7, post: 0.6, keys: [
     { t: 0, pose: P({ kF: [8, 26], fF: [13, 1], kB: [-4, 28], fB: [-10, 6], ball: [7, 60], hF: [7, 60], hB: [5, 59] }) },
     { t: 0.25, pose: P({ hip: [0, 40], kF: [8, 20], fF: [7, 0], kB: [-2, 20], fB: [-5, 0], head: [5, 80], neck: [4, 72], sF: [5, 69], sB: [1, 69], ball: [6, 56], hF: [6, 56], hB: [4, 55], eF: [7, 62], eB: [3, 62] }) },
@@ -245,6 +255,24 @@ export const CLIPS: Clip[] = [
     { t: 0.7, pose: P({ hip: [0, 54], kF: [6, 38], fF: [3, 20], ball: [14, 102], hF: [12, 105], eF: [8, 97], hB: [-6, 84], eB: [-4, 76] }) },
     { t: 0.85, pose: P({ hip: [0, 52], kF: [3, 25], fF: [3, 3], kB: [-2, 25], fB: [-3, 3], hF: [11, 114], eF: [8, 102], hB: [9, 113], eB: [5, 101], head: [2, 90] }) },
     { t: 1, pose: P({ hF: [7, 80], eF: [7, 72] }, athletic) }] },
+
+  // ---------- getting rocked ----------
+  // stripped: the ball hand gets yanked, the body twists away, an off-balance stumble back, then he gathers himself
+  { name: 'stripped', frames: 12, keys: [
+    { t: 0, pose: dribHigh },
+    { t: 0.14, pose: P({ head: [6, 86], neck: [5, 78], sF: [5, 75], sB: [1, 75], hF: [16, 54], eF: [11, 61], hB: [5, 60], eB: [0, 64], hip: [1, 47] }, athletic) },
+    { t: 0.36, pose: P({ head: [-2, 88], neck: [-1, 79], sF: [1, 76], sB: [-4, 76], hip: [-1, 47], hF: [-6, 62], eF: [-3, 67], hB: [12, 68], eB: [8, 71], kF: [4, 24], fF: [8, 0], kB: [-7, 22], fB: [-12, 2] }) },
+    { t: 0.6, pose: P({ head: [-5, 86], neck: [-4, 78], sF: [-3, 75], sB: [-7, 75], hip: [-2, 46], kF: [3, 23], fF: [6, 0], kB: [-9, 24], fB: [-14, 4], hF: [-1, 57], hB: [-11, 59], eF: [0, 65], eB: [-8, 67] }) },
+    { t: 0.82, pose: P({ head: [-1, 88], neck: [-1, 79], hip: [-1, 47], hF: [4, 56], eF: [4, 63], hB: [-4, 58], eB: [-3, 65] }, athletic) },
+    { t: 1, pose: athletic }] },
+  // blocked: arms thrown back by the swat, a heavy landing, a stumble, then recover
+  { name: 'blockedLand', frames: 12, keys: [
+    { t: 0, pose: P({ hip: [0, 53], kF: [2, 28], kB: [-1, 28], hF: [6, 108], eF: [5, 97], hB: [2, 99], eB: [-3, 90] }) },
+    { t: 0.16, pose: P({ head: [-4, 90], neck: [-3, 82], sF: [-2, 79], sB: [-6, 79], hip: [-1, 52], hF: [-8, 103], eF: [-5, 94], hB: [-13, 97], eB: [-9, 89], kF: [5, 32], fF: [4, 6], kB: [-3, 26], fB: [-6, 2] }) },
+    { t: 0.4, pose: P({ hip: [-1, 42], kF: [6, 20], fF: [9, 0], kB: [-6, 20], fB: [-10, 0], head: [-2, 80], neck: [-2, 72], sF: [-1, 69], sB: [-5, 69], hF: [-6, 60], eF: [-3, 64], hB: [-12, 58], eB: [-8, 63] }) },
+    { t: 0.65, pose: P({ hip: [-2, 46], kB: [-10, 24], fB: [-15, 3], kF: [3, 24], fF: [5, 0], head: [-4, 85], neck: [-3, 77], sF: [-2, 74], sB: [-6, 74], hF: [6, 62], eF: [4, 68], hB: [-14, 61], eB: [-9, 67] }) },
+    { t: 0.85, pose: P({ head: [0, 88], neck: [0, 79], hF: [5, 58], eF: [5, 64], hB: [-3, 58], eB: [-2, 65] }, athletic) },
+    { t: 1, pose: athletic }] },
 
   // ---------- defense / misc ----------
   { name: 'block', frames: 6, keys: [
@@ -335,7 +363,7 @@ export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c
 /** Map a sim shot type to its animation clip. */
 export const SHOT_CLIP: Record<string, string> = {
   three: 'shot_jumper', deep3: 'shot_jumper', mid: 'shot_jumper', push: 'shot_push', floater: 'shot_floater',
-  hook: 'shot_hook', layup: 'shot_layup', euro: 'shot_euro', stepThrough: 'shot_stepThrough', dunk: 'shot_dunk',
+  hook: 'shot_hook', layup: 'shot_layup', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
 };
 
 const lerpJ = (a: J, b: J, t: number): J => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];

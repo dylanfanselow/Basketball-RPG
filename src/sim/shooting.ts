@@ -20,7 +20,13 @@ export function contestReach(type: string): number {
 }
 
 /** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
-export const STEP_THROUGH_WINDOW = 1.0;
+export const STEP_THROUGH_WINDOW = 1.5;
+/** Step-Through stride length (ft); the Step-Through perk lengthens it. */
+export const stepStride = (p: Player) => (p.hasShot('stepThrough') ? 7 : 5.5);
+/** Both step-through finishes (close one-hand finish, or stride into a pull-up jumper). */
+export const isStepThrough = (type: string) => type === 'stepThrough' || type === 'stepThroughJumper';
+/** After the stride, farther than this from the rim = pull-up jumper instead of a finish. */
+export const STEP_FINISH_FT = 11;
 
 /** Did this defender leave his feet on the shooter's most recent pump fake (and is still paying for it)? */
 export function bitOnFake(def: Player, shooter: Player, now: number): boolean {
@@ -39,8 +45,9 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   const side_ = lateral > 0.65 && Math.abs(toward) < 0.6;
   const speedToRim = dot(p.vel, toRim);
 
-  // Step-Through (perk): right after a pump fake, hold the stick toward the rim and shoot
-  if (now - p.pumpFakeAt < STEP_THROUGH_WINDOW && p.hasShot('stepThrough') && d < 15 && toward > 0.5) return 'stepThrough';
+  // Step-Through (everyone): right after a pump fake, hold the stick toward the rim and shoot.
+  // Close in it's a one-hand finish; from mid-range or the arc it's a stride into a pull-up jumper.
+  if (now - p.pumpFakeAt < STEP_THROUGH_WINDOW && d <= 28 && toward > 0.5) return d - stepStride(p) > STEP_FINISH_FT ? 'stepThroughJumper' : 'stepThrough';
   if (d <= 6.5) {
     if (back && d >= 3) return 'floater';
     if (side_) return p.hasShot('euro') && d >= 2.5 ? 'euro' : 'hook';
@@ -89,7 +96,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     let state = 1;
     if (d.state === 'stagger' || now < d.staggerUntil) state = 0.35;
     if (now < d.screenedUntil) state = Math.min(state, 0.5);
-    if (type === 'stepThrough' && bitOnFake(d, shooter, now)) state = Math.min(state, 0.15); // bit on the fake: stepped right past him
+    if (isStepThrough(type) && bitOnFake(d, shooter, now)) state = Math.min(state, 0.15); // bit on the fake: stepped right past him
     const c = 0.62 * closeness * angF * heightF * handUp * skill * state * d.mods.contestOutMult(type);
     if (c > 0.01) { by.push({ name: d.name, dist: r, c }); keep *= 1 - clamp(c, 0, 0.95); }
   }

@@ -43,7 +43,9 @@ export class Player {
   /** when this player last left the floor on a jump (pump-fake bites, blocks) */
   lastJumpAt = -9;
   /** step-through: grounded stride, then lift off at this time (0 = none) */
-  liftAt = 0;
+  liftAt = 0; liftVz = 9.5;
+  /** rocked by a block or a strip: no actions until then */
+  stunnedUntil = -9;
   lastBitAt = 0; boxOutHeld = false; bumpedUntil = -9; crashing = false; boxingOut = false; lastBumpAt = -9;
   burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
   /** pump fake picked up the dribble: can only pass or shoot */
@@ -88,7 +90,7 @@ export class Player {
   get burstCd() { return rmap(this.sub.speed, 6.0, 3.5) * this.mods.pMult('burstCd') * (1.3 - 0.3 * this.stamina); }
   get ballSpeedMult() { return rmap(this.sub.ballSpeed, 0.82, 0.97); }
   get jumpVel() { return rmap(this.sub.jump, 11, 16.5); }
-  get passSpeed() { return rmap(this.sub.passSpeed, 34, 62); }
+  get passSpeed() { return rmap(this.sub.passSpeed, 55, 90); }
   get safePassDist() { return rmap(this.sub.passRange, 22, 52); }
   get reach() { return this.height + 2.1; }
   get busy() { return this.state === 'shoot' || this.state === 'fallen' || this.state === 'stagger'; }

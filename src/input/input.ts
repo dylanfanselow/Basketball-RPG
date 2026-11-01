@@ -70,6 +70,7 @@ export class InputMapper {
       left: this.btn(BTN.LEFT) || this.key('LEFT') || this.key('A'),
       right: this.btn(BTN.RIGHT) || this.key('RIGHT') || this.key('D'),
       lb: this.btn(BTN.LB), rb: this.btn(BTN.RB),
+      l2: this.btn(BTN.LT) || this.key('Q'),
       // menu tabs / columns: L2 or Q = previous, R1 or E = next (L1 is the escape button)
       tabPrev: this.btn(BTN.LT) || this.key('Q'), tabNext: this.btn(BTN.RB) || this.key('E'),
       // L1 = escape / back out of any screen (keyboard Esc)
@@ -95,7 +96,7 @@ export class InputMapper {
     return {
       move: this.move, sprint: this.pressed('sprint'),
       a: this.pressed('a'), b: this.pressed('b'), x: this.pressed('x'), y: this.pressed('y'),
-      aHeld: this.held('a'), bHeld: this.held('b'),
+      aHeld: this.held('a'), bHeld: this.held('b'), l2Held: this.held('l2'),
     };
   }
 }

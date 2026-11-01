@@ -2,7 +2,7 @@ import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride } from './shooting';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
@@ -17,13 +17,18 @@ export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
   a: boolean; b: boolean; x: boolean; y: boolean; // edge-triggered this tick
   aHeld: boolean; bHeld: boolean;
+  /** L2 held: icon pass (face buttons pass to the teammate wearing that icon) */
+  l2Held?: boolean;
 }
+export type IconBtn = 'a' | 'b' | 'x' | 'y';
+/** Icon-pass button order: teammates sorted by role get ✕, ○, □, △. */
+export const ICON_ORDER: IconBtn[] = ['a', 'b', 'x', 'y'];
 /** ✕ taps shorter than this are pump fakes; ○ taps shorter than this with no direction are jab steps. */
 export const TAP_S = 0.18;
 /** Length of the pump-fake sell (state and animation). A shot pressed during it cuts it short. */
 export const PUMP_FAKE_S = 0.42;
 /** Step-Through: share of the gather spent striding on the floor before lifting off, and stride length (ft). */
-export const STEP_LIFT = 0.55, STEP_STRIDE_FT = 5.5;
+export const STEP_LIFT = 0.55;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
 export interface TeamState { def: TeamDef; side: Side; score: number; roster: Player[]; onCourt: Player[] }
@@ -51,11 +56,19 @@ export interface GameConfig {
 
 export type BallState =
   | { kind: 'held'; holder: Player }
-  | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string>; inbound?: boolean }
+  | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string>; inbound?: boolean;
+      /** short pass: bends toward the receiver every tick and almost never gets picked */
+      magnet?: boolean;
+      /** interception multiplier from the pass length (short ≪ medium < long) */
+      riskMult?: number }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
       /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
       airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number } }
-  | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1 }
+  | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1;
+      /** nobody can grab it before this (a swatted ball sails first) */
+      noGrabUntil?: number;
+      /** the player who just lost it can't grab it back before noGrabPidUntil */
+      noGrabPid?: string; noGrabPidUntil?: number }
   | { kind: 'dead' };
 
 /** quiet events drive audio/animation only and never show in the on-screen feed */
@@ -253,7 +266,7 @@ export class GameSim {
     const off = this.teams[team].onCourt[0], def = this.teams[1 - team].onCourt[0];
     for (const p of [off, def]) {
       p.vel = v(); p.state = 'idle'; p.z = 0; p.vz = 0; p.staggerUntil = 0; p.screenedUntil = 0; p.bumpedUntil = -9;
-      p.move = null; p.pendingShot = null; p.liftAt = 0; p.jumpAt = 0;
+      p.move = null; p.pendingShot = null; p.liftAt = 0; p.jumpAt = 0; p.stunnedUntil = -9;
     }
     off.p = hc(this.side(team), 30, 0);
     this.assignMatchups();
@@ -592,6 +605,7 @@ export class GameSim {
   private think(p: Player, dt: number) {
     p.boxingOut = false;
     if (p.state === 'fallen' || p.state === 'shoot') return;
+    if (this.time < p.stunnedUntil) { p.want = v(); return; } // rocked: no decisions until he shakes it off
     const bs = this.ball.st;
     if (bs.kind === 'loose' || (bs.kind === 'shot' && bs.t > bs.dur * 0.35)) { this.chaseBall(p); return; }
     if (!this.live) {
@@ -661,6 +675,7 @@ export class GameSim {
     if (this.inb?.inbounder === u) return; // walking it out of bounds is automatic
     const primary = u === this.user;
     if (primary) this.stick = inp.move; else this.stick2 = inp.move;
+    if (this.time < u.stunnedUntil) { u.want = v(); if (primary) this.passTarget = null; return; } // rocked: wait it out
     const hasBall = this.holder() === u;
     const onO = u.team === this.possession;
     if (inp.sprint && this.live) {
@@ -679,7 +694,16 @@ export class GameSim {
 
     const passTarget = hasBall ? this.pickPassTarget(u, inp.move) : null;
     if (primary) this.passTarget = passTarget;
+    // L2 icon pass: while held, each teammate wears a button; pressing it passes to him (no other actions)
+    const icons = hasBall && inp.l2Held ? this.iconTargetsFor(u) : null;
+    if (primary) this.iconTargets = icons;
     if (!this.live) return;
+    if (icons) {
+      ux.aPending = false; ux.bWasHeld = false;
+      const hit = icons.find((t) => inp[t.btn]);
+      if (hit) { const m = this.players.find((q) => q.id === hit.pid); if (m) this.pass(u, m); }
+      return;
+    }
 
     if (inp.x) tryActivateUlt(this, u);
     const shotUp = this.ball.st.kind === 'shot';
@@ -740,6 +764,12 @@ export class GameSim {
     }
   }
 
+  /** Icon pass: teammates (by role) wearing ✕ ○ □ △. Shown while L2 is held. */
+  iconTargets: { pid: string; btn: IconBtn }[] | null = null;
+  iconTargetsFor(p: Player): { pid: string; btn: IconBtn }[] {
+    return this.mates(p).slice().sort((a, b) => a.role.localeCompare(b.role)).slice(0, 4).map((m, i) => ({ pid: m.id, btn: ICON_ORDER[i] }));
+  }
+
   pickPassTarget(from: Player, stick: Vec): Player | null {
     const dir = len(stick) > 0.3 ? norm(stick) : from.face;
     let best: Player | null = null, bs = -1e9;
@@ -757,7 +787,7 @@ export class GameSim {
   startShot(p: Player, type: string, override?: { base?: number; label?: string; contestMult?: number }) {
     if (this.holder() !== p || p.busy) return;
     const def = SHOT_TYPES[type];
-    const jumper = ['mid', 'three', 'deep3'].includes(type);
+    const jumper = ['mid', 'three', 'deep3', 'stepThroughJumper'].includes(type);
     const windMult = jumper ? p.mods.pMult('release') : p.mods.pMult('gather');
     if (p.move?.id === 'pumpfake') p.move = null; // a shot cuts the fake short
     p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
@@ -775,7 +805,7 @@ export class GameSim {
     }
     p.vz = type === 'dunk' ? p.jumpVel * 0.95 : jumper ? 8 : 9.5;
     p.face = norm(sub(rim, p.p));
-    if (type === 'stepThrough') this.stepThrough(p, rim, d);
+    if (isStepThrough(type)) this.stepThrough(p, rim, d, jumper ? 8 : 9.5);
     // defenders react
     for (const d2 of this.opp(p.team)) {
       if (this.isAI(d2) && dist(d2.p, p.p) < 7.5 && d2.z === 0 && !d2.busy) {
@@ -788,7 +818,7 @@ export class GameSim {
    * Step-Through: one long grounded stride past the defender (angled away from his side), then lift off.
    * A defender who jumped on the fake can't contest or block it.
    */
-  private stepThrough(p: Player, rim: Vec, d: number) {
+  private stepThrough(p: Player, rim: Vec, d: number, liftVz: number) {
     const toRim = norm(sub(rim, p.p));
     const nd = this.nearestDefender(p);
     let dir = toRim;
@@ -799,9 +829,9 @@ export class GameSim {
       dir = { x: toRim.x * Math.cos(a) - toRim.y * Math.sin(a), y: toRim.x * Math.sin(a) + toRim.y * Math.cos(a) };
     }
     const strideT = Math.max(0.1, p.stateDur * STEP_LIFT);
-    const stride = Math.min(STEP_STRIDE_FT, Math.max(1, d - 2.5));
+    const stride = Math.min(stepStride(p), Math.max(1, d - 2.5));
     p.vel = scale(dir, stride / strideT / 0.9); // /0.9: shoot-state drag over the stride
-    p.vz = 0; p.liftAt = this.time + strideT;
+    p.vz = 0; p.liftAt = this.time + strideT; p.liftVz = liftVz;
     const bit = this.opp(p.team).find((q) => bitOnFake(q, p, this.time));
     if (bit) this.emit({ kind: 'move', text: `STEP-THROUGH! ${bit.name} bit`, pid: p.id, big: true, good: true });
     else this.emit({ kind: 'move', text: 'Step-Through', pid: p.id });
@@ -821,7 +851,7 @@ export class GameSim {
     // blocks
     for (const d of this.opp(p.team)) {
       if (d.z < 0.6 || d.state === 'fallen') continue;
-      if (ps.type === 'stepThrough' && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
+      if (isStepThrough(ps.type) && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
       const dd = dist(d.p, p.p);
       if (dd > 4.8) continue;
       const toRim = norm(sub(rim, p.p));
@@ -843,8 +873,11 @@ export class GameSim {
         if (chase && this.ult.active!.level.keepPossession) {
           this.giveBall(d); this.changePossessionLive(d.team);
         } else {
-          this.ball.st = { kind: 'loose', vel: add(scale(norm(sub(p.p, d.p)), 14), v(this.rng.range(-4, 4), this.rng.range(-4, 4))), vz: 4, lastTeam: d.team };
+          // swatted: the ball sails away hard and high, nobody can touch it for a moment, the shooter is rocked
+          const away = norm(add(norm(sub(p.p, d.p)), v(this.rng.range(-0.6, 0.6), this.rng.range(-0.6, 0.6))));
+          this.ball.st = { kind: 'loose', vel: scale(away, this.rng.range(20, 26)), vz: this.rng.range(9, 12), lastTeam: d.team, noGrabUntil: this.time + 0.7, noGrabPid: p.id, noGrabPidUntil: this.time + 1.0 };
           this.ball.z = p.z + p.height + 1;
+          this.stun(p, 1.0, 'blockedLand');
         }
         if (chase) this.ult.active = null;
         return;
@@ -856,7 +889,7 @@ export class GameSim {
     const made = this.rng.next() < ev.pct;
     const d = ev.dist;
     const dur = ps.type === 'dunk' ? 0.16 : 0.6 + d * 0.03; // slower flight = more time to fight for rebounding position
-    const jumper = ['mid', 'three', 'deep3'].includes(ps.type);
+    const jumper = ['mid', 'three', 'deep3', 'stepThroughJumper'].includes(ps.type);
     // bad enough shots can airball (never touches iron)
     const bad = (ev.pct < 0.25 && ev.contest > 0.4) || d > 30;
     const airball = !made && !foul && bad && ps.type !== 'dunk' && this.rng.chance(0.1 + Math.max(0, 0.25 - ev.pct) * 0.8);
@@ -885,7 +918,10 @@ export class GameSim {
     const speed = from.passSpeed * (driving ? from.mods.pMult('drivePass') : 1);
     const lob = from.mods.pAdd('lob') > 0 && dist(lead, this.rim(from.team)) < 10 && len(to.vel) > 4;
     const dur = (d / speed) * (lob ? 1.6 : 1) + 0.06;
-    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > from.safePassDist, checked: new Set() };
+    const safe = from.safePassDist;
+    const magnet = !lob && d <= safe * 0.6;
+    const riskMult = magnet ? 0.15 : d <= safe ? 0.6 : 1.8 + (d - safe) / 20;
+    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult };
     this.lastPasser = from; this.lastPassAt = this.time;
     from.deadDribble = false;
     this.quiet('pass', { lob, dist: d }, from.id);
@@ -979,6 +1015,15 @@ export class GameSim {
     p.blockCdUntil = this.time + 0.9;
   }
 
+  /** Rocked by a block or a strip: no actions, barely moving, plays a recoil animation. */
+  stun(p: Player, secs: number, anim: 'stripped' | 'blockedLand') {
+    p.stunnedUntil = this.time + secs;
+    p.anim = { name: anim, start: this.time, dur: secs };
+    p.deadDribble = false; p.move = null; p.bufferedMove = null;
+    if (p.state === 'dribbleMove' || p.state === 'jump') p.state = 'idle';
+    if (p === this.user) this.ux.aPending = false; else if (p === this.user2) this.ux2.aPending = false;
+  }
+
   swipe(p: Player) {
     if (this.time < p.swipeCdUntil || p.busy) return;
     p.swipeCdUntil = this.time + 0.8;
@@ -996,7 +1041,10 @@ export class GameSim {
       this.gainUlt(p, ULT_GAINS.steal * p.mods.pMult('hustleBonus'));
       if (p === this.user) applyTrust(this.trust, 'stop', p.mods.pMult('hustleBonus'));
       if (h === this.user) applyTrust(this.trust, 'turnover');
-      this.ball.st = { kind: 'loose', vel: scale(norm(sub(p.p, h.p)), 9), vz: 2, lastTeam: p.team };
+      // stripped: the ball pops out past the stealer; the ball handler is left spinning
+      const pop = norm(add(norm(sub(p.p, h.p)), v(this.rng.range(-0.3, 0.3), this.rng.range(-0.3, 0.3))));
+      this.ball.st = { kind: 'loose', vel: scale(pop, this.rng.range(10, 13)), vz: 3, lastTeam: p.team, noGrabUntil: this.time + 0.25, noGrabPid: h.id, noGrabPidUntil: this.time + 1.0 };
+      this.stun(h, 0.8, 'stripped');
     } else if (this.rng.chance(0.05)) {
       this.emit({ kind: 'foul', text: `Reach-in foul on ${p.name}`, team: p.team });
       this.shotClock = Math.max(this.shotClock, 14);
@@ -1041,7 +1089,8 @@ export class GameSim {
       if (p.jumpAt && this.time >= p.jumpAt) { p.jumpAt = 0; this.jump(p, 0.9); }
       if (p.liftAt && this.time >= p.liftAt) {
         p.liftAt = 0;
-        if (p.state === 'shoot') { p.vz = 9.5; p.vel = scale(p.vel, 0.45); } // plant the stride foot and rise
+        // plant the stride foot and rise (a pull-up stops on a dime, a finish keeps some carry)
+        if (p.state === 'shoot') { p.vz = p.liftVz; p.vel = scale(p.vel, p.liftVz < 9 ? 0.15 : 0.45); }
       }
 
       let want = p.want;
@@ -1049,6 +1098,7 @@ export class GameSim {
       if (this.time < p.staggerUntil) want = scale(want, 0.25);
       if (this.time < p.screenedUntil) want = scale(want, 0.15);
       if (this.time < p.bumpedUntil) want = scale(want, 0.12);
+      if (this.time < p.stunnedUntil) want = scale(want, 0.1);
       if (p.boxingOut) want = scale(want, 0.35); // low, wide shuffle
       if (p.boxedOut) { want = scale(want, p.boxedOut); p.boxedOut = 0; }
 
@@ -1203,15 +1253,19 @@ export class GameSim {
       case 'pass': {
         st.t += dt;
         const k = clamp01(st.t / st.dur);
+        // short passes home in on the receiver (re-aim at where he is now)
+        if (st.magnet && st.to.state !== 'fallen') st.b = lerpV(st.b, add(st.to.p, scale(st.to.vel, 0.05)), Math.min(1, dt * 12));
         b.p = lerpV(st.a, st.b, k);
         b.z = 4.5 + (st.lob ? 7 : 1.2) * Math.sin(Math.PI * k);
+        const passLen = dist(st.a, st.b);
         for (const d of this.opp(st.from.team)) {
           if (st.checked.has(d.id) || d.state === 'fallen') continue;
           const swiping = this.time < (d.swipingUntil ?? 0);
-          const r = 1.3 * d.mods.pMult('deflect') + (swiping ? 1.4 : 0);
+          // long balls hang in the lanes: a bigger window to get a hand on them
+          const r = (1.3 + clamp((passLen - 20) / 25, 0, 1) * 0.9) * d.mods.pMult('deflect') + (swiping ? 1.4 : 0);
           if (dist(d.p, b.p) < r && b.z < d.reach + d.z + 0.5) {
             st.checked.add(d.id);
-            const chance = (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.risky ? 1.8 : 1) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
+            const chance = (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.riskMult ?? (st.risky ? 1.8 : 1)) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
             if (this.rng.chance(chance)) {
               d.box.stl++; st.from.box.tov++;
               this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true });
@@ -1219,13 +1273,13 @@ export class GameSim {
               if (d === this.user) applyTrust(this.trust, 'stop');
               if (st.from === this.user) applyTrust(this.trust, 'turnover');
               if (this.rng.chance(0.55)) { this.giveBall(d); this.changePossessionLive(d.team); }
-              else b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 6), vz: 3, lastTeam: d.team };
+              else b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 6), vz: 3, lastTeam: d.team, noGrabUntil: this.time + 0.2 };
               return;
             }
           }
         }
         if (k >= 1) {
-          if (dist(st.to.p, b.p) < 3.5 && st.to.state !== 'fallen') {
+          if (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen') {
             this.giveBall(st.to);
             this.quiet('catch', {}, st.to.id);
             this.assistCand = { passer: st.from, receiver: st.to, at: this.time };
@@ -1294,9 +1348,12 @@ export class GameSim {
 
   private tryGrab() {
     const b = this.ball;
+    const st = b.st;
+    if (st.kind === 'loose' && st.noGrabUntil && this.time < st.noGrabUntil) return;
     let cands: { p: Player; score: number }[] = [];
     for (const p of this.players) {
-      if (p.state === 'fallen' || p.state === 'shoot') continue;
+      if (p.state === 'fallen' || p.state === 'shoot' || this.time < p.stunnedUntil) continue;
+      if (st.kind === 'loose' && st.noGrabPid === p.id && this.time < (st.noGrabPidUntil ?? 0)) continue;
       const r = (1.8 + p.sub.rebound / 99 * 0.9) * p.mods.pMult('grabRadius');
       if (dist(p.p, b.p) < r && b.z < p.reach + p.z) cands.push({ p, score: p.sub.rebound + this.rng.range(0, 45) + (p.boxedOut ? -15 : 0) });
     }
@@ -1410,6 +1467,12 @@ export class GameSim {
       const ov = this.ult.active && this.ult.active.pid === u.id ? this.ult.active.shotOverride : undefined;
       this.preview = evaluateShot(u, this.opp(u.team), this.side(u.team), type, { now: this.time, clutch: this.clutch, override: ov });
     } else this.preview = null;
+  }
+
+  /** HUD: would ✕ right now be a step-through (recent fake + stick toward the rim)? */
+  stepThroughReady(p: Player): boolean {
+    if (this.holder() !== p) return false;
+    return isStepThrough(selectShotType(p, this.side(p.team), p === this.user ? this.stick : this.stick2, this.time));
   }
 
   equationText(): string { return this.preview ? formatEquation(this.preview) : ''; }

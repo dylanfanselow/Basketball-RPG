@@ -226,7 +226,7 @@ export class GameScene extends Phaser.Scene {
     const home = e.team === 0 || (who?.team === 0);
     switch (e.kind) {
       case 'plant': if (d.move !== 'jab') sfx.squeak(pan); break;
-      case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough'].includes(d.type)) sfx.squeak(pan, 0.7); break;
+      case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough', 'stepThroughJumper'].includes(d.type)) sfx.squeak(pan, 0.7); break;
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;
       case 'release': sfx.release(pan); break;
@@ -296,6 +296,7 @@ export class GameScene extends Phaser.Scene {
     const dist = this.runDist.get(p.id) ?? 0;
     const phase = (p.number * 0.137) % 1; // so players don't dribble in lockstep
     if (p.state === 'fallen') return { clip: a?.name === 'ankleFall' ? 'ankleFall' : 'fall', u: a ? (now - a.start) / 0.65 : 1 };
+    if (now < p.stunnedUntil && a && (a.name === 'stripped' || a.name === 'blockedLand')) return { clip: a.name, u: (now - a.start) / (a.dur ?? 1) };
     if (sim.inb?.inbounder === p && sim.inb.hasBall && len(p.vel) < 2) return { clip: 'inbound', u: now };
     // the fake picks up the dribble, so it must be checked before the dead-dribble hold
     if (p.state === 'dribbleMove' && a?.name === 'pumpfake') return { clip: 'pumpfake', u: (now - a.start) / (a.dur ?? 0.42) };
@@ -532,6 +533,29 @@ export class GameScene extends Phaser.Scene {
         gt.lineBetween(x0, y0, x0 + bx * lenPx, y0 + by * lenPx);
       }
       if (sim.time - p.burstStartAt < 0.25) { g.fillStyle(0xe8d6b0, 0.5 * (1 - (sim.time - p.burstStartAt) / 0.25)); for (let i = 0; i < 4; i++) g.fillCircle(px0 + bx * (8 + i * 7), feet - 2 - i, 4 + i); }
+    }
+    // L2 icon pass: each teammate wears the button that passes to him
+    if (sim.iconTargets) {
+      const GL: Record<string, [string, number]> = { a: ['✕', 0x7fb4ff], b: ['○', 0xff7f8f], x: ['□', 0xff9ce8], y: ['△', 0x7fffc8] };
+      for (const t of sim.iconTargets) {
+        const m = sim.players.find((q) => q.id === t.pid); if (!m) continue;
+        const x = sx(m.p.x), y = sy(m.p.y, m.z + m.height + 1.6);
+        gt.fillStyle(0x000000, 0.75); gt.fillCircle(x, y, 15);
+        gt.lineStyle(3, GL[t.btn][1], 1); gt.strokeCircle(x, y, 15);
+        this.label(x, y, GL[t.btn][0], '#' + GL[t.btn][1].toString(16).padStart(6, '0'), 18);
+      }
+    }
+    // rocked by a block / strip: little stars circling the head
+    for (const p of sim.players) {
+      if (sim.time >= p.stunnedUntil) continue;
+      const hx = sx(p.p.x), hy = sy(p.p.y, p.z + p.height + 0.5);
+      const fade = Math.min(1, (p.stunnedUntil - sim.time) / 0.3);
+      for (let i = 0; i < 3; i++) {
+        const a = sim.time * 7 + (i * Math.PI * 2) / 3;
+        const x = hx + Math.cos(a) * 13, y = hy + Math.sin(a) * 4;
+        gt.fillStyle(0xffe14d, fade * (Math.sin(a) > 0 ? 1 : 0.55));
+        gt.fillTriangle(x - 4, y, x + 4, y, x, y - 5); gt.fillTriangle(x - 4, y - 3, x + 4, y - 3, x, y + 2);
+      }
     }
     if (dbg.aiTargets) for (const p of sim.players) { g.lineStyle(1, p.team === 0 ? 0x66aaff : 0xff6666, 0.5); g.lineBetween(sx(p.p.x), sy(p.p.y), sx(p.target.x), sy(p.target.y)); }
     if (dbg.hitboxes) for (const p of sim.players) { g.lineStyle(1, 0xffffff, 0.6); g.strokeEllipse(sx(p.p.x), sy(p.p.y), 2.2 * S, 2.2 * D); }

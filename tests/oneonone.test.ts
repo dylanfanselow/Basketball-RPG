@@ -40,12 +40,12 @@ describe('pump fake → Step-Through', () => {
     expect(u.deadDribble).toBe(true);
   });
 
-  it('needs the perk, a recent fake and the stick toward the rim', () => {
+  it('works for everyone: needs a recent fake and the stick toward the rim', () => {
     for (const [nodes, move, expected] of [
       [['fi_stepthru'], toRim, true],
-      [['fi_stepthru'], { x: 0, y: 0 }, false], // no stick: normal shot
-      [['fi_stepthru'], { x: -1, y: 0 }, false], // stick away: normal shot (floater/fade)
-      [[], toRim, false],                        // no perk
+      [[], toRim, true],                           // no perk needed any more
+      [[], { x: 0, y: 0 }, false],                 // no stick: normal shot
+      [[], { x: -1, y: 0 }, false],                // stick away: normal shot (floater/fade)
     ] as const) {
       const { g, u } = setup([...nodes]);
       fake(g);
@@ -54,6 +54,32 @@ describe('pump fake → Step-Through', () => {
       expect(u.state).toBe('shoot');
       expect(u.pendingShot?.type === 'stepThrough').toBe(expected);
     }
+  });
+
+  it('from the arc it strides into a pull-up jumper, still well after the fake (1.5 s window)', () => {
+    const { g, u, d } = setup([]);
+    u.p = hc(1, 29, 0); // ~24 ft out
+    d.p = add(u.p, { x: 4, y: 0.5 });
+    fake(g);
+    for (let i = 0; i < 60; i++) g.update(1 / 60, idle); // 1 s later
+    const p0 = { ...u.p };
+    shoot(g, toRim);
+    expect(u.pendingShot?.type).toBe('stepThroughJumper');
+    for (let i = 0; i < 40 && u.state === 'shoot'; i++) g.update(1 / 60, { ...idle, move: toRim, aHeld: true });
+    expect(Math.hypot(u.p.x - p0.x, u.p.y - p0.y)).toBeGreaterThan(2.8); // stepped around him (contact shortens it a bit)
+    expect(g.lastShot?.ev.type).toBe('stepThroughJumper');
+  });
+
+  it('the perk lengthens the stride', () => {
+    const run = (nodes: string[]) => {
+      const { g, u, d } = setup(nodes);
+      d.p = hc(1, 18, 15);
+      fake(g); for (let i = 0; i < 6; i++) g.update(1 / 60, idle);
+      const x0 = u.p.x; shoot(g, toRim);
+      for (let i = 0; i < 40 && u.state === 'shoot'; i++) g.update(1 / 60, { ...idle, move: toRim, aHeld: true });
+      return u.p.x - x0;
+    };
+    expect(run(['fi_stepthru'])).toBeGreaterThan(run([]) + 0.8);
   });
 
   it('strides on the floor first, then lifts off, and moves past the defender', () => {
@@ -161,5 +187,89 @@ describe('1v1 make it, take it', () => {
       }
     }
     expect(changes).toBeGreaterThan(0);
+  });
+});
+
+describe('steals and blocks stick', () => {
+  const mkPractice = () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: core(70), isUser: true });
+    const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 0, runPlays: false } }, u);
+    const d = g.teams[1].onCourt[0];
+    u.p = hc(1, 22, 0); d.p = add(u.p, { x: 2.5, y: 0.3 });
+    return { g, u, d };
+  };
+  it('a strip pops the ball away, the ball handler is stunned and cannot grab it back', () => {
+    const { g, u, d } = mkPractice();
+    const chance = g.rng.chance.bind(g.rng);
+    g.rng.chance = () => true; g.swipe(d); g.rng.chance = chance;
+    expect(g.ball.st.kind).toBe('loose');
+    expect(u.stunnedUntil).toBeGreaterThan(g.time + 0.7);
+    expect(u.anim?.name).toBe('stripped');
+    let regained = false;
+    for (let i = 0; i < 48; i++) { g.update(1 / 60, idle); if (g.holder() === u) regained = true; }
+    expect(regained).toBe(false);
+  });
+  it('a block sends the ball flying, nobody can touch it for a moment, the shooter is rocked', () => {
+    const { g, u, d } = mkPractice();
+    u.p = hc(1, 10, 0); d.p = add(u.p, { x: 2, y: 0.2 });
+    g.startShot(u, 'layup');
+    d.z = 1.2; d.vz = 2;
+    const from = { ...g.ball.p };
+    const chance = g.rng.chance.bind(g.rng);
+    g.rng.chance = () => true; (g as any).releaseShot(u); g.rng.chance = chance;
+    expect(g.events.some((e) => e.kind === 'block')).toBe(true);
+    expect(u.anim?.name).toBe('blockedLand');
+    let grabbedAt = -1, maxDist = 0;
+    for (let i = 0; i < 120 && g.ball.st.kind === 'loose'; i++) {
+      g.update(1 / 60, idle);
+      maxDist = Math.max(maxDist, Math.hypot(g.ball.p.x - from.x, g.ball.p.y - from.y));
+      if (g.holder() && grabbedAt < 0) grabbedAt = i;
+    }
+    expect(maxDist).toBeGreaterThan(6);
+    if (grabbedAt >= 0) expect(grabbedAt).toBeGreaterThanOrEqual(40); // 0.7 s no-grab
+    expect(g.holder()).not.toBe(u);
+  });
+});
+
+describe('passing', () => {
+  const mk = (seed: number, mates = 4) => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'PG', core: core(70), isUser: true });
+    const g = makeGame({ seed, mode: 'practice', practice: { defenders: 1, teammates: mates, runPlays: false } }, u);
+    g.freezeAI = true;
+    return { g, u };
+  };
+  it('L2 + a face button passes to the teammate wearing that icon', () => {
+    const { g, u } = mk(3);
+    g.update(1 / 60, { ...idle, l2Held: true });
+    const icons = g.iconTargets!;
+    expect(icons.map((i) => i.btn)).toEqual(['a', 'b', 'x', 'y']);
+    const target = icons.find((i) => i.btn === 'b')!.pid;
+    g.update(1 / 60, { ...idle, l2Held: true, b: true, bHeld: true });
+    expect(g.ball.st.kind).toBe('pass');
+    expect((g.ball.st as any).to.id).toBe(target);
+    expect(u.state).not.toBe('dribbleMove'); // ○ did not also do a dribble move
+  });
+  it('short passes magnet to a moving receiver; long passes through a lane get picked off far more', () => {
+    const trial = (seed: number, len: number) => {
+      const { g, u } = mk(seed, 1);
+      const m = g.teams[0].onCourt.find((p) => p !== u)!;
+      const d = g.teams[1].onCourt[0];
+      u.p = hc(1, 40, 0); m.p = { x: u.p.x + len, y: u.p.y }; m.vel = { x: 0, y: 6 };
+      d.p = { x: u.p.x + len / 2, y: u.p.y + 0.8 };
+      g.pass(u, m);
+      for (let i = 0; i < 90 && g.ball.st.kind === 'pass'; i++) g.update(1 / 60, idle);
+      return g.holder() === m ? 'caught' : g.events.some((e) => e.kind === 'steal') ? 'picked' : 'other';
+    };
+    let shortPicked = 0, longPicked = 0, shortCaught = 0;
+    for (let s = 1; s <= 120; s++) {
+      const a = trial(s, 12); if (a === 'picked') shortPicked++; if (a === 'caught') shortCaught++;
+      if (trial(s, 42) === 'picked') longPicked++;
+    }
+    expect(shortCaught).toBeGreaterThan(110);
+    expect(longPicked).toBeGreaterThan(shortPicked * 3 + 3);
+  });
+  it('passes are faster than before', () => {
+    const { u } = mk(1);
+    expect(u.passSpeed).toBeGreaterThanOrEqual(55);
   });
 });
