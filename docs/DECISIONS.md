@@ -70,6 +70,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   with bigger detailed heads, dark purple-navy arena, dense crowd, glossy floor with reflections.
 - **Same framing, more detail:** keep the player-to-court size and what's on screen; render at **1920×1080** with a
   1.5× camera and 1.5× art resolution (owner's choice over zooming in).
+- **Body proportions (rounds 10–11):** shoulders well below the chin (neck visible). Arms are long on defense and
+  off-ball, but dribbles/moves/shots keep their hand-keyed arm length and bend. **No finger overlay** on the ball.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.

@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-01 (round 10: lower shoulders, longer arms, fingers on the ball).
+Last updated: 2026-11-01 (round 11: lower shoulders, keyed arms for ball handling, no finger overlay).
 Next session: start with BACKLOG.md → "Start here next session".

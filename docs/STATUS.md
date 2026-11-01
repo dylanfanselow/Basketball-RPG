@@ -75,10 +75,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   benches near the baselines with chairs, courtside celebrity row (`celebs.ts`), fullscreen (F / ⛶ / menus).
 - Procedural pixel sprites (`sprites.ts`): skeleton poses, layered limbs (sleeves/socks/shoes), shaped torso,
   fitted shorts, 12×13 heads with faces/hair/gear; front-view bench sprites; coaches in suits.
-- Arm rig (`anim.ts` `rigArms`, applied in `drawPose`): shoulders sit `SHOULDER_DROP` below the keys, free arms
-  (defense, off-ball, guard arm) are scaled to ≥ `UPPER_ARM + FOREARM` keeping their keyed bend, ball hands stay on
-  the ball (two-bone IK). Sheets record gripping hands per frame; `GameScene.drawFingers` draws fingers over the
-  held ball.
+- Arm rig (`anim.ts` `rigArms(pose, ballClip)`, applied in `drawPose`): arm sockets sit `ARM_DROP` (6) and the
+  jersey top `TORSO_DROP` (4.5) below the keys so the neck shows. Ball clips (any key has the ball) move arms rigidly
+  with their keyed shape/length and carry a held ball down with the hands; free clips (defense, off-ball) scale arms
+  to ≥ `UPPER_ARM + FOREARM`. No IK, no finger overlay.
 - Keyframe clips with Catmull-Rom in-betweens (`anim.ts`): locomotion, dribbles, every move, every shot type,
   block/swipe/screen/charge/falls, box-out(+push), bumped, rebound, pump fake, hold, inbound, sit/cheer/point,
   ready crossing dribble.
