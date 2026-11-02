@@ -19,6 +19,8 @@ npm run build:single # single-file build for the browser link
 
 ## How each round goes
 1. Owner sends feedback → plan in plan mode (ask only genuinely open questions; see DECISIONS.md first).
+   **Once the plan is written, build it — don't wait for a separate "go"** (owner, round 22). If a session restart
+   drops plan mode before approval, carry on with the written plan.
 2. Implement sim first, tests next, then render/HUD/audio.
 3. Verify: `npm test`, headless stats (`scripts/stats.test.ts`), Playwright screenshots against a dev server
    (pre-installed Chromium; `require('playwright')`; scripts live in the session scratchpad).

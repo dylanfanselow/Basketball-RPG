@@ -31,6 +31,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, E
 (gamepad: Create+Options).
 
 ## Things to know while testing
+- **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.
 
 - **Sprint** is a tap: R2 (or Shift) gives a short burst, shown by speed lines and the ring next to the trust bars, then it recharges. Mobility and stamina change both.
 - **Side Drive**: ○ + stick up or down while dribbling. While you're driving, flick the stick the other way (no button) to cross over.

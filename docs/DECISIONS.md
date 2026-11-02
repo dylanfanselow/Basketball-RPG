@@ -45,6 +45,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 
 ## HUD
 - **Fullscreen:** F key, a ⛶ button, and a menu/pause item.
+- **Round 22: top-left box score** under the trust bars: your name, FG, and your **top 3 stats** by value × weight
+  (**PTS 1, REB 1.3, AST 1.5, STL 3, BLK 3**; ties PTS > AST > REB > STL > BLK; padded with PTS/REB/AST). Your
+  rebounds play a **ding** and a floating **REBOUND +1**.
 - Bottom-right **button diamond** (△○✕□) with round badges showing the user's own sprite doing the action + label
   underneath (style reference: Dunk City "Backboard" badge). Badges visibly press in.
 - Bottom-left **movement stick**; **holding ○ highlights arc edges** for each available move, labeled; chain moves
@@ -102,6 +105,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   passes, ×1.35 range), and receivers read the catch (shoot / pump fake / attack the closeout). Safe pass range
   30–60 ft; an unsafe pass target **flashes red** (dot and L2 icons). **Celebs are a fixed cast of 16**, hand-editable
   in the dev panel's **pixel editor**; saved edits live in `src/art/celebs/` and replace the generated sprites.
+- **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
+  reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
+- **Workflow:** after planning, build without waiting for a separate go-ahead.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.
