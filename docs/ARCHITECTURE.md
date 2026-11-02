@@ -12,7 +12,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `modifiers.ts` | Effect/hook system (`sub`, `shot`, `contestIn`, `contestOut`, `param`, `move`, `shotType`; code hooks with expiry). |
 | `shooting.ts` | `selectShotType` (step-through first: `STEP_THROUGH_WINDOW` 1.5 s, `stepStride`, `STEP_FINISH_FT` → `stepThrough` or `stepThroughJumper`), `computeContest` (cone, `contestReach`; ×0.15 for defenders who `bitOnFake`), `evaluateShot` (equation terms), `formatEquation`, `isStepThrough`. |
 | `moves.ts` | `classifyStick` (basket-relative), `resolveMove` (chains first), `availableMoves` (HUD), `moveDirection` (canonical directions), `sideOf`. |
-| `rim.ts` | Live rim sequences: `pickSeq`, `buildPath`, `sampleRim`. |
+| `ballPhysics.ts` | Physical shots: `simulateShot` (ball vs rim ring / glass / net, fixed 1/240 s step), `planShot` (outcome-steered launch search), `samplePlan`. Pure, deterministic. |
+| `rim.ts` | Scripted rim sequences, now dunks only: `buildPath`, `sampleRim`. |
 | `plays/runner.ts` | `PlayRunner`: phases, reset timer, role swap, focus player. |
 | `ai/offense.ts` | Off-ball targets (play, freelance, transition lanes), handler AI (shoot/pass/drive/moves, transition reads, open-man bonuses, dead dribble). |
 | `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges. |

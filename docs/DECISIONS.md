@@ -60,7 +60,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - Box-outs: crouched, arms out; stronger boxer knocks the other player back (stun animation). **Screens knock
   defenders back with the same animation.**
 - Shots fly **slower** to give time for rebounding position. Misses play **live rim sequences** (rattles, rolls,
-  in-and-outs, high bounces); bad shots can **airball**.
+  in-and-outs, high bounces); bad shots can **airball**. **Round 21:** the ball is a **physics object** at the hoop
+  (real arc, solid rim ring, glass, net), but make/miss is **still decided at release by the shot equation**: the sim
+  finds a physical launch that produces that result. Dunks keep a scripted path.
 - **Floaters** have an accuracy penalty; **contest cones are shorter** (jumpers 5.5 ft, floaters 4 ft).
 - For testing, **"feature me equally"**: the coach runs plays for the user ~1/5 of the time (roles swapped so the
   user gets the featured role at any position) and teammates treat trust as ≥70. **On in Practice/Quick, off in

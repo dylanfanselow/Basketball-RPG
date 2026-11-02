@@ -1,6 +1,6 @@
 # Backlog / known gaps
 
-## Start here next session (after round 20)
+## Start here next session (after round 21)
 1. **Ask how multi-angle players run on the owner's Mac**: frame rate in Quick 5v5 with 10 players turning, any
    stutter in the first seconds while angled frames are drawn (dev panel → "Multi-angle players" shows cached frames
    and ms per new frame), and how the angles look in-game. Headless numbers here (~4 ms/frame) are pessimistic.
@@ -11,10 +11,12 @@
    benches, P2 in two-player 1v1 has no on-screen controller HUD or own cone.
 4. **Pixel editor round-trip:** the owner edits celebs and saves them into `src/art/celebs/` → do the final touches
    on those PNGs (clean edges, match shading across the 4 frames). Plain fans / bench aren't editable yet.
-5. Ask how round 20 feels: ball through the net + swish volume, held screens and knock-back length, how often isos
+5. Ask how the physical rim (round 21) looks and feels: long caroms on deep misses, rattles, swish rate (~30–45% of
+   makes), rebound distances. Dunks are still scripted; blocks/tips don't interact with the physical ball yet.
+6. Ask how round 20 feels: ball through the net + swish volume, held screens and knock-back length, how often isos
    get called, whether the AI now finds open men enough (and not too much), red unsafe-pass flash.
-6. Ask whether the new fan row behind the sideline reads right (size, dimness, how many wear home colors).
-7. Still unanswered from round 9: does the Step-Through feel right (pull-up and close finish), and do the
+7. Ask whether the new fan row behind the sideline reads right (size, dimness, how many wear home colors).
+8. Still unanswered from round 9: does the Step-Through feel right (pull-up and close finish), and do the
    stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)

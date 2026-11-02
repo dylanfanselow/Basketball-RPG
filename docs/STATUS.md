@@ -25,8 +25,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Shot types: dunk, layup, euro, step-through, floater, hook, push, mid, three, deep3 (`shotTypes.json`).
 - Equation: base(distance) × stat factor × (1 − contest) × contact × fatigue × perk/ult terms.
 - Contest cone per defender (distance, angle, height, hand up, perimeter/post D, stagger/screen state).
-- Slower flight (0.6 + 0.03·dist s), live rim sequences (`src/sim/rim.ts`), airballs on bad shots, shooting fouls,
-  and-ones, free throws, blocks (chase-down rules), assists.
+- Physical shots (`src/sim/ballPhysics.ts`): `planShot` searches up to 40 launches (arc by shot type, higher for close
+  shots; aim error growing with distance/contest; bank layups) for one whose `simulateShot` result matches the decided
+  make/miss/airball, then the sim plays the 60 Hz samples back and fires each rim/glass contact as a sound. Rim =
+  torus (restitution 0.58), glass plane (0.62), net drag; real 32 ft/s² gravity (24 ft three ≈ 1.3 s hang).
+  Misses leave as loose balls with the physics exit velocity; makes hand off at the ring to the dead-ball fall.
+  Scripted fallback exists but doesn't fire in simulated games. Dunks still use `rim.ts` (`buildPath`).
+  Airballs on bad shots, shooting fouls, and-ones, free throws, blocks (chase-down rules), assists.
 
 ## Dribbling
 - Moves (`moves.json`): hesi, retreat, jab, Side Drive, change of direction, crossover, double cross, in-and-out,
