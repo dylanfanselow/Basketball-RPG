@@ -26,6 +26,7 @@
 | 21 | `c4fd09e` | Rim bounces looked strange; deep misses rolled around the rim instead of clanking off the front long | Ball physics at the hoop (ring, glass, net) with outcome-steered launch planning; make/miss still from the equation; iso calls throttled by usage |
 | 22 | `8cc2226` | Every loose ball played the jump-and-reach rebound; coaches spazzed (side view flipping); wants an arm-up + speech bubble on play calls, a rebound ding + "REBOUND +1", and a top-left top-3 box score | Height-based grabs (scoop / chest / reach), front-facing coach sheet + bubbles, `sfx.ding` + popup, weighted `topStats` panel; owner: build after planning without waiting |
 | 23 | `e45453d` | FG text in the box score clipped; static hiss in the main menu | FG right-aligned on its own, panel widens, long names shortened; crowd murmur gated to games (`sfx.setArena`) |
+| 24 | `3d80546` | Asked how to reach the pixel editor; wants to edit players' faces as mix-and-match parts (hair 2 + beard 1 + eyes 3) | Face-part library (pictures per part/view, recolored per player, code fallback), 59 seeded pictures, editor Face-parts mode with live player preview, dev-panel variant pickers |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

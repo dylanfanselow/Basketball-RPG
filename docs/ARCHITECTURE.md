@@ -35,6 +35,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
+| `render/faceParts.ts` | Face-part library (pure, worker-safe): part types/views, `variantOf`, `drawPart` with per-player recolor (`recolorPixels`), `partsFor` (pictures a sheet job needs), `partsVersion` (sprite cache keys). |
+| `render/facePartsArt.ts` | Main-thread loader: `src/art/parts/*/*.png` (inline) + editor drafts → library (`loadFaceParts`, called from main.ts). |
 | `render/celebArt.ts` | Fixed celeb cast (`CELEB_CAST` = 16, `castLook(i)`), art source per member: local editor draft → `src/art/celebs/celeb_NN.png` (bundled inline) → generated. |
 | `render/pose3d.ts` | Multi-angle: `lift` (side pose → 3D, `lat` spread), `project`/`view` at a yaw (+ per-joint depth), `DIRS`. |
 | `render/frameCache.ts` | `FrameCache` (on-demand angled frames: request/drain/get, pages, LRU) and `yawFor` (angle → drawn yaw + mirror). |
@@ -50,7 +52,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `audio/sfx.ts` | Procedural Web Audio engine. |
 | `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `l2` (L2/Q, icon pass), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
 | `dev/devPanel.ts` | DOM dev tools overlay. |
-| `dev/pixelEditor.ts` | Celeb pixel editor overlay (dev panel button or `?editor`); "Save to repo" POSTs to the dev-only `/__dev/save-art` endpoint in `vite.config.ts`. |
+| `dev/pixelEditor.ts` | Pixel editor overlay (dev panel buttons or `?editor` / `?editor=parts`): one editor, two documents (`CelebDoc`, `PartsDoc`); "Save to repo" POSTs to the dev-only `/__dev/save-art` endpoint in `vite.config.ts`. |
+| `dev/partSeeds.ts` | Exports the code-drawn face parts as gray pictures (`renderSeedParts`, `seedLook`, `renderPartCanvas`); used once to seed `src/art/parts` and for the editor's head guide. |
 
 ## Data (`src/data`) — tune feel here
 `statInfluence.json`, `shotTypes.json`, `moves.json` (dist/plantAt/dur/ankle/chains), `trees/*.json`,

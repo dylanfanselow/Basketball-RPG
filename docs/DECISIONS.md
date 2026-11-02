@@ -108,6 +108,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
   reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
 - **Workflow:** after planning, build without waiting for a separate go-ahead.
+- **Round 24: faces are mix-and-match parts** the owner can hand-draw (hair front/back, beard, brows, eyes, nose,
+  mouth; side + front views), drawn in grays and recolored per player; players pick variants by name
+  (e.g. Tatum = hair_2 / beard_1 / eyes_3) saved in rosters.json. The owner sends edits by Save to repo + push.
 - **Sideline:** benches near the baselines; **courtside celebrities** (generic flamboyant looks, not real people)
   between each bench and the scorer's table; the crowd wave stays.
 - **Finer pixels** (PIXEL=2). Players slightly smaller than court scale; heads slightly bigger with real faces.

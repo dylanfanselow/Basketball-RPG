@@ -151,3 +151,9 @@ buttons, presets, big-game crowd toggle. When playing as a real NBA player, edit
 **Pixel editor** (button at the top of the dev panel, or `?editor`): the 16-celeb cast, 4 frames each; pencil, eraser,
 fill, picker, line, undo/redo, zoom, grid, copy frame to all, mirror, in-game preview; drafts in localStorage (used by
 the game, dropped when the art underneath changes); "Save to repo" (dev server) → `src/art/celebs/celeb_NN.png`.
+
+**Face parts** (round 24): heads in `drawHead` (side/back) and `frontHead` (front/¾) are layered parts — hairBack, base
+head, eyes, brows, nose, mouth, beard, hair — each drawn from a picture in `src/art/parts` when one exists (recolored
+per player by `faceParts.recolorPixels`), else by the original code. 59 built-in pictures were exported from the code
+(`partSeeds.ts`). Looks can use drawn variants (`hair: 'hair_1'`, optional `eyes` / `brows` fields); the dev panel's
+look editor lists them. Pictures reach the sheet workers with each job (`sheetPool` → `partsFor`).
