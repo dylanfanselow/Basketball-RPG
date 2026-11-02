@@ -16,6 +16,8 @@ export interface CelebLook {
   outfit: 'fur' | 'suit' | 'dress' | 'tracksuit' | 'leather' | 'tee' | 'hoodie' | 'gown';
   color: string; accent: string;
   hat: 'none' | 'brim' | 'beanie' | 'cap' | 'tophat';
+  /** head turned toward screen-right (0..1, three-quarter view): fans watching the game from the side */
+  turn?: number;
   /** the cane man: black suit, skull mask, top hat, both hands on a gold dragon-head cane he keeps tapping */
   cane?: boolean;
   hatColor: string;
@@ -282,7 +284,7 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   // long hair behind the head
   const hy = shY - L(12);
   line(ctx, [[cx, shY + L(1)], [cx, shY - L(5)]], L(6), shade(skin, 0.9)); // neck
-  frontHead(ctx, cx, hy, c.a, k, { open: frame === 1, shades: frame === 3 ? null : c.shades });
+  frontHead(ctx, cx, hy, c.a, k, { open: frame === 1, shades: frame === 3 ? null : c.shades, turn: c.turn ?? 0 });
   if (frame === 6) ell(ctx, cx, hy + L(4.9), L(1.1), L(1), '#b8304e'); // puckered lips
   if (frame === 7) { // a little heart floating off the hand
     const hx = cx + L(19), hyy = shY - L(15);

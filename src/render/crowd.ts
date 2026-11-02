@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CROWD_TOP, CROWD_ROWS, CROWD_ROW_H, WORLD_W, FLOOR_TOP, sx } from './view';
-import { SPRITE_SCALE } from './sprites';
+import { SPRITE_SCALE, shade } from './sprites';
 import { randomFan, buildCelebSheet, CelebLook, CELEB_W, CELEB_H, CELEB_FRAMES } from './celebs';
 
 interface Fan { x: number; row: number; shirt: number; shirtLit: number; skin: number; skinLit: number; hair: number; phase: number; away: boolean; standClutch: boolean; seat: boolean; size: number }
@@ -154,18 +154,31 @@ class FanRow {
       const sprite = scene.add.sprite(x, FAN_ROW_FEET, key, 0).setOrigin(0.5, 1).setScale(FAN_SCALE).setDepth(FAN_ROW_FEET).setTint(0xb4b0cc);
       this.fans.push({ sprite, x, away: look.side === 'away', phase: rng.frac() * 10, frame: 0 });
     }
-    // seats behind each basket, facing the camera: columns at the court ends, rows running from the far sideline toward
-    // us (kept clear of the hoop supports), sized like the people on the court
-    const STANCHIONS: [number, number][] = [[-7.8, -1.3], [95.3, 101.8]];
-    for (const xs of [[-5.4, -8.7], [99.4, 102.7]]) for (const xFt of xs) {
-      for (let yFt = 1.5; yFt <= 49; yFt += 3.4) {
-        if (STANCHIONS.some(([a, b]) => xFt > a && xFt < b) && yFt > 15 && yFt < 34) continue;
-        if (rng.frac() < 0.06) continue;
-        const { key } = rng.pick(looks);
-        const x = sx(xFt) + rng.between(-2, 2), y = FLOOR_TOP + yFt * 6.4;
-        const sprite = scene.add.sprite(x, y, key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.84).setDepth(y - 0.5).setTint(0xd2cee4);
-        this.fans.push({ sprite, x, away: false, phase: rng.frac() * 10, frame: 0, baseY: y });
+    // seats behind each basket: packed rows running from the far sideline toward us (kept clear of the hoop supports),
+    // everyone in the home team's primary color, heads turned toward the court (mirrored at the right end)
+    const primary = home[0];
+    const baseLooks: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const look = randomFan(() => rng.frac(), home, away, bigGame, true);
+      Object.assign(look, { color: shade(primary, 0.92), accent: shade(primary, 0.75), hatColor: primary, turn: 0.55 });
+      const key = `fanb_${seed}_${i}_${primary}`;
+      if (!scene.textures.exists(key)) {
+        const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
+        for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
       }
+      baseLooks.push(key);
+    }
+    const STANCHIONS: [number, number][] = [[-7.8, -1.3], [95.3, 101.8]];
+    for (const [xs, flip] of [[[-5.3, -7.5, -9.7], false], [[99.3, 101.5, 103.7], true]] as [number[], boolean][]) {
+      xs.forEach((xFt, col) => {
+        for (let yFt = 0.8 + (col % 2) * 1.1; yFt <= 49.5; yFt += 2.3) {
+          if (STANCHIONS.some(([a, b]) => xFt > a && xFt < b) && yFt > 15 && yFt < 34) continue;
+          if (rng.frac() < 0.03) continue;
+          const x = sx(xFt) + rng.between(-2, 2), y = FLOOR_TOP + yFt * 6.4;
+          const sprite = scene.add.sprite(x, y, rng.pick(baseLooks), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.84).setDepth(y - 0.5).setTint(0xd2cee4).setFlipX(flip);
+          this.fans.push({ sprite, x, away: false, phase: rng.frac() * 10, frame: 0, baseY: y });
+        }
+      });
     }
     // front wall of their riser: hides their feet and reads as a raised row behind the sideline
     const wall = scene.add.graphics().setDepth(FAN_ROW_FEET + 1);
@@ -184,7 +197,7 @@ class FanRow {
       let frame = 0;
       if (armsUp || crowd.hype > 0.7) frame = 1;
       else if (boo) frame = 3;
-      else if (Math.sin(t / 1.9 + f.phase * 3) > 0.96) frame = 2; // now and then someone films the action
+      else if (f.baseY === undefined && Math.sin(t / 1.9 + f.phase * 3) > 0.96) frame = 2; // now and then someone films the action (not the fans behind the hoop: they watch)
       f.frame = frame;
       const bob = frame === 1 ? -jump * 0.6 - 1 : Math.sin(t * (2 + crowd.hype * 6) + f.phase) * (0.3 + crowd.hype);
       f.sprite.setFrame(frame).setY((f.baseY ?? FAN_ROW_FEET) + bob);
