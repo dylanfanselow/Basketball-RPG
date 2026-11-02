@@ -8,7 +8,7 @@ import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
-import { CELEB_CAST, castSheet } from '../render/celebArt';
+import { CELEB_CAST, FEATURED_CELEBS, castSheet } from '../render/celebArt';
 
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
@@ -696,6 +696,8 @@ export class GameScene extends Phaser.Scene {
     const crng = new Rng(sim.teams[0].def.seed * 97 + 13);
     // a fixed cast (hand-editable in the pixel editor), seated in a different order each home arena
     const order = Array.from({ length: CELEB_CAST }, (_, i) => i).sort(() => crng.next() - 0.5);
+    // featured celebs always get a seat, a few seats in from the table
+    for (const f of FEATURED_CELEBS) { order.splice(order.indexOf(f), 1); order.splice(Math.min(order.length, 3 + (crng.next() * 6 | 0)), 0, f); }
     let seat = 0;
     for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
       const ci = order[seat++ % CELEB_CAST];

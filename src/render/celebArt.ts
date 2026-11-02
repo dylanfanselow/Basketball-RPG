@@ -7,7 +7,9 @@
 import { randomCeleb, buildCelebSheet, CelebLook, CELEB_W, CELEB_H, CELEB_FRAMES } from './celebs';
 import { Rng } from '../sim/math';
 
-export const CELEB_CAST = 16;
+export const CELEB_CAST = 17;
+/** Cast members with a hand-picked look (and a guaranteed courtside seat every game). */
+export const FEATURED_CELEBS = [16];
 export const SHEET_W = CELEB_W * CELEB_FRAMES, SHEET_H = CELEB_H;
 export const FRAME_NAMES = ['Seated', 'Cheering', 'Phone', 'Shock'];
 
@@ -17,7 +19,13 @@ export { castName };
 /** Cast member i always looks the same (seeded by index). */
 export function castLook(i: number): CelebLook {
   const r = new Rng(1000 + i * 7919);
-  return randomCeleb(() => r.next());
+  const look = randomCeleb(() => r.next());
+  if (i === 16) {
+    // #16: fair skin, long platinum-blonde hair, blue eyes; sapphire sequin dress, silver heels
+    Object.assign(look.a, { skin: 0, hair: 'fade', hairColor: '#ecd9a6', eyeColor: '#3f8fff', facial: 'none', mouth: 'smile', eyeY: 0, mouthY: 0 });
+    Object.assign(look, { outfit: 'dress', color: '#1f5fd8', accent: '#dfe3ea', hat: 'none', shades: null, chain: false, longHair: '#ecd9a6' });
+  }
+  return look;
 }
 
 /** Repo art: celeb_NN -> data URL. */

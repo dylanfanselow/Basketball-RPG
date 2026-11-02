@@ -37,7 +37,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
 | `render/faceParts.ts` | Face-part library (pure, worker-safe): part types/views, `variantOf`, `drawPart` with per-player recolor (`recolorPixels`), `partsFor` (pictures a sheet job needs), `partsVersion` (sprite cache keys). |
 | `render/facePartsArt.ts` | Main-thread loader: `src/art/parts/*/*.png` (inline) + editor drafts → library (`loadFaceParts`, called from main.ts). |
-| `render/celebArt.ts` | Fixed celeb cast (`CELEB_CAST` = 16, `castLook(i)`), art source per member: local editor draft → `src/art/celebs/celeb_NN.png` (bundled inline) → generated. |
+| `render/celebArt.ts` | Fixed celeb cast (`CELEB_CAST` = 17, `castLook(i)`; `FEATURED_CELEBS` always get a seat — #16 is hand-picked), art source per member: local editor draft → `src/art/celebs/celeb_NN.png` (bundled inline) → generated. |
 | `render/pose3d.ts` | Multi-angle: `lift` (side pose → 3D, `lat` spread), `project`/`view` at a yaw (+ per-joint depth), `DIRS`. |
 | `render/frameCache.ts` | `FrameCache` (on-demand angled frames: request/drain/get, pages, LRU) and `yawFor` (angle → drawn yaw + mirror). |
 | `render/anim.ts` | Keyframe clips, Catmull-Rom sampling, `SHOT_CLIP`, `shotU`, `frameAt`; fixed-length limb helpers `limb`/`arms`/`legs` (authoring time); arm rig `rigArms(pose, ballClip)` + `dropToward` (lower shoulders/jersey top, keyed arms in ball clips, full-length arms in free clips). |
