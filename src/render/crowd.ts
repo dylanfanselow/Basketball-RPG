@@ -133,13 +133,13 @@ const FAN_LOOKS = 18;
  * style) but smaller, dimmer and dressed down, bridging the detailed sideline people and the blob stands.
  */
 class FanRow {
-  fans: { sprite: Phaser.GameObjects.Sprite; x: number; away: boolean; phase: number; frame: number }[] = [];
+  fans: { sprite: Phaser.GameObjects.Sprite; x: number; away: boolean; phase: number; frame: number; baseY?: number }[] = [];
 
   constructor(private scene: Phaser.Scene, private crowd: Crowd, home: string[], away: string, bigGame: boolean, seed: number) {
     const rng = new Phaser.Math.RandomDataGenerator([`fanrow${seed}${bigGame ? 'big' : ''}`]);
     const looks: { key: string; look: CelebLook }[] = [];
     for (let i = 0; i < FAN_LOOKS; i++) {
-      const look = randomFan(() => rng.frac(), home, away, bigGame);
+      const look = randomFan(() => rng.frac(), home, away, bigGame, true); // the sprite fans all wear home colors
       const key = `fan_${seed}_${bigGame ? 1 : 0}_${i}`;
       if (!scene.textures.exists(key)) {
         const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
@@ -153,6 +153,19 @@ class FanRow {
       const x = sx(ft) + rng.between(-3, 3);
       const sprite = scene.add.sprite(x, FAN_ROW_FEET, key, 0).setOrigin(0.5, 1).setScale(FAN_SCALE).setDepth(FAN_ROW_FEET).setTint(0xb4b0cc);
       this.fans.push({ sprite, x, away: look.side === 'away', phase: rng.frac() * 10, frame: 0 });
+    }
+    // seats behind each basket, facing the camera: columns at the court ends, rows running from the far sideline toward
+    // us (kept clear of the hoop supports), sized like the people on the court
+    const STANCHIONS: [number, number][] = [[-7.8, -1.3], [95.3, 101.8]];
+    for (const xs of [[-5.4, -8.7], [99.4, 102.7]]) for (const xFt of xs) {
+      for (let yFt = 1.5; yFt <= 49; yFt += 3.4) {
+        if (STANCHIONS.some(([a, b]) => xFt > a && xFt < b) && yFt > 15 && yFt < 34) continue;
+        if (rng.frac() < 0.06) continue;
+        const { key } = rng.pick(looks);
+        const x = sx(xFt) + rng.between(-2, 2), y = FLOOR_TOP + yFt * 6.4;
+        const sprite = scene.add.sprite(x, y, key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.84).setDepth(y - 0.5).setTint(0xd2cee4);
+        this.fans.push({ sprite, x, away: false, phase: rng.frac() * 10, frame: 0, baseY: y });
+      }
     }
     // front wall of their riser: hides their feet and reads as a raised row behind the sideline
     const wall = scene.add.graphics().setDepth(FAN_ROW_FEET + 1);
@@ -174,7 +187,7 @@ class FanRow {
       else if (Math.sin(t / 1.9 + f.phase * 3) > 0.96) frame = 2; // now and then someone films the action
       f.frame = frame;
       const bob = frame === 1 ? -jump * 0.6 - 1 : Math.sin(t * (2 + crowd.hype * 6) + f.phase) * (0.3 + crowd.hype);
-      f.sprite.setFrame(frame).setY(FAN_ROW_FEET + bob);
+      f.sprite.setFrame(frame).setY((f.baseY ?? FAN_ROW_FEET) + bob);
     }
   }
 }

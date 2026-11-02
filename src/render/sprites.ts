@@ -619,6 +619,17 @@ export function buildFrontSheet(heightFt: number, a: Appearance, kit: Kit): HTML
   return c;
 }
 
+/** Courtside broadcaster behind the scorer's table: seated in a suit with a headset; 0 = listening, 1 = talking. */
+export function buildAnnouncerSheet(heightFt: number, a: Appearance, kit: Kit): HTMLCanvasElement {
+  const c = makeCanvas(FRONT_W * 2, FRONT_H);
+  const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+  const s = figureHeight(heightFt) / 99;
+  drawFront(ctx, 0, a, kit, 'seated', s, true);
+  drawFront(ctx, FRONT_W, a, kit, 'talk', s, true);
+  crispen(c);
+  return c;
+}
+
 /** Coach, facing the camera in a suit: 0 = standing, 1 = calling a play (right arm up), 2 = celebrating (both up). */
 export const COACH_FRAMES = 3;
 export function buildCoachSheet(heightFt: number, a: Appearance, kit: Kit): HTMLCanvasElement {
@@ -712,9 +723,9 @@ export function frontChair(ctx: Ctx, cx: number, floor: number, seatY: number, b
   for (const sx of [-1, 1]) stroke(ctx, [[cx + sx * 15 * k, seatY + 4 * k], [cx + sx * 16 * k, floor]], 1.8 * k, C.deep);
 }
 
-type FrontPose = 'seated' | 'cheer' | 'idle' | 'call';
-function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, pose: FrontPose, s: number) {
-  const standing = pose !== 'seated';
+type FrontPose = 'seated' | 'talk' | 'cheer' | 'idle' | 'call';
+function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, pose: FrontPose, s: number, headset = false) {
+  const standing = pose !== 'seated' && pose !== 'talk';
   const S = skinRamp(a), J0 = ramp(kit.jersey), P = ramp(kit.shorts), T = ramp(kit.trim);
   const cx = ox + FRONT_W / 2, floor = FRONT_H - 3;
   const L = (n: number) => n * s;
@@ -733,6 +744,11 @@ function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, pose: FrontPos
   }
   for (const side of suit ? [] : [-1, 1]) {
     const lx = cx + side * L(standing ? 4.2 : 5.4); // seated: knees apart
+    if (kit.pants) { // seated in a suit: trouser legs down to dress shoes
+      tube(ctx, [lx, shinTop], [lx, floor - L(3.5)], (t) => L(3.2 - 0.5 * t), P);
+      poly(ctx, [[lx - L(3.2), floor - L(4)], [lx + L(3.2), floor - L(4)], [lx + L(3.9), floor], [lx - L(3.4), floor]], '#0d0d10');
+      continue;
+    }
     tube(ctx, [lx, shinTop], [lx, floor - L(3)], (t) => L(2.6 - 0.9 * t + 0.6 * bump(t, 0.3, 0.35)), S);
     const sockH = a.socks === 'high' ? 0.55 : a.socks === 'crew' ? 0.28 : 0.08;
     tube(ctx, [lx, shinTop], [lx, floor - L(3)], (t) => L(2.7 - 0.9 * t + 0.6 * bump(t, 0.3, 0.35)), ramp(a.sockColor), 1 - sockH, 1);
@@ -786,5 +802,13 @@ function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, pose: FrontPos
   }
   // neck + head
   tube(ctx, [cx, shY + L(1)], [cx, shY - L(5)], () => L(3.2), S);
-  frontHead(ctx, cx, shY - L(12), a, s, { open: pose === 'cheer' || pose === 'call' });
+  frontHead(ctx, cx, shY - L(12), a, s, { open: pose === 'cheer' || pose === 'call' || pose === 'talk' });
+  if (headset) {
+    // broadcast headset: band over the top, ear cups, mic boom to the mouth
+    const hy = shY - L(12), rx = 7.2 * s, ry = 8.6 * s;
+    ctx.save(); ctx.strokeStyle = '#1b1b22'; ctx.lineWidth = L(1.3); ctx.beginPath(); ctx.ellipse(cx, hy - ry * 0.05, rx * 1.08, ry * 1.12, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); ctx.restore();
+    for (const sx of [-1, 1]) ellipse(ctx, cx + sx * rx * 1.02, hy + ry * 0.05, 1.7 * s, 2.4 * s, '#202028');
+    stroke(ctx, [[cx + rx * 1.02, hy + ry * 0.25], [cx + rx * 0.35, hy + ry * 0.62]], L(0.9), '#2a2a32');
+    ellipse(ctx, cx + rx * 0.32, hy + ry * 0.62, 1.1 * s, 0.9 * s, '#3a3a44');
+  }
 }

@@ -13,7 +13,7 @@ import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, 
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
 import type { Appearance } from '../render/appearance';
-import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildCoachSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
+import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildCoachSheet, buildAnnouncerSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
 import { FrameCache, yawFor } from '../render/frameCache';
 import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState } from '../render/anim';
 import { sfx } from '../audio/sfx';
@@ -103,6 +103,8 @@ export class GameScene extends Phaser.Scene {
   crowd!: Crowd;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
+  announcers: { sprite: Phaser.GameObjects.Sprite; phase: number }[] = [];
+  assistants: { sprite: Phaser.GameObjects.Sprite; team: 0 | 1; x: number; phase: number }[] = [];
   coaches: { team: 0 | 1; sprite: Phaser.GameObjects.Sprite; bubble: Phaser.GameObjects.Graphics; bubbleText: Phaser.GameObjects.Text; home: number; x: number; callUntil: number; cheerUntil: number; phase: number }[] = [];
   benchCheerUntil: [number, number] = [0, 0];
   paused = false;
@@ -683,12 +685,19 @@ export class GameScene extends Phaser.Scene {
     const [t0, t1] = sim.teams;
     const g = this.add.graphics().setDepth(sy(-4.6));
     const x0 = sx(41), x1 = sx(53), yF = sy(-3.4), h = 2.6 * S;
-    // officials behind the table
-    for (const ox of [44.5, 49.5]) {
-      g.fillStyle(0x111111, 1); g.fillRect(sx(ox) - 7, yF - h - 22, 14, 24);
-      g.fillStyle(0xd9a066, 1); g.fillRect(sx(ox) - 4, yF - h - 32, 8, 9);
-      g.fillStyle(0xffffff, 1); for (let i = 0; i < 4; i++) g.fillRect(sx(ox) - 7 + i * 4, yF - h - 20, 2, 18);
-    }
+    // broadcasters behind the table: suits and headsets, talking among themselves, not reacting to the game
+    this.announcers = [];
+    const arng = new Rng(sim.teams[0].def.seed * 53 + 11);
+    [42.9, 47, 51.1].forEach((ax, i) => {
+      const look = randomAppearance(() => arng.next());
+      Object.assign(look, { headband: null, goggles: false, mask: false, armSleeve: 'both', sleeveColor: '#22242e', wristband: null, hair: arng.pick(['buzz', 'fade', 'waves', 'bald', 'curly']) });
+      const suitCol = ['#22242e', '#2d3140', '#3a2f2a'][i];
+      const kit: Kit = { jersey: suitCol, jerseyShade: suitCol, trim: ['#8a1c2a', '#1d428a', '#2a5a3a'][i], shorts: suitCol, number: -1, pants: true };
+      const key = `announcer_${hashStr(JSON.stringify([look, kit]))}_v${partsVersion()}`;
+      if (!this.textures.exists(key)) { const tex = this.textures.addCanvas(key, buildAnnouncerSheet(6.3, look, kit))!; tex.add(0, 0, 0, 0, FRONT_W, FRONT_H); tex.add(1, 0, FRONT_W, 0, FRONT_W, FRONT_H); }
+      const sprite = this.add.sprite(sx(ax), yF - 4, key, 0).setOrigin(0.5, 1).setScale(BENCH_SCALE * 0.98).setDepth(sy(-4.6) - 0.5);
+      this.announcers.push({ sprite, phase: arng.next() * 10 });
+    });
     // table: top, draped front in both teams' colors, LED ribbon
     g.fillStyle(0x2a2f3c, 1); g.fillRect(x0 - 6, yF - h - 6, x1 - x0 + 12, 8);
     g.fillStyle(0x10131c, 1); g.fillRect(x0, yF - h, x1 - x0, h);
@@ -717,6 +726,20 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
       this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), cane: CANE_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
+    // assistant coaches: two in suits at the end of each bench (toward midcourt)
+    this.assistants = [];
+    ([0, 1] as const).forEach((team) => {
+      const def = sim.teams[team].def, rng = new Rng(def.seed * 17 + 3);
+      (team === 0 ? [25.4, 27.6] : [67.4, 69.6]).forEach((ax) => {
+        const look = randomAppearance(() => rng.next());
+        Object.assign(look, { headband: null, goggles: false, mask: false, armSleeve: 'both', sleeveColor: '#1d1f2a', wristband: null, legSleeve: 'none', kneePad: false, hair: rng.pick(['bald', 'buzz', 'fade', 'waves', 'curly']) });
+        const kit: Kit = { jersey: '#1d1f2a', jerseyShade: '#14161e', trim: def.colors[0], shorts: '#22242e', number: -1, pants: true };
+        const key = `asst_${def.id}_${hashStr(JSON.stringify(look))}_v${partsVersion()}`;
+        if (!this.textures.exists(key)) { const tex = this.textures.addCanvas(key, buildFrontSheet(6.25, look, kit))!; tex.add(0, 0, 0, 0, FRONT_W, FRONT_H); tex.add(1, 0, FRONT_W, 0, FRONT_W, FRONT_H); }
+        const sprite = this.add.sprite(sx(ax), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(BENCH_SCALE).setDepth(sy(-3.9));
+        this.assistants.push({ sprite, team, x: ax, phase: rng.next() * 10 });
+      });
+    });
     // coaches in suits
     this.coaches = [];
     ([0, 1] as const).forEach((team) => {
@@ -775,8 +798,8 @@ export class GameScene extends Phaser.Scene {
     });
     for (const [id, fs] of this.frontSprites) fs.setVisible(fs.visible && !onCourt.has(id));
     for (const c of this.celebs) {
-      // the cane man: one steady tap cycle, whatever happens on the court
-      if (c.cane) { const f = [0, 1, 2, 1][Math.floor((now + c.phase * 300) / 140) % 4]; c.frame = f; c.sprite.setFrame(f).setPosition(sx(c.x), sy(-3.9)); continue; }
+      // the cane man: one steady tap cycle (about one tap a second), whatever happens on the court
+      if (c.cane) { const f = [0, 1, 2, 1][Math.floor((now + c.phase * 300) / 260) % 4]; c.frame = f; c.sprite.setFrame(f).setPosition(sx(c.x), sy(-3.9)); continue; }
       // wave / kiss sequences (glam celebs): play them out, then back to the usual idle
       if (c.glam && !c.seq && now > c.nextSeqAt && now > c.until) { c.seq = { ...(Math.sin(c.phase * 5 + now / 7000) > 0 ? WAVE : KISS), start: now }; c.nextSeqAt = now + 7000 + ((c.phase * 997 + now) % 8000); }
       if (c.seq) {
@@ -792,6 +815,13 @@ export class GameScene extends Phaser.Scene {
       }
       const bob = c.frame === 1 ? -Math.abs(Math.sin(now / 150 + c.phase)) * 3 : 0;
       c.sprite.setFrame(c.frame).setPosition(sx(c.x), sy(-3.9) + bob);
+    }
+    // broadcasters chat in turns (never about the game: no reactions)
+    for (const a of this.announcers) a.sprite.setFrame(Math.sin(now / 900 + a.phase * 2.3) > 0.35 && Math.sin(now / 130 + a.phase) > 0 ? 1 : 0);
+    // assistant coaches sit with the bench and get up with it on big plays
+    for (const a of this.assistants) {
+      const cheering = now < this.benchCheerUntil[a.team];
+      a.sprite.setFrame(cheering ? 1 : 0).setY(sy(-3.9) + (cheering ? -Math.abs(Math.sin(now / 150 + a.phase)) * 4 : Math.sin(now / 1100 + a.phase) * 0.5));
     }
     // coaches face the court: drift along their box, raise an arm and shout the play, celebrate big plays
     for (const c of this.coaches) {

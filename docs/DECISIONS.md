@@ -108,6 +108,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
   reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
 - **Workflow:** after planning, build without waiting for a separate go-ahead.
+- **Sideline people (round 25):** three generic broadcasters (suits, headsets) behind the scorer's table, chatting,
+  no reactions; two assistant coaches in suits at the midcourt end of each bench; the sprite fan row is all home colors
+  and wraps behind both baskets (front-facing seats running toward the camera). The cane man taps ~1×/s.
 - **Courtside cast:** 02 and 04 retired (`RETIRED_CELEBS`); #16 (blonde) and #17 (the cane man: all-black suit, top
   hat, original silver skull mask, gold dragon-head cane he keeps tapping, ignores reactions) always get a seat.
 - **Glam celebs (01, 09, 12, 16)** wave and blow kisses courtside (celeb sheets have 8 frames: + wave ×2, kiss,

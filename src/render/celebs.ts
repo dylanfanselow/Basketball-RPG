@@ -57,7 +57,7 @@ const NATURAL_HAIR = ['#141010', '#141010', '#2b1d14', '#4a3020', '#7a5230', '#b
  * A plain fan for the row behind the sideline: tees, hoodies and team jackets, nothing flashy. Shirts follow the
  * home team: some fans wear its colors in a regular game, nearly everyone does in a big game (playoffs).
  */
-export function randomFan(rnd: () => number, home: string[], away: string, bigGame: boolean): CelebLook {
+export function randomFan(rnd: () => number, home: string[], away: string, bigGame: boolean, allHome = false): CelebLook {
   const pick = <T>(a: readonly T[]) => a[Math.floor(rnd() * a.length)];
   const a = randomAppearance(rnd);
   Object.assign(a, { headband: null, goggles: false, mask: false, armSleeve: 'none', wristband: null, legSleeve: 'none', kneePad: false });
@@ -67,7 +67,7 @@ export function randomFan(rnd: () => number, home: string[], away: string, bigGa
   if (long) a.facial = 'none';
   const r = rnd();
   const homeShare = bigGame ? 0.85 : 0.35, awayShare = bigGame ? 0.04 : 0.08;
-  const side = r < homeShare ? 'home' : r < homeShare + awayShare ? 'away' : 'neutral';
+  const side = allHome || r < homeShare ? 'home' : r < homeShare + awayShare ? 'away' : 'neutral';
   const h1 = home[1] ?? home[0];
   const color = side === 'home' ? (rnd() < (bigGame ? 0.85 : 0.6) ? home[0] : h1) : side === 'away' ? away : pick(NEUTRAL);
   const accent = side === 'home' ? (color === home[0] ? h1 : home[0]) : pick(NEUTRAL);
