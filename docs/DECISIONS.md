@@ -108,6 +108,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
   reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
 - **Workflow:** after planning, build without waiting for a separate go-ahead.
+- **Glam celebs (01, 09, 12, 16)** wave and blow kisses courtside (celeb sheets have 8 frames: + wave ×2, kiss,
+  kiss blown); they do it now and then, and blow your team a kiss after its big plays.
 - **Hold ○ on defense = stay set for the charge** until released (mirrors held screens). Screen / charge / box-out arms
   use the defense's elbows-down, fixed-length arms (no backwards-bending forearms).
 - **Round 24: faces are mix-and-match parts** the owner can hand-draw (hair front/back, beard, brows, eyes, nose,

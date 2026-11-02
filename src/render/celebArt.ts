@@ -11,7 +11,9 @@ export const CELEB_CAST = 17;
 /** Cast members with a hand-picked look (and a guaranteed courtside seat every game). */
 export const FEATURED_CELEBS = [16];
 export const SHEET_W = CELEB_W * CELEB_FRAMES, SHEET_H = CELEB_H;
-export const FRAME_NAMES = ['Seated', 'Cheering', 'Phone', 'Shock'];
+export const FRAME_NAMES = ['Seated', 'Cheering', 'Phone', 'Shock', 'Wave 1', 'Wave 2', 'Kiss', 'Kiss blown'];
+/** Celebs who wave and blow kisses courtside (frames 4-7). */
+export const GLAM_CELEBS = [1, 9, 12, 16];
 
 const castName = (i: number) => `celeb_${String(i).padStart(2, '0')}`;
 export { castName };
@@ -54,7 +56,8 @@ export const activeDraft = (i: number): Draft | null => { const d = loadDraft(i)
 
 function drawUrl(cv: HTMLCanvasElement, url: string, done: () => void) {
   const img = new Image();
-  img.onload = () => { const c = cv.getContext('2d')!; c.clearRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0); done(); };
+  // older art may hold fewer frames than the sheet: only replace what the picture covers (the rest stays code-drawn)
+  img.onload = () => { const c = cv.getContext('2d')!; c.clearRect(0, 0, img.width, img.height); c.drawImage(img, 0, 0); done(); };
   img.src = url;
 }
 

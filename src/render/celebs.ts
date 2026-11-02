@@ -7,8 +7,9 @@ import { crispen, frontHead, frontChair, shade, tint, ART } from './sprites';
 import { Appearance, randomAppearance, SKIN_TONES } from './appearance';
 
 export const CELEB_W = 48, CELEB_H = 120;
-/** 0 seated, 1 standing + arms up, 2 seated filming with a phone, 3 seated hands to face (shock) */
-export const CELEB_FRAMES = 4;
+/** 0 seated, 1 standing + arms up, 2 seated filming with a phone, 3 seated hands to face (shock),
+ * 4/5 waving (hand left / right), 6 blowing a kiss (fingers to the lips), 7 the kiss blown (arm out, a little heart) */
+export const CELEB_FRAMES = 8;
 
 export interface CelebLook {
   a: Appearance;
@@ -189,6 +190,9 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
     if (frame === 1) { el = [sh0[0] + s * L(5), shY - L(6)]; hand = [sh0[0] + s * L(4), shY - L(18)]; }
     else if (frame === 2 && s === 1) { el = [sh0[0] + L(3), shY + L(10)]; hand = [cx + L(4), shY - L(2)]; }
     else if (frame === 3) { el = [sh0[0] + s * L(2), shY + L(12)]; hand = [cx + s * L(2.5), shY - L(9)]; }
+    else if ((frame === 4 || frame === 5) && s === 1) { el = [sh0[0] + L(4), shY - L(3)]; hand = [sh0[0] + L(frame === 4 ? 1 : 6), shY - L(14)]; } // waving
+    else if (frame === 6 && s === 1) { el = [sh0[0] + L(1), shY + L(9)]; hand = [cx + L(1.5), shY - L(6.5)]; } // fingers to the lips
+    else if (frame === 7 && s === 1) { el = [sh0[0] + L(5), shY - L(1)]; hand = [sh0[0] + L(10), shY - L(8)]; } // the kiss blown out
     else { el = [sh0[0] + s * L(2), shY + L(15)]; hand = [sh0[0] - s * L(1), hipY + L(3)]; }
     // a tee leaves the forearm and most of the upper arm bare under a short sleeve
     line(ctx, [sh0, el], L(c.outfit === 'fur' ? 7 : 5), c.outfit === 'tee' ? skin : sleeve);
@@ -196,12 +200,20 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
     line(ctx, [el, hand], L(c.outfit === 'fur' ? 6 : 4.4), c.outfit === 'tee' ? skin : sleeve);
     if (gown) { const cuff: [number, number] = [el[0] + (hand[0] - el[0]) * 0.72, el[1] + (hand[1] - el[1]) * 0.72]; feathers(cuff[0] - L(2.5), cuff[0] + L(2.5), cuff[1], 4, 2.5); }
     ell(ctx, hand[0], hand[1], L(2.2), L(2.2), skin);
+    // an open hand when waving / blowing the kiss: a few fingers
+    if (s === 1 && (frame === 4 || frame === 5 || frame === 7)) for (let f = -1; f <= 1; f++) line(ctx, [[hand[0] + L(f * 1.1), hand[1] - L(1)], [hand[0] + L(f * 1.4), hand[1] - L(3.2)]], L(0.9), skin);
     if (frame === 2 && s === 1) { poly(ctx, [[hand[0] - L(2.5), hand[1] - L(5)], [hand[0] + L(2.5), hand[1] - L(5)], [hand[0] + L(2.5), hand[1] + L(1)], [hand[0] - L(2.5), hand[1] + L(1)]], '#151515'); ell(ctx, hand[0] - L(1), hand[1] - L(4), L(0.7), L(0.7), '#9fe6ff'); }
   }
   // long hair behind the head
   const hy = shY - L(12);
   line(ctx, [[cx, shY + L(1)], [cx, shY - L(5)]], L(6), shade(skin, 0.9)); // neck
   frontHead(ctx, cx, hy, c.a, k, { open: frame === 1, shades: frame === 3 ? null : c.shades });
+  if (frame === 6) ell(ctx, cx, hy + L(4.9), L(1.1), L(1), '#b8304e'); // puckered lips
+  if (frame === 7) { // a little heart floating off the hand
+    const hx = cx + L(19), hyy = shY - L(15);
+    ell(ctx, hx - L(1), hyy, L(1.2), L(1.1), '#ff4f7a'); ell(ctx, hx + L(1), hyy, L(1.2), L(1.1), '#ff4f7a');
+    poly(ctx, [[hx - L(2.2), hyy + L(0.3)], [hx + L(2.2), hyy + L(0.3)], [hx, hyy + L(2.6)]], '#ff4f7a');
+  }
   if (c.longHair) { poly(ctx, [[cx - L(8), hy - L(4)], [cx + L(8), hy - L(4)], [cx + L(7.5), hy - L(8)], [cx, hy - L(10.5)], [cx - L(7.5), hy - L(8)]], c.longHair); line(ctx, [[cx - L(8), hy - L(3)], [cx - L(9), hy + L(10)]], L(2.4), c.longHair); line(ctx, [[cx + L(8), hy - L(3)], [cx + L(9), hy + L(10)]], L(2.4), c.longHair); }
   // hats
   if (c.hat === 'brim') { ell(ctx, cx, hy - L(7), L(14), L(2.6), shade(c.hatColor, 0.8)); poly(ctx, [[cx - L(7), hy - L(7)], [cx + L(7), hy - L(7)], [cx + L(6), hy - L(15)], [cx - L(6), hy - L(15)]], c.hatColor); line(ctx, [[cx - L(7), hy - L(8.5)], [cx + L(7), hy - L(8.5)]], L(1.4), c.accent); }

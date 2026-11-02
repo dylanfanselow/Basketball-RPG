@@ -8,7 +8,7 @@ import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
-import { CELEB_CAST, FEATURED_CELEBS, castSheet } from '../render/celebArt';
+import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, castSheet } from '../render/celebArt';
 
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
@@ -53,6 +53,10 @@ const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
 const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
 
 const BOX_X = 4, BOX_TILE = 66;
+/** Courtside glam-celeb sequences (celeb sheet frames 4-7). */
+const WAVE = { frames: [4, 5, 4, 5, 4, 5], ms: [190, 190, 190, 190, 190, 260], start: 0 };
+const KISS = { frames: [6, 7], ms: [450, 800], start: 0 };
+
 /** Knock-back clip progress: short hits play straight through; long ones stumble, stay off balance, then recover. */
 function bumpedU(e: number, dur: number): number {
   if (dur <= 0.6) return e / Math.max(0.2, dur);
@@ -443,6 +447,8 @@ export class GameScene extends Phaser.Scene {
     // the famous front row reacts too: big plays bring them out of their seats, the rest film or gasp
     if (power >= 0.5) for (const c of this.celebs) {
       const r = (c.phase * 7.3 + this.time.now / 997) % 1;
+      // the glam celebs blow your team a kiss (or wave) after its big plays
+      if (c.glam && team === 0 && r < 0.6) { c.seq = r < 0.35 ? KISS : WAVE; c.seq = { ...c.seq, start: this.time.now + r * 500 }; continue; }
       c.frame = team === 0 ? (r < 0.6 ? 1 : r < 0.85 ? 2 : 3) : r < 0.5 ? 3 : 2;
       c.until = this.time.now + 1400 + r * 900;
     }
@@ -708,7 +714,7 @@ export class GameScene extends Phaser.Scene {
         for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
       }
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
-      this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0 });
+      this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
     // coaches in suits
     this.coaches = [];
@@ -733,7 +739,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   frontSprites = new Map<string, Phaser.GameObjects.Sprite>();
-  celebs: { sprite: Phaser.GameObjects.Sprite; phase: number; x: number; frame: number; until: number }[] = [];
+  celebs: { sprite: Phaser.GameObjects.Sprite; phase: number; x: number; frame: number; until: number; glam: boolean; seq: { frames: number[]; ms: number[]; start: number } | null; nextSeqAt: number }[] = [];
   /** Front-facing sprite for a bench player (looks at the court). */
   frontSprite(p: Player): Phaser.GameObjects.Sprite {
     const kit = this.kitFor(p);
@@ -768,6 +774,14 @@ export class GameScene extends Phaser.Scene {
     });
     for (const [id, fs] of this.frontSprites) fs.setVisible(fs.visible && !onCourt.has(id));
     for (const c of this.celebs) {
+      // wave / kiss sequences (glam celebs): play them out, then back to the usual idle
+      if (c.glam && !c.seq && now > c.nextSeqAt && now > c.until) { c.seq = { ...(Math.sin(c.phase * 5 + now / 7000) > 0 ? WAVE : KISS), start: now }; c.nextSeqAt = now + 7000 + ((c.phase * 997 + now) % 8000); }
+      if (c.seq) {
+        let t = now - c.seq.start, f = -1;
+        if (t >= 0) for (let i = 0; i < c.seq.frames.length; i++) { if (t < c.seq.ms[i]) { f = c.seq.frames[i]; break; } t -= c.seq.ms[i]; }
+        if (f >= 0) { c.frame = f; c.sprite.setFrame(f).setPosition(sx(c.x), sy(-3.9)); continue; }
+        if (now - c.seq.start > 0) c.seq = null;
+      }
       if (now > c.until) {
         // idle: mostly seated, now and then someone films the action or checks the jumbotron
         const t = Math.sin(now / 1700 + c.phase * 3);

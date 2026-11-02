@@ -260,7 +260,7 @@ class Editor {
       h('div', {}, h('button', { textContent: '↺ Revert to saved', title: 'Drop your local draft', onclick: () => this.revert(false) }), ' ',
         h('button', { textContent: '⟲ Reset to code-drawn', onclick: () => this.revert(true) })),
       this.statusEl, this.noteEl,
-      h('div', { className: 'note' }, 'Keys: B pencil · E eraser · G fill · I picker · L line · 1–4 frame · Z/Ctrl+Z undo · +/− zoom · Alt+click = pick color · right-click = erase'));
+      h('div', { className: 'note' }, 'Keys: B pencil · E eraser · G fill · I picker · L line · 1–8 frame · Z/Ctrl+Z undo · +/− zoom · Alt+click = pick color · right-click = erase'));
     const stage = h('div', { className: 'stage' }, this.view);
     el.append(header, this.barEl, this.listEl, stage, aside);
     this.bindCanvas(); this.bindKeys();
@@ -401,7 +401,7 @@ class Editor {
     else if (k === 'b') this.setTool('pencil'); else if (k === 'e') this.setTool('eraser'); else if (k === 'g') this.setTool('fill');
     else if (k === 'i') this.setTool('picker'); else if (k === 'l') this.setTool('line'); else if (k === 'z') this.doUndo();
     else if (k === '+' || k === '=') this.setZoom(this.zoom + 1); else if (k === '-') this.setZoom(this.zoom - 1);
-    else if (/^[1-4]$/.test(k) && +k <= this.doc.frames.length) this.setFrame(+k - 1);
+    else if (/^[1-8]$/.test(k) && +k <= this.doc.frames.length) this.setFrame(+k - 1);
   };
   bindKeys() { window.addEventListener('keydown', this.keyHandler, true); }
   exit() { window.removeEventListener('keydown', this.keyHandler, true); this.close(); }
