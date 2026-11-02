@@ -7,7 +7,7 @@
  * Edits autosave as local drafts the game uses right away (this browser only). Under `npm run dev`,
  * "Save to repo" writes the PNGs so they can be committed and pushed.
  */
-import { CELEB_CAST, FRAME_NAMES, castSheet, generatedSheet, repoArt, activeDraft, saveDraft, clearDraft, castName, loadDraft, baseId } from '../render/celebArt';
+import { CELEB_CAST, RETIRED_CELEBS, FRAME_NAMES, castSheet, generatedSheet, repoArt, activeDraft, saveDraft, clearDraft, castName, loadDraft, baseId } from '../render/celebArt';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
 import { PART_SIZE, PART_C, PartType, PartView, partKey, getPart, setPart, partVariants } from '../render/faceParts';
 import { PART_REPO, activePartDraft, savePartDraft, clearPartDraft, loadPartDraft, partBase, draftKeys, decodePng } from '../render/facePartsArt';
@@ -85,7 +85,7 @@ interface Doc {
 /** Courtside celebs: 16 sheets of 4 frames. */
 class CelebDoc implements Doc {
   title = 'courtside celebs'; FW = CELEB_W; FH = CELEB_H; frames = FRAME_NAMES; thumbScale = 1;
-  items() { return Array.from({ length: CELEB_CAST }, (_, i) => ({ id: String(i), label: `#${String(i).padStart(2, '0')}`, badge: activeDraft(i) ? 'draft' : repoArt(i) ? 'saved' : '' })); }
+  items() { return Array.from({ length: CELEB_CAST }, (_, i) => i).filter((i) => !RETIRED_CELEBS.includes(i)).map((i) => ({ id: String(i), label: `#${String(i).padStart(2, '0')}`, badge: activeDraft(i) ? 'draft' : repoArt(i) ? 'saved' : '' })); }
   load(id: string, onChange: () => void) { return castSheet(+id, onChange); }
   statusFor(id: string) { const i = +id, d = loadDraft(i); return d && d.base !== baseId(i) ? 'Your old draft was drawn on an older version of this celeb (the saved art changed), so it is not used.' : activeDraft(i) ? 'Showing your local draft.' : repoArt(i) ? 'Showing the saved art from the repo.' : 'Showing the generated sprite.'; }
   commit(id: string, sheet: HTMLCanvasElement) {

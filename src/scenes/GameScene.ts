@@ -8,7 +8,7 @@ import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
 import { requestSheet } from '../render/sheetPool';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
-import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, castSheet } from '../render/celebArt';
+import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, castSheet } from '../render/celebArt';
 
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
@@ -446,6 +446,7 @@ export class GameScene extends Phaser.Scene {
     for (const c of this.coaches) if (c.team === team && power > 0.5) c.cheerUntil = this.time.now + 1300;
     // the famous front row reacts too: big plays bring them out of their seats, the rest film or gasp
     if (power >= 0.5) for (const c of this.celebs) {
+      if (c.cane) continue; // he doesn't react, he just keeps tapping
       const r = (c.phase * 7.3 + this.time.now / 997) % 1;
       // the glam celebs blow your team a kiss (or wave) after its big plays
       if (c.glam && team === 0 && r < 0.6) { c.seq = r < 0.35 ? KISS : WAVE; c.seq = { ...c.seq, start: this.time.now + r * 500 }; continue; }
@@ -701,12 +702,12 @@ export class GameScene extends Phaser.Scene {
     this.celebs = [];
     const crng = new Rng(sim.teams[0].def.seed * 97 + 13);
     // a fixed cast (hand-editable in the pixel editor), seated in a different order each home arena
-    const order = Array.from({ length: CELEB_CAST }, (_, i) => i).sort(() => crng.next() - 0.5);
+    const order = Array.from({ length: CELEB_CAST }, (_, i) => i).filter((i) => !RETIRED_CELEBS.includes(i)).sort(() => crng.next() - 0.5);
     // featured celebs always get a seat, a few seats in from the table
     for (const f of FEATURED_CELEBS) { order.splice(order.indexOf(f), 1); order.splice(Math.min(order.length, 3 + (crng.next() * 6 | 0)), 0, f); }
     let seat = 0;
     for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
-      const ci = order[seat++ % CELEB_CAST];
+      const ci = order[seat++ % order.length];
       const key = celebTexKey(ci);
       if (!this.textures.exists(key)) {
         let tex: Phaser.Textures.CanvasTexture | null = null;
@@ -714,7 +715,7 @@ export class GameScene extends Phaser.Scene {
         for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
       }
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
-      this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
+      this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), cane: CANE_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
     // coaches in suits
     this.coaches = [];
@@ -739,7 +740,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   frontSprites = new Map<string, Phaser.GameObjects.Sprite>();
-  celebs: { sprite: Phaser.GameObjects.Sprite; phase: number; x: number; frame: number; until: number; glam: boolean; seq: { frames: number[]; ms: number[]; start: number } | null; nextSeqAt: number }[] = [];
+  celebs: { sprite: Phaser.GameObjects.Sprite; phase: number; x: number; frame: number; until: number; glam: boolean; cane: boolean; seq: { frames: number[]; ms: number[]; start: number } | null; nextSeqAt: number }[] = [];
   /** Front-facing sprite for a bench player (looks at the court). */
   frontSprite(p: Player): Phaser.GameObjects.Sprite {
     const kit = this.kitFor(p);
@@ -774,6 +775,8 @@ export class GameScene extends Phaser.Scene {
     });
     for (const [id, fs] of this.frontSprites) fs.setVisible(fs.visible && !onCourt.has(id));
     for (const c of this.celebs) {
+      // the cane man: one steady tap cycle, whatever happens on the court
+      if (c.cane) { const f = [0, 1, 2, 1][Math.floor((now + c.phase * 300) / 140) % 4]; c.frame = f; c.sprite.setFrame(f).setPosition(sx(c.x), sy(-3.9)); continue; }
       // wave / kiss sequences (glam celebs): play them out, then back to the usual idle
       if (c.glam && !c.seq && now > c.nextSeqAt && now > c.until) { c.seq = { ...(Math.sin(c.phase * 5 + now / 7000) > 0 ? WAVE : KISS), start: now }; c.nextSeqAt = now + 7000 + ((c.phase * 997 + now) % 8000); }
       if (c.seq) {

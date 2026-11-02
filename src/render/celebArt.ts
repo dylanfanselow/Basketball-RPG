@@ -7,9 +7,13 @@
 import { randomCeleb, buildCelebSheet, CelebLook, CELEB_W, CELEB_H, CELEB_FRAMES } from './celebs';
 import { Rng } from '../sim/math';
 
-export const CELEB_CAST = 17;
+export const CELEB_CAST = 18;
 /** Cast members with a hand-picked look (and a guaranteed courtside seat every game). */
-export const FEATURED_CELEBS = [16];
+export const FEATURED_CELEBS = [16, 17];
+/** Cast members taken out of the courtside rotation. */
+export const RETIRED_CELEBS = [2, 4];
+/** Cast members who ignore the game and keep tapping their cane (frames 0-3 = one tap). */
+export const CANE_CELEBS = [17];
 export const SHEET_W = CELEB_W * CELEB_FRAMES, SHEET_H = CELEB_H;
 export const FRAME_NAMES = ['Seated', 'Cheering', 'Phone', 'Shock', 'Wave 1', 'Wave 2', 'Kiss', 'Kiss blown'];
 /** Celebs who wave and blow kisses courtside (frames 4-7). */
@@ -25,6 +29,11 @@ export function castLook(i: number): CelebLook {
   if (i === 1) {
     // #01: wine-red sequined gown, long sleeves, feather peplum and cuffs, floor-length mermaid skirt
     Object.assign(look, { outfit: 'gown', color: '#8e1324', accent: '#b8182c', chain: false });
+  }
+  if (i === 17) {
+    // #17: the cane man — black suit, top hat, silver skull mask, gold dragon-head cane
+    Object.assign(look.a, { skin: 3, facial: 'none' });
+    Object.assign(look, { outfit: 'suit', color: '#121216', accent: '#121216', hat: 'tophat', shades: null, chain: false, longHair: null, cane: true });
   }
   if (i === 16) {
     // #16: fair skin, long platinum-blonde hair, blue eyes; sapphire sequin dress, silver heels

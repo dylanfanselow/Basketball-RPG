@@ -15,7 +15,9 @@ export interface CelebLook {
   a: Appearance;
   outfit: 'fur' | 'suit' | 'dress' | 'tracksuit' | 'leather' | 'tee' | 'hoodie' | 'gown';
   color: string; accent: string;
-  hat: 'none' | 'brim' | 'beanie' | 'cap';
+  hat: 'none' | 'brim' | 'beanie' | 'cap' | 'tophat';
+  /** the cane man: black suit, skull mask, top hat, both hands on a gold dragon-head cane he keeps tapping */
+  cane?: boolean;
   hatColor: string;
   shades: string | null;
   chain: boolean;
@@ -87,7 +89,80 @@ const ell = (ctx: Ctx, x: number, y: number, rx: number, ry: number, c: string |
 const poly = (ctx: Ctx, pts: [number, number][], c: string | CanvasGradient) => { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.closePath(); ctx.fill(); };
 const line = (ctx: Ctx, pts: [number, number][], w: number, c: string) => { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke(); };
 
+/**
+ * The cane man (an original character): seated in an all-black suit, black top hat, a silver skull mask, both hands
+ * stacked on a gold cane topped with a dragon's head. His frames are one tapping cycle: the cane lifts and comes back
+ * down (frame % 4 -> lift 0, 1.5, 3, 1.5).
+ */
+function drawCaneMan(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
+  const k = ART / 1.5, L = (n: number) => n * k;
+  const cx = ox + CELEB_W / 2, floor = CELEB_H - 3;
+  const shinTop = floor - L(21), hipY = shinTop - L(7), shY = hipY - L(28), hy = shY - L(12);
+  const [skin] = SKIN_TONES[c.a.skin % SKIN_TONES.length];
+  const lift = L([0, 1.5, 3, 1.5][frame % 4]);
+  const BLACK = '#121216', HI = '#2c2c34', SH = '#08080a';
+  frontChair(ctx, cx, floor, floor - L(25), floor - L(60), '#b01c34', k);
+  // trousers and polished shoes
+  for (const s of [-1, 1]) {
+    const lx = cx + s * L(4.5);
+    line(ctx, [[lx, shinTop], [lx, floor - L(3)]], L(5), BLACK);
+    poly(ctx, [[lx - L(3.2), floor - L(3.5)], [lx + L(3.4), floor - L(3.5)], [lx + L(3.8), floor], [lx - L(3.4), floor]], '#050506');
+    ell(ctx, lx + L(1), floor - L(2.4), L(1), L(0.5), '#3a3a44');
+  }
+  poly(ctx, [[cx - L(10), hipY], [cx + L(10), hipY], [cx + L(9.5), shinTop + 1], [cx - L(9.5), shinTop + 1]], BLACK);
+  // jacket: black on black, lapels and the shirt V a shade apart
+  const g = ctx.createLinearGradient(cx - L(12), shY, cx + L(12), hipY);
+  g.addColorStop(0, HI); g.addColorStop(0.45, BLACK); g.addColorStop(1, SH);
+  poly(ctx, [[cx - L(8), shY], [cx + L(8), shY], [cx + L(11.5), shY + L(4)], [cx + L(11), hipY], [cx - L(11), hipY], [cx - L(11.5), shY + L(4)]], g);
+  poly(ctx, [[cx - L(3.5), shY], [cx + L(3.5), shY], [cx, shY + L(14)]], '#0c0c0f');
+  line(ctx, [[cx, shY + L(1)], [cx, shY + L(11)]], L(1.4), '#1d1d24'); // tie
+  line(ctx, [[cx - L(3.5), shY], [cx - L(1), shY + L(15)]], L(1.6), '#26262e'); line(ctx, [[cx + L(3.5), shY], [cx + L(1), shY + L(15)]], L(1.6), '#26262e');
+  // the gold cane in front of him, tip on the floor (lifted on the off-beat)
+  const caneX = cx + L(0.5), top = hipY - L(5) - lift, tip = floor - lift;
+  line(ctx, [[caneX, top], [caneX, tip]], L(1.7), '#b8891e');
+  line(ctx, [[caneX - L(0.4), top + L(2)], [caneX - L(0.4), tip - L(2)]], L(0.6), '#ffe27a');
+  ell(ctx, caneX, tip - L(0.5), L(1.1), L(0.7), '#8a6414'); // ferrule
+  // arms down to the cane: both hands stacked on the dragon's head
+  const hands: [number, number][] = [[caneX - L(1.4), top + L(1.2)], [caneX + L(1.4), top + L(2.6)]];
+  for (const s of [-1, 1]) {
+    const sh0: [number, number] = [cx + s * L(10), shY + L(3)];
+    const el: [number, number] = [cx + s * L(10.5), shY + L(14)];
+    const hand = hands[s < 0 ? 0 : 1];
+    line(ctx, [sh0, el], L(5), BLACK); line(ctx, [el, hand], L(4.4), BLACK);
+    line(ctx, [[sh0[0] - s * L(1.5), sh0[1] + L(1)], [el[0] - s * L(1.5), el[1]]], L(1), HI); // sleeve sheen
+  }
+  // dragon head on top of the cane: gold skull with a snout, a horn swept back, a red eye
+  const dx = caneX, dy = top - L(2.4);
+  ell(ctx, dx, dy, L(2.6), L(2.2), '#d4a72c');
+  poly(ctx, [[dx + L(1), dy - L(1.4)], [dx + L(5), dy - L(0.4)], [dx + L(5.2), dy + L(0.8)], [dx + L(1), dy + L(1.6)]], '#c99a22'); // snout
+  line(ctx, [[dx + L(1.4), dy + L(0.5)], [dx + L(4.8), dy + L(0.6)]], L(0.6), '#7a5a10'); // mouth
+  poly(ctx, [[dx - L(1.5), dy - L(1.4)], [dx - L(4), dy - L(4.2)], [dx - L(0.2), dy - L(2)]], '#e8c04a'); // horn
+  ell(ctx, dx - L(0.6), dy - L(1.2), L(1.2), L(0.6), '#ffe27a'); // sheen
+  px2(ctx, dx + L(1.6), dy - L(0.8), '#ff2a2a');
+  for (const h of hands) ell(ctx, h[0], h[1], L(2.2), L(2), skin);
+  // neck, head, and the silver skull mask over the face
+  line(ctx, [[cx, shY + L(1)], [cx, shY - L(5)]], L(6), shade(skin, 0.85));
+  frontHead(ctx, cx, hy, { ...c.a, hair: 'bald' }, k, {});
+  const mg = ctx.createLinearGradient(cx - L(7), hy - L(6), cx + L(7), hy + L(9));
+  mg.addColorStop(0, '#eef0f4'); mg.addColorStop(0.45, '#b9bec8'); mg.addColorStop(1, '#6e7480');
+  poly(ctx, [[cx - L(6.8), hy - L(4)], [cx + L(6.8), hy - L(4)], [cx + L(7), hy + L(2)], [cx + L(5), hy + L(7)], [cx + L(2.5), hy + L(9)], [cx - L(2.5), hy + L(9)], [cx - L(5), hy + L(7)], [cx - L(7), hy + L(2)]], mg);
+  for (const s of [-1, 1]) { ell(ctx, cx + s * L(2.8), hy - L(0.4), L(1.9), L(1.6), '#0b0b0f'); px2(ctx, cx + s * L(2.8) - L(0.5), hy - L(0.9), '#ff3b3b'); } // eye sockets, a glint
+  poly(ctx, [[cx - L(0.9), hy + L(2.4)], [cx + L(0.9), hy + L(2.4)], [cx, hy + L(3.8)]], '#1a1a20'); // nose
+  poly(ctx, [[cx - L(3.4), hy + L(5)], [cx + L(3.4), hy + L(5)], [cx + L(3), hy + L(7.4)], [cx - L(3), hy + L(7.4)]], '#ecebe4'); // teeth
+  for (let i = -2; i <= 2; i++) line(ctx, [[cx + L(i * 1.3), hy + L(5)], [cx + L(i * 1.3), hy + L(7.3)]], L(0.5), '#5a5a64');
+  line(ctx, [[cx - L(3.4), hy + L(6.2)], [cx + L(3.4), hy + L(6.2)]], L(0.5), '#5a5a64');
+  line(ctx, [[cx - L(6.8), hy - L(4)], [cx + L(6.8), hy - L(4)]], L(0.8), '#f6f7fa'); // brow edge
+  // black top hat
+  ell(ctx, cx, hy - L(7), L(10.5), L(2.2), '#0d0d11');
+  poly(ctx, [[cx - L(6.4), hy - L(7.5)], [cx + L(6.4), hy - L(7.5)], [cx + L(6.8), hy - L(20)], [cx - L(6.8), hy - L(20)]], '#141418');
+  ell(ctx, cx, hy - L(20), L(6.8), L(1.2), '#1e1e24');
+  poly(ctx, [[cx - L(6.5), hy - L(9)], [cx + L(6.5), hy - L(9)], [cx + L(6.5), hy - L(10.8)], [cx - L(6.5), hy - L(10.8)]], '#2a2a32'); // band
+  line(ctx, [[cx - L(5.2), hy - L(11.5)], [cx - L(5.4), hy - L(19)]], L(0.9), '#30303a'); // sheen
+}
+const px2 = (ctx: Ctx, x: number, y: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); };
+
 function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
+  if (c.cane) { drawCaneMan(ctx, ox, c, frame); return; }
   const k = ART / 1.5; // art scale (1 at 1.5x)
   const L = (n: number) => n * k;
   const cx = ox + CELEB_W / 2, floor = CELEB_H - 3;

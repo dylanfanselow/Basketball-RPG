@@ -108,6 +108,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
   reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
 - **Workflow:** after planning, build without waiting for a separate go-ahead.
+- **Courtside cast:** 02 and 04 retired (`RETIRED_CELEBS`); #16 (blonde) and #17 (the cane man: all-black suit, top
+  hat, original silver skull mask, gold dragon-head cane he keeps tapping, ignores reactions) always get a seat.
 - **Glam celebs (01, 09, 12, 16)** wave and blow kisses courtside (celeb sheets have 8 frames: + wave ×2, kiss,
   kiss blown); they do it now and then, and blow your team a kiss after its big plays.
 - **Hold ○ on defense = stay set for the charge** until released (mirrors held screens). Screen / charge / box-out arms
