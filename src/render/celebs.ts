@@ -105,8 +105,12 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   }
   // seat / lap
   const hipY = standing ? shinTop - L(22) : shinTop - L(7);
-  const lap = c.outfit === 'dress' ? col : legCol;
+  // a dress continues below the waist in the same shaded, sequined fabric as the top
+  // (same gradient as the top: it simply carries on past the waist, so the dress reads as one piece)
+  let lap: string | CanvasGradient = legCol;
+  if (c.outfit === 'dress') { const t0 = hipY - L(28); lap = ctx.createLinearGradient(cx - L(12), t0, cx + L(12), hipY); lap.addColorStop(0, hi); lap.addColorStop(0.4, col); lap.addColorStop(1, sh); }
   poly(ctx, [[cx - L(10), hipY], [cx + L(10), hipY], [cx + L(9.5), shinTop + 1], [cx - L(9.5), shinTop + 1]], lap);
+  if (c.outfit === 'dress') { const span = Math.max(2, shinTop - hipY - L(1)); for (let i = 0; i < (standing ? 12 : 6); i++) ell(ctx, cx + L(((i * 37) % 19) - 9), hipY + L(1) + ((i * 13) % 24) / 24 * span, L(0.6), L(0.6), '#ffffff'); }
   // torso / outfit
   const shY = hipY - L(28);
   // long hair falls behind the head and shoulders: drawn before the body so the neck and collar stay in front of it
