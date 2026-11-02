@@ -12,7 +12,7 @@ export const CELEB_FRAMES = 4;
 
 export interface CelebLook {
   a: Appearance;
-  outfit: 'fur' | 'suit' | 'dress' | 'tracksuit' | 'leather' | 'tee' | 'hoodie';
+  outfit: 'fur' | 'suit' | 'dress' | 'tracksuit' | 'leather' | 'tee' | 'hoodie' | 'gown';
   color: string; accent: string;
   hat: 'none' | 'brim' | 'beanie' | 'cap';
   hatColor: string;
@@ -97,8 +97,11 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   // legs + shoes (dress: bare legs with heels; otherwise trousers)
   const shinTop = standing ? floor - L(38) : floor - L(21);
   const plain = c.outfit === 'tee' || c.outfit === 'hoodie';
-  const legCol = c.outfit === 'dress' ? skin : c.outfit === 'suit' ? col : c.outfit === 'tracksuit' ? col : plain ? '#2c3a58' : '#1a1a22'; // plain fans wear jeans
-  for (const s of [-1, 1]) {
+  // trousers of a suit / tracksuit are the jacket's mid-tone (the jacket is shaded, so plain `col` read brighter)
+  const matched = shade(col, 0.86);
+  const legCol = c.outfit === 'dress' ? skin : c.outfit === 'suit' || c.outfit === 'tracksuit' ? matched : plain ? '#2c3a58' : '#1a1a22'; // plain fans wear jeans
+  const gown = c.outfit === 'gown';
+  for (const s of gown ? [] : [-1, 1]) {
     const lx = cx + s * L(4);
     line(ctx, [[lx, shinTop], [lx, floor - L(3)]], L(5), legCol);
     poly(ctx, [[lx - L(3), floor - L(3.5)], [lx + L(3.2), floor - L(3.5)], [lx + L(3.6), floor], [lx - L(3.2), floor]], c.outfit === 'dress' ? c.accent : '#101010');
@@ -108,8 +111,21 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   // a dress continues below the waist in the same shaded, sequined fabric as the top
   // (same gradient as the top: it simply carries on past the waist, so the dress reads as one piece)
   let lap: string | CanvasGradient = legCol;
-  if (c.outfit === 'dress') { const t0 = hipY - L(28); lap = ctx.createLinearGradient(cx - L(12), t0, cx + L(12), hipY); lap.addColorStop(0, hi); lap.addColorStop(0.4, col); lap.addColorStop(1, sh); }
+  if (c.outfit === 'dress' || c.outfit === 'suit' || c.outfit === 'tracksuit' || gown) { const t0 = hipY - L(28); lap = ctx.createLinearGradient(cx - L(12), t0, cx + L(12), hipY); lap.addColorStop(0, hi); lap.addColorStop(0.4, col); lap.addColorStop(1, sh); }
   poly(ctx, [[cx - L(10), hipY], [cx + L(10), hipY], [cx + L(9.5), shinTop + 1], [cx - L(9.5), shinTop + 1]], lap);
+  if (gown) {
+    // floor-length sequined skirt: seated it drapes off the knees to the floor; standing it's a mermaid line that
+    // hugs the knees and flares out at the hem, with a little train
+    const skirt = ctx.createLinearGradient(cx - L(11), shinTop, cx + L(11), floor);
+    skirt.addColorStop(0, col); skirt.addColorStop(0.5, sh); skirt.addColorStop(1, dk); // same deep tone as the bodice
+    if (standing) poly(ctx, [[cx - L(10), hipY], [cx + L(10), hipY], [cx + L(7.5), shinTop + L(6)], [cx + L(9), floor - L(6)], [cx + L(13), floor + 1], [cx - L(12), floor + 1], [cx - L(8.5), floor - L(6)], [cx - L(7.5), shinTop + L(6)]], skirt);
+    else poly(ctx, [[cx - L(9.5), shinTop], [cx + L(9.5), shinTop], [cx + L(10.5), floor - L(1)], [cx + L(11), floor + 1], [cx - L(11), floor + 1], [cx - L(10.5), floor - L(1)]], skirt);
+    const top = standing ? hipY : shinTop, span = floor - top;
+    for (let i = 0; i < (standing ? 34 : 16); i++) { // sequin glints
+      const t = ((i * 13) % 23) / 23, w = standing ? 7.5 + (t > 0.7 ? (t - 0.7) * 14 : 0) : 9.5;
+      ell(ctx, cx + L((((i * 37) % 19) / 18 * 2 - 1) * w), top + L(2) + t * (span - L(3)), L(0.5), L(0.5), i % 4 ? tint(col, 0.55) : '#ffffff');
+    }
+  }
   if (c.outfit === 'dress') { const span = Math.max(2, shinTop - hipY - L(1)); for (let i = 0; i < (standing ? 12 : 6); i++) ell(ctx, cx + L(((i * 37) % 19) - 9), hipY + L(1) + ((i * 13) % 24) / 24 * span, L(0.6), L(0.6), '#ffffff'); }
   // torso / outfit
   const shY = hipY - L(28);
@@ -134,6 +150,9 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
     poly(ctx, [[cx - L(3.5), shY], [cx + L(3.5), shY], [cx, shY + L(16)]], c.outfit === 'suit' ? '#f4f4f4' : c.accent);
     line(ctx, [[cx - L(3.5), shY], [cx - L(1), shY + L(16)]], L(1.6), dk); line(ctx, [[cx + L(3.5), shY], [cx + L(1), shY + L(16)]], L(1.6), dk);
     if (c.outfit === 'leather') for (let i = 0; i < 4; i++) ell(ctx, cx + L(-7 + i * 4.5), shY + L(6 + (i % 2) * 3), L(1.2), L(0.8), tint(col, 0.6)); // shine
+  } else if (gown) {
+    for (let i = 0; i < 26; i++) ell(ctx, cx + L(((i * 37) % 19) - 9), shY + L(3 + ((i * 13) % 24)), L(0.5), L(0.5), i % 4 ? tint(col, 0.55) : '#ffffff'); // sequins
+    poly(ctx, [[cx - L(4), shY], [cx + L(4), shY], [cx, shY + L(6)]], skin);
   } else if (c.outfit === 'dress') {
     for (let i = 0; i < 18; i++) ell(ctx, cx + L(((i * 37) % 19) - 9), shY + L(3 + ((i * 13) % 24)), L(0.6), L(0.6), '#ffffff'); // sequins
     poly(ctx, [[cx - L(4), shY], [cx + L(4), shY], [cx, shY + L(6)]], skin);
@@ -149,6 +168,19 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
     line(ctx, [[cx, shY + L(1)], [cx, hipY]], L(1), dk);
   }
   if (c.chain) line(ctx, [[cx - L(4), shY + L(1)], [cx, shY + L(9)], [cx + L(4), shY + L(1)]], L(1.2), '#ffd84a');
+  // feather peplum around the hips: a fluffy band with tufts hanging over the skirt
+  // full, fluffy feathers: a dense puffy band, then wispy tufts of uneven length hanging below it
+  const feathers = (x0: number, x1: number, y: number, n: number, drop: number, puff = 1) => {
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1), x = x0 + (x1 - x0) * t, j = ((i * 7) % 5) / 4;
+      line(ctx, [[x, y], [x + L(j - 0.5), y + L(drop * (0.55 + 0.45 * j))]], L(1.6), i % 3 === 0 ? sh : i % 3 === 1 ? col : dk);
+    }
+    for (let i = 0; i < n * 2; i++) {
+      const t = i / (n * 2 - 1), x = x0 + (x1 - x0) * t, j = ((i * 5) % 7) / 6;
+      ell(ctx, x, y - L(1) + L(j * 2.2 - 1.1) * puff, L(1.8) * puff, L(1.6) * puff, i % 3 === 0 ? tint(col, 0.18) : i % 3 === 1 ? col : sh);
+    }
+  };
+  if (gown) feathers(cx - L(13), cx + L(13), hipY + L(1.5), 16, standing ? 7 : 4.5, 1.15);
   // arms
   const sleeve = c.outfit === 'dress' ? skin : col;
   for (const s of [-1, 1]) {
@@ -162,6 +194,7 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
     line(ctx, [sh0, el], L(c.outfit === 'fur' ? 7 : 5), c.outfit === 'tee' ? skin : sleeve);
     if (c.outfit === 'tee') line(ctx, [sh0, [sh0[0] + (el[0] - sh0[0]) * 0.45, sh0[1] + (el[1] - sh0[1]) * 0.45]], L(6), sleeve);
     line(ctx, [el, hand], L(c.outfit === 'fur' ? 6 : 4.4), c.outfit === 'tee' ? skin : sleeve);
+    if (gown) { const cuff: [number, number] = [el[0] + (hand[0] - el[0]) * 0.72, el[1] + (hand[1] - el[1]) * 0.72]; feathers(cuff[0] - L(2.5), cuff[0] + L(2.5), cuff[1], 4, 2.5); }
     ell(ctx, hand[0], hand[1], L(2.2), L(2.2), skin);
     if (frame === 2 && s === 1) { poly(ctx, [[hand[0] - L(2.5), hand[1] - L(5)], [hand[0] + L(2.5), hand[1] - L(5)], [hand[0] + L(2.5), hand[1] + L(1)], [hand[0] - L(2.5), hand[1] + L(1)]], '#151515'); ell(ctx, hand[0] - L(1), hand[1] - L(4), L(0.7), L(0.7), '#9fe6ff'); }
   }

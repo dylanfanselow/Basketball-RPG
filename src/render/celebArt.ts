@@ -20,6 +20,10 @@ export { castName };
 export function castLook(i: number): CelebLook {
   const r = new Rng(1000 + i * 7919);
   const look = randomCeleb(() => r.next());
+  if (i === 1) {
+    // #01: wine-red sequined gown, long sleeves, feather peplum and cuffs, floor-length mermaid skirt
+    Object.assign(look, { outfit: 'gown', color: '#8e1324', accent: '#b8182c', chain: false });
+  }
   if (i === 16) {
     // #16: fair skin, long platinum-blonde hair, blue eyes; sapphire sequin dress, silver heels
     Object.assign(look.a, { skin: 0, hair: 'fade', hairColor: '#ecd9a6', eyeColor: '#3f8fff', facial: 'none', mouth: 'smile', eyeY: 0, mouthY: 0 });
