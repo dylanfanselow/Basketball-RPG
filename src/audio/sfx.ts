@@ -17,6 +17,9 @@ class Sfx {
   private noise!: AudioBuffer;
   private crowdFilter!: BiquadFilterNode;
   private crowdGain!: GainNode;
+  /** gate for the arena murmur: open in games, shut in menus */
+  private arenaGate!: GainNode;
+  private arenaOn = false;
   settings: AudioSettings = { master: 0.8, sfx: 0.9, crowd: 0.45, muted: false };
 
   constructor() {
@@ -279,8 +282,16 @@ class Sfx {
     const lfo = ctx.createOscillator(); const lg = ctx.createGain();
     lfo.frequency.value = 0.13; lg.gain.value = 0.035;
     lfo.connect(lg).connect(this.crowdGain.gain); lfo.start();
-    src.connect(this.crowdFilter).connect(this.crowdGain).connect(this.crowdBus);
+    this.arenaGate = ctx.createGain(); this.arenaGate.gain.value = this.arenaOn ? 1 : 0;
+    src.connect(this.crowdFilter).connect(this.crowdGain).connect(this.arenaGate).connect(this.crowdBus);
     src.start();
+  }
+  /** Arena murmur on (in a game) or off (menus). Remembered until audio is unlocked. */
+  setArena(on: boolean) {
+    this.arenaOn = on;
+    if (!this.ctx || !this.arenaGate) return;
+    const g = this.arenaGate.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 1 : 0, t + 0.6);
   }
   /** Cheer swell (intensity 0..1). */
   cheer(intensity = 0.7) {

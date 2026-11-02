@@ -143,7 +143,8 @@ export class GameScene extends Phaser.Scene {
     this.buildSprites();
     this.cameras.main.setBackgroundColor('#0d0f1a');
     this.makeHud();
-    this.events.on('shutdown', () => { app.sim = null; });
+    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); });
+    sfx.setArena(true); // crowd murmur only while a game is on
     app.listeners.add(this.onAppChanged);
     this.events.once('shutdown', () => app.listeners.delete(this.onAppChanged));
   }
@@ -975,11 +976,14 @@ export class GameScene extends Phaser.Scene {
   /** Top-left box score: your name and your three most valuable stats. */
   boxTiles: { val: Phaser.GameObjects.Text; lbl: Phaser.GameObjects.Text }[] = [];
   boxName!: Phaser.GameObjects.Text;
+  boxFg!: Phaser.GameObjects.Text;
   boxLast = new Map<string, number>();
   boxFlash = new Map<string, number>();
   makeBoxScore() {
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
-    this.boxName = fixed(this.add.text(10, 138, '', { fontFamily: FONT, fontSize: '12px', color: '#14121e', fontStyle: 'bold' }).setDepth(9001));
+    // header: name on the left, FG on its own right-aligned text, both centered on the gold stripe
+    this.boxName = fixed(this.add.text(BOX_X + 7, 144, '', { fontFamily: FONT, fontSize: '12px', color: '#14121e', fontStyle: 'bold' }).setOrigin(0, 0.5).setDepth(9001));
+    this.boxFg = fixed(this.add.text(0, 144, '', { fontFamily: FONT, fontSize: '12px', color: '#14121e', fontStyle: 'bold' }).setOrigin(1, 0.5).setDepth(9001));
     this.boxTiles = [0, 1, 2].map((i) => ({
       val: fixed(this.add.text(BOX_X + 33 + i * BOX_TILE, 178, '', { fontFamily: FONT, fontSize: '26px', color: '#ffffff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(9001)),
       lbl: fixed(this.add.text(BOX_X + 33 + i * BOX_TILE, 200, '', { fontFamily: FONT, fontSize: '11px', color: '#9fb0e0', fontStyle: 'bold' }).setOrigin(0.5, 0).setDepth(9001)),
@@ -988,7 +992,7 @@ export class GameScene extends Phaser.Scene {
   drawBoxScore() {
     const sim = this.sim, u = sim.user, h = this.hud, now = this.time.now;
     const show = !!u && (sim.userOnCourt || sim.cfg.mode === 'practice');
-    this.boxName.setVisible(show); for (const t of this.boxTiles) { t.val.setVisible(show); t.lbl.setVisible(show); }
+    this.boxName.setVisible(show); this.boxFg.setVisible(show); for (const t of this.boxTiles) { t.val.setVisible(show); t.lbl.setVisible(show); }
     if (!show || !u) return;
     const top = topStats(u.box);
     for (const s of top) {
@@ -996,12 +1000,19 @@ export class GameScene extends Phaser.Scene {
       if (prev !== undefined && s.value > prev) this.boxFlash.set(s.key, now);
       this.boxLast.set(s.key, s.value);
     }
-    // panel: gold header stripe with your name, three tiles
-    const y0 = 134, w = BOX_TILE * 3 + 6;
+    // panel: gold header stripe with your name and FG, three tiles; it widens if the FG needs the room
+    this.boxFg.setText(`${u.box.fgm}/${u.box.fga} FG`);
+    const y0 = 134, w = Math.max(BOX_TILE * 3 + 6, this.boxFg.width + 70);
+    this.boxFg.setX(BOX_X + w - 7);
+    const room = w - 14 - this.boxFg.width - 10;
+    const full = u.name.toUpperCase(), parts = full.split(' ');
+    let name = full;
+    this.boxName.setText(name);
+    if (this.boxName.width > room && parts.length > 1) { name = `${parts[0][0]}. ${parts.slice(1).join(' ')}`; this.boxName.setText(name); }
+    while (this.boxName.width > room && name.length > 3) { name = name.slice(0, -2) + '…'; this.boxName.setText(name); }
     h.fillStyle(0x000000, 0.45); h.fillRoundedRect(BOX_X + 2, y0 + 3, w, 86, 6);
     h.fillStyle(0x121633, 0.95); h.fillRoundedRect(BOX_X, y0, w, 86, 6);
     h.fillStyle(0xffcc33, 1); h.fillRoundedRect(BOX_X, y0, w, 20, { tl: 6, tr: 6, bl: 0, br: 0 });
-    this.boxName.setText(`${u.name.toUpperCase()}  ·  ${u.box.fgm}/${u.box.fga} FG`);
     top.forEach((s, i) => {
       const x = BOX_X + 4 + i * BOX_TILE, flash = Math.max(0, 1 - (now - (this.boxFlash.get(s.key) ?? -9999)) / 600);
       h.fillStyle(i === 0 ? 0x22305e : 0x1a2246, 1); h.fillRoundedRect(x, y0 + 24, BOX_TILE - 4, 58, 5);
