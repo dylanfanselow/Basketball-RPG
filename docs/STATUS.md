@@ -97,7 +97,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`buildCoachSheet`: standing / calling a play / celebrating; speech bubble with the play via `GameScene.coachCall`).
 - Loose-ball grabs (`tryGrab`): `scoop` clip below 2.8 ft, `reboundChest` (catch clip) to head height, `rebound`
   above, jumping only above standing reach. Your rebounds: `rebound` quiet event → `sfx.ding` + `popText`.
-- Box score (top left, `drawBoxScore`): `topStats` in `sim/boxScore.ts` (weights PTS 1, REB 1.3, AST 1.5, STL 3, BLK 3).
+- Crowd murmur only plays during games (`sfx.setArena`, opened in GameScene, closed on shutdown); menus are quiet.
+- Box score (top left, `drawBoxScore`, FG right-aligned, long names shortened): `topStats` in `sim/boxScore.ts` (weights PTS 1, REB 1.3, AST 1.5, STL 3, BLK 3).
 - Arm rig (`anim.ts` `rigArms(pose, ballClip)`, applied in `drawPose`): arm sockets sit `ARM_DROP` (6) and the
   jersey top `TORSO_DROP` (4.5) below the keys so the neck shows. Ball clips (any key has the ball) move arms rigidly
   with their keyed shape/length and carry a held ball down with the hands; free clips (defense, off-ball) scale arms
