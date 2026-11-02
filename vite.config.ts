@@ -28,7 +28,7 @@ function saveLookPlugin(): Plugin {
   };
 }
 
-/** Dev-only endpoint: the pixel editor's "Save to repo" writes src/art/celebs/celeb_NN.png. */
+/** Dev-only endpoint: the pixel editor's "Save to repo" writes celeb sheets and face-part pictures under src/art/. */
 function saveArtPlugin(): Plugin {
   return {
     name: 'save-art',
@@ -41,9 +41,12 @@ function saveArtPlugin(): Plugin {
         req.on('end', () => {
           try {
             const { name, png } = JSON.parse(body);
-            if (!/^celeb_\d{2}$/.test(name) || typeof png !== 'string' || !png.startsWith('data:image/png;base64,')) throw new Error('bad request');
-            mkdirSync('src/art/celebs', { recursive: true });
-            writeFileSync(`src/art/celebs/${name}.png`, Buffer.from(png.slice('data:image/png;base64,'.length), 'base64'));
+            // celeb_NN -> src/art/celebs/; parts/<type>/<variant>_<view> -> src/art/parts/<type>/
+            const celeb = /^celeb_\d{2}$/.test(name), part = /^parts\/(hair|hairBack|beard|brows|eyes|nose|mouth)\/[A-Za-z0-9_-]+_(side|front)$/.test(name);
+            if ((!celeb && !part) || typeof png !== 'string' || !png.startsWith('data:image/png;base64,')) throw new Error('bad request');
+            const file = celeb ? `src/art/celebs/${name}.png` : `src/art/${name}.png`;
+            mkdirSync(file.slice(0, file.lastIndexOf('/')), { recursive: true });
+            writeFileSync(file, Buffer.from(png.slice('data:image/png;base64,'.length), 'base64'));
             res.end('ok');
           } catch (e) { res.statusCode = 400; res.end(String(e)); }
         });
