@@ -94,6 +94,20 @@ const defPose = (o: { hip?: number; fF?: J; fB?: J; hF?: J; hB?: J; dip?: number
     lat: { fF: fl, kF: fl - 1, fB: bl, kB: bl + 1, eF: 19, hF: 29, eB: -19, hB: -29 } };
 };
 
+/**
+ * Arms folded across the chest (screens, charges): hands crossed in front at full arm length, elbows solved down and
+ * back; the forearms cross toward the camera (lat), so turned views show the crossed arms too.
+ */
+const foldArms = (p: Pose, t: number): Pose => {
+  const hF: J = [p.sF[0] + 7, p.sF[1] - 13 - t], hB: J = [p.sB[0] + 8, p.sB[1] - 11 - t];
+  return { ...arms(p, hF, hB), lat: { ...(p.lat ?? {}), eF: 9, hF: -5, eB: -9, hB: 5 } };
+};
+/**
+ * Box-out arms: spread wide front and back with the forearms up and the elbows pointing at the floor (solved at full
+ * arm length so nothing bends backwards). k = how far the arms reach out (push = a little wider and higher).
+ */
+const boxArms = (p: Pose, k = 1): Pose => arms(p, [p.sF[0] + 15 * k, p.sF[1] + 3 * k], [p.sB[0] - 15 * k, p.sB[1] + 3 * k], [-1, 1]);
+
 const lowStance = P({ head: [3, 85], neck: [2, 76], sF: [3, 73], sB: [-1, 73], hip: [0, 44], kF: [7, 22], kB: [-6, 22], fF: [9, 0], fB: [-8, 0] });
 
 // jog / sprint keys (front leg forward, passing, back leg forward, passing)
@@ -378,12 +392,14 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: P({ eF: [10, 71], hF: [17, 75] }, lowStance) },
     { t: 0.5, pose: P({ head: [6, 82], neck: [5, 73], sF: [6, 70], eF: [14, 58], hF: [22, 46], kF: [10, 22], fF: [13, 0] }, lowStance) },
     { t: 1, pose: P({ eF: [10, 71], hF: [17, 75] }, lowStance) }] },
+  // screen: wide base, arms folded across the chest at full arm length (elbows down and back, like the defensive arms)
   { name: 'screen', frames: 3, keys: [
-    { t: 0, pose: P({ kF: [6, 26], fF: [8, 0], kB: [-6, 26], fB: [-8, 0], hip: [0, 49], eF: [6, 68], hF: [1, 70], eB: [-5, 68], hB: [2, 72] }) },
-    { t: 1, pose: P({ kF: [7, 25], fF: [9, 0], kB: [-7, 25], fB: [-9, 0], hip: [0, 48], eF: [6, 67], hF: [0, 70], eB: [-5, 67], hB: [2, 71], head: [1, 90] }) }] },
+    { t: 0, pose: foldArms(legs(P({ hip: [0, 49], head: [2, 90] }), [9, 0], [-9, 0]), 0) },
+    { t: 1, pose: foldArms(legs(P({ hip: [0, 47], head: [2, 89], neck: [1, 80], sF: [2, 77], sB: [-2, 77] }), [10, 0], [-10, 0]), 1) }] },
+  // taking a charge: feet set, braced and leaning back a touch, arms folded to the chest
   { name: 'charge', frames: 3, keys: [
-    { t: 0, pose: lowStance },
-    { t: 1, pose: P({ head: [-2, 88], neck: [-2, 79], kF: [5, 25], fF: [7, 0], kB: [-5, 25], fB: [-7, 0], hip: [0, 48], eF: [4, 68], hF: [0, 70], eB: [-4, 68], hB: [1, 72] }) }] },
+    { t: 0, pose: foldArms(lowStance, 0) },
+    { t: 1, pose: foldArms(legs(P({ head: [-3, 86], neck: [-3, 77], sF: [-2, 74], sB: [-5, 74], hip: [0, 46] }), [8, 0], [-7, 0]), 1) }] },
   { name: 'fall', frames: 6, keys: [
     { t: 0, pose: P({ head: [-6, 88], neck: [-5, 79], sF: [-3, 77], sB: [-7, 77], eF: [4, 80], hF: [10, 88], eB: [-12, 78], hB: [-17, 84] }) },
     { t: 0.35, pose: P({ head: [-20, 40], neck: [-14, 36], sF: [-12, 34], sB: [-14, 34], hip: [0, 22], kF: [8, 30], fF: [16, 20], kB: [7, 26], fB: [15, 14], eF: [-6, 44], hF: [-1, 50], eB: [-20, 26], hB: [-24, 14] }) },
@@ -406,13 +422,13 @@ export const CLIPS: Clip[] = [
     { t: 1, pose: chest }] },
 
   { name: 'boxout', frames: 6, loop: true, keys: [
-    { t: 0, pose: P({ hip: [-2, 34], head: [-6, 72], neck: [-5, 63], sF: [-4, 60], sB: [-6, 60], eF: [9, 62], hF: [18, 66], eB: [-15, 62], hB: [-24, 66], kF: [9, 18], fF: [14, 0], kB: [-11, 18], fB: [-15, 0] }) },
-    { t: 0.5, pose: P({ hip: [-4, 32], head: [-8, 70], neck: [-7, 61], sF: [-6, 58], sB: [-8, 58], eF: [8, 60], hF: [18, 63], eB: [-16, 60], hB: [-25, 63], kF: [10, 18], fF: [15, 1], kB: [-12, 17], fB: [-16, 0] }) },
-    { t: 1, pose: P({ hip: [-2, 34], head: [-6, 72], neck: [-5, 63], sF: [-4, 60], sB: [-6, 60], eF: [9, 62], hF: [18, 66], eB: [-15, 62], hB: [-24, 66], kF: [9, 18], fF: [14, 0], kB: [-11, 18], fB: [-15, 0] }) }] },
+    { t: 0, pose: boxArms(P({ hip: [-2, 34], head: [-6, 72], neck: [-5, 63], sF: [-4, 60], sB: [-6, 60], kF: [9, 18], fF: [14, 0], kB: [-11, 18], fB: [-15, 0] })) },
+    { t: 0.5, pose: boxArms(P({ hip: [-4, 32], head: [-8, 70], neck: [-7, 61], sF: [-6, 58], sB: [-8, 58], kF: [10, 18], fF: [15, 1], kB: [-12, 17], fB: [-16, 0] }), 0.96) },
+    { t: 1, pose: boxArms(P({ hip: [-2, 34], head: [-6, 72], neck: [-5, 63], sF: [-4, 60], sB: [-6, 60], kF: [9, 18], fF: [14, 0], kB: [-11, 18], fB: [-15, 0] })) }] },
   { name: 'boxoutPush', frames: 6, loop: true, keys: [
-    { t: 0, pose: P({ hip: [-5, 33], head: [-5, 71], neck: [-5, 62], sF: [-5, 59], sB: [-7, 59], eF: [7, 60], hF: [16, 64], eB: [-17, 61], hB: [-26, 66], kF: [10, 18], fF: [16, 0], kB: [-10, 17], fB: [-13, 0] }) },
-    { t: 0.5, pose: P({ hip: [-8, 32], head: [-3, 70], neck: [-4, 61], sF: [-5, 58], sB: [-7, 58], eF: [7, 58], hF: [17, 61], eB: [-18, 59], hB: [-27, 62], kF: [11, 19], fF: [17, 1], kB: [-9, 18], fB: [-12, 0] }) },
-    { t: 1, pose: P({ hip: [-5, 33], head: [-5, 71], neck: [-5, 62], sF: [-5, 59], sB: [-7, 59], eF: [7, 60], hF: [16, 64], eB: [-17, 61], hB: [-26, 66], kF: [10, 18], fF: [16, 0], kB: [-10, 17], fB: [-13, 0] }) }] },
+    { t: 0, pose: boxArms(P({ hip: [-5, 33], head: [-5, 71], neck: [-5, 62], sF: [-5, 59], sB: [-7, 59], kF: [10, 18], fF: [16, 0], kB: [-10, 17], fB: [-13, 0] }), 1.05) },
+    { t: 0.5, pose: boxArms(P({ hip: [-8, 32], head: [-3, 70], neck: [-4, 61], sF: [-5, 58], sB: [-7, 58], kF: [11, 19], fF: [17, 1], kB: [-9, 18], fB: [-12, 0] }), 1.1) },
+    { t: 1, pose: boxArms(P({ hip: [-5, 33], head: [-5, 71], neck: [-5, 62], sF: [-5, 59], sB: [-7, 59], kF: [10, 18], fF: [16, 0], kB: [-10, 17], fB: [-13, 0] }), 1.05) }] },
   { name: 'bumped', frames: 7, keys: [
     { t: 0, pose: P({ head: [-12, 84], neck: [-9, 76], sF: [-6, 74], sB: [-10, 74], eF: [6, 84], hF: [14, 96], eB: [-18, 82], hB: [-26, 94], kF: [6, 32], fF: [10, 8], kB: [-6, 26], fB: [-10, 0] }) },
     { t: 0.3, pose: P({ head: [-15, 80], neck: [-12, 72], sF: [-9, 70], sB: [-13, 70], eF: [2, 78], hF: [9, 88], eB: [-22, 76], hB: [-30, 84], hip: [-3, 46], kF: [4, 26], fF: [7, 2], kB: [-10, 20], fB: [-16, 2] }) },

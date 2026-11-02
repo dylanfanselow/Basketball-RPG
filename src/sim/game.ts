@@ -779,6 +779,8 @@ export class GameSim {
         if (inp.a) this.jump(u, 1);
         if (inp.y) this.swipe(u);
         if (inp.b && !shotUp) this.takeCharge(u);
+        // hold ○ = stay set for the charge until released (like holding a screen)
+        if (inp.bHeld && u.state === 'charge') u.stateDur = Math.max(u.stateDur, Math.min(u.stateT + 0.15, SCREEN_HOLD_MAX));
       }
     }
     ux.bWasHeld = inp.bHeld;
