@@ -113,6 +113,61 @@ export function recolorPixels(src: Uint8ClampedArray, out: Uint8ClampedArray, mo
   }
 }
 
+// ---------- eyes: pixel-snapped and mirror-exact ----------
+/**
+ * Screen offset (whole pixels) of a cell whose center sits d art pixels from a pixel boundary, at scale k. Mirrors
+ * exactly: snapCell(-d) === -1 - snapCell(d), so a mirrored pair of cells always lands on a mirrored pair of screen
+ * pixels, whatever the scale or where the head is.
+ */
+export const snapCell = (d: number, k: number) => (d > 0 ? Math.floor(d * k) : -1 - Math.floor(-d * k));
+/** One eye pixel: dx/dy = cell center relative to the face center (±0.5, ±1.5 …); iris cells are plotted last. */
+export interface EyeCell { dx: number; dy: number; color: string; iris?: boolean }
+/**
+ * Plot eye cells as single pixels around (x, y). Eyes are never scaled with drawImage: a 1 px iris would turn into
+ * 1 or 2 px depending on where it lands, which gives cross-eyed / uneven-white faces. Iris cells go last so at tiny
+ * scales an iris that collides with its white wins on both sides alike.
+ */
+export function plotEyeCells(ctx: CanvasRenderingContext2D, x: number, y: number, k: number, cells: EyeCell[]) {
+  const bx = Math.round(x), by = Math.round(y);
+  for (const pass of [false, true]) for (const c of cells) {
+    if (!!c.iris !== pass) continue;
+    ctx.fillStyle = c.color;
+    ctx.fillRect(bx + snapCell(c.dx, k), by + snapCell(c.dy, k), 1, 1);
+  }
+}
+/**
+ * The standard front pair, matching the owner's celeb art: `W I · · · · I W` (white outside, iris inside, mirrored,
+ * looking straight ahead). gap = empty pixels between the irises (4, or 6 for wide-set eyes).
+ */
+export function frontEyeCells(eye: string, gap = 4, dy = 0.5, white = '#f2efe8'): EyeCell[] {
+  const h = gap / 2;
+  return [
+    { dx: -(h + 1.5), dy, color: white }, { dx: -(h + 0.5), dy, color: eye, iris: true },
+    { dx: h + 0.5, dy, color: eye, iris: true }, { dx: h + 1.5, dy, color: white },
+  ];
+}
+
+const EYE_CELLS = new WeakMap<PartImg, Map<string, EyeCell[]>>();
+const hex2 = (n: number) => Math.round(n).toString(16).padStart(2, '0');
+/** An eye picture as cells (recolored; pixel centers relative to the picture center PART_C). */
+export function eyeCellsOf(img: PartImg, eye: string): EyeCell[] {
+  let byEye = EYE_CELLS.get(img);
+  if (!byEye) EYE_CELLS.set(img, (byEye = new Map()));
+  let cells = byEye.get(eye);
+  if (cells) return cells;
+  cells = [];
+  const out = new Uint8ClampedArray(img.data.length);
+  recolorPixels(img.data, out, 'eyes', { hi: '#000000', base: '#000000', sh: '#000000', deep: '#000000' }, eye);
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    const i = (y * img.w + x) * 4;
+    if (img.data[i + 3] < 110) continue;
+    const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
+    cells.push({ dx: x + 0.5 - img.w / 2, dy: y + 0.5 - img.h / 2, color: `#${hex2(out[i])}${hex2(out[i + 1])}${hex2(out[i + 2])}`, iris: (r < 40 && b < 40 && g > 120) || r + g + b < 180 }); // eye-color key or a dark pupil
+  }
+  byEye.set(eye, cells);
+  return cells;
+}
+
 const RECOLOR = new Map<string, HTMLCanvasElement>();
 function canvasOf(w: number, h: number): HTMLCanvasElement {
   if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -128,7 +183,8 @@ export function drawPart(ctx: CanvasRenderingContext2D, t: PartType, view: PartV
   const img = LIB.get(key);
   if (!img) return false;
   const mode = modeOf(t), ramp = mode === 'skin' ? ramps.skin : ramps.hair;
-  const ck = `${key}|${version}|${mode}|${ramp.hi}${ramp.base}${ramp.sh}${ramp.deep}|${mode === 'eyes' ? a.eyeColor : ''}`;
+  if (mode === 'eyes') { plotEyeCells(ctx, x, y + (opts.dy ?? 0), k, eyeCellsOf(img, a.eyeColor)); return true; }
+  const ck = `${key}|${version}|${mode}|${ramp.hi}${ramp.base}${ramp.sh}${ramp.deep}`;
   let can = RECOLOR.get(ck);
   if (!can) {
     can = canvasOf(img.w, img.h);

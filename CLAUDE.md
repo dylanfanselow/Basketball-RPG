@@ -15,6 +15,8 @@ Key rules from the owner:
 - You control only your player; teammates pass based on trust/openness, never on demand.
 - PlayStation button labels. No shot meter (cone + full equation on screen).
 - Real 2026-27 rosters are intentionally committed.
+- Eyes on every face (players, fans, celebs, coaches…) match the owner's celeb art: `W I · · · · I W` (white outside,
+  iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells` — never cross-eyed or uneven.
 - L1 = escape/back everywhere; L2 (hold) = icon pass; everyone can Step-Through (fake → stick to rim + ✕).
 
 Code rules that bite (details in WORKFLOW.md "Gotchas"):

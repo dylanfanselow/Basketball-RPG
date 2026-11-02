@@ -159,3 +159,6 @@ head, eyes, brows, nose, mouth, beard, hair — each drawn from a picture in `sr
 per player by `faceParts.recolorPixels`), else by the original code. 59 built-in pictures were exported from the code
 (`partSeeds.ts`). Looks can use drawn variants (`hair: 'hair_1'`, optional `eyes` / `brows` fields); the dev panel's
 look editor lists them. Pictures reach the sheet workers with each job (`sheetPool` → `partsFor`).
+Eyes (round 26) are plotted pixel by pixel with mirror-exact snapping (`snapCell` / `plotEyeCells` / `frontEyeCells`
+in `faceParts.ts`), so every face shows the owner's `W I · · · · I W` at any scale or head position; the code
+fallbacks in `drawHead` / `frontHead` use the same cells as `src/art/parts/eyes/*.png`.

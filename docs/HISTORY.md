@@ -27,6 +27,7 @@
 | 22 | `8cc2226` | Every loose ball played the jump-and-reach rebound; coaches spazzed (side view flipping); wants an arm-up + speech bubble on play calls, a rebound ding + "REBOUND +1", and a top-left top-3 box score | Height-based grabs (scoop / chest / reach), front-facing coach sheet + bubbles, `sfx.ding` + popup, weighted `topStats` panel; owner: build after planning without waiting |
 | 23 | `e45453d` | FG text in the box score clipped; static hiss in the main menu | FG right-aligned on its own, panel widens, long names shortened; crowd murmur gated to games (`sfx.setArena`) |
 | 24 | `3d80546` | Asked how to reach the pixel editor; wants to edit players' faces as mix-and-match parts (hair 2 + beard 1 + eyes 3) | Face-part library (pictures per part/view, recolored per player, code fallback), 59 seeded pictures, editor Face-parts mode with live player preview, dev-panel variant pickers |
+| 26 | (this round) | Generated faces cross-eyed / one eye with more white; match the owner's celeb eyes on every character, now and later | Eye pictures redrawn `W I · · · · I W` (were wall-eyed and lopsided), eyes plotted pixel-snapped and mirrored at any scale, code fallbacks match, skull-mask glints mirrored, symmetry test + rule in DECISIONS/CLAUDE.md |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

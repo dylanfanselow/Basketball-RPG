@@ -4,6 +4,7 @@
  * filming. Front-view sprites in the same shaded style as the players.
  */
 import { crispen, frontHead, frontChair, shade, tint, ART } from './sprites';
+import { plotEyeCells } from './faceParts';
 import { Appearance, randomAppearance, SKIN_TONES } from './appearance';
 
 export const CELEB_W = 48, CELEB_H = 120;
@@ -148,7 +149,8 @@ function drawCaneMan(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   const mg = ctx.createLinearGradient(cx - L(7), hy - L(6), cx + L(7), hy + L(9));
   mg.addColorStop(0, '#eef0f4'); mg.addColorStop(0.45, '#b9bec8'); mg.addColorStop(1, '#6e7480');
   poly(ctx, [[cx - L(6.8), hy - L(4)], [cx + L(6.8), hy - L(4)], [cx + L(7), hy + L(2)], [cx + L(5), hy + L(7)], [cx + L(2.5), hy + L(9)], [cx - L(2.5), hy + L(9)], [cx - L(5), hy + L(7)], [cx - L(7), hy + L(2)]], mg);
-  for (const s of [-1, 1]) { ell(ctx, cx + s * L(2.8), hy - L(0.4), L(1.9), L(1.6), '#0b0b0f'); px2(ctx, cx + s * L(2.8) - L(0.5), hy - L(0.9), '#ff3b3b'); } // eye sockets, a glint
+  for (const s of [-1, 1]) ell(ctx, cx + s * L(2.8), hy - L(0.4), L(1.9), L(1.6), '#0b0b0f'); // eye sockets
+  plotEyeCells(ctx, cx, hy, k, [{ dx: -2.5, dy: -0.5, color: '#ff3b3b', iris: true }, { dx: 2.5, dy: -0.5, color: '#ff3b3b', iris: true }]); // a mirrored glint in each
   poly(ctx, [[cx - L(0.9), hy + L(2.4)], [cx + L(0.9), hy + L(2.4)], [cx, hy + L(3.8)]], '#1a1a20'); // nose
   poly(ctx, [[cx - L(3.4), hy + L(5)], [cx + L(3.4), hy + L(5)], [cx + L(3), hy + L(7.4)], [cx - L(3), hy + L(7.4)]], '#ecebe4'); // teeth
   for (let i = -2; i <= 2; i++) line(ctx, [[cx + L(i * 1.3), hy + L(5)], [cx + L(i * 1.3), hy + L(7.3)]], L(0.5), '#5a5a64');

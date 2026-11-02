@@ -11,7 +11,7 @@
 import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
 import { view, toRad, SHOULDER_HALF, HIP_HALF, projX } from './pose3d';
-import { drawPart, PartType } from './faceParts';
+import { drawPart, PartType, plotEyeCells, frontEyeCells } from './faceParts';
 
 export const ART = 1.5;
 export const FRAME_W = 96;
@@ -307,11 +307,12 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
     ellipse(ctx, cx + rx * 0.55, ey + 0.4 * k, 2.6 * k, 1.6 * k, S.sh);
     ellipse(ctx, cx + rx * 0.62, ey + 3.2 * k, 2.2 * k, 1.1 * k, S.hi);
   }
-  // eyes (3/4 view): near eye white + iris + catchlight, far eye smaller near the profile edge
-  if (want('eyes') && !pic('eyes', a.eyeY * k)) {
-    px(ctx, ex - 1, ey, '#f2efe8', 3, 2); px(ctx, ex + 1, ey, a.eyeColor, 1, 2); px(ctx, ex, ey, '#1a1010', 1, 1);
-    px(ctx, cx + rx * 0.92 - a.eyeGap, ey, '#e8e4dc', 1, 2); px(ctx, cx + rx * 0.92 - a.eyeGap + 1, ey, a.eyeColor, 1, 2);
-  }
+  // eyes (profile): near eye white + iris in front, far eye the same at the profile edge; both look forward
+  // (same cells as src/art/parts/eyes/default_side.png, pixel-snapped)
+  if (want('eyes') && !pic('eyes', a.eyeY * k)) plotEyeCells(ctx, cx, cy + a.eyeY * k, k, [
+    { dx: 5.5, dy: -0.5, color: '#f2efe8' }, { dx: 6.5, dy: -0.5, color: a.eyeColor, iris: true },
+    { dx: 8.5, dy: -0.5, color: '#e8e4dc' }, { dx: 9.5, dy: -0.5, color: a.eyeColor, iris: true },
+  ]);
   // brows
   if (want('brows') && !pic('brows', a.eyeY * k)) {
     const bc = shade(hair, 0.85);
@@ -670,10 +671,9 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
     for (const sx of [-1, 1]) ellipse(ctx, eyeX(sx), ey + 0.4, 2 * k * squash(sx), 1.3 * k, S.sh); // eye sockets
   }
   if (want('nose') && turn > 0.25 && !only) poly(ctx, [[cx + rx * 0.3, hy - ry * 0.05], [cx + rx * (0.62 + 0.25 * turn), hy + ry * 0.32], [cx + rx * 0.32, hy + ry * 0.38]], S.base); // nose in profile past the cheek
-  if (want('eyes') && !pic('eyes', cx, a.eyeY * k)) for (const sx of [-1, 1]) {
-    const sq = squash(sx), ex = eyeX(sx);
-    px(ctx, ex - 1, ey, '#f2efe8', sq > 0.6 ? 2 : 1, 1); px(ctx, ex + (sx > 0 ? 0 : -1) + 0.5 + turn, ey, a.eyeColor, 1, 1);
-  }
+  // eyes: W I · · · · I W like the owner's celeb art, mirrored and pixel-snapped (same cells as eyes/default_front.png);
+  // a turned head moves the pair with the face, both still looking straight ahead
+  if (want('eyes') && !pic('eyes', cx, a.eyeY * k)) plotEyeCells(ctx, cx, hy + a.eyeY * k, k, frontEyeCells(a.eyeColor, a.eyeGap ? 6 : 4));
   if (want('brows') && !pic('brows', cx, a.eyeY * k)) for (const sx of [-1, 1]) {
     const sq = squash(sx), ex = eyeX(sx);
     for (let r = 0; r < a.brow; r++) stroke(ctx, [[ex - rx * 0.22 * sq, ey - 2.2 * k - r], [ex + rx * 0.28 * sq, ey - 2 * k - r]], 1.1, shade(a.hairColor, 0.85));

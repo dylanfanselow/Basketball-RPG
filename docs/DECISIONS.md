@@ -117,6 +117,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   kiss blown); they do it now and then, and blow your team a kiss after its big plays.
 - **Hold ○ on defense = stay set for the charge** until released (mirrors held screens). Screen / charge / box-out arms
   use the defense's elbows-down, fixed-length arms (no backwards-bending forearms).
+- **Eyes (round 26, applies to every face, now and in future art):** follow the owner's hand-drawn celebs. Front /
+  three-quarter: `W I · · · · I W` — each eye one white pixel on the **outside** and the iris on the **inside**,
+  mirrored exactly, the same white on both eyes, looking straight ahead (wide-set = 6 px gap). Profile: both irises in
+  front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
+  (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
+  picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
 - **Round 24: faces are mix-and-match parts** the owner can hand-draw (hair front/back, beard, brows, eyes, nose,
   mouth; side + front views), drawn in grays and recolored per player; players pick variants by name
   (e.g. Tatum = hair_2 / beard_1 / eyes_3) saved in rosters.json. The owner sends edits by Save to repo + push.
