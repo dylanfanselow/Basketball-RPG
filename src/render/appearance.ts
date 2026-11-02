@@ -1,6 +1,8 @@
 /** How a player looks. Generated per roster player from a seed; the user's lives in the career save. */
 export const HAIR_STYLES = ['bald', 'buzz', 'fade', 'hightop', 'afro', 'twists', 'dreads', 'braids', 'mohawk', 'bun', 'curly', 'waves'] as const;
-export type HairStyle = (typeof HAIR_STYLES)[number];
+/** A built-in style name, or a hand-drawn face-part variant (src/art/parts, e.g. 'hair_13'). */
+export type HairStyle = (typeof HAIR_STYLES)[number] | (string & {});
+type Part<T extends readonly string[]> = T[number] | (string & {});
 export const FACIAL = ['none', 'stubble', 'mustache', 'goatee', 'beard'] as const;
 export const NOSES = ['small', 'wide', 'long'] as const;
 export const MOUTHS = ['neutral', 'smile', 'frown', 'open'] as const;
@@ -16,10 +18,12 @@ export const GEAR_COLORS = ['#ffffff', '#111111', '#e03a3e', '#1d428a', '#fdb927
 export interface Appearance {
   skin: number;
   hair: HairStyle; hairColor: string;
-  facial: (typeof FACIAL)[number];
+  facial: Part<typeof FACIAL>;
   eyeColor: string; eyeY: -1 | 0 | 1; eyeGap: 0 | 1; brow: 1 | 2;
-  nose: (typeof NOSES)[number];
-  mouth: (typeof MOUTHS)[number]; mouthY: -1 | 0 | 1;
+  nose: Part<typeof NOSES>;
+  mouth: Part<typeof MOUTHS>; mouthY: -1 | 0 | 1;
+  /** hand-drawn part variants (src/art/parts); unset = from eyeGap / brow */
+  eyes?: string; brows?: string;
   bigEars: boolean;
   headband: string | null;
   armSleeve: (typeof ARM_SLEEVE)[number]; sleeveColor: string;

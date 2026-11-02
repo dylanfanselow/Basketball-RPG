@@ -10,6 +10,7 @@ import { MatchSetupScene } from './scenes/MatchSetupScene';
 import { OneOnOneSetupScene } from './scenes/OneOnOneSetupScene';
 import { initDevPanel } from './dev/devPanel';
 import { openPixelEditor } from './dev/pixelEditor';
+import { loadFaceParts } from './render/facePartsArt';
 import { activePad } from './input/input';
 import { sfx } from './audio/sfx';
 import './state';
@@ -32,9 +33,10 @@ const game = new Phaser.Game({
   scene: [MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, OneOnOneSetupScene],
 });
 (window as any).__phaser = game;
+void loadFaceParts(); // hand-drawn face parts (src/art/parts + editor drafts)
 initDevPanel();
 // ?editor opens the celeb pixel editor straight away
-if (new URLSearchParams(location.search).has('editor')) setTimeout(openPixelEditor, 300);
+{ const q = new URLSearchParams(location.search); if (q.has('editor')) setTimeout(() => openPixelEditor(q.get('editor') === 'parts' ? 'parts' : 'celebs'), 300); }
 
 // Controller connect/disconnect notice. Browsers only reveal a controller after one of its buttons is pressed.
 const toast = document.createElement('div');

@@ -2,10 +2,12 @@
 // Builds player sprite sheets off the main thread (OffscreenCanvas) so several can be drawn in parallel.
 import { buildSheet, Kit } from './sprites';
 import type { Appearance } from './appearance';
+import { setParts, PartImg } from './faceParts';
 
-self.onmessage = (e: MessageEvent<{ id: number; heightFt: number; a: Appearance; kit: Kit }>) => {
-  const { id, heightFt, a, kit } = e.data;
+self.onmessage = (e: MessageEvent<{ id: number; heightFt: number; a: Appearance; kit: Kit; parts?: Record<string, PartImg> }>) => {
+  const { id, heightFt, a, kit, parts } = e.data;
   try {
+    setParts(parts ?? {}, true); // the face-part pictures this look uses
     const sh = buildSheet(heightFt, a, kit);
     const bmp = (sh.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
     (self as unknown as Worker).postMessage({ id, bmp, index: sh.index, ball: sh.ball, total: sh.total }, [bmp]);

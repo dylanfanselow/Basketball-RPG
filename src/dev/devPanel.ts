@@ -8,6 +8,7 @@ import { sfx } from '../audio/sfx';
 import { REAL_ROSTERS } from '../career/roster';
 import { withDefaults } from '../render/appearance';
 import { openPixelEditor } from './pixelEditor';
+import { partVariants, PartType } from '../render/faceParts';
 
 /**
  * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
@@ -113,7 +114,8 @@ export function initDevPanel() {
     root.innerHTML = '';
     if (c !== app.career) root.append(el('div', { class: 'note', style: 'color:#ffcc33' }, `Editing ${livePlayer()?.name} for this game (not your career save).`));
     root.append(el('div', { class: 'hdr' }, el('b', {}, 'DEV TOOLS'), el('span', {}, '  F1 / ` / Create+Options to close'), btn('×', toggle)));
-    root.append(el('div', { class: 'row' }, btn('🎨 Pixel editor (courtside celebs)', () => { toggle(); openPixelEditor(); }, 'Hand-edit the celebrity sprites')));
+    root.append(el('div', { class: 'row' }, btn('🎨 Pixel editor: celebs', () => { toggle(); openPixelEditor('celebs'); }, 'Hand-edit the celebrity sprites'),
+      btn('🙂 Pixel editor: face parts', () => { toggle(); openPixelEditor('parts'); }, 'Hand-draw hair, beards, eyes, noses, mouths for players')));
 
     liveBox = el('pre', { class: 'live' });
     root.append(section('Live readout', liveBox));
@@ -342,12 +344,20 @@ function appearanceControls(a: Appearance, changed: () => void): HTMLElement[] {
     }
     return row;
   };
+  // hand-drawn face parts (pixel editor → Face parts) show up next to the built-in styles
+  const withParts = (builtIn: readonly string[], ...types: PartType[]) => [...new Set([...builtIn, ...types.flatMap((t) => partVariants(t))])];
+  const partSel = (label: string, t: 'eyes' | 'brows') => {
+    const opts = ['', ...partVariants(t)];
+    return el('div', { class: 'row' }, el('span', { class: 'lbl' }, label),
+      el('select', { onchange: (e: any) => setA(t, e.target.value || undefined) }, ...opts.map((o) => el('option', { value: o, selected: (a[t] ?? '') === o }, o || '(from the settings above)'))));
+  };
   const flag = (label: string, k: keyof Appearance) => el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: !!(a as any)[k], onchange: (e: any) => setA(k, e.target.checked) }), ' ' + label);
   return [
     sel('skin tone', 'skin', SKIN_TONES.map((_, i) => i), SKIN_TONES.map((_, i) => `tone ${i + 1}`)),
-    sel('hair', 'hair', HAIR_STYLES), color('hair color', 'hairColor'), sel('facial hair', 'facial', FACIAL),
+    sel('hair', 'hair', withParts(HAIR_STYLES, 'hair', 'hairBack')), color('hair color', 'hairColor'), sel('facial hair', 'facial', withParts(FACIAL, 'beard')),
     color('eye color', 'eyeColor'), sel('eye height', 'eyeY', [-1, 0, 1], ['high', 'middle', 'low']), sel('eye spacing', 'eyeGap', [0, 1], ['close', 'wide']), sel('brows', 'brow', [1, 2], ['thin', 'thick']),
-    sel('nose', 'nose', NOSES), sel('mouth', 'mouth', MOUTHS), sel('mouth height', 'mouthY', [-1, 0, 1], ['high', 'middle', 'low']), flag('big ears', 'bigEars'),
+    partSel('eyes (drawn part)', 'eyes'), partSel('brows (drawn part)', 'brows'),
+    sel('nose', 'nose', withParts(NOSES, 'nose')), sel('mouth', 'mouth', withParts(MOUTHS, 'mouth')), sel('mouth height', 'mouthY', [-1, 0, 1], ['high', 'middle', 'low']), flag('big ears', 'bigEars'),
     color('headband', 'headband', true), sel('arm sleeve', 'armSleeve', ARM_SLEEVE), color('sleeve color', 'sleeveColor'), color('wristband', 'wristband', true),
     sel('leg sleeve', 'legSleeve', LEG_SLEEVE), color('leg sleeve color', 'legSleeveColor'), flag('knee pad', 'kneePad'),
     sel('socks', 'socks', SOCKS), color('sock color', 'sockColor'), color('shoes', 'shoe'), color('shoe accent', 'shoeAccent'),

@@ -11,6 +11,7 @@
 import { CLIPS, Clip, Pose, J, sampleClip, frameTime, rigArms, dropToward, TORSO_DROP } from './anim';
 import { Appearance, SKIN_TONES } from './appearance';
 import { view, toRad, SHOULDER_HALF, HIP_HALF, projX } from './pose3d';
+import { drawPart, PartType } from './faceParts';
 
 export const ART = 1.5;
 export const FRAME_W = 96;
@@ -52,6 +53,7 @@ function ramp(base: string, far = false): Ramp {
   return { hi: lum > 0.85 ? '#ffffff' : tint(b, 0.28), base: b, sh: shade(b, 0.74), deep: shade(b, 0.52) };
 }
 const skinRamp = (a: Appearance, far = false): Ramp => {
+  if (a.skin < 0) return ramp('#808080', far); // neutral gray skin: used to export face parts for recoloring
   const [base] = SKIN_TONES[a.skin % SKIN_TONES.length];
   const r = ramp(base, far);
   return { ...r, hi: mix(r.base, '#fff3e0', 0.32) }; // warm sheen on skin
@@ -265,65 +267,88 @@ function drawTorso(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit, a: Appeara
 }
 
 // ---------- head ----------
-function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: number, backView = false) {
+/**
+ * Side (profile) head, or the back of the head. Built from face parts (faceParts.ts): each part uses its hand-drawn
+ * picture when there is one, otherwise the code below draws it. only = draw just that part (or 'base' = the bare
+ * head), always with the code: used to export the parts as pictures and as the editor's guide.
+ */
+export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: number, backView = false, only?: PartType | 'base') {
   const S = skinRamp(a);
   const rx = 9 * k, ry = 10.2 * k;
   const cx = hx, cy = hy;
   const hair = a.hairColor, H = ramp(hair);
-  hairBack(ctx, cx, cy, rx, ry, a, H, k);
-  // skull: radial light from the front-top
-  const rg = ctx.createRadialGradient(cx + rx * 0.35, cy - ry * 0.35, 1, cx, cy, rx * 1.35);
-  rg.addColorStop(0, S.hi); rg.addColorStop(0.4, S.base); rg.addColorStop(0.8, S.sh); rg.addColorStop(1, S.deep);
-  ellipse(ctx, cx, cy, rx, ry, rg);
+  const ramps = { hair: H, skin: S };
+  const want = (t: PartType | 'base') => !only || only === t;
+  const pic = (t: PartType, dy = 0) => !only && drawPart(ctx, t, 'side', cx, cy, k, a, ramps, { dy });
+  if (want('hairBack') && !pic('hairBack')) hairBack(ctx, cx, cy, rx, ry, a, H, k);
+  if (want('base')) {
+    // skull: radial light from the front-top
+    const rg = ctx.createRadialGradient(cx + rx * 0.35, cy - ry * 0.35, 1, cx, cy, rx * 1.35);
+    rg.addColorStop(0, S.hi); rg.addColorStop(0.4, S.base); rg.addColorStop(0.8, S.sh); rg.addColorStop(1, S.deep);
+    ellipse(ctx, cx, cy, rx, ry, rg);
+  }
   if (backView) {
-    ellipse(ctx, cx - rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); ellipse(ctx, cx + rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh);
-    hairFront(ctx, cx, cy, rx, ry, a, H, k, true);
-    if (a.headband) stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband);
+    if (want('base')) { ellipse(ctx, cx - rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); ellipse(ctx, cx + rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); }
+    if (want('hair') && !pic('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, true);
+    if (!only && a.headband) stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband);
     return;
   }
-  // jaw + chin (front-bottom), shadow under the jaw line
-  poly(ctx, [[cx - rx * 0.55, cy + ry * 0.45], [cx + rx * 0.05, cy + ry * 1.02], [cx + rx * 0.75, cy + ry * 0.95], [cx + rx * 1.02, cy + ry * 0.45], [cx + rx * 0.6, cy + ry * 0.1]], S.base);
-  stroke(ctx, [[cx - rx * 0.5, cy + ry * 0.55], [cx + rx * 0.05, cy + ry * 1.0], [cx + rx * 0.7, cy + ry * 0.98]], 1.2, S.deep, 0.7);
-  // ear
-  const big = a.bigEars ? 1.25 : 1;
-  ellipse(ctx, cx - rx * 0.18, cy + ry * 0.12, 2 * k * big, 2.9 * k * big, S.sh);
-  ellipse(ctx, cx - rx * 0.12, cy + ry * 0.14, 0.9 * k * big, 1.6 * k * big, S.deep);
-  // brow ridge + eye socket shadow, cheekbone highlight
   const ey = cy - ry * 0.08 + a.eyeY * k;
-  ellipse(ctx, cx + rx * 0.55, ey + 0.4 * k, 2.6 * k, 1.6 * k, S.sh);
-  ellipse(ctx, cx + rx * 0.62, ey + 3.2 * k, 2.2 * k, 1.1 * k, S.hi);
-  // eyes (3/4 view): near eye white + iris + catchlight, far eye smaller near the profile edge
   const ex = cx + rx * 0.58;
-  px(ctx, ex - 1, ey, '#f2efe8', 3, 2); px(ctx, ex + 1, ey, a.eyeColor, 1, 2); px(ctx, ex, ey, '#1a1010', 1, 1);
-  px(ctx, cx + rx * 0.92 - a.eyeGap, ey, '#e8e4dc', 1, 2); px(ctx, cx + rx * 0.92 - a.eyeGap + 1, ey, a.eyeColor, 1, 2);
+  if (want('base')) {
+    // jaw + chin (front-bottom), shadow under the jaw line
+    poly(ctx, [[cx - rx * 0.55, cy + ry * 0.45], [cx + rx * 0.05, cy + ry * 1.02], [cx + rx * 0.75, cy + ry * 0.95], [cx + rx * 1.02, cy + ry * 0.45], [cx + rx * 0.6, cy + ry * 0.1]], S.base);
+    stroke(ctx, [[cx - rx * 0.5, cy + ry * 0.55], [cx + rx * 0.05, cy + ry * 1.0], [cx + rx * 0.7, cy + ry * 0.98]], 1.2, S.deep, 0.7);
+    // ear
+    const big = a.bigEars ? 1.25 : 1;
+    ellipse(ctx, cx - rx * 0.18, cy + ry * 0.12, 2 * k * big, 2.9 * k * big, S.sh);
+    ellipse(ctx, cx - rx * 0.12, cy + ry * 0.14, 0.9 * k * big, 1.6 * k * big, S.deep);
+    // brow ridge + eye socket shadow, cheekbone highlight
+    ellipse(ctx, cx + rx * 0.55, ey + 0.4 * k, 2.6 * k, 1.6 * k, S.sh);
+    ellipse(ctx, cx + rx * 0.62, ey + 3.2 * k, 2.2 * k, 1.1 * k, S.hi);
+  }
+  // eyes (3/4 view): near eye white + iris + catchlight, far eye smaller near the profile edge
+  if (want('eyes') && !pic('eyes', a.eyeY * k)) {
+    px(ctx, ex - 1, ey, '#f2efe8', 3, 2); px(ctx, ex + 1, ey, a.eyeColor, 1, 2); px(ctx, ex, ey, '#1a1010', 1, 1);
+    px(ctx, cx + rx * 0.92 - a.eyeGap, ey, '#e8e4dc', 1, 2); px(ctx, cx + rx * 0.92 - a.eyeGap + 1, ey, a.eyeColor, 1, 2);
+  }
   // brows
-  const bc = shade(hair, 0.85);
-  for (let r = 0; r < a.brow; r++) stroke(ctx, [[ex - 2 * k, ey - 2.2 * k - r], [ex + 3 * k, ey - 2.6 * k - r]], 1.2, bc);
+  if (want('brows') && !pic('brows', a.eyeY * k)) {
+    const bc = shade(hair, 0.85);
+    for (let r = 0; r < a.brow; r++) stroke(ctx, [[ex - 2 * k, ey - 2.2 * k - r], [ex + 3 * k, ey - 2.6 * k - r]], 1.2, bc);
+  }
   // nose: bridge, tip past the profile, nostril
-  const ny = ey + 3 * k;
-  const nl = a.nose === 'long' ? 2.8 : a.nose === 'wide' ? 2.2 : 1.8;
-  poly(ctx, [[cx + rx * 0.8, ey], [cx + rx + nl * k, ny + 0.6 * k], [cx + rx + 0.4 * k, ny + 1.8 * k], [cx + rx * 0.72, ny + 1.6 * k]], S.base);
-  stroke(ctx, [[cx + rx * 0.84, ey + 0.4 * k], [cx + rx + nl * k - 0.6, ny + 0.4 * k]], 1, S.hi, 0.8);
-  px(ctx, cx + rx * 0.82, ny + 1.4 * k, S.deep, a.nose === 'wide' ? 3 : 2, 1);
+  if (want('nose') && !pic('nose', a.eyeY * k)) {
+    const ny = ey + 3 * k;
+    const nl = a.nose === 'long' ? 2.8 : a.nose === 'wide' ? 2.2 : 1.8;
+    poly(ctx, [[cx + rx * 0.8, ey], [cx + rx + nl * k, ny + 0.6 * k], [cx + rx + 0.4 * k, ny + 1.8 * k], [cx + rx * 0.72, ny + 1.6 * k]], S.base);
+    stroke(ctx, [[cx + rx * 0.84, ey + 0.4 * k], [cx + rx + nl * k - 0.6, ny + 0.4 * k]], 1, S.hi, 0.8);
+    px(ctx, cx + rx * 0.82, ny + 1.4 * k, S.deep, a.nose === 'wide' ? 3 : 2, 1);
+  }
   // mouth: upper lip line, lower lip
   const my = cy + ry * 0.58 + a.mouthY * k, mx = cx + rx * 0.62;
   const lip = mix(S.sh, '#7a2a2a', 0.45), lipLo = mix(S.base, '#a04848', 0.35);
-  if (a.mouth === 'open') { ellipse(ctx, mx + 1, my + 0.6 * k, 2.2 * k, 1.5 * k, '#2a0d0d'); px(ctx, mx, my - 0.2 * k, '#f4f4f4', 3, 1); }
-  else {
-    const curve = a.mouth === 'smile' ? -1 : a.mouth === 'frown' ? 1 : 0;
-    stroke(ctx, [[mx - 2.2 * k, my + curve * 0.8], [mx, my], [mx + 2.2 * k, my + curve * 0.6]], 1.1, lip);
-    stroke(ctx, [[mx - 1.4 * k, my + 1.3 * k], [mx + 1.6 * k, my + 1.3 * k]], 1.2, lipLo, 0.9);
+  if (want('mouth') && !pic('mouth', a.mouthY * k)) {
+    if (a.mouth === 'open') { ellipse(ctx, mx + 1, my + 0.6 * k, 2.2 * k, 1.5 * k, '#2a0d0d'); px(ctx, mx, my - 0.2 * k, '#f4f4f4', 3, 1); }
+    else {
+      const curve = a.mouth === 'smile' ? -1 : a.mouth === 'frown' ? 1 : 0;
+      stroke(ctx, [[mx - 2.2 * k, my + curve * 0.8], [mx, my], [mx + 2.2 * k, my + curve * 0.6]], 1.1, lip);
+      stroke(ctx, [[mx - 1.4 * k, my + 1.3 * k], [mx + 1.6 * k, my + 1.3 * k]], 1.2, lipLo, 0.9);
+    }
   }
   // facial hair
-  if (a.facial === 'stubble') { ctx.save(); ctx.globalAlpha = 0.35; poly(ctx, [[cx - rx * 0.3, cy + ry * 0.5], [cx + rx * 0.05, cy + ry * 1.0], [cx + rx * 0.75, cy + ry * 0.95], [cx + rx * 0.95, cy + ry * 0.5], [cx + rx * 0.3, cy + ry * 0.35]], hair); ctx.restore(); }
-  if (a.facial === 'mustache' || a.facial === 'goatee') stroke(ctx, [[mx - 2.4 * k, my - 1.2 * k], [mx + 2.4 * k, my - 1.2 * k]], 1.6 * k, hair);
-  if (a.facial === 'goatee') ellipse(ctx, mx, my + 3 * k, 2 * k, 2.2 * k, hair);
-  if (a.facial === 'beard') {
-    poly(ctx, [[cx - rx * 0.4, cy + ry * 0.2], [cx - rx * 0.45, cy + ry * 0.6], [cx + rx * 0.05, cy + ry * 1.12], [cx + rx * 0.8, cy + ry * 1.05], [cx + rx * 1.02, cy + ry * 0.6], [cx + rx * 0.3, cy + ry * 0.62]], H.base);
-    stroke(ctx, [[mx - 2 * k, my], [mx + 2 * k, my]], 1.1, lip);
-    stroke(ctx, [[cx - rx * 0.2, cy + ry * 0.75], [cx + rx * 0.5, cy + ry * 1.0]], 1, H.hi, 0.5);
+  if (want('beard') && !pic('beard')) {
+    if (a.facial === 'stubble') { ctx.save(); ctx.globalAlpha = 0.35; poly(ctx, [[cx - rx * 0.3, cy + ry * 0.5], [cx + rx * 0.05, cy + ry * 1.0], [cx + rx * 0.75, cy + ry * 0.95], [cx + rx * 0.95, cy + ry * 0.5], [cx + rx * 0.3, cy + ry * 0.35]], hair); ctx.restore(); }
+    if (a.facial === 'mustache' || a.facial === 'goatee') stroke(ctx, [[mx - 2.4 * k, my - 1.2 * k], [mx + 2.4 * k, my - 1.2 * k]], 1.6 * k, hair);
+    if (a.facial === 'goatee') ellipse(ctx, mx, my + 3 * k, 2 * k, 2.2 * k, hair);
+    if (a.facial === 'beard') {
+      poly(ctx, [[cx - rx * 0.4, cy + ry * 0.2], [cx - rx * 0.45, cy + ry * 0.6], [cx + rx * 0.05, cy + ry * 1.12], [cx + rx * 0.8, cy + ry * 1.05], [cx + rx * 1.02, cy + ry * 0.6], [cx + rx * 0.3, cy + ry * 0.62]], H.base);
+      stroke(ctx, [[mx - 2 * k, my], [mx + 2 * k, my]], 1.1, lip);
+      stroke(ctx, [[cx - rx * 0.2, cy + ry * 0.75], [cx + rx * 0.5, cy + ry * 1.0]], 1, H.hi, 0.5);
+    }
   }
-  hairFront(ctx, cx, cy, rx, ry, a, H, k, false);
+  if (want('hair') && !pic('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, false);
+  if (only) return;
   if (a.headband) { stroke(ctx, [[cx - rx * 0.98, cy - ry * 0.35], [cx + rx * 0.98, cy - ry * 0.42]], 2.6 * k, a.headband); stroke(ctx, [[cx - rx * 0.9, cy - ry * 0.48], [cx + rx * 0.9, cy - ry * 0.55]], 1, tint(a.headband, 0.4), 0.7); }
   if (a.goggles) { stroke(ctx, [[cx - rx, ey + 0.5], [cx + rx, ey + 0.5]], 1.4, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.8, 3 * k, 2.2 * k, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.6, 2 * k, 1.3 * k, '#8fd3ff'); px(ctx, ex - 0.5, ey, '#e8f8ff'); }
   if (a.mask) { const m = '#c9d3dc'; stroke(ctx, [[cx + rx * 0.2, ey - 2.4 * k], [cx + rx * 1.02, ey - 2.4 * k], [cx + rx * 1.05, ey + 2.6 * k], [cx + rx * 0.2, ey + 2.6 * k], [cx + rx * 0.2, ey - 2.4 * k]], 1.2, m); }
@@ -607,47 +632,69 @@ export function buildCoachSheet(heightFt: number, a: Appearance, kit: Kit): HTML
 
 /** Front-facing head (bench players, fans). Shared with the courtside crowd. */
 /** turn (0..1): 0 = straight at the camera, toward 1 = turned to screen-right (three-quarter): the face slides right. */
-export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: number, opts: { open?: boolean; shades?: string | null; turn?: number } = {}) {
+export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: number, opts: { open?: boolean; shades?: string | null; turn?: number; only?: PartType | 'base' } = {}) {
   const S = skinRamp(a), H = ramp(a.hairColor);
   const rx = 7.2 * k, ry = 8.6 * k;
   const turn = opts.turn ?? 0;
   const cx = cx0 + turn * rx * 0.42; // face features (eyes, nose, mouth, facial hair) ride toward the turned side
-  if (a.hair === 'afro') ellipse(ctx, cx0, hy - ry * 0.35, rx * 1.6, ry * 1.25, H.base);
-  if (a.hair === 'dreads' || a.hair === 'braids') for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) stroke(ctx, [[cx0 + sx * (rx * 0.8 + i * 1.2 * k), hy - ry * 0.4], [cx0 + sx * (rx * 0.9 + i * 1.3 * k), hy + ry * 1.0]], 1.6 * k, i % 2 ? H.base : H.sh);
-  ellipse(ctx, cx0 - rx * (1 - 0.3 * turn), hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh); // ears (the far one hides as the head turns)
-  if (turn < 0.3) ellipse(ctx, cx0 + rx, hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh);
-  const rg = ctx.createRadialGradient(cx0 - rx * 0.3 + turn * rx * 0.5, hy - ry * 0.35, 1, cx0, hy, rx * 1.3);
-  rg.addColorStop(0, S.hi); rg.addColorStop(0.45, S.base); rg.addColorStop(0.85, S.sh); rg.addColorStop(1, S.deep);
-  ellipse(ctx, cx0, hy, rx, ry, rg);
-  poly(ctx, [[cx0 - rx * 0.85 + turn * rx * 0.3, hy + ry * 0.35], [cx - rx * 0.35, hy + ry * 1.02], [cx + rx * 0.35, hy + ry * 1.02], [cx0 + rx * 0.85 + turn * rx * 0.12, hy + ry * 0.35]], S.base); // jaw
-  if (turn > 0.25) poly(ctx, [[cx + rx * 0.3, hy - ry * 0.05], [cx + rx * (0.62 + 0.25 * turn), hy + ry * 0.32], [cx + rx * 0.32, hy + ry * 0.38]], S.base); // nose in profile past the cheek
+  const only = opts.only;
+  const ramps = { hair: H, skin: S };
+  const want = (t: PartType | 'base') => !only || only === t;
+  // part pictures (faceParts.ts): features at the turned center, hair at the skull center
+  const pic = (t: PartType, x: number, dy = 0) => !only && drawPart(ctx, t, 'front', x, hy, k, a, ramps, { dy, open: opts.open });
+  if (want('hairBack') && !pic('hairBack', cx0)) {
+    if (a.hair === 'afro') ellipse(ctx, cx0, hy - ry * 0.35, rx * 1.6, ry * 1.25, H.base);
+    if (a.hair === 'dreads' || a.hair === 'braids') for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) stroke(ctx, [[cx0 + sx * (rx * 0.8 + i * 1.2 * k), hy - ry * 0.4], [cx0 + sx * (rx * 0.9 + i * 1.3 * k), hy + ry * 1.0]], 1.6 * k, i % 2 ? H.base : H.sh);
+  }
   const ey = hy - ry * 0.05 + a.eyeY * k;
-  for (const sx of [-1, 1]) {
-    const sq = sx > 0 ? 1 - 0.55 * turn : 1; // the eye on the turned side foreshortens
-    const ex = cx + sx * rx * 0.42 * (1 - 0.35 * turn);
-    ellipse(ctx, ex, ey + 0.4, 2 * k * sq, 1.3 * k, S.sh); px(ctx, ex - 1, ey, '#f2efe8', sq > 0.6 ? 2 : 1, 1); px(ctx, ex + (sx > 0 ? 0 : -1) + 0.5 + turn, ey, a.eyeColor, 1, 1);
+  const eyeX = (sx: number) => cx + sx * rx * 0.42 * (1 - 0.35 * turn);
+  const squash = (sx: number) => (sx > 0 ? 1 - 0.55 * turn : 1); // the eye on the turned side foreshortens
+  if (want('base')) {
+    ellipse(ctx, cx0 - rx * (1 - 0.3 * turn), hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh); // ears (the far one hides as the head turns)
+    if (turn < 0.3) ellipse(ctx, cx0 + rx, hy + ry * 0.05, 1.6 * k, 2.4 * k, S.sh);
+    const rg = ctx.createRadialGradient(cx0 - rx * 0.3 + turn * rx * 0.5, hy - ry * 0.35, 1, cx0, hy, rx * 1.3);
+    rg.addColorStop(0, S.hi); rg.addColorStop(0.45, S.base); rg.addColorStop(0.85, S.sh); rg.addColorStop(1, S.deep);
+    ellipse(ctx, cx0, hy, rx, ry, rg);
+    poly(ctx, [[cx0 - rx * 0.85 + turn * rx * 0.3, hy + ry * 0.35], [cx - rx * 0.35, hy + ry * 1.02], [cx + rx * 0.35, hy + ry * 1.02], [cx0 + rx * 0.85 + turn * rx * 0.12, hy + ry * 0.35]], S.base); // jaw
+    for (const sx of [-1, 1]) ellipse(ctx, eyeX(sx), ey + 0.4, 2 * k * squash(sx), 1.3 * k, S.sh); // eye sockets
+  }
+  if (want('nose') && turn > 0.25 && !only) poly(ctx, [[cx + rx * 0.3, hy - ry * 0.05], [cx + rx * (0.62 + 0.25 * turn), hy + ry * 0.32], [cx + rx * 0.32, hy + ry * 0.38]], S.base); // nose in profile past the cheek
+  if (want('eyes') && !pic('eyes', cx, a.eyeY * k)) for (const sx of [-1, 1]) {
+    const sq = squash(sx), ex = eyeX(sx);
+    px(ctx, ex - 1, ey, '#f2efe8', sq > 0.6 ? 2 : 1, 1); px(ctx, ex + (sx > 0 ? 0 : -1) + 0.5 + turn, ey, a.eyeColor, 1, 1);
+  }
+  if (want('brows') && !pic('brows', cx, a.eyeY * k)) for (const sx of [-1, 1]) {
+    const sq = squash(sx), ex = eyeX(sx);
     for (let r = 0; r < a.brow; r++) stroke(ctx, [[ex - rx * 0.22 * sq, ey - 2.2 * k - r], [ex + rx * 0.28 * sq, ey - 2 * k - r]], 1.1, shade(a.hairColor, 0.85));
   }
-  stroke(ctx, [[cx, ey + 1], [cx + 0.6, ey + 3.4 * k]], 1, S.sh); px(ctx, cx - 1, ey + 3.6 * k, S.deep, a.nose === 'wide' ? 3 : 2, 1);
+  if (want('nose') && !pic('nose', cx, a.eyeY * k)) { stroke(ctx, [[cx, ey + 1], [cx + 0.6, ey + 3.4 * k]], 1, S.sh); px(ctx, cx - 1, ey + 3.6 * k, S.deep, a.nose === 'wide' ? 3 : 2, 1); }
   const my = hy + ry * 0.55 + a.mouthY * k;
-  if (opts.open || a.mouth === 'open') ellipse(ctx, cx, my + 0.6 * k, 2.2 * k, 1.8 * k, '#2a0d0d');
-  else stroke(ctx, [[cx - 2 * k, my + (a.mouth === 'smile' ? -0.6 : 0)], [cx, my], [cx + 2 * k, my + (a.mouth === 'smile' ? -0.6 : 0)]], 1.1, mix(S.sh, '#7a2a2a', 0.45));
-  if (a.facial === 'beard') poly(ctx, [[cx - rx * 0.95, hy + ry * 0.1], [cx - rx * 0.5, hy + ry * 1.12], [cx + rx * 0.5, hy + ry * 1.12], [cx + rx * 0.95, hy + ry * 0.1], [cx + rx * 0.6, hy + ry * 0.6], [cx - rx * 0.6, hy + ry * 0.6]], H.base);
-  if (a.facial === 'goatee' || a.facial === 'mustache' || a.facial === 'beard') stroke(ctx, [[cx - 2.4 * k, my - 1.3 * k], [cx + 2.4 * k, my - 1.3 * k]], 1.4 * k, a.hairColor);
-  if (a.facial === 'goatee') ellipse(ctx, cx, my + 2.8 * k, 1.8 * k, 2 * k, a.hairColor);
-  // hair
-  const g = ctx.createLinearGradient(cx0 - rx, hy - ry * 1.3, cx0 + rx, hy);
-  g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.deep);
-  const capTo = (y: number, puff = 1.05) => { ctx.save(); ctx.beginPath(); ctx.ellipse(cx0, hy, rx * puff, ry * puff, 0, 0, Math.PI * 2); ctx.clip(); poly(ctx, [[cx0 - rx * 2, hy - ry * 2], [cx0 + rx * 2, hy - ry * 2], [cx0 + rx * 2, hy + ry * y], [cx0 - rx * 2, hy + ry * y]], g); ctx.restore(); };
-  switch (a.hair) {
-    case 'bald': ellipse(ctx, cx - rx * 0.3, hy - ry * 0.6, 2 * k, 1.1 * k, S.hi); break;
-    case 'hightop': poly(ctx, [[cx - rx * 0.95, hy - ry * 0.5], [cx - rx * 0.9, hy - ry * 1.9], [cx + rx * 0.9, hy - ry * 1.9], [cx + rx * 0.95, hy - ry * 0.5]], g); capTo(-0.45); break;
-    case 'mohawk': poly(ctx, [[cx - rx * 0.25, hy - ry * 0.7], [cx - rx * 0.2, hy - ry * 1.55], [cx + rx * 0.2, hy - ry * 1.55], [cx + rx * 0.25, hy - ry * 0.7]], g); break;
-    case 'bun': capTo(-0.5); ellipse(ctx, cx, hy - ry * 1.15, 3 * k, 2.6 * k, H.base); break;
-    case 'afro': capTo(-0.45, 1.1); break;
-    case 'curly': case 'twists': capTo(-0.4, 1.12); for (let i = -3; i <= 3; i++) ellipse(ctx, cx + i * 2.2 * k, hy - ry * 1.02, 1.4 * k, 1.3 * k, i % 2 ? H.hi : H.base); break;
-    default: capTo(a.hair === 'buzz' ? -0.55 : -0.48, 1.05);
+  if (want('mouth') && !pic('mouth', cx, a.mouthY * k)) {
+    if (opts.open || a.mouth === 'open') ellipse(ctx, cx, my + 0.6 * k, 2.2 * k, 1.8 * k, '#2a0d0d');
+    else stroke(ctx, [[cx - 2 * k, my + (a.mouth === 'smile' ? -0.6 : 0)], [cx, my], [cx + 2 * k, my + (a.mouth === 'smile' ? -0.6 : 0)]], 1.1, mix(S.sh, '#7a2a2a', 0.45));
   }
+  if (want('beard') && !pic('beard', cx)) {
+    if (a.facial === 'stubble') { ctx.save(); ctx.globalAlpha = 0.3; poly(ctx, [[cx - rx * 0.85, hy + ry * 0.35], [cx - rx * 0.35, hy + ry * 1.02], [cx + rx * 0.35, hy + ry * 1.02], [cx + rx * 0.85, hy + ry * 0.35], [cx, hy + ry * 0.5]], a.hairColor); ctx.restore(); }
+    if (a.facial === 'beard') poly(ctx, [[cx - rx * 0.95, hy + ry * 0.1], [cx - rx * 0.5, hy + ry * 1.12], [cx + rx * 0.5, hy + ry * 1.12], [cx + rx * 0.95, hy + ry * 0.1], [cx + rx * 0.6, hy + ry * 0.6], [cx - rx * 0.6, hy + ry * 0.6]], H.base);
+    if (a.facial === 'goatee' || a.facial === 'mustache' || a.facial === 'beard') stroke(ctx, [[cx - 2.4 * k, my - 1.3 * k], [cx + 2.4 * k, my - 1.3 * k]], 1.4 * k, a.hairColor);
+    if (a.facial === 'goatee') ellipse(ctx, cx, my + 2.8 * k, 1.8 * k, 2 * k, a.hairColor);
+  }
+  // hair
+  if (want('hair') && !pic('hair', cx0)) {
+    const g = ctx.createLinearGradient(cx0 - rx, hy - ry * 1.3, cx0 + rx, hy);
+    g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.deep);
+    const capTo = (y: number, puff = 1.05) => { ctx.save(); ctx.beginPath(); ctx.ellipse(cx0, hy, rx * puff, ry * puff, 0, 0, Math.PI * 2); ctx.clip(); poly(ctx, [[cx0 - rx * 2, hy - ry * 2], [cx0 + rx * 2, hy - ry * 2], [cx0 + rx * 2, hy + ry * y], [cx0 - rx * 2, hy + ry * y]], g); ctx.restore(); };
+    switch (a.hair) {
+      case 'bald': ellipse(ctx, cx - rx * 0.3, hy - ry * 0.6, 2 * k, 1.1 * k, S.hi); break;
+      case 'hightop': poly(ctx, [[cx - rx * 0.95, hy - ry * 0.5], [cx - rx * 0.9, hy - ry * 1.9], [cx + rx * 0.9, hy - ry * 1.9], [cx + rx * 0.95, hy - ry * 0.5]], g); capTo(-0.45); break;
+      case 'mohawk': poly(ctx, [[cx - rx * 0.25, hy - ry * 0.7], [cx - rx * 0.2, hy - ry * 1.55], [cx + rx * 0.2, hy - ry * 1.55], [cx + rx * 0.25, hy - ry * 0.7]], g); break;
+      case 'bun': capTo(-0.5); ellipse(ctx, cx, hy - ry * 1.15, 3 * k, 2.6 * k, H.base); break;
+      case 'afro': capTo(-0.45, 1.1); break;
+      case 'curly': case 'twists': capTo(-0.4, 1.12); for (let i = -3; i <= 3; i++) ellipse(ctx, cx + i * 2.2 * k, hy - ry * 1.02, 1.4 * k, 1.3 * k, i % 2 ? H.hi : H.base); break;
+      default: capTo(a.hair === 'buzz' ? -0.55 : -0.48, 1.05);
+    }
+  }
+  if (only) return;
   if (a.headband) stroke(ctx, [[cx - rx, hy - ry * 0.45], [cx + rx, hy - ry * 0.45]], 2.4 * k, a.headband);
   if (opts.shades) { poly(ctx, [[cx - rx * 0.95, ey - 1.6 * k], [cx + rx * 0.95, ey - 1.6 * k], [cx + rx * 0.8, ey + 1.8 * k], [cx + 1 * k, ey + 1.2 * k], [cx - 1 * k, ey + 1.2 * k], [cx - rx * 0.8, ey + 1.8 * k]], opts.shades); px(ctx, cx - rx * 0.55, ey - 0.6 * k, '#ffffff', 2, 1); }
   else if (a.goggles) { stroke(ctx, [[cx - rx, ey], [cx + rx, ey]], 1.2, '#1c1c1c'); for (const sx of [-1, 1]) ellipse(ctx, cx + sx * rx * 0.42, ey + 0.3, 2.2 * k, 1.6 * k, '#8fd3ff'); }

@@ -27,6 +27,7 @@ import { norm, sub, dist, len, segDist } from '../sim/math';
 import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
 import { topStats } from '../sim/boxScore';
+import { partsVersion } from '../render/faceParts';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -290,7 +291,7 @@ export class GameScene extends Phaser.Scene {
 
   ensureSprite(p: Player) {
     const kit = this.kitFor(p);
-    const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}`;
+    const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}_v${partsVersion()}`;
     const cur = this.sheets.get(p.id);
     if (cur?.key === key && this.textures.exists(key)) return;
     const sheet = this.sheetFor(key, p.height, p.appearance, kit);
@@ -716,7 +717,7 @@ export class GameScene extends Phaser.Scene {
       Object.assign(look, { armSleeve: 'both', sleeveColor: '#1d1f2a', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false, headband: null, shoe: '#111111', shoeAccent: '#111111', socks: 'low', sockColor: '#111111', hair: rng.pick(['bald', 'buzz', 'fade', 'waves']) });
       const kit: Kit = { jersey: '#1d1f2a', jerseyShade: '#14161e', trim: def.colors[0], shorts: '#22242e', number: -1, pants: true };
       // facing the camera (front sheet built right here, like the bench), so they never flip around
-      const key = `coachf_${def.id}_${hashStr(JSON.stringify(look))}`;
+      const key = `coachf_${def.id}_${hashStr(JSON.stringify(look))}_v${partsVersion()}`;
       if (!this.textures.exists(key)) {
         const tex = this.textures.addCanvas(key, buildCoachSheet(6.2, look, kit))!;
         for (let f = 0; f < COACH_FRAMES; f++) tex.add(f, 0, f * FRONT_W, 0, FRONT_W, FRONT_H);
@@ -734,7 +735,7 @@ export class GameScene extends Phaser.Scene {
   /** Front-facing sprite for a bench player (looks at the court). */
   frontSprite(p: Player): Phaser.GameObjects.Sprite {
     const kit = this.kitFor(p);
-    const key = `front_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}`;
+    const key = `front_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}_v${partsVersion()}`;
     if (!this.textures.exists(key)) {
       const tex = this.textures.addCanvas(key, buildFrontSheet(p.height, p.appearance, kit))!;
       tex.add(0, 0, 0, 0, FRONT_W, FRONT_H); tex.add(1, 0, FRONT_W, 0, FRONT_W, FRONT_H);

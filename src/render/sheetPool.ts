@@ -4,9 +4,10 @@
  */
 import { buildSheet, Kit, Sheet } from './sprites';
 import type { Appearance } from './appearance';
+import { partsFor, PartImg } from './faceParts';
 import SheetWorker from './sheetWorker?worker&inline';
 
-type Job = { id: number; msg: { heightFt: number; a: Appearance; kit: Kit }; resolve: (s: Sheet) => void };
+type Job = { id: number; msg: { heightFt: number; a: Appearance; kit: Kit; parts: Record<string, PartImg> }; resolve: (s: Sheet) => void };
 const pending = new Map<number, Job>();
 const queue: Job[] = [];
 let workers: { w: Worker; busy: boolean }[] | null = null;
@@ -59,7 +60,7 @@ function pump() {
 /** Build a player's sheet in the background. */
 export function requestSheet(heightFt: number, a: Appearance, kit: Kit): Promise<Sheet> {
   return new Promise((resolve) => {
-    queue.push({ id: nextId++, msg: { heightFt, a: JSON.parse(JSON.stringify(a)), kit: { ...kit } }, resolve });
+    queue.push({ id: nextId++, msg: { heightFt, a: JSON.parse(JSON.stringify(a)), kit: { ...kit }, parts: partsFor(a) }, resolve });
     if (disabled) setTimeout(flushOnMainThread, 0); else pump();
   });
 }
