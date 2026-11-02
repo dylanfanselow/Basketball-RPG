@@ -12,6 +12,8 @@ import { canUnlock, unlock } from '../src/career/skilltree';
 import { makeGame, simToEnd } from './helpers';
 import { emptyBox } from '../src/sim/player';
 import { screenImpact } from '../src/sim/game';
+import { planShot } from '../src/sim/ballPhysics';
+import { Rng } from '../src/sim/math';
 
 const core = (n = 60) => ({ shooting: n, finishing: n, strength: n, mobility: n, playmaking: n });
 const mk = (o: Partial<ConstructorParameters<typeof Player>[0]> = {}) => new Player({ id: 'p', name: 'P', team: 0, pos: 'SG', core: core(), ...o });
@@ -372,14 +374,47 @@ describe('tap vs hold controls', () => {
 });
 
 describe('rebounding: live rim, airballs, box-outs, crash roles', () => {
-  it('misses play several different rim sequences and makes still count normally', async () => {
-    const { pickSeq, buildPath } = await import('../src/sim/rim');
-    const { Rng } = await import('../src/sim/math');
+  it('physical shots: planned makes drop through, misses never do, and misses touch the hoop in varied ways', () => {
     const r = new Rng(3);
-    const seqs = new Set<string>();
-    for (let i = 0; i < 200; i++) seqs.add(buildPath(pickSeq(false, true, 0.3, r), r).seq);
-    expect(seqs.size).toBeGreaterThanOrEqual(4);
-    for (let i = 0; i < 50; i++) expect(buildPath(pickSeq(true, true, 0.1, r), r).made).toBe(true);
+    const hoop = { x: 88.75, y: 25, dir: 1 as const };
+    const contactCounts = new Set<number>();
+    let swishes = 0, boards = 0;
+    for (let i = 0; i < 120; i++) {
+      const ang = (i % 7) * 0.2 - 0.6, d = 6 + (i % 5) * 5;
+      const release = { x: hoop.x - Math.cos(ang) * d, y: 25 + Math.sin(ang) * d, z: 9.3 };
+      const type = d > 22 ? 'three' : d > 10 ? 'mid' : 'floater';
+      const made = planShot({ release, hoop, type, made: true, airball: false, dist: d, contest: 0.2 }, r);
+      expect(made.through).not.toBeNull();
+      if (made.swish) swishes++;
+      const miss = planShot({ release, hoop, type, made: false, airball: false, dist: d, contest: 0.3 }, r);
+      expect(miss.through).toBeNull();
+      expect(miss.airball).toBe(false);
+      contactCounts.add(Math.min(4, miss.contacts.length));
+      if (miss.contacts.some((c) => c.kind === 'board')) boards++;
+      const air = planShot({ release, hoop, type, made: false, airball: true, dist: d, contest: 0.6 }, r);
+      expect(air.contacts.length).toBe(0); expect(air.through).toBeNull();
+    }
+    expect(swishes).toBeGreaterThan(20); expect(swishes).toBeLessThan(100); // not every make is a swish
+    expect(contactCounts.size).toBeGreaterThanOrEqual(3); // one clank, two, rattles...
+    expect(boards).toBeGreaterThan(3);
+  });
+  it('deep misses come off the rim harder and land farther away than short misses; same seed, same shot', () => {
+    const hoop = { x: 88.75, y: 25, dir: 1 as const };
+    const landing = (d: number, type: string) => {
+      const r = new Rng(11); let sum = 0;
+      for (let i = 0; i < 80; i++) {
+        const p = planShot({ release: { x: hoop.x - d, y: 25, z: 9.4 }, hoop, type, made: false, airball: false, dist: d, contest: 0.2 }, r);
+        // where the loose ball comes down (ballistic from the hoop exit)
+        const { p: e, v: ve } = p.end;
+        const tFall = (ve.z + Math.sqrt(ve.z * ve.z + 2 * 32 * Math.max(0, e.z - 4))) / 32;
+        sum += Math.hypot(e.x + ve.x * tFall - hoop.x, e.y + ve.y * tFall - hoop.y);
+      }
+      return sum / 80;
+    };
+    expect(landing(30, 'deep3')).toBeGreaterThan(landing(8, 'floater') * 1.3);
+    const a = planShot({ release: { x: 70, y: 20, z: 9 }, hoop, type: 'three', made: false, airball: false, dist: 19, contest: 0 }, new Rng(5));
+    const b = planShot({ release: { x: 70, y: 20, z: 9 }, hoop, type: 'three', made: false, airball: false, dist: 19, contest: 0 }, new Rng(5));
+    expect(a.end).toEqual(b.end);
   });
   it('in real games, airballs only come from bad shots', () => {
     let air = 0;

@@ -11,7 +11,8 @@ import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
 import { UltState, UltRuntime, tryActivateUlt, tickUlt, ULT_GAINS } from './ultimates';
 import { PlayRole } from './data';
-import { RimPath, pickSeq, buildPath, sampleRim, pathEnd } from './rim';
+import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
+import { ShotPlan, planShot, samplePlan } from './ballPhysics';
 
 export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
@@ -67,7 +68,9 @@ export type BallState =
       overhead?: boolean }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
       /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
-      airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number } }
+      airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number };
+      /** physical flight + rim/glass/net contacts planned at release (every shot but dunks); ci = next contact */
+      plan?: ShotPlan; ci?: number }
   | { kind: 'loose'; vel: Vec; vz: number; lastTeam: 0 | 1;
       /** nobody can grab it before this (a swatted ball sails first) */
       noGrabUntil?: number;
@@ -476,7 +479,9 @@ export class GameSim {
       }
     } else {
       // stars get their number called: about 30% of sets (half in the clutch) are an iso for one of them
-      const stars = off.filter((p) => p.star);
+      // ...but not when he's already taking more than his share
+      const avgUse = off.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, off.length);
+      const stars = off.filter((p) => p.star && p.box.usage <= avgUse * 1.8 + 2);
       if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : 0.3)) isoFor(this.rng.pick(stars));
     }
     this.runner.call(id, swap, focus?.id ?? null);
@@ -935,10 +940,18 @@ export class GameSim {
     // bad enough shots can airball (never touches iron)
     const bad = (ev.pct < 0.25 && ev.contest > 0.4) || d > 30;
     const airball = !made && !foul && bad && ps.type !== 'dunk' && this.rng.chance(0.1 + Math.max(0, 0.25 - ev.pct) * 0.8);
-    const toShooter = norm(sub(p.p, rim));
-    const target = airball ? add(rim, scale(toShooter, this.rng.chance(0.6) ? 3 + this.rng.range(0, 2.5) : -(2 + this.rng.range(0, 2)))) : undefined;
-    const rimPath = airball ? undefined : ps.type === 'dunk' ? buildPath(made ? 'kissIn' : this.rng.pick(['frontRim', 'backIron'] as const), this.rng) : buildPath(pickSeq(made, jumper, ev.contest, this.rng), this.rng);
-    this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0: p.z + p.height + 0.8, t: 0, dur, made, pts: ev.pts, ev, foul, rim: rimPath, rimT: 0, rimKey: 0, airball, target };
+    const z0 = p.z + p.height + 0.8;
+    if (ps.type === 'dunk') {
+      // dunks are thrown down through the rim: short scripted path
+      const rimPath = buildPath(made ? 'kissIn' : this.rng.pick(['frontRim', 'backIron'] as const), this.rng);
+      this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0, t: 0, dur, made, pts: ev.pts, ev, foul, rim: rimPath, rimT: 0, rimKey: 0, airball: false };
+    } else {
+      // everything else is a real physical shot that produces the decided result (see ballPhysics.ts)
+      const plan = planShot({ release: { x: this.ball.p.x, y: this.ball.p.y, z: z0 }, hoop: { x: rim.x, y: rim.y, dir: side }, type: ps.type, made, airball, dist: d, contest: ev.contest }, this.rng);
+      const first = plan.contacts[0]?.t ?? plan.end.t;
+      this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0, t: 0, dur: first, made, pts: ev.pts, ev, foul, airball: plan.airball, plan, ci: 0 };
+    }
+    void jumper;
     // decide who crashes the offensive glass on this shot
     for (const m of this.teams[p.team].onCourt) {
       const crashP = m.role === '5' ? 0.95 : m.role === '4' ? (m.sub.three < 65 ? 0.85 : 0.2) : m.sub.finishing > m.sub.three + 8 ? 0.2 : 0.05;
@@ -1368,6 +1381,24 @@ export class GameSim {
       }
       case 'shot': {
         st.t += dt;
+        if (st.plan) {
+          // physical shot: play the planned flight, sound each contact as it happens, then hand the ball back to the sim
+          const pl = st.plan;
+          const pos = st.t >= pl.end.t ? pl.end.p : samplePlan(pl, st.t);
+          b.p = v(pos.x, pos.y); b.z = pos.z;
+          while ((st.ci ?? 0) < pl.contacts.length && pl.contacts[st.ci!].t <= st.t) {
+            const c = pl.contacts[st.ci!];
+            if (c.kind === 'board') this.quiet('rimHit', { kind: 'board' });
+            else if (c.kind === 'rim') this.quiet('rimHit', { kind: c.speed > 7 ? 'clank' : 'tick' });
+            st.ci = st.ci! + 1;
+          }
+          if (st.t >= pl.end.t) {
+            if (st.airball) this.emit({ kind: 'airball', text: 'AIR BALL', team: st.shooter.team, pid: st.shooter.id, big: true });
+            if (!st.made) st.exit = { vel: v(pl.end.v.x, pl.end.v.y), vz: pl.end.v.z };
+            this.resolveShot(st);
+          }
+          break;
+        }
         const k = clamp01(st.t / st.dur);
         const rim = this.rim(st.shooter.team);
         if (k < 1 || !st.rim) {
@@ -1463,15 +1494,23 @@ export class GameSim {
     const t = this.teams[team];
     if (!st.foul || st.made) { s.box.fga++; if (st.pts === 3) s.box.tpa++; }
     if (!st.airball) this.quiet(st.made ? 'net' : 'rim', {
-      type: st.ev.type, swish: st.made && (st.rim ? st.rim.seq === 'swish' : st.ev.contest < 0.2 && ['mid', 'three', 'deep3'].includes(st.ev.type)), seq: st.rim?.seq,
+      type: st.ev.type, swish: st.made && (st.plan ? st.plan.swish : st.rim ? st.rim.seq === 'swish' : st.ev.contest < 0.2 && ['mid', 'three', 'deep3'].includes(st.ev.type)),
+      seq: st.rim?.seq ?? (st.plan ? 'physics' : undefined), // live rims already played their contacts
       // cosmetic only: must not consume sim RNG
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
     }, s.id);
     if (st.made) {
       // the ball drops out of the bottom of the net with a little drift toward the baseline, then bounces and rolls
-      const along = this.side(team), wob = ((this.time * 7.31) % 1) - 0.5; // cosmetic: no sim RNG
-      this.ball.p = { ...this.rim(team) }; this.ball.z = Math.min(this.ball.z, 8.4);
-      this.ball.st = { kind: 'dead', vel: v(along * (1.2 + Math.abs(wob)), wob * 2.4), vz: -7 };
+      const pe = st.plan?.end;
+      if (pe) {
+        // physical shot: keep falling from where it dropped through the ring, slowed and centered by the net
+        this.ball.p = v(pe.p.x, pe.p.y); this.ball.z = pe.p.z;
+        this.ball.st = { kind: 'dead', vel: v(pe.v.x * 0.22 + this.side(team) * 0.8, pe.v.y * 0.22), vz: Math.min(-3, pe.v.z * 0.6) };
+      } else {
+        const along = this.side(team), wob = ((this.time * 7.31) % 1) - 0.5; // cosmetic: no sim RNG
+        this.ball.p = { ...this.rim(team) }; this.ball.z = Math.min(this.ball.z, 8.4);
+        this.ball.st = { kind: 'dead', vel: v(along * (1.2 + Math.abs(wob)), wob * 2.4), vz: -7 };
+      }
       const before = t.score - this.teams[1 - team].score;
       const val = this.scoreValue(st.pts);
       t.score += val;

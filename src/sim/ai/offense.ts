@@ -251,7 +251,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const team = sim.teams[p.team].onCourt;
   const avgUse = team.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, team.length);
   const avgTouch = team.reduce((a, q) => a + q.box.touches, 0) / Math.max(1, team.length);
-  const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09 - (iso ? 0.12 + Math.max(0, p.box.usage - avgUse) * 0.09 : 0);
+  const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09 - (iso ? 0.12 : 0);
 
   let best: Player | null = null, bestVal = -1e9;
   for (const m of sim.mates(p)) {

@@ -1,7 +1,6 @@
 /**
- * Live rim: after a shot reaches the hoop, the ball plays a short scripted sequence (rattles,
- * rolls, glass, high bounces) before it drops in or comes off as a rebound. Make/miss is still
- * decided at release; this only decides *how* it happens. Coordinates are rim-local:
+ * Scripted rim sequences, now only used for dunks (every other shot is a physical shot, see ballPhysics.ts).
+ * Make/miss is decided at release; this only decides *how* it happens. Coordinates are rim-local:
  * dx = toward the backboard (+), dy = across the rim, z = absolute height (ft).
  */
 import { Rng } from './math';
@@ -14,19 +13,6 @@ export interface RimKey { t: number; dx: number; dy: number; z: number; sound?: 
 export interface RimPath { seq: RimSeq; made: boolean; keys: RimKey[]; exit?: { dx: number; dy: number; vz: number; speed: number } }
 
 const R = 0.75; // rim radius, ft
-
-export function pickSeq(made: boolean, jumper: boolean, contest: number, rng: Rng): RimSeq {
-  if (made) {
-    const r = rng.next();
-    // plenty of swishes on clean looks, but makes also kiss the rim, bounce around and roll in
-    if (jumper && contest < 0.25 && r < 0.45) return 'swish';
-    if (r < 0.64) return jumper ? 'kissIn' : 'glassIn';
-    if (r < 0.82) return 'rimIn';
-    if (r < 0.94) return 'rollIn';
-    return jumper ? 'swish' : 'glassIn';
-  }
-  return rng.pick(['rattleOut', 'rattleOut', 'inOut', 'backIron', 'frontRim', 'boardRim', 'highBounce'] as RimSeq[]);
-}
 
 /** Circle the rim from angle a0 to a1 (radians) over time dur, starting at t0, with occasional ticks. */
 function roll(t0: number, dur: number, a0: number, a1: number, n = 6): RimKey[] {
