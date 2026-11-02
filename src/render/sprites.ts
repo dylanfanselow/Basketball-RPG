@@ -588,8 +588,19 @@ export function buildFrontSheet(heightFt: number, a: Appearance, kit: Kit): HTML
   const c = makeCanvas(FRONT_W * 2, FRONT_H);
   const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
   const s = figureHeight(heightFt) / 99; // relative to a 6'6" player
-  drawFront(ctx, 0, a, kit, false, s);
-  drawFront(ctx, FRONT_W, a, kit, true, s);
+  drawFront(ctx, 0, a, kit, 'seated', s);
+  drawFront(ctx, FRONT_W, a, kit, 'cheer', s);
+  crispen(c);
+  return c;
+}
+
+/** Coach, facing the camera in a suit: 0 = standing, 1 = calling a play (right arm up), 2 = celebrating (both up). */
+export const COACH_FRAMES = 3;
+export function buildCoachSheet(heightFt: number, a: Appearance, kit: Kit): HTMLCanvasElement {
+  const c = makeCanvas(FRONT_W * COACH_FRAMES, FRONT_H);
+  const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+  const s = figureHeight(heightFt) / 99;
+  (['idle', 'call', 'cheer'] as const).forEach((pose, i) => drawFront(ctx, FRONT_W * i, a, kit, pose, s));
   crispen(c);
   return c;
 }
@@ -654,14 +665,26 @@ export function frontChair(ctx: Ctx, cx: number, floor: number, seatY: number, b
   for (const sx of [-1, 1]) stroke(ctx, [[cx + sx * 15 * k, seatY + 4 * k], [cx + sx * 16 * k, floor]], 1.8 * k, C.deep);
 }
 
-function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, standing: boolean, s: number) {
+type FrontPose = 'seated' | 'cheer' | 'idle' | 'call';
+function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, pose: FrontPose, s: number) {
+  const standing = pose !== 'seated';
   const S = skinRamp(a), J0 = ramp(kit.jersey), P = ramp(kit.shorts), T = ramp(kit.trim);
   const cx = ox + FRONT_W / 2, floor = FRONT_H - 3;
   const L = (n: number) => n * s;
   if (!standing) frontChair(ctx, cx, floor, floor - L(21) - L(4), floor - L(21) - L(36), '#5a6584', s);
   // legs
   const shinTop = standing ? floor - L(38) : floor - L(21);
-  for (const side of [-1, 1]) {
+  const suit = !!kit.pants && standing;
+  if (suit) {
+    // suit trousers down to dress shoes
+    for (const side of [-1, 1]) {
+      const lx = cx + side * L(4.4);
+      tube(ctx, [lx, shinTop - L(20)], [lx, floor - L(3.5)], (t) => L(3.4 - 0.5 * t), P);
+      poly(ctx, [[lx - L(3.2), floor - L(4)], [lx + L(3.2), floor - L(4)], [lx + L(3.9), floor], [lx - L(3.4), floor]], '#0d0d10');
+      px(ctx, lx - L(1.5), floor - L(3.5), '#3a3a44', 2, 1);
+    }
+  }
+  for (const side of suit ? [] : [-1, 1]) {
     const lx = cx + side * L(standing ? 4.2 : 5.4); // seated: knees apart
     tube(ctx, [lx, shinTop], [lx, floor - L(3)], (t) => L(2.6 - 0.9 * t + 0.6 * bump(t, 0.3, 0.35)), S);
     const sockH = a.socks === 'high' ? 0.55 : a.socks === 'crew' ? 0.28 : 0.08;
@@ -676,9 +699,12 @@ function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, standing: bool
   const hipY = standing ? shinTop - L(22) : shinTop - L(7);
   const sg = ctx.createLinearGradient(cx - L(10), hipY, cx + L(10), shinTop);
   sg.addColorStop(0, P.hi); sg.addColorStop(0.4, P.base); sg.addColorStop(1, P.sh);
-  poly(ctx, [[cx - L(10.5), hipY], [cx + L(10.5), hipY], [cx + L(10), shinTop + 1], [cx - L(10), shinTop + 1]], sg);
-  stroke(ctx, [[cx, hipY + L(3)], [cx, shinTop]], 1, P.deep);
-  stroke(ctx, [[cx - L(9.6), shinTop], [cx - L(1), shinTop]], 1.4, T.base); stroke(ctx, [[cx + L(1), shinTop], [cx + L(9.6), shinTop]], 1.4, T.base);
+  if (suit) poly(ctx, [[cx - L(8.5), hipY], [cx + L(8.5), hipY], [cx + L(8), hipY + L(8)], [cx - L(8), hipY + L(8)]], sg);
+  else {
+    poly(ctx, [[cx - L(10.5), hipY], [cx + L(10.5), hipY], [cx + L(10), shinTop + 1], [cx - L(10), shinTop + 1]], sg);
+    stroke(ctx, [[cx, hipY + L(3)], [cx, shinTop]], 1, P.deep);
+    stroke(ctx, [[cx - L(9.6), shinTop], [cx - L(1), shinTop]], 1.4, T.base); stroke(ctx, [[cx + L(1), shinTop], [cx + L(9.6), shinTop]], 1.4, T.base);
+  }
   if (!standing) for (const side of [-1, 1]) ellipse(ctx, cx + side * L(4.6), shinTop + L(0.5), L(3.2), L(2.4), S.base); // knees
   // torso
   const shY = hipY - L(28);
@@ -696,8 +722,13 @@ function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, standing: bool
   for (const side of [-1, 1]) {
     const sh: J = [cx + side * L(9.6), shY + L(3)];
     const sleeve = a.armSleeve === 'both' || (a.armSleeve === 'shooting' && side === 1);
-    const hand: J = standing ? [sh[0] + side * L(5), shY - L(18)] : [sh[0] + side * L(1), hipY + L(3)];
-    const el: J = standing ? [sh[0] + side * L(5), shY - L(6)] : [sh[0] + side * L(2.4), shY + L(15)];
+    // cheer: both up; call: right arm straight up (calling the play); idle: hanging at the sides; seated: on the knees
+    const up = pose === 'cheer' || (pose === 'call' && side === 1);
+    const hang = pose === 'idle' || (pose === 'call' && side === -1);
+    const hand: J = up ? (pose === 'call' ? [sh[0] + L(1), shY - L(22)] : [sh[0] + side * L(5), shY - L(18)])
+      : hang ? [sh[0] + side * L(1.6), hipY + L(2)] : [sh[0] + side * L(1), hipY + L(3)];
+    const el: J = up ? (pose === 'call' ? [sh[0] + L(1.5), shY - L(9)] : [sh[0] + side * L(5), shY - L(6)])
+      : hang ? [sh[0] + side * L(2.4), shY + L(13)] : [sh[0] + side * L(2.4), shY + L(15)];
     const R = kit.pants ? J0 : S;
     tube(ctx, sh, el, (t) => L(2.6 - 0.5 * t + 0.4 * bump(t, 0.45, 0.35)), R);
     tube(ctx, el, hand, (t) => L(2.3 - 0.7 * t), R);
@@ -708,5 +739,5 @@ function drawFront(ctx: Ctx, ox: number, a: Appearance, kit: Kit, standing: bool
   }
   // neck + head
   tube(ctx, [cx, shY + L(1)], [cx, shY - L(5)], () => L(3.2), S);
-  frontHead(ctx, cx, shY - L(12), a, s, { open: standing });
+  frontHead(ctx, cx, shY - L(12), a, s, { open: pose === 'cheer' || pose === 'call' });
 }

@@ -141,6 +141,17 @@ class Sfx {
     this.noiseHit({ type: 'bandpass', f: 500, f2: lob ? 1300 : 2200, q: 2, peak: 0.12, a: 0.03, d: lob ? 0.3 : 0.16, pan });
     this.tone({ f: 200, f2: 120, peak: 0.12, d: 0.05, pan });
   }
+  /** Reward chime for your rebounds: two bright bell notes going up (bigger on an offensive board). */
+  ding(big = false) {
+    if (!this.ok()) return;
+    const k = big ? 1.25 : 1;
+    for (const [i, f] of [[0, 1318.5], [1, 1760]] as const) {
+      const at = i * 0.085;
+      this.tone({ f, peak: 0.22 * k, a: 0.004, d: 0.55, at });
+      this.tone({ type: 'triangle', f: f * 2, peak: 0.06 * k, a: 0.003, d: 0.3, at });
+      this.tone({ f: f * 2.76, peak: 0.03 * k, a: 0.002, d: 0.18, at }); // bell partial
+    }
+  }
   catch(pan = 0) {
     if (!this.ok()) return;
     this.noiseHit({ type: 'lowpass', f: 1600, peak: 0.3, d: 0.05, pan });

@@ -424,6 +424,12 @@ export const CLIPS: Clip[] = [
     { t: 0.55, pose: P({ hip: [0, 52], kF: [5, 34], fF: [3, 12], kB: [-3, 32], fB: [-5, 10], hF: [6, 92], eF: [9, 84], hB: [3, 91], eB: [-3, 84], ball: [5, 95] }) },
     { t: 0.8, pose: P({ hip: [0, 42], kF: [8, 21], fF: [10, 0], kB: [-7, 21], fB: [-10, 0], head: [2, 82], neck: [1, 73], sF: [2, 70], sB: [-2, 70], hF: [6, 72], hB: [4, 71], eF: [13, 70], eB: [-7, 70], ball: [6, 73] }) },
     { t: 1, pose: P({ hip: [0, 44], kF: [7, 22], fF: [9, 0], kB: [-6, 22], fB: [-9, 0], head: [2, 84], neck: [1, 75], sF: [2, 72], sB: [-2, 72], hF: [6, 72], hB: [4, 71], eF: [12, 70], eB: [-6, 70], ball: [6, 73] }) }] },
+  // picking a loose ball up off the floor: drop the hips, reach down with both hands, bring it up to the chest
+  { name: 'scoop', frames: 7, keys: [
+    { t: 0, pose: P({ hip: [-2, 42], kF: [7, 21], fF: [8, 0], kB: [-6, 20], fB: [-8, 0], head: [8, 80], neck: [6, 71], sF: [8, 68], sB: [4, 68], eF: [13, 56], hF: [16, 44], eB: [9, 56], hB: [12, 44] }) },
+    { t: 0.4, pose: P({ hip: [-6, 30], kF: [8, 17], fF: [9, 0], kB: [-5, 15], fB: [-10, 0], head: [18, 59], neck: [14, 52], sF: [15, 49], sB: [11, 49], eF: [18, 36], hF: [19, 22], eB: [14, 36], hB: [15, 22], ball: [20, 15] }) },
+    { t: 0.7, pose: P({ hip: [-3, 38], kF: [7, 20], fF: [9, 0], kB: [-6, 19], fB: [-10, 0], head: [9, 76], neck: [7, 67], sF: [9, 64], sB: [5, 64], eF: [12, 52], hF: [12, 60], eB: [8, 52], hB: [9, 59], ball: [13, 60] }) },
+    { t: 1, pose: P({ hip: [0, 44], kF: [7, 22], fF: [9, 0], kB: [-6, 22], fB: [-9, 0], head: [2, 84], neck: [1, 75], sF: [2, 72], sB: [-2, 72], hF: [6, 72], hB: [4, 71], eF: [12, 70], eB: [-6, 70], ball: [6, 73] }) }] },
   // crossing dribble while holding ○: both hands stay at the hips, the ball goes hand -> floor -> other hand
   { name: 'dribbleReady', frames: 8, loop: true, bounce: [0.25, 0.75], keys: [
     { t: 0, pose: { ...arms(READY, [11, 46], [3, 48]), ball: [11, 40] } },

@@ -1467,13 +1467,21 @@ export class GameSim {
     if (!cands.length) return;
     cands.sort((a, c) => c.score - a.score);
     const g = cands[0].p;
-    g.anim = { name: 'rebound', start: this.time, dur: 0.7 };
-    if (g.z === 0 && g.state !== 'fallen') { g.vz = Math.max(g.vz, 7); g.state = 'jump'; }
+    // how he takes it depends on where the ball is: off the floor, at the chest, or up high (jumping only when it's
+    // above his standing reach)
+    const zRel = this.ball.z - g.z;
+    if (zRel < 2.8) g.anim = { name: 'scoop', start: this.time, dur: 0.55 };
+    else if (zRel < g.height + 0.6) g.anim = { name: 'reboundChest', start: this.time, dur: 0.35 };
+    else {
+      g.anim = { name: 'rebound', start: this.time, dur: 0.7 };
+      if (g.z === 0 && g.state !== 'fallen' && this.ball.z > g.reach) { g.vz = Math.max(g.vz, Math.min(9, 4 + (this.ball.z - g.reach) * 4)); g.state = 'jump'; }
+    }
     const wasShot = this.wasShotRebound;
     this.wasShotRebound = false;
     if (wasShot) {
       g.box.reb++;
       this.gainUlt(g, ULT_GAINS.rebound);
+      if (g === this.user) this.quiet('rebound', { off: g.team === this.possession }, g.id);
       if (g === this.user && g.team === this.possession) applyTrust(this.trust, 'offReb');
     }
     this.giveBall(g);

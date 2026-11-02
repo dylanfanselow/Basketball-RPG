@@ -13,7 +13,7 @@ import { CELEB_CAST, castSheet } from '../render/celebArt';
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
 import type { Appearance } from '../render/appearance';
-import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
+import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildCoachSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
 import { FrameCache, yawFor } from '../render/frameCache';
 import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState } from '../render/anim';
 import { sfx } from '../audio/sfx';
@@ -26,6 +26,7 @@ import { Rng } from '../sim/math';
 import { norm, sub, dist, len, segDist } from '../sim/math';
 import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
+import { topStats } from '../sim/boxScore';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -50,6 +51,7 @@ const angPage = (key: string, n: number) => `${key}_ang${n}`;
 const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
 const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
 
+const BOX_X = 4, BOX_TILE = 66;
 /** Knock-back clip progress: short hits play straight through; long ones stumble, stay off balance, then recover. */
 function bumpedU(e: number, dur: number): number {
   if (dur <= 0.6) return e / Math.max(0.2, dur);
@@ -96,7 +98,7 @@ export class GameScene extends Phaser.Scene {
   crowd!: Crowd;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
-  coaches: { team: 0 | 1; key: string; look: Appearance; kit: Kit; sprite: Phaser.GameObjects.Sprite | null; sheet: Sheet | null; home: number; x: number; act: string; actUntil: number }[] = [];
+  coaches: { team: 0 | 1; sprite: Phaser.GameObjects.Sprite; bubble: Phaser.GameObjects.Graphics; bubbleText: Phaser.GameObjects.Text; home: number; x: number; callUntil: number; cheerUntil: number; phase: number }[] = [];
   benchCheerUntil: [number, number] = [0, 0];
   paused = false;
   ready = false;
@@ -189,7 +191,6 @@ export class GameScene extends Phaser.Scene {
     const inUse = new Set<string>();
     if (this.sys.isActive()) {
       for (const p of this.sim.players) { const e = this.sheets.get(p.id); if (e) inUse.add(e.key); }
-      for (const c of this.coaches) inUse.add(c.key);
     }
     for (const key of [...SHEET_CACHE.keys()]) {
       if (SHEET_CACHE.size <= MAX_SHEETS) break;
@@ -283,7 +284,6 @@ export class GameScene extends Phaser.Scene {
   sheetsReady(): boolean {
     let ok = true;
     for (const p of this.sim.players) { this.ensureSprite(p); if (!this.sheets.has(p.id)) ok = false; }
-    for (const c of this.coaches) if (!c.sheet) ok = false;
     return ok;
   }
 
@@ -313,6 +313,7 @@ export class GameScene extends Phaser.Scene {
     this.benchText = fixed(this.add.text(VIEW_W / 2, 260, '', { fontFamily: FONT, fontSize: '22px', color: '#ffffff', align: 'center', backgroundColor: '#000000aa', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(9002));
     this.bigText = fixed(this.add.text(VIEW_W / 2, 200, '', { fontFamily: FONT, fontSize: '40px', color: '#ffdd33', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(9003).setAlpha(0));
     this.loadText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2 - 40, 'Lacing up…', { fontFamily: FONT, fontSize: '26px', color: '#ffe680', fontStyle: 'bold', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9600));
+    this.makeBoxScore();
     this.pauseText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2, '', { fontFamily: FONT, fontSize: '24px', color: '#ffffff', align: 'center', backgroundColor: '#000000dd', padding: { x: 30, y: 20 } }).setOrigin(0.5).setDepth(9500).setVisible(false));
   }
 
@@ -404,6 +405,7 @@ export class GameScene extends Phaser.Scene {
       case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough', 'stepThroughJumper'].includes(d.type)) sfx.squeak(pan, 0.7); break;
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;
+      case 'rebound': sfx.ding(!!d.off); this.popText(who, d.off ? 'OFF. REBOUND +1' : 'REBOUND +1', '#ffd84a'); break;
       case 'release': sfx.release(pan); break;
       case 'net':
         this.netHits[sim.ball.p.x < 47 ? 0 : 1] = { at: this.time.now, amp: d.type === 'dunk' ? 1.1 : d.swish ? 1 : 0.75 };
@@ -435,7 +437,7 @@ export class GameScene extends Phaser.Scene {
     this.crowd.react(worldX, power, team === 0);
     if (team === 1 && power > 0.5) this.crowd.react(worldX, power * 0.6, true, true); // home fans boo the visitors' big play
     this.benchCheerUntil[team] = this.time.now + 1800;
-    for (const c of this.coaches) if (c.team === team && power > 0.5) { c.act = 'cheer'; c.actUntil = this.time.now + 1300; }
+    for (const c of this.coaches) if (c.team === team && power > 0.5) c.cheerUntil = this.time.now + 1300;
     // the famous front row reacts too: big plays bring them out of their seats, the rest film or gasp
     if (power >= 0.5) for (const c of this.celebs) {
       const r = (c.phase * 7.3 + this.time.now / 997) % 1;
@@ -454,7 +456,7 @@ export class GameScene extends Phaser.Scene {
       if (e.kind === 'net') this.reactAll(d.team, d.type === 'dunk' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx);
       else if (['block', 'steal', 'ankles', 'poster', 'charge'].includes(e.kind)) this.reactAll(team, e.kind === 'steal' ? 0.6 : 0.9, wx);
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
-      if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) { c.act = 'point'; c.actUntil = this.time.now + 1100; }
+      if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
     }
     this.playSound(e);
     if (e.quiet) return;
@@ -492,6 +494,8 @@ export class GameScene extends Phaser.Scene {
     if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
     if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? bumpedU(now - a.start, a.dur ?? 0.5) : 0.5 };
     if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
+    if (a?.name === 'scoop' && now - a.start < (a.dur ?? 0.55)) return { clip: 'scoop', u: (now - a.start) / (a.dur ?? 0.55) };
+    if (a?.name === 'reboundChest' && now - a.start < (a.dur ?? 0.35)) return { clip: 'catch', u: (now - a.start) / (a.dur ?? 0.35) };
     if (p.boxingOut) return { clip: now < p.leanedUntil ? 'boxoutPush' : 'boxout', u: now * 1.6 };
     if (p.state === 'stagger' || now < p.staggerUntil) return { clip: 'stagger', u: now * 2 };
     if (p.state === 'screen') return { clip: 'screen', u: p.stateT / 0.25 };
@@ -710,9 +714,17 @@ export class GameScene extends Phaser.Scene {
       const look = randomAppearance(() => rng.next());
       Object.assign(look, { armSleeve: 'both', sleeveColor: '#1d1f2a', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false, headband: null, shoe: '#111111', shoeAccent: '#111111', socks: 'low', sockColor: '#111111', hair: rng.pick(['bald', 'buzz', 'fade', 'waves']) });
       const kit: Kit = { jersey: '#1d1f2a', jerseyShade: '#14161e', trim: def.colors[0], shorts: '#22242e', number: -1, pants: true };
-      const key = `coach_${def.id}_${hashStr(JSON.stringify(look))}`;
+      // facing the camera (front sheet built right here, like the bench), so they never flip around
+      const key = `coachf_${def.id}_${hashStr(JSON.stringify(look))}`;
+      if (!this.textures.exists(key)) {
+        const tex = this.textures.addCanvas(key, buildCoachSheet(6.2, look, kit))!;
+        for (let f = 0; f < COACH_FRAMES; f++) tex.add(f, 0, f * FRONT_W, 0, FRONT_W, FRONT_H);
+      }
       const home = team === 0 ? 26.5 : 67.5;
-      this.coaches.push({ team, key, look, kit, sprite: null, sheet: this.sheetFor(key, 6.2, look, kit), home, x: home, act: 'idle', actUntil: 0 });
+      const sprite = this.add.sprite(sx(home), sy(-1.6), key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.96).setDepth(sy(-1.6));
+      const bubble = this.add.graphics().setDepth(5500).setVisible(false);
+      const bubbleText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#14121e', fontStyle: 'bold', align: 'center' }).setOrigin(0.5).setDepth(5501).setVisible(false);
+      this.coaches.push({ team, sprite, bubble, bubbleText, home, x: home, callUntil: 0, cheerUntil: 0, phase: team * 2 });
     });
   }
 
@@ -760,19 +772,42 @@ export class GameScene extends Phaser.Scene {
       const bob = c.frame === 1 ? -Math.abs(Math.sin(now / 150 + c.phase)) * 3 : 0;
       c.sprite.setFrame(c.frame).setPosition(sx(c.x), sy(-3.9) + bob);
     }
-    // coaches pace the sideline, point when calling a play, celebrate big plays
+    // coaches face the court: drift along their box, raise an arm and shout the play, celebrate big plays
     for (const c of this.coaches) {
-      if (!c.sheet) { c.sheet = this.sheetFor(c.key, 6.2, c.look, c.kit); if (!c.sheet) continue; }
-      if (!c.sprite) c.sprite = this.add.sprite(sx(c.x), sy(-1.6), c.key, 0).setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE).setDepth(sy(-1.6));
-      let clip = 'idle', u = now / 2000;
-      if (now < c.actUntil) { clip = c.act; u = c.act === 'cheer' ? now / 400 : 1 - (c.actUntil - now) / 1100; }
+      let frame = 0, bob = 0;
+      if (now < c.callUntil) frame = 1;
+      else if (now < c.cheerUntil) { frame = 2; bob = -Math.abs(Math.sin(now / 140)) * 4; }
       else {
-        const target = c.home + Math.sin(now / 2600 + c.team * 2) * 2.5;
+        const target = c.home + Math.sin(now / 4200 + c.phase) * 2.5;
         const dx = target - c.x;
-        if (Math.abs(dx) > 0.15) { c.x += Math.sign(dx) * Math.min(Math.abs(dx), 0.05); clip = 'jog'; u = c.x / 3; c.sprite!.setFlipX(dx < 0); }
+        const step = Math.min(Math.abs(dx), 0.6 / 60);
+        if (Math.abs(dx) > 0.05) { c.x += Math.sign(dx) * step; bob = -Math.abs(Math.sin(now / 160)) * 1.5; }
       }
-      c.sprite!.setPosition(sx(c.x), sy(-1.6)).setFrame(c.sheet.index[clip].start + frameAt(CLIP[clip], u));
+      c.sprite.setFrame(frame).setPosition(sx(c.x), sy(-1.6) + bob);
+      // speech bubble with the play, fading out at the end
+      const left = c.callUntil - now;
+      const show = left > 0;
+      c.bubble.setVisible(show); c.bubbleText.setVisible(show);
+      if (show) {
+        const a = Math.min(1, left / 400);
+        const bx = sx(c.x), by = c.sprite.y - c.sprite.displayHeight - 14;
+        c.bubbleText.setPosition(bx, by).setAlpha(a);
+        c.bubble.setPosition(bx, by).setAlpha(a);
+      }
     }
+  }
+
+  /** A coach calls a play: arm up and a speech bubble with its name for a couple of seconds. */
+  coachCall(c: GameScene['coaches'][number], text: string) {
+    c.callUntil = this.time.now + 2200;
+    c.bubbleText.setText(text);
+    const w = c.bubbleText.width + 20, h = c.bubbleText.height + 12;
+    const g = c.bubble.clear();
+    g.fillStyle(0x000000, 0.35); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 3, w, h, 8);
+    g.fillStyle(0xffffff, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
+    g.fillTriangle(-6, h / 2 - 1, 6, h / 2 - 1, 0, h / 2 + 10); // tail down to the coach
+    g.lineStyle(2, 0x14121e, 1); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+    g.lineBetween(-6, h / 2, 0, h / 2 + 10); g.lineBetween(6, h / 2, 0, h / 2 + 10);
   }
 
   drawOverlays() {
@@ -928,6 +963,54 @@ export class GameScene extends Phaser.Scene {
     this.labelTexts.push(this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(6000));
   }
 
+  /** Floating reward text that rises and fades above a player (your rebounds). */
+  popText(p: Player | null | undefined, text: string, color: string) {
+    if (!p) return;
+    const t = this.add.text(sx(p.p.x), sy(p.p.y, p.z + p.height + 1.4), text, { fontFamily: FONT, fontSize: '22px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(6500);
+    this.tweens.add({ targets: t, y: t.y - 46, duration: 1100, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: t, alpha: 0, delay: 650, duration: 450, onComplete: () => t.destroy() });
+    this.tweens.add({ targets: t, scale: { from: 0.6, to: 1 }, duration: 180, ease: 'Back.easeOut' });
+  }
+
+  /** Top-left box score: your name and your three most valuable stats. */
+  boxTiles: { val: Phaser.GameObjects.Text; lbl: Phaser.GameObjects.Text }[] = [];
+  boxName!: Phaser.GameObjects.Text;
+  boxLast = new Map<string, number>();
+  boxFlash = new Map<string, number>();
+  makeBoxScore() {
+    const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
+    this.boxName = fixed(this.add.text(10, 138, '', { fontFamily: FONT, fontSize: '12px', color: '#14121e', fontStyle: 'bold' }).setDepth(9001));
+    this.boxTiles = [0, 1, 2].map((i) => ({
+      val: fixed(this.add.text(BOX_X + 33 + i * BOX_TILE, 178, '', { fontFamily: FONT, fontSize: '26px', color: '#ffffff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(9001)),
+      lbl: fixed(this.add.text(BOX_X + 33 + i * BOX_TILE, 200, '', { fontFamily: FONT, fontSize: '11px', color: '#9fb0e0', fontStyle: 'bold' }).setOrigin(0.5, 0).setDepth(9001)),
+    }));
+  }
+  drawBoxScore() {
+    const sim = this.sim, u = sim.user, h = this.hud, now = this.time.now;
+    const show = !!u && (sim.userOnCourt || sim.cfg.mode === 'practice');
+    this.boxName.setVisible(show); for (const t of this.boxTiles) { t.val.setVisible(show); t.lbl.setVisible(show); }
+    if (!show || !u) return;
+    const top = topStats(u.box);
+    for (const s of top) {
+      const prev = this.boxLast.get(s.key);
+      if (prev !== undefined && s.value > prev) this.boxFlash.set(s.key, now);
+      this.boxLast.set(s.key, s.value);
+    }
+    // panel: gold header stripe with your name, three tiles
+    const y0 = 134, w = BOX_TILE * 3 + 6;
+    h.fillStyle(0x000000, 0.45); h.fillRoundedRect(BOX_X + 2, y0 + 3, w, 86, 6);
+    h.fillStyle(0x121633, 0.95); h.fillRoundedRect(BOX_X, y0, w, 86, 6);
+    h.fillStyle(0xffcc33, 1); h.fillRoundedRect(BOX_X, y0, w, 20, { tl: 6, tr: 6, bl: 0, br: 0 });
+    this.boxName.setText(`${u.name.toUpperCase()}  ·  ${u.box.fgm}/${u.box.fga} FG`);
+    top.forEach((s, i) => {
+      const x = BOX_X + 4 + i * BOX_TILE, flash = Math.max(0, 1 - (now - (this.boxFlash.get(s.key) ?? -9999)) / 600);
+      h.fillStyle(i === 0 ? 0x22305e : 0x1a2246, 1); h.fillRoundedRect(x, y0 + 24, BOX_TILE - 4, 58, 5);
+      if (flash > 0) { h.fillStyle(0xffd84a, 0.55 * flash); h.fillRoundedRect(x, y0 + 24, BOX_TILE - 4, 58, 5); }
+      this.boxTiles[i].val.setText(String(s.value)).setScale(1 + 0.25 * flash).setColor(flash > 0.3 ? '#ffe680' : '#ffffff');
+      this.boxTiles[i].lbl.setText(s.label);
+    });
+  }
+
   drawHud() {
     const sim = this.sim, h = this.hud;
     h.clear();
@@ -966,6 +1049,7 @@ export class GameScene extends Phaser.Scene {
       h.fillStyle(0x4fc3ff, 1); h.fillRect(92, 98, tr.team, 9);
       h.fillStyle(0xffc34f, 1); h.fillRect(92, 114, tr.coach, 9);
     }
+    this.drawBoxScore();
     // ultimate name (the charge ring lives on the □ button)
     const st = sim.ult.state;
     const uu = sim.user;

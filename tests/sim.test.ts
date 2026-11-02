@@ -14,6 +14,7 @@ import { emptyBox } from '../src/sim/player';
 import { screenImpact } from '../src/sim/game';
 import { planShot } from '../src/sim/ballPhysics';
 import { Rng } from '../src/sim/math';
+import { topStats } from '../src/sim/boxScore';
 
 const core = (n = 60) => ({ shooting: n, finishing: n, strength: n, mobility: n, playmaking: n });
 const mk = (o: Partial<ConstructorParameters<typeof Player>[0]> = {}) => new Player({ id: 'p', name: 'P', team: 0, pos: 'SG', core: core(), ...o });
@@ -519,7 +520,7 @@ describe('basket-relative moves, fixed distances, screens, shot hang time', () =
     const st = g.ball.st as any;
     if (st.kind === 'shot') expect(st.dur).toBeGreaterThanOrEqual(1.2);
     let grabbed = false;
-    for (let i = 0; i < 60 * 6 && !grabbed; i++) { g.update(1 / 60, idle); grabbed = g.players.some((p) => p.anim?.name === 'rebound'); }
+    for (let i = 0; i < 60 * 6 && !grabbed; i++) { g.update(1 / 60, idle); grabbed = g.players.some((p) => ['rebound', 'scoop', 'reboundChest'].includes(p.anim?.name ?? '')); }
     expect(grabbed || g.events.some((e) => e.kind === 'net')).toBe(true);
   });
 });
@@ -609,5 +610,32 @@ describe('round 20: net, screens, passing reads, stars', () => {
     const plays = g.events.filter((e) => e.kind === 'play').length;
     expect(isos).toBeGreaterThan(plays * 0.1);
     expect(isos).toBeLessThan(plays * 0.5);
+  });
+});
+
+describe('round 22: grabs by ball height, box score', () => {
+  const grab = (z: number) => {
+    const g = makeGame({ seed: 9 });
+    g.inbound(0);
+    const p = g.offense()[2];
+    for (const q of g.players) if (q !== p) q.p = { x: q.p.x, y: 48 };
+    p.p = { x: 40, y: 25 }; p.z = 0; p.vz = 0; p.state = 'idle';
+    g.ball.p = { x: 40.5, y: 25 }; g.ball.z = z;
+    g.ball.st = { kind: 'loose', vel: { x: 0, y: 0 }, vz: 0, lastTeam: 1 };
+    (g as any).tryGrab();
+    return { anim: p.anim?.name, jumped: p.vz > 0, holder: g.holder() === p };
+  };
+  it('a ball on the floor is scooped up, a chest-high one caught, a high one reached for (jumping only above reach)', () => {
+    expect(grab(0.4)).toEqual({ anim: 'scoop', jumped: false, holder: true });
+    expect(grab(4.5)).toEqual({ anim: 'reboundChest', jumped: false, holder: true });
+    const high = grab(8.6);
+    expect(high.anim).toBe('rebound');
+  });
+  it('box score shows the three most valuable stats by weight, padded with PTS/REB/AST', () => {
+    const z = { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 };
+    expect(topStats(z).map((s) => s.label)).toEqual(['PTS', 'REB', 'AST']);
+    expect(topStats({ ...z, pts: 12, reb: 3, ast: 2, stl: 2, blk: 0 }).map((s) => s.label)).toEqual(['PTS', 'STL', 'REB']);
+    expect(topStats({ ...z, pts: 2, blk: 3 }).map((s) => s.label)).toEqual(['BLK', 'PTS', 'REB']);
+    expect(topStats({ ...z, pts: 3, ast: 2 }).map((s) => s.label)).toEqual(['PTS', 'AST', 'REB']); // 3 vs 3: PTS first
   });
 });
