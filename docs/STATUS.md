@@ -156,7 +156,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   dunk rattle, thuds, block clap, steals, whistles, buzzer, crowd murmur/cheers/groans, airball chant.
 
 ## Dev tools (F1 or `)
-Live readout, core stat sliders, perk grant/remove per tree, ultimate unlock/equip/evolve/fill, appearance editor,
+Live readout, **My player** (name, position, height, jersey #, all live), core stat sliders, perk grant/remove per
+tree with a search box, ultimate unlock/equip/evolve/fill, appearance editor,
 NBA player look editor, game controls (give ball, spawn defender in cone, freeze AI, clutch, switch-all,
 feature-me, shot/game clock, call any play), practice config, trust/minutes, debug draw, audio volumes and test
 buttons, presets, big-game crowd toggle. When playing as a real NBA player, edits apply to that player for the game only.

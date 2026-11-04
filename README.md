@@ -30,7 +30,7 @@ npm run dev
 | **R1** (hold) | Icon pass: teammates wear ✕ ○ □ △ | | |
 
 Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, **E** post up (L2), **Q** icon pass (R1), Enter pause, **M** mute. **F1** or **`** toggles dev tools
-(gamepad: Create+Options).
+(gamepad: Create+Options): edit your player's name, position, height, number, stats, perks (with search) and looks live.
 
 ## Things to know while testing
 - **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.

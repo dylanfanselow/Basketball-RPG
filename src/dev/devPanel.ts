@@ -39,7 +39,7 @@ let editProxy: (CareerState & { __pid?: string }) | null = null;
 function editTarget(): CareerState {
   const p = livePlayer();
   if (p && p.id !== 'USER') {
-    if (!editProxy || editProxy.__pid !== p.id) editProxy = { ...app.career, __pid: p.id, core: p.core, nodes: [...p.nodes], appearance: p.appearance, number: p.number, pos: p.pos } as CareerState & { __pid?: string };
+    if (!editProxy || editProxy.__pid !== p.id) editProxy = { ...app.career, __pid: p.id, name: p.name, height: p.height, core: p.core, nodes: [...p.nodes], appearance: p.appearance, number: p.number, pos: p.pos } as CareerState & { __pid?: string };
     return editProxy;
   }
   editProxy = null;
@@ -51,7 +51,7 @@ function syncLive() {
   const c = editTarget();
   if (p && c !== app.career) {
     // editing the real player you're controlling: apply to him only
-    p.core = { ...c.core }; p.nodes = new Set(c.nodes); p.appearance = c.appearance; p.number = c.number; p.recompute();
+    p.core = { ...c.core }; p.nodes = new Set(c.nodes); p.appearance = c.appearance; p.number = c.number; applyIdentity(p, c); p.recompute();
     if (app.sim) app.sim.ult.state = { unlocked: !!app.career.flags.ult_unlocked, id: app.career.ult.id, level: app.career.ult.level };
     app.changed();
     return;
@@ -60,11 +60,21 @@ function syncLive() {
     p.core = { ...c.core };
     p.nodes = new Set(c.nodes);
     p.appearance = { ...c.appearance };
+    p.number = c.number;
+    applyIdentity(p, c);
     p.recompute();
     if (app.sim) app.sim.ult.state = { unlocked: !!c.flags.ult_unlocked, id: c.ult.id, level: c.ult.level };
   }
   app.changed();
 }
+
+/** Name, position and height apply to the live player right away (his sprite rebuilds for a new height). */
+function applyIdentity(p: Player, c: CareerState) {
+  p.name = c.name || p.name;
+  if (p.pos !== c.pos) { p.pos = c.pos; p.role = String(POSITIONS.indexOf(c.pos) + 1); app.sim?.assignMatchups(); }
+  if (c.height) p.height = c.height;
+}
+const ftIn = (h: number) => { const i = Math.round(h * 12); return `${Math.floor(i / 12)}'${i % 12}"`; };
 
 export function initDevPanel() {
   const root = el('div', { id: 'dev' });
@@ -79,6 +89,7 @@ export function initDevPanel() {
   setInterval(() => { if (open) refreshLive(); }, 250);
 
   let liveBox: HTMLElement;
+  let perkFilter = '';
   function refreshLive() {
     if (!liveBox) return;
     const s = app.sim, p = livePlayer();
@@ -94,7 +105,7 @@ export function initDevPanel() {
   }
 
   function section(name: string, ...kids: (Node | string)[]) {
-    const det = el('details', { open: ['Core stats', 'Perks / moves / abilities', 'Game controls'].includes(name) }, el('summary', {}, name), ...kids);
+    const det = el('details', { open: ['My player', 'Core stats', 'Perks / moves / abilities', 'Game controls'].includes(name) }, el('summary', {}, name), ...kids);
     return det;
   }
   function btn(label: string, fn: () => void, title = '') { return el('button', { onclick: () => { fn(); render(); }, title }, label); }
@@ -121,6 +132,20 @@ export function initDevPanel() {
     root.append(section('Live readout', liveBox));
     refreshLive();
 
+    // my player: name, position, height, number (live)
+    const me = el('div');
+    me.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'name'),
+      el('input', { type: 'text', value: c.name, class: 'txt', style: 'flex:1', onchange: (e: any) => { c.name = String(e.target.value).trim().slice(0, 24) || c.name; syncLive(); } })));
+    me.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'position'),
+      el('select', { onchange: (e: any) => { c.pos = e.target.value; c.height = HEIGHTS[c.pos]; syncLive(); render(); } }, ...POSITIONS.map((p) => el('option', { value: p, selected: p === c.pos }, p))),
+      el('span', { class: 'lbl', style: 'margin-left:10px' }, 'jersey #'),
+      el('input', { type: 'number', min: 0, max: 99, value: c.number, class: 'txt', style: 'width:56px', onchange: (e: any) => { c.number = Math.max(0, Math.min(99, Number(e.target.value) || 0)); syncLive(); } })));
+    const hOut = el('span', { class: 'val' }, ftIn(c.height));
+    me.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'height'),
+      el('input', { type: 'range', min: 5.75, max: 7.5, step: 1 / 12, value: c.height, oninput: (e: any) => { c.height = Number(e.target.value); hOut.textContent = ftIn(c.height); }, onchange: () => syncLive() }), hOut));
+    me.append(el('div', { class: 'note' }, 'Everything applies live. Stats, perks and looks are in the sections below.'));
+    root.append(section('My player', me));
+
     // core stats
     const stats = el('div');
     for (const st of CORE_STATS) stats.append(slider(st, 25, 99, 1, c.core[st], (v) => { c.core[st] = v; syncLive(); }));
@@ -129,11 +154,6 @@ export function initDevPanel() {
       btn('All 60', () => { for (const st of CORE_STATS) c.core[st] = 60; syncLive(); }),
       btn('All 85', () => { for (const st of CORE_STATS) c.core[st] = 85; syncLive(); }),
       btn('All 99', () => { for (const st of CORE_STATS) c.core[st] = 99; syncLive(); }),
-    ));
-    stats.append(el('div', { class: 'row' },
-      el('span', { class: 'lbl' }, 'position'),
-      el('select', { onchange: (e: any) => { c.pos = e.target.value; c.height = HEIGHTS[c.pos]; app.changed(); } }, ...POSITIONS.map((p) => el('option', { value: p, selected: p === c.pos }, p))),
-      el('span', { class: 'note' }, ' (restart game to apply)'),
     ));
     stats.append(el('div', { class: 'row' },
       btn('+5 stat pts', () => { c.statPoints += 5; app.changed(); }),
@@ -149,18 +169,31 @@ export function initDevPanel() {
       btn('Remove ALL', () => { c.nodes = []; syncLive(); }),
       btn('All dribble moves', () => { c.nodes = [...new Set([...c.nodes, ...TREES.find((t) => t.id === 'dribbling')!.nodes.map((n) => n.id)])]; syncLive(); }),
     ));
+    const search = el('input', { type: 'text', placeholder: 'find a perk (name or effect)…', class: 'txt', style: 'flex:1', value: perkFilter,
+      oninput: (e: any) => { perkFilter = e.target.value; filterPerks(); } });
+    perks.append(el('div', { class: 'row' }, search));
+    const perkRows: { el: HTMLElement; text: string; box: HTMLElement }[] = [];
+    const filterPerks = () => {
+      const q = perkFilter.trim().toLowerCase(), shown = new Set<HTMLElement>();
+      for (const r of perkRows) { const ok = !q || r.text.includes(q); r.el.style.display = ok ? '' : 'none'; if (ok) shown.add(r.box); }
+      for (const r of perkRows) r.box.style.display = shown.has(r.box) ? '' : 'none'; // trees with no match hide (and their all / none)
+    };
     for (const t of TREES) {
       const box = el('div', { class: 'tree' }, el('div', { class: 'tname', style: `color:${t.color}` }, t.name,
         btn('all', () => { c.nodes = [...new Set([...c.nodes, ...t.nodes.map((n) => n.id)])]; syncLive(); }),
         btn('none', () => { const ids = new Set(t.nodes.map((n) => n.id)); c.nodes = c.nodes.filter((n) => !ids.has(n)); syncLive(); })));
       for (const n of t.nodes) {
-        box.append(check(`${n.type === 'passive' ? '●' : '◆'} ${n.name}`, c.nodes.includes(n.id), (v) => {
+        const row = check(`${n.type === 'passive' ? '●' : '◆'} ${n.name}`, c.nodes.includes(n.id), (v) => {
           c.nodes = v ? [...new Set([...c.nodes, n.id])] : c.nodes.filter((x) => x !== n.id);
           syncLive();
-        }));
+        });
+        row.title = n.desc;
+        perkRows.push({ el: row, text: `${n.name} ${n.desc} ${t.name}`.toLowerCase(), box });
+        box.append(row);
       }
       perks.append(box);
     }
+    filterPerks();
     root.append(section('Perks / moves / abilities', perks));
 
     // ultimates
@@ -183,7 +216,6 @@ export function initDevPanel() {
       btn('Randomize look', () => { c.appearance = randomAppearance(Math.random); syncLive(); }),
       btn('Randomize gear only', () => { const r = randomAppearance(Math.random, c.appearance.skin); Object.assign(c.appearance, { headband: r.headband, armSleeve: r.armSleeve, sleeveColor: r.sleeveColor, wristband: r.wristband, legSleeve: r.legSleeve, legSleeveColor: r.legSleeveColor, kneePad: r.kneePad, socks: r.socks, sockColor: r.sockColor, shoe: r.shoe, shoeAccent: r.shoeAccent }); syncLive(); })));
     ap.append(...appearanceControls(c.appearance, syncLive));
-    ap.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'jersey #'), el('input', { type: 'number', min: 0, max: 99, value: c.number, class: 'txt', style: 'width:60px', onchange: (e: any) => { c.number = Math.max(0, Math.min(99, Number(e.target.value) || 0)); const p = livePlayer(); if (p) p.number = c.number; syncLive(); } })));
     root.append(section('Appearance', ap));
 
     // NBA player looks: edit any roster player and save it into src/data/rosters.json (dev server only)
