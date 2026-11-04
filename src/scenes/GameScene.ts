@@ -79,6 +79,7 @@ export class GameScene extends Phaser.Scene {
   ballG!: Phaser.GameObjects.Graphics;
   hud!: Phaser.GameObjects.Graphics;
   eqText!: Phaser.GameObjects.Text;
+  iqText!: Phaser.GameObjects.Text;
   scoreText!: Phaser.GameObjects.Text;
   playText!: Phaser.GameObjects.Text;
   ultText!: Phaser.GameObjects.Text;
@@ -319,6 +320,7 @@ export class GameScene extends Phaser.Scene {
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
     this.hud = fixed(this.add.graphics().setDepth(9000));
     this.eqText = fixed(this.add.text(12, 8, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', wordWrap: { width: VIEW_W - 24 }, lineSpacing: 2 }).setDepth(9001));
+    this.iqText = fixed(this.add.text(VIEW_W / 2, 92, '', { fontFamily: FONT, fontSize: '16px', color: '#ff9f9f', fontStyle: 'bold', stroke: '#000', strokeThickness: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
     this.scoreText = fixed(this.add.text(12, 66, '', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setDepth(9001));
     this.playText = fixed(this.add.text(VIEW_W / 2, VIEW_H - 30, '', { fontFamily: FONT, fontSize: '16px', color: '#ffe680', align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
     this.ultText = fixed(this.add.text(VIEW_W - 16, VIEW_H - 252, '', { fontFamily: FONT, fontSize: '13px', color: '#ffffff', align: 'right' }).setOrigin(1, 0).setDepth(9001));
@@ -417,6 +419,7 @@ export class GameScene extends Phaser.Scene {
     const home = e.team === 0 || (who?.team === 0);
     switch (e.kind) {
       case 'plant': if (d.move !== 'jab') sfx.squeak(pan); break;
+      case 'dive': sfx.squeak(pan, 1.2); sfx.thud(pan, false); break;
       case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough', 'stepThroughJumper'].includes(d.type)) sfx.squeak(pan, 0.7); break;
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;
@@ -471,7 +474,7 @@ export class GameScene extends Phaser.Scene {
       const wx = sx(who ? who.p.x : sim.ball.p.x);
       const d = e.data ?? {};
       const team = (e.team ?? who?.team) as 0 | 1 | undefined;
-      if (e.kind === 'net') this.reactAll(d.team, d.type === 'dunk' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx);
+      if (e.kind === 'net') { this.reactAll(d.team, d.type === 'dunk' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx); if (d.flash) { this.cameras.main.shake(220, 0.008); sfx.cheer(1); } } // flashy dunks bring the house down
       else if (['block', 'steal', 'ankles', 'poster', 'charge'].includes(e.kind)) this.reactAll(team, e.kind === 'steal' ? 0.6 : 0.9, wx);
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
       if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
@@ -498,13 +501,14 @@ export class GameScene extends Phaser.Scene {
     const dist = this.runDist.get(p.id) ?? 0;
     const phase = (p.number * 0.137) % 1; // so players don't dribble in lockstep
     if (p.state === 'fallen') return { clip: a?.name === 'ankleFall' ? 'ankleFall' : 'fall', u: a ? (now - a.start) / 0.65 : 1 };
+    if (p.state === 'dive') return { clip: 'dive', u: p.stateT / Math.max(0.1, p.stateDur) }; // loose-ball dive
     if (now < p.stunnedUntil && a && (a.name === 'stripped' || a.name === 'blockedLand')) return { clip: a.name, u: (now - a.start) / (a.dur ?? 1) };
     if (sim.inb?.inbounder === p && sim.inb.hasBall && len(p.vel) < 2) return { clip: 'inbound', u: now };
     // the fake picks up the dribble, so it must be checked before the dead-dribble hold
     if (p.state === 'dribbleMove' && a && (a.name === 'pumpfake' || a.name.startsWith('fake_'))) return { clip: CLIP[a.name] ? a.name : 'pumpfake', u: (now - a.start) / (a.dur ?? 0.42) }; // Dreamer fakes: their own clip
     if (hasBall && p.deadDribble && p.state !== 'shoot') return { clip: 'hold', u: now * 1.5 };
     if (a && a.name.startsWith('shot_')) {
-      const clip = SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper';
+      const clip = CLIP[a.name] ? a.name : SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper'; // dunk styles / windmill gathers by name
       const c = CLIP[clip];
       const inPost = a.release !== undefined && now >= a.release && (now - a.release < (c.post ?? 0.5) || p.z > 0.05);
       if (p.state === 'shoot' || inPost) return { clip, u: shotU(c, now, a.start, p.state === 'shoot' ? a.release : a.release) };
@@ -537,6 +541,13 @@ export class GameScene extends Phaser.Scene {
     if (hasBall) return { clip: 'dribble', u: now * 1.7 + phase };
     if (p.team !== sim.possession && sim.live) return { clip: 'defend', u: now * 1.2 + phase };
     return { clip: 'idle', u: now * 0.5 + phase };
+  }
+
+  /** High IQ (Perimeter D perk): you're on defense and they're running a set -> the play and its target. */
+  highIQ(): { play: string; target: Player | null } | null {
+    const u = this.sim.user;
+    if (!u || !this.sim.userOnCourt || u.team === this.sim.possession || u.mods.pAdd('highIQ') <= 0) return null;
+    return this.sim.playTarget();
   }
 
   /**
@@ -1048,6 +1059,14 @@ export class GameScene extends Phaser.Scene {
         this.label(sx(p.p.x), sy(p.p.y) + 16, txt, '#ff9f6a', 12); // at his feet (clear of the post label above)
       }
     }
+    // High IQ: a pulsing marker over the player their set is for
+    const iqr = this.highIQ();
+    if (iqr?.target) {
+      const t = iqr.target, cx = sx(t.p.x), cy = sy(t.p.y, t.z + t.height + 2.2) - 10, pulse = 1 + 0.15 * Math.sin(this.time.now / 140);
+      gt.fillStyle(0xff3355, 0.9); gt.lineStyle(2, 0x000000, 0.8);
+      const r = 14 * pulse;
+      gt.fillTriangle(cx - r, cy - r * 1.2, cx + r, cy - r * 1.2, cx, cy + r * 0.4); gt.strokeTriangle(cx - r, cy - r * 1.2, cx + r, cy - r * 1.2, cx, cy + r * 0.4);
+    }
     // chase-down lock-on reticle
     const ua = sim.ult.active;
     if (ua?.id === 'chaseDown' && ua.targetId) {
@@ -1132,6 +1151,9 @@ export class GameScene extends Phaser.Scene {
     else if (sim.cfg.halfCourt && !sim.live) eq = 'HALF COURT 3v3 — after every score, stop or dead ball the team with the ball checks it up top.';
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     this.eqText.setText(eq);
+    // High IQ (Perimeter D): on defense, read their set and who it's for
+    const iq = this.highIQ();
+    this.iqText.setText(iq ? `HIGH IQ · ${iq.play}${iq.target ? `  →  for ${iq.target.name}` : ''}` : '');
 
     const [a, b] = sim.teams;
     const clock = sim.cfg.mode === 'practice' ? 'PRACTICE' : `${sim.quarter <= 4 ? 'Q' + sim.quarter : 'OT'} ${Math.floor(Math.max(0, sim.clock) / 60)}:${String(Math.floor(Math.max(0, sim.clock) % 60)).padStart(2, '0')}`;

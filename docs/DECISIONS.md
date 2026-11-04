@@ -123,6 +123,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 31: dunk package, Windmill Gather, High IQ, dives.**
+  - Dunk styles unlock by Dunk rating (`dunks.ts`): flush / two-hand (all), tomahawk 62, hammer 68, cock-back 74,
+    reverse 78, windmill 84, 360 90, 360 windmill 95. **Small risk / reward:** contested = power dunks; open = leaning to
+    the flashiest, which carry a make term (×0.99–0.93) but a bigger crowd pop + camera shake and more ult charge.
+  - **Windmill Gather** = Driving ability (`dv_windmill`, 2 pts, after Downhill or Drive & Kick): owner's layup / Euro /
+    dunk on a drive (> 6 ft/s at the rim) gets the windmill-swing gather: no strips, blocks ×0.6, contest ×0.85.
+  - **High IQ** = Perimeter D passive (`pd_iq`, after Interceptor): on defense, banner with the set + who it's for and
+    a marker over him (play + target only, no routes).
+  - **Loose ball on the floor (z < 3 ft): ✕ = dive** (lunge, slide, get up; grab radius +1.6 ft; a diving grab is a
+    dead dribble: pass it). AI dives on 50/50 balls.
 - **Round 30: Quick 3v3** (menu, after Quick 5v5): real teams, three a side: Guard (PG/SG), Wing (SG/SF/PF), Big
   (PF/C), best fits by default and every slot swappable on the setup screen (both teams); play as any of the three or
   My Player. **No subs, normal 2s and 3s.** **Full court and half court are both available** (setup toggle) so the

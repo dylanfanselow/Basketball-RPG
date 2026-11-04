@@ -3,7 +3,8 @@ import { InputMapper } from '../input/input';
 import { title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { CORE_STATS, CoreStat, STAT_INFLUENCE } from '../sim/data';
-import { spendStatPoint, STAT_POINT_VALUE } from '../career/career';
+import { spendStatPoint, STAT_POINT_VALUE, careerPlayer } from '../career/career';
+import { unlockedDunks, nextDunk } from '../sim/dunks';
 import { computeSubRatings } from '../sim/attributes';
 
 const DESC: Record<CoreStat, string> = {
@@ -30,7 +31,7 @@ export class LevelUpScene extends Phaser.Scene {
       return t;
     });
     CORE_STATS.forEach((st, i) => this.add.text(80, 180 + i * 70 + 30, DESC[st], { fontFamily: FONT, fontSize: '12px', color: COL.dim }));
-    this.info = this.add.text(760, 180, '', { fontFamily: FONT, fontSize: '15px', color: COL.text, lineSpacing: 4 });
+    this.info = this.add.text(760, 180, '', { fontFamily: FONT, fontSize: '15px', color: COL.text, lineSpacing: 4, wordWrap: { width: 490 } });
     this.draw();
   }
   add1() { if (spendStatPoint(app.career, CORE_STATS[this.idx])) app.changed(); this.draw(); }
@@ -47,7 +48,10 @@ export class LevelUpScene extends Phaser.Scene {
     const stat = CORE_STATS[this.idx];
     const subs = computeSubRatings(c.core);
     const affected = Object.entries(STAT_INFLUENCE).filter(([, w]) => (w as any)[stat]).sort((a, b) => ((b[1] as any)[stat] - (a[1] as any)[stat]));
-    this.info.setText([`${stat.toUpperCase()} drives:`, '', ...affected.map(([k, w]) => `${k.padEnd(15)} ${subs[k].toFixed(0).padStart(3)}   weight ${((w as any)[stat] * 100).toFixed(0)}%`)].join('\n'));
+    // dunk package: what your Dunk rating has unlocked, and the next one (Finishing, Mobility, Strength raise it)
+    const me = careerPlayer(c), nx = nextDunk(me);
+    const dunkLines = ['', `DUNK ${me.sub.dunk.toFixed(0)}: ${unlockedDunks(me).map((d) => d.name).join(', ')}`, nx ? `next dunk: ${nx.name} at ${nx.min}` : 'every dunk unlocked'];
+    this.info.setText([`${stat.toUpperCase()} drives:`, '', ...affected.map(([k, w]) => `${k.padEnd(15)} ${subs[k].toFixed(0).padStart(3)}   weight ${((w as any)[stat] * 100).toFixed(0)}%`), ...dunkLines].join('\n'));
   }
   update() {
     this.inp.poll();

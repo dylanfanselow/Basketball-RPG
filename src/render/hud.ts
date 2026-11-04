@@ -25,7 +25,7 @@ const ACTION_POSE: Record<string, [string, number]> = {
   // special shots (Fade Away, post shots) and Dreamer fakes
   'Fade Away': ['shot_fade', 0.58], 'Hook Shot': ['shot_hook', 0.6], Floater: ['shot_floater', 0.55], Layup: ['shot_layup', 0.65],
   'Push Shot': ['shot_push', 0.55], Dunk: ['shot_dunk', 0.6], 'Euro Step': ['shot_euro', 0.65],
-  'Hook / Fake': ['fake_hook', 0.5], 'Floater / Fake': ['fake_floater', 0.5], 'Layup / Fake': ['fake_layup', 0.5],
+  Dive: ['dive', 0.4], 'Hook / Fake': ['fake_hook', 0.5], 'Floater / Fake': ['fake_floater', 0.5], 'Layup / Fake': ['fake_layup', 0.5],
 };
 
 interface Btn { key: BtnKey; x: number; y: number; c: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glyph: Phaser.GameObjects.Text; action: string; pressedAt: number }
@@ -118,6 +118,7 @@ export class ControllerHud {
     const actions: Record<BtnKey, string> = hasBall
       ? { a: sim.stepThroughReady(u!) ? 'Step-Through' : shotName(sim, u!) ?? (u!.deadDribble ? 'Shoot / Fake' : 'Shoot'), y: 'Pass', b: 'Dribble', x: 'Ultimate' }
       : shotUp ? { a: 'Rebound', y: onO ? 'Call' : 'Steal', b: 'Box Out', x: 'Ultimate' }
+      : sim.diveable() ? { a: 'Dive', y: onO ? 'Call' : 'Steal', b: onO ? 'Screen' : 'Charge', x: 'Ultimate' }
       : onO ? { a: 'Rebound', y: 'Call', b: 'Screen', x: 'Ultimate' }
       : { a: 'Block', y: 'Steal', b: 'Charge', x: 'Ultimate' };
     this.l2Text.setVisible(hasBall && sim.mates(u!).length > 0).setColor(inp.held('icon') ? '#ffe14d' : '#cfe8ff');

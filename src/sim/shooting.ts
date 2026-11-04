@@ -1,4 +1,5 @@
 import { SHOT_TYPES } from './data';
+import { DUNK } from './dunks';
 import { statFactor } from './attributes';
 import { Player } from './player';
 import { Side, rimPos, isThree, isCorner } from './court';
@@ -8,6 +9,8 @@ export interface EqTerm { label: string; value: number; kind: 'base' | 'stat' | 
 export interface ShotEval {
   type: string; dist: number; pts: number; pct: number; contest: number;
   terms: EqTerm[]; conds: Set<string>; contestBy: { name: string; dist: number; c: number }[];
+  /** dunk style id (dunks.ts) and whether it came off a Windmill Gather */
+  dunk?: string; windmill?: boolean;
 }
 
 /** Post up, even battle: share of a true contest a leaned-on / sealed defender still gets. */
@@ -112,6 +115,17 @@ export const FAKE_NAMES: Record<string, string> = { fake_hook: 'Hook Fake', fake
 export interface ShotContext {
   now: number; clutch: boolean;
   override?: { base?: number; label?: string; contestMult?: number };
+  /** dunk style (dunks.ts): flash dunks add their make-chance term */
+  dunk?: string;
+  /** Windmill Gather (Driving ability): contest x WINDMILL_CONTEST */
+  windmill?: boolean;
+}
+
+/** Windmill Gather: contest and block multipliers on the finish. */
+export const WINDMILL_CONTEST = 0.85, WINDMILL_BLOCK = 0.6;
+/** Does this finish come off a Windmill Gather? Owners, layups / Euro Steps / dunks, on a drive. */
+export function windmillGather(p: Player, type: string, speedToRim: number): boolean {
+  return p.mods.pAdd('windmill') > 0 && (type === 'layup' || type === 'euro' || type === 'dunk') && speedToRim > 6;
 }
 
 /** Compute the contest from all defenders using the cone that points from shooter to rim. */
@@ -179,6 +193,8 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const base = ctx.override?.base ?? curve(def.base, d);
   terms.push({ label: `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
   if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
+  const dk = type === 'dunk' && ctx.dunk ? DUNK[ctx.dunk] : null;
+  if (dk && dk.mult !== 1) terms.push({ label: dk.name, value: dk.mult, kind: 'perk' }); // flashy dunks are riskier
 
   const rating = shooter.sub[def.sub];
   terms.push({ label: `${def.sub} ${rating.toFixed(0)}`, value: statFactor(rating), kind: 'stat' });
@@ -188,7 +204,8 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   if (con.raw < 0.1) conds.add('open');
   if (con.raw > 0.3) conds.add('contested');
   const ctxForMods = { type, conds };
-  const cin = shooter.mods.contestInTerms(ctxForMods);
+  const cin = [...shooter.mods.contestInTerms(ctxForMods)];
+  if (ctx.windmill) cin.push({ label: 'Windmill Gather', mult: WINDMILL_CONTEST });
   for (const t of cin) contest *= t.mult;
   if (ctx.now < shooter.openShotUntil) contest *= shooter.openShotMult;
   if (ctx.override?.contestMult !== undefined) contest *= ctx.override.contestMult;
@@ -210,7 +227,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   if (ctx.override?.label) terms.push({ label: ctx.override.label, value: 1, kind: 'ult' });
 
   const pct = clamp(terms.reduce((acc, t) => acc * t.value, 1), 0.01, 0.97);
-  return { type, dist: d, pts, pct, contest, terms, conds, contestBy: con.by };
+  return { type, dist: d, pts, pct, contest, terms, conds, contestBy: con.by, dunk: ctx.dunk, windmill: ctx.windmill };
 }
 
 export function formatEquation(e: ShotEval): string {

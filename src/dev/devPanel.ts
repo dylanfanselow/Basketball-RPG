@@ -9,6 +9,7 @@ import { REAL_ROSTERS } from '../career/roster';
 import { withDefaults } from '../render/appearance';
 import { openPixelEditor } from './pixelEditor';
 import { partVariants, PartType } from '../render/faceParts';
+import { unlockedDunks, nextDunk } from '../sim/dunks';
 
 /**
  * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
@@ -100,6 +101,7 @@ export function initDevPanel() {
       `walk ${p.walkSpeed.toFixed(1)} ft/s  sprint ${p.sprintSpeed.toFixed(1)}  jump ${p.jumpVel.toFixed(1)}  pass ${p.passSpeed.toFixed(0)} ft/s  safe pass ${p.safePassDist.toFixed(0)} ft`,
       top.map((k) => `${k} ${p.sub[k].toFixed(0)}`).join(' · '),
       `moves: ${[...p.mods.moves].join(', ') || '(basic only)'}   shots: ${[...p.mods.shotTypes].join(', ') || '-'}`,
+      `dunk ${p.sub.dunk.toFixed(0)}: ${unlockedDunks(p).map((d) => d.name).join(', ')}${nextDunk(p) ? `  · next: ${nextDunk(p)!.name} at ${nextDunk(p)!.min}` : ''}`,
       `trust team ${s.trust.team.toFixed(1)} coach ${s.trust.coach.toFixed(1)}   play: ${s.runner.play?.name ?? '-'} phase ${s.runner.phase}`,
     ].join('\n');
   }

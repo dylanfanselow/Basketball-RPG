@@ -22,6 +22,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
+| `dunks.ts` | Dunk package: `DUNKS` (unlock by Dunk rating, power / flash, make ×, ult bonus, clip), `unlockedDunks`, `nextDunk`, `pickDunk` (contested → power, open → flashy). |
 | `threes.ts` | Quick 3v3: `ThreeSetup`, slots `SLOTS`/`SLOT_POS` (Guard PG/SG, Wing SG/SF/PF, Big PF/C), `defaultLineup`, `slotChoices`, `slotForPos`, `buildThrees` (no bench; `halfCourt` option). On court a three-man team is roles 1/3/5 (`refreshOnCourt`); `callPlay` uses only plays tagged `3v3` when three a side (iso for the best player ~35%). |
 | `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |

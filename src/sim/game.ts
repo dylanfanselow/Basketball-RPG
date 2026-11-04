@@ -2,7 +2,8 @@ import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK } from './shooting';
+import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
@@ -35,6 +36,8 @@ export const PUMP_FAKE_S = 0.42;
 export const STEP_LIFT = 0.55;
 /** Fade Away: backward drift (ft/s) through the shot. */
 export const FADE_DRIFT = 4;
+/** Loose-ball dive: how long it lasts (launch, slide, get up), the launch (ft/s), and how low the ball must be (ft). */
+export const DIVE_S = 0.9, DIVE_LAUNCH_S = 0.3, DIVE_SPEED = 17, DIVE_BALL_Z = 3;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
 export interface TeamState { def: TeamDef; side: Side; score: number; roster: Player[]; onCourt: Player[] }
@@ -205,6 +208,17 @@ export class GameSim {
   holder(): Player | null { return this.ball.st.kind === 'held' ? this.ball.st.holder : null; }
   byRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => p.role === role) ?? null; }
   /** The role a player has in the current play (roles can be swapped so a set is run for someone). */
+  /**
+   * The set the offense is running and who it's for (High IQ shows it to a defender): the focus player the coach named
+   * (isos, featured sets), else whoever is in the play's focus role (after any role swap).
+   */
+  playTarget(): { play: string; target: Player | null } | null {
+    const pl = this.runner.play;
+    if (!pl || this.runner.done || !this.live) return null;
+    const named = this.runner.focusPid ? this.players.find((p) => p.id === this.runner.focusPid) ?? null : null;
+    return { play: pl.name, target: named ?? (pl.focus ? this.byPlayRole(this.possession, pl.focus) : null) };
+  }
+
   playRole(p: Player): string {
     const sw = this.runner.roleSwap;
     if (!sw || p.team !== this.possession) return p.role;
@@ -724,6 +738,9 @@ export class GameSim {
     if (rank < 2 || dist(p.p, landing) < 9) {
       this.steer(p, landing, true);
       if (dist(p.p, this.ball.p) < 3 && this.ball.z > p.reach - 1 && p.z === 0 && this.rng.chance(0.08)) this.jump(p, 0.85);
+      // a 50/50 ball on the floor with an opponent closing on it: hustle players dive
+      const dd = dist(p.p, this.ball.p);
+      if (this.diveable() && dd > 2.5 && dd < 6.5 && this.opp(p.team).some((o) => dist(o.p, this.ball.p) < dd + 1.5) && this.rng.chance(0.06 + p.mods.pMult('hustleBonus') * 0.03)) this.dive(p);
     } else {
       const back = hc(this.side(p.team), 40, 0);
       this.steer(p, lerpV(p.p, back, 0.15), false);
@@ -807,9 +824,9 @@ export class GameSim {
         if (inp.b && !shotUp) this.setScreen(u);
         // hold ○ = keep screening until released (capped so a stuck button can't freeze you)
         if (inp.bHeld && u.state === 'screen') u.stateDur = Math.max(u.stateDur, Math.min(u.stateT + 0.15, SCREEN_HOLD_MAX));
-        if (inp.a && this.ball.st.kind === 'loose') this.jump(u, 1);
+        if (inp.a && this.ball.st.kind === 'loose') { if (this.diveable()) this.dive(u); else this.jump(u, 1); }
       } else {
-        if (inp.a) this.jump(u, 1);
+        if (inp.a) { if (this.diveable()) this.dive(u); else this.jump(u, 1); } // loose on the floor: dive for it
         if (inp.y) this.swipe(u);
         if (inp.b && !shotUp) this.takeCharge(u);
         // hold ○ = stay set for the charge until released (like holding a screen)
@@ -876,9 +893,13 @@ export class GameSim {
     const windMult = jumper ? p.mods.pMult('release') : p.mods.pMult('gather');
     if (p.move?.id === 'pumpfake') p.move = null; // a shot cuts the fake short
     p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
-    p.pendingShot = { type, override };
+    // dunk style (unlocks with the Dunk rating: power when contested, flashy when open) and the Windmill Gather
+    const speedToRim = dot(p.vel, norm(sub(this.rim(p.team), p.p)));
+    const dunk = type === 'dunk' ? pickDunk(p, { contested: computeContest(p, this.opp(p.team), this.side(p.team), 'dunk', this.time).raw > 0.25, speedToRim, d: dist(p.p, this.rim(p.team)) }, this.rng) : null;
+    const windmill = windmillGather(p, type, speedToRim);
+    p.pendingShot = { type, override, dunk: dunk?.id, windmill };
     onPostShot(this, p, this.time + p.stateDur); // out of the post: the defender stays locked / sealed through the release
-    p.anim = { name: `shot_${type}`, start: this.time, release: this.time + p.stateDur };
+    p.anim = { name: (dunk ? dunk.clip : `shot_${type}`) + (windmill ? '_wm' : ''), start: this.time, release: this.time + p.stateDur };
     this.quiet('gather', { type }, p.id);
     const rim = this.rim(p.team);
     const d = dist(p.p, rim);
@@ -931,7 +952,7 @@ export class GameSim {
     p.deadDribble = false;
     p.state = 'idle';
     const side = this.side(p.team);
-    const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override });
+    const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override, dunk: ps.dunk, windmill: ps.windmill });
     const rim = this.rim(p.team);
     if (p.anim) p.anim.release = this.time;
     this.quiet('release', { type: ps.type }, p.id);
@@ -949,6 +970,7 @@ export class GameSim {
       const close = !['mid', 'three', 'deep3', 'fade'].includes(ps.type);
       let chance = (0.04 + 0.2 * d.sub.block / 99) * posF * d.mods.pMult('blockMult') * (close ? 1 : 0.4) * clamp(0.8 + (d.height - p.height) * 0.4, 0.5, 1.4);
       if (ps.type === 'dunk') chance *= 0.6;
+      if (ps.windmill) chance *= WINDMILL_BLOCK; // the ball swung away from him
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
       if (chase && along < 0.4) chance = Math.max(chance, this.ult.active!.level.blockChance);
       if (this.rng.chance(chance)) {
@@ -1119,6 +1141,23 @@ export class GameSim {
     p.screenHit = false;
   }
 
+  /** Is the ball loose and on (or just off) the floor? Then ✕ is a dive. */
+  diveable(): boolean { return this.live && this.ball.st.kind === 'loose' && this.ball.z < DIVE_BALL_Z; }
+
+  /** Dive on the floor for a loose ball: launch toward where it's going, slide, get up. Reaches further for it. */
+  dive(p: Player) {
+    if (p.busy || p.z > 0) return;
+    const st = this.ball.st;
+    const lead = st.kind === 'loose' ? scale(st.vel, 0.15) : v();
+    const dir = norm(sub(add(this.ball.p, lead), p.p));
+    p.state = 'dive'; p.stateT = 0; p.stateDur = DIVE_S;
+    p.vel = scale(dir, Math.max(DIVE_SPEED, len(p.vel)));
+    p.face = dir; p.move = null; p.jumpAt = 0;
+    p.anim = { name: 'dive', start: this.time, dur: DIVE_S };
+    this.quiet('dive', {}, p.id);
+    this.emit({ kind: 'move', text: 'Dive!', pid: p.id });
+  }
+
   jump(p: Player, power: number) {
     if (p.z > 0 || p.busy) return;
     if (this.time < p.blockCdUntil) return;
@@ -1145,7 +1184,8 @@ export class GameSim {
     if (dd > 4) return;
     const front = dot(norm(sub(p.p, h.p)), h.face) > -0.2 ? 1 : 0.4;
     const security = 0.6 + (h.sub.ballSpeed / 99) * 0.6;
-    const chance = (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1);
+    const windmill = h.state === 'shoot' && !!h.pendingShot?.windmill; // Windmill Gather: the ball is swung away, no strip
+    const chance = windmill ? 0 : (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1);
     if (this.rng.chance(chance)) {
       p.box.stl++; h.box.tov++;
       this.emit({ kind: 'steal', text: `STEAL by ${p.name}!`, team: p.team, pid: p.id, big: true });
@@ -1188,7 +1228,7 @@ export class GameSim {
       p.stateT += dt;
       // timed states
       if (p.state === 'shoot' && p.stateT >= p.stateDur) this.releaseShot(p);
-      if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove') && p.stateT >= p.stateDur) {
+      if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove' || p.state === 'dive') && p.stateT >= p.stateDur) {
         const wasMove = p.state === 'dribbleMove';
         if (wasMove && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.vel = scale(p.vel, 0.3); } // moves end where they're meant to
         p.state = 'idle';
@@ -1221,6 +1261,8 @@ export class GameSim {
           else { p.vel = p.moveVel; if (!p.movePlanted) { p.movePlanted = true; this.quiet('plant', { move: p.move?.id }, p.id); } }
           break;
         case 'shoot': p.vel = scale(p.vel, 0.985); break;
+        // dive: the launch carries him, then he slides out on the floor and gets up
+        case 'dive': if (p.stateT > DIVE_LAUNCH_S) p.vel = scale(p.vel, Math.max(0, 1 - dt * 6)); break;
         default: {
           // knocked back (screens, box-outs): low grip, the push slides him back instead of stopping at once
           const accel = p.z > 0 ? 1.5 : this.time < p.bumpedUntil ? 3 : p === this.user && p.isUser ? 14 : 9;
@@ -1503,8 +1545,9 @@ export class GameSim {
     for (const p of this.players) {
       if (p.state === 'fallen' || p.state === 'shoot' || this.time < p.stunnedUntil) continue;
       if (st.kind === 'loose' && st.noGrabPid === p.id && this.time < (st.noGrabPidUntil ?? 0)) continue;
-      const r = (1.8 + p.sub.rebound / 99 * 0.9) * p.mods.pMult('grabRadius');
-      if (dist(p.p, b.p) < r && b.z < p.reach + p.z) cands.push({ p, score: p.sub.rebound + this.rng.range(0, 45) + (p.boxedOut ? -15 : 0) });
+      const diving = p.state === 'dive';
+      const r = (1.8 + p.sub.rebound / 99 * 0.9) * p.mods.pMult('grabRadius') + (diving ? 1.6 : 0); // a dive stretches out for it
+      if (dist(p.p, b.p) < r && b.z < p.reach + p.z) cands.push({ p, score: p.sub.rebound + this.rng.range(0, 45) + (p.boxedOut ? -15 : 0) + (diving ? 35 : 0) });
     }
     if (!cands.length) return;
     cands.sort((a, c) => c.score - a.score);
@@ -1512,7 +1555,8 @@ export class GameSim {
     // how he takes it depends on where the ball is: off the floor, at the chest, or up high (jumping only when it's
     // above his standing reach)
     const zRel = this.ball.z - g.z;
-    if (zRel < 2.8) g.anim = { name: 'scoop', start: this.time, dur: 0.55 };
+    if (g.state === 'dive') { /* keeps the dive animation; secured below */ }
+    else if (zRel < 2.8) g.anim = { name: 'scoop', start: this.time, dur: 0.55 };
     else if (zRel < g.height + 0.6) g.anim = { name: 'reboundChest', start: this.time, dur: 0.35 };
     else {
       g.anim = { name: 'rebound', start: this.time, dur: 0.7 };
@@ -1527,6 +1571,7 @@ export class GameSim {
       if (g === this.user && g.team === this.possession) applyTrust(this.trust, 'offReb');
     }
     this.giveBall(g);
+    if (g.state === 'dive') { g.deadDribble = true; g.deadDribbleAt = this.time + DIVE_S; g.deadWarned = false; } // secured on the floor: pass it (or shoot)
     if (g.team !== this.possession) {
       if (wasShot && this.user && this.userOnCourt && this.user.team === g.team) { this.gainUlt(this.user, ULT_GAINS.stop); }
       this.changePossessionLive(g.team);
@@ -1544,7 +1589,7 @@ export class GameSim {
     const t = this.teams[team];
     if (!st.foul || st.made) { s.box.fga++; if (st.pts === 3) s.box.tpa++; }
     if (!st.airball) this.quiet(st.made ? 'net' : 'rim', {
-      type: st.ev.type, swish: st.made && (st.plan ? st.plan.swish : st.rim ? st.rim.seq === 'swish' : st.ev.contest < 0.2 && ['mid', 'three', 'deep3', 'fade'].includes(st.ev.type)),
+      type: st.ev.type, flash: !!st.ev.dunk && DUNK[st.ev.dunk]?.kind === 'flash', swish: st.made && (st.plan ? st.plan.swish : st.rim ? st.rim.seq === 'swish' : st.ev.contest < 0.2 && ['mid', 'three', 'deep3', 'fade'].includes(st.ev.type)),
       seq: st.rim?.seq ?? (st.plan ? 'physics' : undefined), // live rims already played their contacts
       // cosmetic only: must not consume sim RNG
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
@@ -1569,9 +1614,10 @@ export class GameSim {
       if (before <= 0 && after > 0) this.lastGoAhead = { pid: s.id, clock: this.clock, quarter: this.quarter };
       const ast = this.assistCand && this.assistCand.receiver === s && this.time - this.assistCand.at < 5 ? this.assistCand.passer : null;
       if (ast) { ast.box.ast++; this.gainUlt(ast, ULT_GAINS.assist); if (ast === this.user) applyTrust(this.trust, 'assist'); }
-      this.gainUlt(s, ULT_GAINS.score + (st.pts === 3 ? 4 : 0));
+      const dk = st.ev.dunk ? DUNK[st.ev.dunk] : null;
+      this.gainUlt(s, ULT_GAINS.score + (st.pts === 3 ? 4 : 0) + (dk?.ult ?? 0)); // flashy dunks charge the ultimate more
       if (s === this.user) applyTrust(this.trust, 'madeShot');
-      const name = SHOT_TYPES[st.ev.type].name;
+      const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
       this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
@@ -1634,7 +1680,8 @@ export class GameSim {
     if (u && u.state !== 'shoot') {
       const type = selectShotType(u, this.side(u.team), u === this.user ? this.stick : this.stick2, this.time);
       const ov = this.ult.active && this.ult.active.pid === u.id ? this.ult.active.shotOverride : undefined;
-      this.preview = evaluateShot(u, this.opp(u.team), this.side(u.team), type, { now: this.time, clutch: this.clutch, override: ov });
+      const windmill = windmillGather(u, type, dot(u.vel, norm(sub(this.rim(u.team), u.p))));
+      this.preview = evaluateShot(u, this.opp(u.team), this.side(u.team), type, { now: this.time, clutch: this.clutch, override: ov, windmill });
     } else this.preview = null;
   }
 

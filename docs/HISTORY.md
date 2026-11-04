@@ -32,6 +32,7 @@
 | 28 | `661d1be` | Dreamer ability in Finishing: pump fake the hook, floater and layup with their own animations; close shots by direction (floater away, layup/push toward, hook perpendicular) | `fi_dreamer` (+8 real centers), `fake_hook`/`fake_floater`/`fake_layup` clips, bite ×1.35, euro only on drives, post toward = push, AI hook fakes, HUD fake labels + icons |
 | 29 | `367b919` | Dev mode should let me add/remove perks and edit my player's name, appearance, stats and position | New *My player* section (name, position applied live, height, jersey #); perk search box (hides trees with no match); stats / perks / looks were already there |
 | 30 | `dab390b` | A 3v3 mode like Quick 5v5 with the same teams, 3v3 plays plus iso ball, lineup Guard (PG/SG) / Wing (SG/SF/PF) / Big (PF/C); try both full and half court | Quick 3v3: setup screen with swappable slots, play as, Full / Half court toggle; `halfCourt` sim option (check up top); 3v3 playbook (6 sets + 3 isos) at roles 1/3/5; iso for the best player |
+| 31 | (this round) | Many new dunk animations unlocked by stats; D-Wade / D-Mitch windmill gather ability; High IQ perimeter perk showing who their play is for; ✕ on a loose ball = dive | 9-dunk package by Dunk rating (power vs flash risk/reward), Windmill Gather (Driving ability, `_wm` clips), High IQ banner + marker, loose-ball dive (state, clip, HUD, AI) |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

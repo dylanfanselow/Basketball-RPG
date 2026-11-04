@@ -7,6 +7,7 @@
     { "id": "dv_slither", "name": "Slithery", "type": "passive", "x": 70, "y": 68, "prereqs": ["dv_first"], "cost": 1, "desc": "Contest on drive finishes x0.88.", "effects": [{ "t": "contestIn", "types": ["layup", "euro", "dunk", "floater"], "cond": "drive", "mult": 0.88 }] },
     { "id": "dv_gather", "name": "Fast Gather", "type": "passive", "x": 50, "y": 50, "prereqs": ["dv_bump", "dv_slither"], "cost": 1, "desc": "Finishing windup x0.80.", "effects": [{ "t": "param", "key": "gather", "mult": 0.80 }] },
     { "id": "dv_drive", "name": "Downhill", "type": "passive", "x": 30, "y": 30, "prereqs": ["dv_gather"], "cost": 2, "desc": "Speed with the ball +6.", "effects": [{ "t": "sub", "key": "ballSpeed", "add": 6 }] },
+    { "id": "dv_windmill", "name": "Windmill Gather", "type": "ability", "x": 50, "y": 12, "prereqs": ["dv_drive", "dv_kick"], "cost": 2, "desc": "D-Wade / Donovan Mitchell: on drive finishes (layups, Euro Steps, dunks) the gather swings the ball around in a big windmill, away from the defender. Can't be stripped during it, blocks x0.6, contest x0.85.", "effects": [{ "t": "param", "key": "windmill", "add": 1 }] },
     { "id": "dv_kick", "name": "Drive & Kick", "type": "passive", "x": 70, "y": 30, "prereqs": ["dv_gather"], "cost": 2, "desc": "Passes thrown while driving are faster and harder to intercept.", "effects": [{ "t": "param", "key": "drivePass", "mult": 1.3 }] }
   ]
 }

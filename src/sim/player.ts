@@ -8,7 +8,7 @@ import { Appearance, defaultAppearance } from '../render/appearance';
 export type PostMode = 'stronger' | 'even' | 'weaker';
 export interface PostState { defId: string | null; mode: PostMode; gap: number; nextBumpAt: number; since: number; pushing: boolean }
 
-export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe';
+export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe' | 'dive';
 
 export interface BoxScore { pts: number; fgm: number; fga: number; tpm: number; tpa: number; ast: number; reb: number; stl: number; blk: number; tov: number; secs: number; usage: number; touches: number }
 export const emptyBox = (): BoxScore => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ast: 0, reb: 0, stl: 0, blk: 0, tov: 0, secs: 0, usage: 0, touches: 0 });
@@ -61,7 +61,7 @@ export class Player {
   /** side-drive direction (screen up/down) the flick-cross watches for, and until when */
   flickDir = 0; flickUntil = 0;
   bufferedMove: { stick: Vec; at: number } | null = null;
-  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
+  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean } | null = null;
   /** post up (post.ts): the attacker's battle with the defender on his back */
   post: PostState | null = null;
   /** posted defender: stun-locked by bumps (no contest, no actions) until then */
@@ -119,5 +119,5 @@ export class Player {
   /** simple overall: mean of the five core stats */
   get overall() { const c = this.core; return (c.shooting + c.finishing + c.strength + c.mobility + c.playmaking) / 5; }
   get reach() { return this.height + 2.1; }
-  get busy() { return this.state === 'shoot' || this.state === 'fallen' || this.state === 'stagger'; }
+  get busy() { return this.state === 'shoot' || this.state === 'fallen' || this.state === 'stagger' || this.state === 'dive'; }
 }

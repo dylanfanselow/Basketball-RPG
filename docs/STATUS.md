@@ -22,6 +22,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
   (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Round 31:** `sim/dunks.ts` (`DUNKS`, `pickDunk`, `unlockedDunks`, `nextDunk`) + 8 `shot_dunk_*` clips (`dk`, `turned`
+  helpers) and `_wm` Windmill Gather variants (`windmillGatherOf`) of layup / Euro / every dunk; `ShotContext.dunk` /
+  `.windmill` terms; flash dunks: `net` event `flash`, crowd + shake, extra ult. `GameSim.playTarget()` + High IQ
+  banner / marker (`GameScene.highIQ`). `GameSim.dive` / `diveable` (state `dive`, clip `dive`, HUD "Dive"). Dunk
+  package shown in the dev live readout and on the level-up screen.
 - **Quick 3v3** (round 30): `sim/threes.ts` + `ThreeSetupScene`; `GameConfig.halfCourt` (same hoop, `checkBall` for
   three, no inbounds / transition); 9 plays tagged `3v3` (pnr3, pop3, dho3, pindown3, post3, giveGo3, iso3Top,
   iso3Wing, iso3Post). Headless: full court ~60-80 pts a side at 48% FG, half court ~80-110 at 42%.
