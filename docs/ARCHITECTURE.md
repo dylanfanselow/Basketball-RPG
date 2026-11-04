@@ -22,6 +22,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
+| `threes.ts` | Quick 3v3: `ThreeSetup`, slots `SLOTS`/`SLOT_POS` (Guard PG/SG, Wing SG/SF/PF, Big PF/C), `defaultLineup`, `slotChoices`, `slotForPos`, `buildThrees` (no bench; `halfCourt` option). On court a three-man team is roles 1/3/5 (`refreshOnCourt`); `callPlay` uses only plays tagged `3v3` when three a side (iso for the best player ~35%). |
 | `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
@@ -48,6 +49,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
+| `scenes/ThreeSetupScene.ts` | Quick 3v3 setup: team / opponent lists + lineups & options column (6 slots, play as, court); Left/Right changes a row, R1/L2 (Q/E) switch columns. |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
 | Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |

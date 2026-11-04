@@ -2,7 +2,7 @@
 
 Browser 5v5 NBA career basketball RPG (TypeScript + Phaser 3 + Vite). 90s arcade-style shaded players (the owner's
 reference image) rendered at 1920×1080 with the original framing, Dunk City Dynasty-style controls, Skyrim-style
-progression, earn-the-ball team basketball. Modes: Practice, Quick 5v5, 1v1 Make It Take It, Career.
+progression, earn-the-ball team basketball. Modes: Practice, Quick 5v5, Quick 3v3 (full or half court), 1v1 Make It Take It, Career.
 
 **Before changing anything, read `docs/` — start with `docs/README.md`.** Especially:
 - `docs/DECISIONS.md`: choices the owner already made (don't re-ask).

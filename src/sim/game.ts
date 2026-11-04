@@ -55,6 +55,11 @@ export interface GameConfig {
   allowedPlays?: string[];
   /** second human (two-player 1v1) */
   user2Id?: string;
+  /**
+   * Half court (3v3, mode 'game'): both teams attack the same hoop; after a score, a stop, a turnover or any dead ball
+   * the team with the ball checks it at the top (no inbounds, no transition). Game clock and quarters as usual.
+   */
+  halfCourt?: boolean;
   /** half-court 1v1, make it take it (mode must be 'practice') */
   oneOnOne?: { target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean };
   featureUser?: boolean;
@@ -158,6 +163,7 @@ export class GameSim {
       def: cfg.teams[i], side: (i === 0 ? 1 : -1) as Side, score: 0,
       roster: cfg.rosters[i], onCourt: cfg.rosters[i].slice(0, 5),
     })) as [TeamState, TeamState];
+    if (cfg.halfCourt) this.teams[1].side = this.teams[0].side; // one basket
     this.user = cfg.userId ? [...cfg.rosters[0], ...cfg.rosters[1]].find((p) => p.id === cfg.userId) ?? null : null;
     if (this.user) this.user.isUser = !cfg.autopilotUser;
 
@@ -224,10 +230,12 @@ export class GameSim {
     this.players = [...this.teams[0].onCourt, ...this.teams[1].onCourt];
     this.userOnCourt = !!this.user && this.players.includes(this.user);
     for (const t of this.teams) {
-      // keep roles 1..5 matching on-court positions
+      // keep roles 1..5 matching on-court positions; three-man teams (3v3) are guard / wing / big = roles 1 / 3 / 5
+      // (so the guard, wing and big logic and the 3v3 plays line up); ties go to the taller player as the bigger role
       const order = ['PG', 'SG', 'SF', 'PF', 'C'];
-      const sorted = [...t.onCourt].sort((a, b) => order.indexOf(a.pos) - order.indexOf(b.pos));
-      sorted.forEach((p, i) => (p.role = String(i + 1)));
+      const sorted = [...t.onCourt].sort((a, b) => order.indexOf(a.pos) - order.indexOf(b.pos) || a.height - b.height);
+      const roles = sorted.length === 3 ? ['1', '3', '5'] : ['1', '2', '3', '4', '5'];
+      sorted.forEach((p, i) => (p.role = roles[i] ?? String(i + 1)));
     }
   }
 
@@ -263,6 +271,7 @@ export class GameSim {
 
   // ---------- flow ----------
   startGame() {
+    if (this.cfg.halfCourt) { this.deadBall(this.rng.chance(0.5) ? 0 : 1, 1.0, 'mid'); return; } // coin flip: they check it up top
     for (const t of [0, 1] as const) {
       const side = this.side(t);
       this.teams[t].onCourt.forEach((p, i) => { p.p = hc(side, 52 + i * 2, (i - 2) * 6); p.vel = v(); });
@@ -292,15 +301,26 @@ export class GameSim {
     this.shotClock = 14;
     this.runner.reset();
     this.inb = null;
-    const off = this.teams[team].onCourt[0], def = this.teams[1 - team].onCourt[0];
-    for (const p of [off, def]) {
+    this.transitionUntil = 0;
+    const side = this.side(team), rim = this.rim(team);
+    const offs = this.teams[team].onCourt, defs = this.teams[1 - team].onCourt;
+    const off = this.byRole(team, '1') ?? offs[0];
+    for (const p of [...offs, ...defs]) {
       p.vel = v(); p.state = 'idle'; p.z = 0; p.vz = 0; p.staggerUntil = 0; p.screenedUntil = 0; p.bumpedUntil = -9;
-      p.move = null; p.pendingShot = null; p.liftAt = 0; p.jumpAt = 0; p.stunnedUntil = -9;
+      p.move = null; p.pendingShot = null; p.liftAt = 0; p.jumpAt = 0; p.stunnedUntil = -9; p.post = null; p.postedBy = null;
     }
-    off.p = hc(this.side(team), 30, 0);
+    // the checker at the top; teammates (3v3) spread to a wing and a block
+    off.p = hc(side, 30, 0);
+    const rest = offs.filter((p) => p !== off);
+    const wingY = this.rng.chance(0.5) ? 1 : -1;
+    rest.forEach((p, i) => { p.p = p.role === '5' || (i === 1 && !rest.some((q) => q.role === '5')) ? spot(side, wingY > 0 ? 'lb' : 'rb') : spot(side, wingY > 0 ? 'rw' : 'lw'); });
     this.assignMatchups();
-    def.p = add(off.p, scale(norm(sub(this.rim(team), off.p)), 4));
-    off.face = norm(sub(this.rim(team), off.p)); def.face = scale(off.face, -1);
+    for (const d of defs) {
+      const m = offs.find((o) => o.id === d.guarding) ?? off;
+      d.p = add(m.p, scale(norm(sub(rim, m.p)), m === off ? 4 : 3.5));
+      d.face = norm(sub(m.p, d.p));
+    }
+    off.face = norm(sub(rim, off.p));
     this.giveBall(off);
     this.live = true;
     this.pendingInbound = null;
@@ -363,7 +383,7 @@ export class GameSim {
     this.transitionUntil = 0;
     const ballAt = { ...this.ball.p };
     if (this.ball.st.kind !== 'dead' || this.ball.st.vz === undefined) this.ball.st = { kind: 'dead' };
-    if (this.cfg.mode !== 'practice') this.startInbound(next, delay, where, ballAt);
+    if (this.cfg.mode !== 'practice' && !this.cfg.halfCourt) this.startInbound(next, delay, where, ballAt);
   }
 
   inb: { team: 0 | 1; inbounder: Player; receiver: Player; spot: Vec; recv: Vec; minPassAt: number; start: number; hasBall: boolean } | null = null;
@@ -454,7 +474,7 @@ export class GameSim {
     this.shotClock = 24;
     this.runner.reset();
     this.assignMatchups();
-    if (this.cfg.oneOnOne) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
+    if (this.cfg.oneOnOne || this.cfg.halfCourt) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
     else if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
     else this.transitionUntil = this.time + 5; // live turnover / defensive board: read the break
   }
@@ -462,20 +482,22 @@ export class GameSim {
   callPlay() {
     // "feature me equally" (testing): rotate who the set is run for across all five, including the user
     const off = this.offense();
-    const allowed = (pid: string) => !this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid);
+    // three a side (3v3) runs the 3v3 playbook (roles 1 / 3 / 5); five a side never sees it
+    const small = off.length <= 3;
+    const allowed = (pid: string) => PLAYS[pid].tags.includes('3v3') === small && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid));
     const isIso = (pid: string) => PLAYS[pid].tags.includes('iso');
     // iso sets are only for designated stars; everything else is the regular playbook
     const regular = Object.keys(PLAYS).filter((pid) => !isIso(pid) && allowed(pid));
     const isos = Object.keys(PLAYS).filter((pid) => isIso(pid) && allowed(pid) && pid !== this.runner.lastPlayId);
-    let id = PlayRunner.pick(this.rng, regular.length ? regular : this.cfg.allowedPlays, this.runner.lastPlayId);
+    let id = PlayRunner.pick(this.rng, regular.length ? regular : isos.length ? isos : this.cfg.allowedPlays, this.runner.lastPlayId);
     let swap: [string, string] | null = null;
     let focus: Player | null = null;
     const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
-    if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length === 5) {
+    if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
       focus = off.find((p) => p.id === fid) ?? null;
-      if (focus && focus.star && isos.length && this.rng.chance(0.4)) isoFor(focus);
+      if (focus && (focus.star || small) && isos.length && this.rng.chance(small ? 0.35 : 0.4)) isoFor(focus); // 3v3: anyone can get an iso
       else if (focus) {
         const fits = regular.filter((pid) => PLAYS[pid].focus === focus!.role && pid !== this.runner.lastPlayId);
         if (fits.length) id = this.rng.pick(fits);
@@ -486,8 +508,10 @@ export class GameSim {
       // stars get their number called: about 30% of sets (half in the clutch) are an iso for one of them
       // ...but not when he's already taking more than his share
       const avgUse = off.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, off.length);
-      const stars = off.filter((p) => p.star && p.box.usage <= avgUse * 1.8 + 2);
-      if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : 0.3)) isoFor(this.rng.pick(stars));
+      // 3v3 is iso ball too: no designated star needed, the team's best player (or a star) gets his number called
+      const best = small ? [...off].sort((a, b) => b.overall - a.overall)[0] : null;
+      const stars = off.filter((p) => (p.star || p === best) && p.box.usage <= avgUse * 1.8 + 2);
+      if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : small ? 0.35 : 0.3)) isoFor(this.rng.pick(stars));
     }
     this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
@@ -529,6 +553,7 @@ export class GameSim {
 
   private resume() {
     if (this.cfg.mode === 'practice') { this.practiceReset(); return; }
+    if (this.cfg.halfCourt) { this.checkBall(this.pendingInbound ?? (1 - this.possession) as 0 | 1); return; } // check it up top
     // substitutions happen at dead balls
     if (this.user && this.cfg.rotation) {
       const on = shouldBeOn(this.cfg.rotation, this.elapsed);

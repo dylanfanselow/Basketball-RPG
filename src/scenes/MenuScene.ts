@@ -19,13 +19,14 @@ export class MenuScene extends Phaser.Scene {
     this.menu = new MenuList(this, 80, 140, [
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
+      { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
       { label: '1v1 · Make It, Take It', action: () => this.scene.start('OneOnOneSetup'), hint: 'Half court, pick any NBA player; P2 = second controller/keyboard or CPU.' },
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
       { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
     ], 20);
-    this.add.text(80, 370, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
-    this.add.text(80, 398, [
+    this.add.text(80, 394, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
+    this.add.text(80, 420, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
       '✕  shoot  |  block                    K / Space',

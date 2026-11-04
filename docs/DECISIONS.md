@@ -123,6 +123,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 30: Quick 3v3** (menu, after Quick 5v5): real teams, three a side: Guard (PG/SG), Wing (SG/SF/PF), Big
+  (PF/C), best fits by default and every slot swappable on the setup screen (both teams); play as any of the three or
+  My Player. **No subs, normal 2s and 3s.** **Full court and half court are both available** (setup toggle) so the
+  owner can test which works better; half court = one basket, check it up top after every score / stop / dead ball,
+  14 s shot clock. 3v3 playbook (tag `3v3`, roles 1/3/5) + isos for the team's best player (~35% of calls).
 - **Round 28: Dreamer + directional close shots.**
   - Close shots follow the stick: **away = floater** (Fade Away owners: fade, everywhere), **toward = layup** (push
     shot from 6.5–12 ft), **perpendicular = hook**. The Euro Step only replaces the hook for owners **on a drive**

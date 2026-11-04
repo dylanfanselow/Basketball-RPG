@@ -5,20 +5,26 @@ import { careerPlayer, careerUlt } from '../career/career';
 import { planRotation } from '../sim/rotation';
 import { app } from '../state';
 import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
+import { ThreeSetup, buildThrees } from '../sim/threes';
+export type { ThreeSetup } from '../sim/threes';
 export type { OneOnOneSetup } from '../sim/oneOnOne';
 export { DEFAULT_1V1 } from '../sim/oneOnOne';
 
-export type Mode = 'practice' | 'quick' | 'career' | 'oneOnOne';
+export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne';
 
 /** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
 /** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
-export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup }
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup }
 
-export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup): GameSim {
+export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup): GameSim {
   if (mode === 'oneOnOne') return buildOneOnOne(oneOnOne ?? DEFAULT_1V1, Math.floor(Math.random() * 1e9));
   const c = app.career;
+  if (mode === 'quick3' && three) {
+    // 3v3 with real rosters; sandbox trust like Quick 5v5, your ultimate if you play as your own player
+    return buildThrees(three, Math.floor(Math.random() * 1e9), { me: careerPlayer(c, 0), quarterLen: app.settings.quarterLen, ult: three.playAs === 'me' ? careerUlt(c) : undefined });
+  }
   const myTeam = TEAMS.find((t) => t.id === (setupOpts?.myTeam ?? c.teamId)) ?? TEAMS[13];
   const oppId = setupOpts?.oppTeam ?? (mode === 'career' ? c.season.schedule[c.season.gameNo % c.season.schedule.length] : TEAMS[(TEAMS.indexOf(myTeam) + 1) % TEAMS.length].id);
   const oppTeam = TEAMS.find((t) => t.id === oppId)!;

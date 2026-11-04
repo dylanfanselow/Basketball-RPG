@@ -61,6 +61,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
 - **Sending art to Claude:** run `npm run dev`, use *Save to repo* (and *Save look to rosters.json* for players), then `git add src/art src/data/rosters.json && git commit -m "Face parts" && git push`, and say "pushed face parts" (plus anything to polish).
 - On defense you see **your man's shot cone**: green = you're contesting him, red = he's open.
 - **Quick 5v5**: pick your team, the opponent, and play as any of the five starters or your own player.
+- **Quick 3v3**: same real teams, three a side: **Guard** (PG/SG), **Wing** (SG/SF/PF), **Big** (PF/C). The setup screen fills each slot with the best fit; Left/Right swaps any slot (both teams). Play as any of your three or your own player. Pick **Full court** (like 5v5) or **Half court** (one basket; after every score, stop or dead ball the team with the ball checks it up top, 14-second shot clock). The coach calls 3v3 sets (pick & roll, pick & pop, handoff, pin-down, post-up, give & go) and plenty of isos. No subs, normal 2s and 3s.
 - **Feature me equally** (on in Practice and Quick Game, toggle in the dev panel): the coach rotates who each set is run for, including you, even when you're not the position the play was written for.
 - After a make, a big walks the ball out of bounds and inbounds it to the point guard. Steals and defensive boards can turn into fast breaks.
 

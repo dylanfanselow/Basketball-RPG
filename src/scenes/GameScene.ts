@@ -120,20 +120,21 @@ export class GameScene extends Phaser.Scene {
 
   matchSetup?: MatchSetup;
   oneOnOne?: OneOnOneSetup;
+  three?: GameInit['three'];
   initData!: GameInit;
   inputP2: InputMapper | null = null;
   latched: [UserInput | null, UserInput | null] = [null, null];
   init(data: GameInit) {
     this.initData = data;
     this.mode = data.mode ?? 'practice';
-    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
+    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.three = data.three; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
     this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear(); this.shuffling.clear();
   }
 
   create() {
     hiRes(this);
-    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne);
+    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne, this.three);
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
@@ -374,7 +375,7 @@ export class GameScene extends Phaser.Scene {
 
   openPause(idx: number) { this.paused = true; this.pauseIdx = idx; this.drawPause(); }
 
-  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : 'Quit to Menu']; }
+  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : this.mode === 'quick3' ? 'Quit to 3v3 Select' : 'Quit to Menu']; }
 
   drawPause() {
     const opts = this.pauseOptions();
@@ -383,7 +384,7 @@ export class GameScene extends Phaser.Scene {
 
   leaveGame() {
     this.paused = false; this.pauseText.setVisible(false);
-    this.scene.start(this.mode === 'career' ? 'Hub' : this.mode === 'oneOnOne' ? 'OneOnOneSetup' : 'Menu');
+    this.scene.start(this.mode === 'career' ? 'Hub' : this.mode === 'oneOnOne' ? 'OneOnOneSetup' : this.mode === 'quick3' ? 'ThreeSetup' : 'Menu');
   }
 
   updatePause() {
@@ -1128,6 +1129,7 @@ export class GameScene extends Phaser.Scene {
     if (prev) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
     else if (ls && sim.time - ls.at < 4) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
     else if (sim.cfg.oneOnOne) eq = 'MAKE IT, TAKE IT — score and you keep it; stops and defensive boards check it back up top.  Pump fake = tap ✕';
+    else if (sim.cfg.halfCourt && !sim.live) eq = 'HALF COURT 3v3 — after every score, stop or dead ball the team with the ball checks it up top.';
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     this.eqText.setText(eq);
 

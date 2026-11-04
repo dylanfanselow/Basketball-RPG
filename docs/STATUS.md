@@ -22,6 +22,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
   (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Quick 3v3** (round 30): `sim/threes.ts` + `ThreeSetupScene`; `GameConfig.halfCourt` (same hoop, `checkBall` for
+  three, no inbounds / transition); 9 plays tagged `3v3` (pnr3, pop3, dho3, pindown3, post3, giveGo3, iso3Top,
+  iso3Wing, iso3Post). Headless: full court ~60-80 pts a side at 48% FG, half court ~80-110 at 42%.
 - **Dreamer** (`fi_dreamer`, round 28): `pumpFake(p, stick)` picks `fakeClipFor(selectShotType(...))` for owners
   (`fake_hook` / `fake_floater` / `fake_layup` clips via `fakePose`), `fakeBite` ×1.35, `FAKE_NAMES` event text, HUD ✕
   "Hook / Fake" etc.; AI hook fake in `postAI` (`aiFakeFollow`). Close-shot selection is directional (euro only on
