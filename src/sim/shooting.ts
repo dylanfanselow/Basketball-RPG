@@ -126,6 +126,8 @@ export interface ShotContext {
   dunk?: string;
   /** Windmill Gather (Driving ability): contest x WINDMILL_CONTEST */
   windmill?: boolean;
+  /** alley-oop catch timing (1 = caught at the top of the leap) */
+  oopTiming?: number;
 }
 
 /** Windmill Gather: contest and block multipliers on the finish. */
@@ -202,6 +204,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   terms.push({ label: `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
   if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
   if (type === 'jelly') terms.push({ label: 'Jelly Fake', value: JELLY_MULT, kind: 'perk' }); // finger-roll at the top of a hang
+  if (ctx.oopTiming !== undefined && ctx.oopTiming < 0.995) terms.push({ label: 'oop timing', value: ctx.oopTiming, kind: 'perk' });
   const dk = type === 'dunk' && ctx.dunk ? DUNK[ctx.dunk] : null;
   if (dk && dk.mult !== 1) terms.push({ label: dk.name, value: dk.mult, kind: 'perk' }); // flashy dunks are riskier
 

@@ -22,7 +22,7 @@ npm run dev
 | Button | With ball | Offense, off ball | Defense |
 |---|---|---|---|
 | **✕** (bottom) | Shoot. Close shots follow the stick: **away** = floater (or **Fade Away** anywhere, if unlocked), **toward** = layup / push shot, **sideways** = hook (Euro Step instead on a drive, if unlocked). Tap = pump fake | — | Block / contest |
-| **△** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
+| **△** (top) | Tap: pass to the teammate under the yellow **dot** (aim with the stick). **Hold: lob** (an alley-oop when the dot says LOB) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
 | **○** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
 | **□** (left) | Ultimate | Ultimate | Ultimate |
 | Left stick / R2 | Move / tap for a sprint burst (then a cooldown) | | |
@@ -54,6 +54,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - **Weaker:** you barely move, and he can **bump you back** and stun you for a second.
   Let go of L2 and he stays locked in his bumped pose for a moment (**SHOOT!**): stick sideways = hook, toward the rim = layup/floater, away = fade (if unlocked) or floater. AI bigs post up too. Dev panel → *Post test* sets one up.
 - **Dunks unlock with your Dunk rating** (Finishing, plus some Mobility and Strength): one-hand and two-hand flushes for everyone, then tomahawk (62), two-hand hammer (68), cock-back (74), reverse (78), windmill (84), 360 (90), 360 windmill (95). Contested dunks are power dunks; open ones lean to your flashiest, which are a hair less reliable (shown in the equation) but bring the crowd up and charge your ultimate more. The level-up screen shows what you have and the next one.
+- **Alley-oops:** **hold △** to lob it to the dot target. When he's heading to the rim the dot says **LOB** and it's an alley-oop: the lob comes down at rim height, a ring shows where, and he goes up and finishes in the air (a dunk if he can dunk, else a layup off the glass). When the lob is to **you**, the ring is yellow: press **✕** to go up — catching it at the top of your leap is clean, early or late adds an `oop timing` penalty, no ✕ = you catch it on the floor. Anyone can lob; the lob rating (Playmaking) decides accuracy, **Lob City** makes lobs tighter, harder to tip and longer (50 ft), **Lob Threat** widens the catch and boosts the finish. AI passers throw oops to cutters too.
 - **Jelly Fake** (Finishing tree, the far end of the dunk line after Posterizer, 3 pts): going up for a dunk, press **✕ again** (the ✕ badge says Jelly): you abort the dunk, hang in the air ~0.5 s and flick a jelly layup. A shot blocker who jumped at the dunk comes down first (no block, contest ×0.3), but the jelly is a much harder shot (its own low base + a `Jelly Fake ×0.85` term).
 - **Windmill Gather** (Driving tree ability, D-Wade / Donovan Mitchell): on drive finishes the ball swings around in a big windmill before the layup or dunk: can't be stripped, blocks ×0.6, contest ×0.85.
 - **High IQ** (Perimeter D perk): on defense a banner shows the set they're running and who it's for, with a red marker over him.

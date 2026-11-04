@@ -1,5 +1,6 @@
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
+import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
 import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG } from './shooting';
@@ -20,6 +21,8 @@ export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
   a: boolean; b: boolean; x: boolean; y: boolean; // edge-triggered this tick
   aHeld: boolean; bHeld: boolean;
+  /** △ held (tap = pass, hold = lob) */
+  yHeld?: boolean;
   /** R1 held: icon pass (face buttons pass to the teammate wearing that icon) */
   iconHeld?: boolean;
   /** L2 held: post up (back the defender down; the stick only goes toward / away from the rim) */
@@ -37,6 +40,8 @@ export const STEP_LIFT = 0.55;
 /** Fade Away: backward drift (ft/s) through the shot. */
 export const FADE_DRIFT = 4;
 /** Loose-ball dive: how long it lasts (launch, slide, get up), the launch (ft/s), and how low the ball must be (ft). */
+/** Alley-oop: catch height (ft), lob arc (ft), range (ft; Lob City), landing spot max distance from the rim. */
+export const OOP_CATCH_Z = 10.2, OOP_ARC = 5, OOP_RANGE = 35, OOP_RANGE_LOBCITY = 50, OOP_SPOT_R = 4;
 export const DIVE_S = 0.9, DIVE_LAUNCH_S = 0.3, DIVE_SPEED = 17, DIVE_BALL_Z = 3;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
@@ -75,6 +80,8 @@ export type BallState =
   | { kind: 'pass'; from: Player; to: Player; a: Vec; b: Vec; t: number; dur: number; lob: boolean; risky: boolean; checked: Set<string>; inbound?: boolean;
       /** short pass: bends toward the receiver every tick and almost never gets picked */
       magnet?: boolean;
+      /** alley-oop lob: comes down at the rim at catchZ (from z0) for the receiver to catch in the air */
+      oop?: { z0: number; catchZ: number };
       /** interception multiplier from the pass length (short ≪ medium < long) */
       riskMult?: number;
       /** overhead lead pass over the defense (transition / to a runner): high arc, only catchable near the ends */
@@ -810,7 +817,13 @@ export class GameSim {
         if (inp.aHeld && this.time - ux.aDownAt >= TAP_S) { ux.aPending = false; this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time)); }
         else if (!inp.aHeld) { ux.aPending = false; this.pumpFake(u, inp.move); }
       }
-      if (inp.y && passTarget && !ux.aPending) this.pass(u, passTarget);
+      // △: tap = pass (on release), hold past TAP_S = lob (an alley-oop when he's heading to the rim)
+      if (inp.y && passTarget && !ux.aPending) { ux.yDownAt = this.time; ux.yPending = true; }
+      if (ux.yPending) {
+        if (!passTarget) ux.yPending = false;
+        else if (inp.yHeld && this.time - ux.yDownAt >= TAP_S) { ux.yPending = false; this.lobPass(u, passTarget); }
+        else if (!inp.yHeld) { ux.yPending = false; this.pass(u, passTarget); }
+      }
       // ○: press with the stick pushed = move now; hold ○ and drag = move per flick; quick neutral tap = jab step
       if (inp.b) {
         ux.bDownAt = this.time; ux.bMoved = false;
@@ -820,8 +833,11 @@ export class GameSim {
         else if (ux.bNeedNeutral && len(inp.move) < 0.25) ux.bNeedNeutral = false;
       } else if (ux.bWasHeld && !ux.bMoved && this.time - ux.bDownAt < TAP_S) this.dribbleMove(u, v());
     } else {
-      ux.aPending = false;
+      ux.aPending = false; ux.yPending = false;
       if (onO) {
+        // a lob is coming down to you: ✕ = go up and get it (timing matters)
+        const bsl = this.ball.st;
+        if (inp.a && bsl.kind === 'pass' && bsl.oop && bsl.to === u) this.jump(u, 1);
         if (inp.y) { u.callForBallUntil = this.time + 1.4; this.emit({ kind: 'call', text: 'Calling for the ball…', pid: u.id }); }
         if (inp.b && !shotUp) this.setScreen(u);
         // hold ○ = keep screening until released (capped so a stuck button can't freeze you)
@@ -839,8 +855,8 @@ export class GameSim {
   }
 
   /** Per-user button timing state (tap vs hold). */
-  ux = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
-  ux2 = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false };
+  ux = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false, yDownAt: 0, yPending: false };
+  ux2 = { aDownAt: 0, aPending: false, bDownAt: 0, bMoved: false, bNeedNeutral: false, bWasHeld: false, yDownAt: 0, yPending: false };
 
   /**
    * Pump fake: ball up, defenders may bite. Repeatable. It picks up the dribble once you've dribbled; a fake on the
@@ -915,7 +931,9 @@ export class GameSim {
     } else {
       p.vel = scale(p.vel, 0.25);
     }
-    p.vz = type === 'dunk' ? p.jumpVel * 0.95 : jumper ? 8 : 9.5;
+    const oop = type === 'alleyOop' || type === 'alleyOopLayup';
+    if (oop) { p.vz = Math.max(p.vz, 1.5); p.vel = scale(p.vel, 0.5); } // caught in the air: finish on the way down
+    else p.vz = type === 'dunk' ? p.jumpVel * 0.95 : jumper ? 8 : 9.5;
     p.face = norm(sub(rim, p.p));
     if (isStepThrough(type)) this.stepThrough(p, rim, d, jumper ? 8 : 9.5);
     // defenders react
@@ -955,7 +973,7 @@ export class GameSim {
     p.deadDribble = false;
     p.state = 'idle';
     const side = this.side(p.team);
-    const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override, dunk: ps.dunk, windmill: ps.windmill });
+    const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override, dunk: ps.dunk, windmill: ps.windmill, oopTiming: ps.oopTiming });
     const rim = this.rim(p.team);
     if (p.anim) p.anim.release = this.time;
     this.quiet('release', { type: ps.type }, p.id);
@@ -1044,6 +1062,85 @@ export class GameSim {
     const d = dist(from.p, lead);
     const safe = from.safePassDist * (overhead ? 1.35 : 1);
     return { lead, d, safe, overhead, ok: d <= safe };
+  }
+
+  /** Is this teammate a good alley-oop target (heading to the rim, landing spot in lob range)? */
+  lobTarget(from: Player, to: Player): boolean {
+    const rim = this.rim(from.team);
+    const dRim = dist(to.p, rim), toRim = norm(sub(rim, to.p));
+    const range = from.mods.pAdd('lob') > 0 ? OOP_RANGE_LOBCITY : OOP_RANGE;
+    return dRim < 18 && (dot(to.vel, toRim) > 4 || dRim < 8) && dist(from.p, rim) < range + OOP_SPOT_R && to.state !== 'fallen' && to.state !== 'screen';
+  }
+
+  /**
+   * Hold △: a lob. To a teammate heading to the rim it's an alley-oop: it comes down at rim height just in front of the
+   * rim on his line, for him to catch in the air (accuracy from the lob rating; Lob City tighter, longer, harder to
+   * tip). Otherwise it's a high, soft pass he catches on the floor.
+   */
+  lobPass(from: Player, to: Player) {
+    if (this.holder() !== from || from.busy) return;
+    if (!this.lobTarget(from, to)) {
+      this.pass(from, to);
+      const st = this.ball.st;
+      if (st.kind === 'pass') { st.lob = true; st.magnet = false; st.dur *= 1.35; }
+      return;
+    }
+    const rim = this.rim(from.team), lobCity = from.mods.pAdd('lob') > 0;
+    const lead = add(to.p, scale(to.vel, 0.6));
+    const dl = dist(lead, rim);
+    let spot = dl > OOP_SPOT_R ? add(rim, scale(norm(sub(lead, rim)), OOP_SPOT_R)) : lead;
+    const d = dist(from.p, spot);
+    // accuracy: the lob rating, Lob City, and the length of the throw
+    const err = rmap(from.sub.lob, 2.6, 0.6) * (lobCity ? 0.6 : 1) * (1 + Math.max(0, d - 20) / 30);
+    const ang = this.rng.next() * Math.PI * 2, mag = err * Math.sqrt(this.rng.next());
+    spot = clampToCourt(add(spot, v(Math.cos(ang) * mag, Math.sin(ang) * mag)));
+    const dur = 0.55 + d / (from.passSpeed * 0.6);
+    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: spot, t: 0, dur, lob: true, risky: false, checked: new Set(), riskMult: lobCity ? 0.6 : 1, oop: { z0: Math.max(4.5, this.ball.z), catchZ: OOP_CATCH_Z } };
+    this.lastPasser = from; this.lastPassAt = this.time; this.lastLobAt = this.time;
+    from.deadDribble = false;
+    from.state = from.state === 'dribbleMove' ? from.state : 'idle';
+    from.face = norm(sub(spot, from.p));
+    this.quiet('pass', { lob: true, dist: d }, from.id);
+    this.emit({ kind: 'move', text: 'Lob!', pid: from.id });
+    // the AI receiver times his leap so his apex meets it (better leapers time it better); rim protectors go up too
+    const arrive = this.time + dur;
+    if (this.isAI(to)) {
+      const tApex = (to.jumpVel * 0.9) / 32;
+      to.jumpAt = Math.max(this.time + 0.05, arrive - tApex + this.rng.range(-1, 1) * 0.14 * (1.2 - to.sub.jump / 99));
+      to.blockCdUntil = 0;
+    }
+    for (const o of this.opp(from.team)) {
+      if (this.isAI(o) && dist(o.p, spot) < 4.5 && o.z === 0 && !o.busy) o.jumpAt = arrive - (o.jumpVel * 0.9) / 32 + this.rng.range(0, 0.15);
+    }
+  }
+  lastLobAt = -9;
+
+  /** The lob arrives: catch it in the air = alley-oop (dunk if he can, else a layup off the glass). */
+  private oopArrive(st: Extract<BallState, { kind: 'pass' }>) {
+    const to = st.to, b = this.ball;
+    const r = 3.0 + to.mods.pAdd('oopCatch'); // catch window (Lob Threat widens it)
+    const near = dist(to.p, b.p) < r && to.state !== 'fallen';
+    if (near && to.z > 1.5) {
+      // timing: catching it at the top of the leap is clean; on the way up or down it's harder
+      const q = clamp01(1 - Math.abs(to.vz) / Math.max(1, to.jumpVel * 0.9));
+      const canDunk = to.sub.dunk >= 50 + (7 - to.height) * 30;
+      this.giveBall(to);
+      this.assistCand = { passer: st.from, receiver: to, at: this.time };
+      to.state = 'idle';
+      this.startShot(to, canDunk ? 'alleyOop' : 'alleyOopLayup');
+      if (to.pendingShot) to.pendingShot.oopTiming = 0.75 + 0.25 * q;
+      this.emit({ kind: 'move', text: 'Alley-oop!', pid: to.id, big: true });
+      return;
+    }
+    if (dist(to.p, b.p) < 3.5 && to.state !== 'fallen') {
+      // caught it on the way down (no leap): a normal catch under the rim
+      this.giveBall(to);
+      this.quiet('catch', {}, to.id);
+      this.assistCand = { passer: st.from, receiver: to, at: this.time };
+      return;
+    }
+    // overthrown / nobody there: it comes down loose by the rim
+    b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 4), vz: -2, lastTeam: st.from.team };
   }
 
   pass(from: Player, to: Player) {
@@ -1461,7 +1558,7 @@ export class GameSim {
         // short passes home in on the receiver (re-aim at where he is now)
         if (st.magnet && st.to.state !== 'fallen') st.b = lerpV(st.b, add(st.to.p, scale(st.to.vel, 0.05)), Math.min(1, dt * 12));
         b.p = lerpV(st.a, st.b, k);
-        b.z = 4.5 + (st.lob ? 7 : st.overhead ? 5.8 : 1.2) * Math.sin(Math.PI * k);
+        b.z = st.oop ? st.oop.z0 + (st.oop.catchZ - st.oop.z0) * k + OOP_ARC * Math.sin(Math.PI * k) : 4.5 + (st.lob ? 7 : st.overhead ? 5.8 : 1.2) * Math.sin(Math.PI * k);
         const passLen = dist(st.a, st.b);
         for (const d of this.opp(st.from.team)) {
           if (st.checked.has(d.id) || d.state === 'fallen') continue;
@@ -1483,6 +1580,7 @@ export class GameSim {
             }
           }
         }
+        if (k >= 1 && st.oop) { this.oopArrive(st); break; }
         if (k >= 1) {
           if (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen') {
             this.giveBall(st.to);

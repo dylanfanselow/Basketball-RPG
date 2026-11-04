@@ -61,7 +61,7 @@ export class Player {
   /** side-drive direction (screen up/down) the flick-cross watches for, and until when */
   flickDir = 0; flickUntil = 0;
   bufferedMove: { stick: Vec; at: number } | null = null;
-  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean; jellyRead?: boolean } | null = null;
+  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean; jellyRead?: boolean; oopTiming?: number } | null = null;
   /** post up (post.ts): the attacker's battle with the defender on his back */
   post: PostState | null = null;
   /** posted defender: stun-locked by bumps (no contest, no actions) until then */

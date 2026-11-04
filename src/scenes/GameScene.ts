@@ -428,7 +428,7 @@ export class GameScene extends Phaser.Scene {
       case 'release': sfx.release(pan); break;
       case 'net':
         this.netHits[sim.ball.p.x < 47 ? 0 : 1] = { at: this.time.now, amp: d.type === 'dunk' ? 1.1 : d.swish ? 1 : 0.75 };
-        if (d.type === 'dunk') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
+        if (d.type === 'dunk' || d.type === 'alleyOop') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
         else { d.swish ? sfx.swish(pan, true) : sfx.swish(pan, false); if (d.pts === 3) sfx.cheer(d.team === 0 ? 0.75 : 0.3); }
         break;
       case 'rim': if (!d.seq) sfx.clank(pan, !!d.board); break; // live-rim misses already played their contacts
@@ -475,7 +475,7 @@ export class GameScene extends Phaser.Scene {
       const wx = sx(who ? who.p.x : sim.ball.p.x);
       const d = e.data ?? {};
       const team = (e.team ?? who?.team) as 0 | 1 | undefined;
-      if (e.kind === 'net') { this.reactAll(d.team, d.type === 'dunk' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx); if (d.flash) { this.cameras.main.shake(220, 0.008); sfx.cheer(1); } } // flashy dunks bring the house down
+      if (e.kind === 'net') { this.reactAll(d.team, d.type === 'dunk' || d.type === 'alleyOop' || d.type === 'alleyOopLayup' ? 1 : d.pts === 3 ? 0.75 : 0.25, wx); if (d.flash) { this.cameras.main.shake(220, 0.008); sfx.cheer(1); } } // flashy dunks bring the house down
       else if (['block', 'steal', 'ankles', 'poster', 'charge'].includes(e.kind)) this.reactAll(team, e.kind === 'steal' ? 0.6 : 0.9, wx);
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
       if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
@@ -525,8 +525,10 @@ export class GameScene extends Phaser.Scene {
     if (p.state === 'stagger' || now < p.staggerUntil) return { clip: 'stagger', u: now * 2 };
     if (p.state === 'screen') return { clip: 'screen', u: p.stateT / 0.25 };
     if (p.state === 'charge') return { clip: 'charge', u: p.stateT / 0.2 };
+    { const bsl = sim.ball.st; if (p.z > 0.3 && bsl.kind === 'pass' && bsl.oop && bsl.to === p) return { clip: 'oopReach', u: now * 2 }; } // up for the lob
     if (p.z > 0.3) return { clip: 'block', u: p.vz > 0 ? 0.4 * (1 - p.vz / p.jumpVel) : 0.4 + 0.6 * Math.min(1, -p.vz / p.jumpVel) };
     if (now < p.swipingUntil) return { clip: 'swipe', u: 1 - (p.swipingUntil - now) / 0.3 };
+    if (sim.lastPasser === p && sim.lastLobAt === sim.lastPassAt && now - sim.lastPassAt < 0.4) return { clip: 'passLob', u: (now - sim.lastPassAt) / 0.4 }; // lob
     if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: 'pass', u: (now - sim.lastPassAt) / 0.3 };
     if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };
     const sp = len(p.vel);
@@ -1042,6 +1044,8 @@ export class GameScene extends Phaser.Scene {
         const unsafe = !sim.passSafety(u, t).ok, flash = unsafe && Math.floor(this.time.now / 160) % 2 === 0;
         gt.fillStyle(0x000000, 0.6); gt.fillCircle(px, py, unsafe ? 11 : 9);
         gt.fillStyle(unsafe ? (flash ? 0xff1a1a : 0x8a0000) : 0xffe600, 1); gt.fillCircle(px, py, unsafe ? 8 : 6);
+        // a good alley-oop target: hold △ to lob it
+        if (sim.lobTarget(u, t)) this.label(px, py - 20, 'LOB', '#ffe14d', 13);
       }
     }
     // post up: your battle over your head (mode + post vs post D), "SHOOT" in the window; post debug: everyone's
@@ -1060,6 +1064,15 @@ export class GameScene extends Phaser.Scene {
         this.label(sx(p.p.x), sy(p.p.y) + 16, txt, '#ff9f6a', 12); // at his feet (clear of the post label above)
       }
     }
+    // alley-oop: a ring where the lob comes down, closing in as it drops (bright when it's to you: ✕ to go up)
+    { const bl = sim.ball.st;
+      if (bl.kind === 'pass' && bl.oop) {
+        const k = Math.min(1, bl.t / bl.dur), mine = bl.to === u;
+        const rx = sx(bl.b.x), ry = sy(bl.b.y), rr = 1 + 2.2 * (1 - k);
+        gt.lineStyle(mine ? 3 : 2, mine ? 0xffe14d : 0xffffff, mine ? 0.95 : 0.5); gt.strokeEllipse(rx, ry, 2.4 * S * rr, 2.4 * D * rr);
+        gt.lineStyle(1, mine ? 0xffe14d : 0xffffff, 0.6); gt.strokeEllipse(rx, ry, 2.4 * S, 2.4 * D);
+        if (mine && u!.z === 0) this.label(rx, ry + 18, '✕ GO UP', '#ffe14d', 14);
+      } }
     // High IQ: a pulsing marker over the player their set is for
     const iqr = this.highIQ();
     if (iqr?.target) {

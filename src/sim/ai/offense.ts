@@ -169,7 +169,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }).sort((a, b) => dist(a.p, rim) - dist(b.p, rim));
     // better passers see it sooner
     const lead = leaders.find((m) => !m.isUser || passFactor(userTrust(sim)) > 0.45);
-    if (lead && sinceCatchT > 0.55 - 0.43 * readSkill(p)) { sim.pass(p, lead); return; }
+    if (lead && sinceCatchT > 0.55 - 0.43 * readSkill(p)) { throwTo(sim, p, lead); return; }
     // rebounding big: outlet to the point guard
     const pg = sim.byRole(p.team, '1');
     if ((p.role === '4' || p.role === '5') && pg && pg !== p && sim.openness(pg) > 0.4 && laneRisk(sim, p, pg) < 0.4 && sinceCatchT > 0.25) { sim.pass(p, pg); return; }
@@ -234,7 +234,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
       if (val > 0.85 && val > ov) { ov = val; open = m; }
     }
     const take = 0.3 + 0.6 * readSkill(p);
-    if (open && (!open.isUser || sim.rng.chance(passFactor(userTrust(sim)))) && sim.rng.chance(iso ? 0.9 : take)) { sim.pass(p, open); return; }
+    if (open && (!open.isUser || sim.rng.chance(passFactor(userTrust(sim)))) && sim.rng.chance(iso ? 0.9 : take)) { throwTo(sim, p, open); return; }
   }
 
   // the play wants the ball somewhere else this phase
@@ -300,10 +300,10 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const driveVal = d < 26 ? (blockers === 0 ? 1.15 : blockers < 1 ? 0.9 : 0.3) * (0.7 + p.sub.layup / 99 * 0.5) : 0;
 
   // a wide-open teammate (or one behind the defense) beats a contested look and the play
-  if (best && (!iso || helpers >= 2) && sinceCatch > 0.3 && bestVal > holdVal + 0.45 && bestVal > myEV * 1.1 && laneRisk(sim, p, best) < 0.35) { sim.pass(p, best); return; }
+  if (best && (!iso || helpers >= 2) && sinceCatch > 0.3 && bestVal > holdVal + 0.45 && bestVal > myEV * 1.1 && laneRisk(sim, p, best) < 0.35) { throwTo(sim, p, best); return; }
   if (sinceCatch > 0.12 && myEV > shootT && (ev.contest < 0.35 || urgency > 0.7)) { sim.startShot(p, type); return; }
   if (urgency > 0.93) { sim.startShot(p, type); return; }
-  if (!iso && best && bestVal > holdVal + 0.12 && sinceCatch > 0.7) { sim.pass(p, best); return; }
+  if (!iso && best && bestVal > holdVal + 0.12 && sinceCatch > 0.7) { throwTo(sim, p, best); return; }
   if ((driveVal > holdVal && driveVal > bestVal) || (iso && blockers <= 1 && d < 26 && sim.rng.chance(0.45))) { p.aiMode = 'drive'; p.aiModeUntil = sim.time + 1.6; return; }
 
   const nd = sim.nearestDefender(p);
@@ -394,4 +394,15 @@ function postAI(sim: GameSim, p: Player) {
   if (release && !locked && p.mods.pAdd('dreamer') > 0 && sim.rng.chance(0.4)) { sim.pumpFake(p, lat); p.aiFakeFollow = true; return; }
   postIntent(p, !release, toRim); // letting go opens the window; next think shoots
   if (release && p.post.mode === 'weaker') p.aiMode = 'none'; // no window when he's stronger: back to the offense
+}
+
+/**
+ * Pass, or an alley-oop lob when he's cutting at the rim and the passer sees it (better lob passers more often, Lob
+ * City owners much more).
+ */
+function throwTo(sim: GameSim, p: Player, m: Player) {
+  const toRim = norm(sub(sim.rim(p.team), m.p));
+  const chance = 0.2 + 0.35 * p.sub.lob / 99 + (p.mods.pAdd('lob') > 0 ? 0.25 : 0);
+  if (sim.lobTarget(p, m) && dot(m.vel, toRim) > 6 && sim.rng.chance(chance)) sim.lobPass(p, m);
+  else sim.pass(p, m);
 }

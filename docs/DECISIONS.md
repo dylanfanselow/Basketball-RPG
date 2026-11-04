@@ -123,6 +123,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 33: Alley-oops.** △ tap = pass (on release), **hold △ = lob** (`TAP_S`, like ✕). To a `lobTarget` (heading
+  to the rim, in lob range: 35 ft, Lob City 50) it's an alley-oop: lands ≤ 4 ft from the rim at 10.2 ft, error from the
+  `lob` sub (Lob City ×0.6). Receiver in the air within 3 ft (+0.8 Lob Threat) = `alleyOop` (can dunk) or
+  `alleyOopLayup`; AI receivers time their leap, the user presses ✕ (timing term 0.75–1 from vertical speed at the
+  catch); no leap = floor catch; nobody = loose. **Everyone can lob**; AI passers throw oops to cutters. Lob City /
+  Lob Threat effects rewritten for this.
 - **Round 32: Jelly Fake** (`fi_jelly`, Finishing ability, cost 3, after Posterizer = far down the dunk prong): ✕ again
   during a dunk windup aborts it into a hang (gravity ×0.25 until the release, +0.5 s) and a jelly layup (shot type
   `jelly`: base 0.46 → 0.36, × `JELLY_MULT` 0.85 = the large penalty). Defenders who jumped at the dunk and are coming

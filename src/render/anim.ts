@@ -649,6 +649,34 @@ CLIPS.push(
     [0.85, dk('hang', [13, 107], [6, 92], null)], [1, DK_LAND]]),
 );
 
+// ---------- alley-oops (hold △ to lob) ----------
+// passLob: ball lifted high in two hands and floated up toward the rim. oopReach: the receiver in the air, both arms up
+// for it. shot_oop: catch with two hands over the head at the top and throw it down; shot_oopLayup: one-hand catch
+// high and laid off the glass. Both start airborne (caught in the air), release 0.5.
+CLIPS.push(
+  { name: 'passLob', frames: 6, keys: [
+    { t: 0, pose: chest },
+    { t: 0.35, pose: { ...arms(P({ hip: [0, 46], kF: [5, 23], kB: [-4, 23] }), [5, 84], [3, 83]), ball: [6, 88] } },
+    { t: 0.6, pose: { ...arms(P({ hip: [0, 50], head: [3, 91] }), [11, 100], [9, 99]), ball: [13, 104] } },
+    { t: 1, pose: { ...arms(P({ hip: [0, 49] }), [12, 98], [10, 96]), ball: null } }] },
+  { name: 'oopReach', frames: 4, loop: true, keys: [
+    { t: 0, pose: { ...arms(P({ ...DK_LEGS.peak } as PosePatch), [7, 104], [4, 103]), ball: null } },
+    { t: 0.5, pose: { ...arms(P({ ...DK_LEGS.peak, head: [2, 92] } as PosePatch), [8, 105], [5, 104]), ball: null } },
+    { t: 1, pose: { ...arms(P({ ...DK_LEGS.peak } as PosePatch), [7, 104], [4, 103]), ball: null } }] },
+  { name: 'shot_oop', frames: 9, release: 0.5, post: 0.6, keys: [
+    { t: 0, pose: dk('peak', [7, 104], [5, 103], [1, 3]) },
+    { t: 0.25, pose: dk('peak', [-2, 104], [-4, 103], [0, 3]) },
+    { t: 0.5, pose: dk('slam', [14, 100], [12, 99], [1, 2]) },
+    { t: 0.72, pose: dk('hang', [12, 106], [10, 105], null) },
+    { t: 1, pose: DK_LAND }] },
+  { name: 'shot_oopLayup', frames: 9, release: 0.5, post: 0.6, keys: [
+    { t: 0, pose: dk('peak', [8, 104], [3, 92], [1, 3]) },
+    { t: 0.25, pose: dk('peak', [6, 98], [4, 90], [1, 3]) },
+    { t: 0.5, pose: dk('slam', [12, 104], [5, 88], [1, 4]) },
+    { t: 0.75, pose: dk('hang', [12, 106], [5, 86], null) },
+    { t: 1, pose: DK_LAND }] },
+);
+
 // Jelly Fake (Finishing ability): up for the dunk, then the ball is pulled down to the hip, he hangs (knees tucked,
 // leaning back, off arm shielding) and swoops it up underhand off the fingertips. Release 0.75.
 const jellyPose = (legs: PosePatch, torso: PosePatch, hF: J, hB: J, ball: J | null): Pose => {
@@ -699,7 +727,7 @@ export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c
 /** Map a sim shot type to its animation clip. */
 export const SHOT_CLIP: Record<string, string> = {
   three: 'shot_jumper', deep3: 'shot_jumper', mid: 'shot_jumper', fade: 'shot_fade', push: 'shot_push', floater: 'shot_floater',
-  hook: 'shot_hook', layup: 'shot_layup', jelly: 'shot_jelly', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
+  hook: 'shot_hook', layup: 'shot_layup', jelly: 'shot_jelly', alleyOop: 'shot_oop', alleyOopLayup: 'shot_oopLayup', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
 };
 
 const lerpJ = (a: J, b: J, t: number): J => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];

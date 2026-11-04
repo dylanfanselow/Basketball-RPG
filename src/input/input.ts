@@ -99,7 +99,7 @@ export class InputMapper {
     return {
       move: this.move, sprint: this.pressed('sprint'),
       a: this.pressed('a'), b: this.pressed('b'), x: this.pressed('x'), y: this.pressed('y'),
-      aHeld: this.held('a'), bHeld: this.held('b'), iconHeld: this.held('icon'), postHeld: this.held('post'),
+      aHeld: this.held('a'), bHeld: this.held('b'), yHeld: this.held('y'), iconHeld: this.held('icon'), postHeld: this.held('post'),
     };
   }
 }
