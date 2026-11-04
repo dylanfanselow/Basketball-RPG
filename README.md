@@ -35,6 +35,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
 ## Things to know while testing
 - **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.
 
+- **Bringing it up:** defenders normally pick you up around half court. Teams **full-court press** when they're trailing late (and now and then after a made basket): `PRESS` shows by the shot clock, the defender stays on you the whole way and a second one comes to trap near the sideline or half court. Beat it with a move and a burst, find the man the trap left open, or wait for the big who comes up to set a screen (a guard also flashes back for an outlet). **8-second rule:** get it past half court in 8 seconds (`8 SEC 3…2…1` shows at the end). With the ball you're a little slower, and the sprint burst gives only half its boost (dribble moves are how you beat your man). Dev panel: *Force full-court press*.
 - **Sprint** is a tap: R2 (or Shift) gives a short burst, shown by speed lines and the ring next to the trust bars, then it recharges. Mobility and stamina change both.
 - **Side Drive**: ○ + stick up or down while dribbling. While you're driving, flick the stick the other way (no button) to cross over.
 - **✕ tap = pump fake** (fake as many times as you like; it picks up your dribble so you can only pass or shoot). **✕ hold = shoot.**

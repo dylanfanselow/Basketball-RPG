@@ -65,6 +65,6 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## Tests (`tests/`)
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
-`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `helpers.ts` (`makeGame`, `simToEnd`).
+`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).

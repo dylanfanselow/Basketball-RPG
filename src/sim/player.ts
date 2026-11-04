@@ -38,7 +38,7 @@ export class Player {
   box: BoxScore = emptyBox();
   /** AI scratch */
   target: Vec = v(); guarding: string | null = null; aiNextThink = 0; callForBallUntil = 0;
-  aiMode: 'none' | 'drive' | 'post' = 'none';
+  aiMode: 'none' | 'drive' | 'post' | 'beatPress' = 'none';
   /** AI: just did a Dreamer fake out of the post; shoot off it next */
   aiFakeFollow = false; aiModeUntil = 0; cutUntil = 0;
   /** runtime sim fields */
@@ -74,6 +74,10 @@ export class Player {
   postWindowUntil = -9;
   /** attacker: the last bump (drives the bump / bumped-back animations) */
   postBumpAt = -9; postBumpedBackAt = -9;
+  /** bringing it up: when the full-court pressure on him started (AI screen call) */
+  pressedSince = -9;
+  /** a big called up to screen for this player (id) until then */
+  screenFor: { pid: string; until: number } | null = null;
   /** dunk start (Jelly Fake: who jumped at the dunk) and the jelly hang (low gravity until then) */
   dunkStartAt = -9; hangUntil = -9;
   /** the defender of the last post (for the window / post shot) */
@@ -114,7 +118,8 @@ export class Player {
   get burstDur() { return rmap(this.sub.stamina, 1.2, 2.2) * (0.75 + 0.25 * this.stamina); }
   /** cooldown after a burst (speed rating, perks, fatigue) */
   get burstCd() { return rmap(this.sub.speed, 6.0, 3.5) * this.mods.pMult('burstCd') * (1.3 - 0.3 * this.stamina); }
-  get ballSpeedMult() { return rmap(this.sub.ballSpeed, 0.82, 0.97); }
+  /** with the ball you're a little slower (good ball handlers lose less) */
+  get ballSpeedMult() { return rmap(this.sub.ballSpeed, 0.78, 0.92); }
   get jumpVel() { return rmap(this.sub.jump, 11, 16.5); }
   get passSpeed() { return rmap(this.sub.passSpeed, 55, 90); }
   get safePassDist() { return rmap(this.sub.passRange, 30, 60); }

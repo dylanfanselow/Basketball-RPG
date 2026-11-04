@@ -36,6 +36,7 @@
 | 32 | `f3d9e80` | A fake where pressing shoot again mid-dunk hangs in the air into a jelly layup, delaying the shot past a block attempt; clean animation, large accuracy penalty, deep in the tree | Jelly Fake ability after Posterizer, `jelly` shot type + penalty term, hang physics, bit-on-the-dunk defenders can't block, `shot_jelly` clip, AI use |
 | 33 | `73f1a97` | Ability to throw lob passes for dunks | Hold △ = lob / alley-oop (everyone; lob rating + Lob City accuracy), receiver catches in the air (AI timed, user ✕ with timing), alley-oop dunk or layup, landing ring, AI throws oops |
 | 34 | `5311d84` | Lob plays in the coach's playbook, 3v3 too | Pick & Roll Lob + Back-Screen Lob (5v5 and 3v3), phase `lob` role, called only for dunkers, AI handler lobs on the cut, user hint + credit; AI improvised lobs toned down |
+| 35 | (this round) | Defender face to face the whole way up slows the game; keep the full-court press but the AI should sprint, use moves, call screens and find open passes; slower with the ball and a smaller sprint boost with it | Half-court pickup unless pressing (situational press + trap), AI `bringUp`, screen call + press outlet (for the user too), 8-second rule + HUD, ball-handler speed / half burst |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

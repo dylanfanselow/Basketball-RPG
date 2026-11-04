@@ -42,6 +42,10 @@ export const FADE_DRIFT = 4;
 /** Loose-ball dive: how long it lasts (launch, slide, get up), the launch (ft/s), and how low the ball must be (ft). */
 /** Alley-oop: catch height (ft), lob arc (ft), range (ft; Lob City), landing spot max distance from the rim. */
 export const OOP_CATCH_Z = 10.2, OOP_ARC = 5, OOP_RANGE = 35, OOP_RANGE_LOBCITY = 50, OOP_SPOT_R = 4;
+/** With the ball the sprint burst gives this share of its gain. */
+export const BALL_BURST = 0.5;
+/** 8-second rule (full-court games): time to get the ball past half court. */
+export const BACKCOURT_S = 8;
 export const DIVE_S = 0.9, DIVE_LAUNCH_S = 0.3, DIVE_SPEED = 17, DIVE_BALL_Z = 3;
 export const emptyInput = (): UserInput => ({ move: v(), sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false });
 
@@ -462,6 +466,7 @@ export class GameSim {
       this.live = true;
       this.pendingInbound = null;
       this.shotClock = 24;
+      this.newPossession(this.time - this.lastMadeAt < 8);
       s.inbounder.allowOobUntil = this.time + 2.5;
       s.inbounder.face = norm(sub(s.receiver.p, s.inbounder.p));
       this.ball.st = { kind: 'held', holder: s.inbounder };
@@ -490,6 +495,94 @@ export class GameSim {
 
   inTransition(team: 0 | 1) { return this.possession === team && this.time < this.transitionUntil && !this.runner.playId; }
 
+  // ---------- bringing it up: the press and the 8-second rule (full-court games) ----------
+  /** the defending team is pressing full court (until the ball crosses half court + 2 s) */
+  pressing: [boolean, boolean] = [false, false];
+  pressEndsAt = -1;
+  /** dev / tests: every possession is pressed */
+  forcePress = false;
+  lastMadeAt = -99;
+  /** 8-second clock: time in the backcourt this possession, and whether the ball has crossed */
+  backcourtT = 0; crossed = true;
+  get fullCourt() { return this.cfg.mode === 'game' && !this.cfg.halfCourt && !this.cfg.oneOnOne; }
+
+  /** A team just got the ball (inbound completed, live turnover, defensive board): start the 8 seconds, maybe press. */
+  newPossession(afterMake: boolean) {
+    if (!this.fullCourt) return;
+    const off = this.possession, def = (1 - off) as 0 | 1;
+    this.backcourtT = 0;
+    this.crossed = inFrontcourt(this.side(off), this.ball.p);
+    this.pressEndsAt = -1;
+    this.pressing = [false, false];
+    if (this.crossed) return;
+    let press = this.forcePress;
+    const lead = this.teams[def].score - this.teams[off].score;
+    if (!press && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.25 && lead <= -3 && lead >= -15) press = true; // late and trailing
+    if (!press && afterMake) {
+      const pd = this.teams[def].onCourt.reduce((a, p) => a + p.sub.perimD, 0) / Math.max(1, this.teams[def].onCourt.length);
+      press = this.rng.chance(clamp(0.06 + 0.1 * (pd - 50) / 50, 0.03, 0.18));
+    }
+    if (press) {
+      this.pressing[def] = true;
+      this.emit({ kind: 'press', text: 'FULL-COURT PRESS', team: def });
+    }
+  }
+
+  /** Is this ball handler under pressure bringing it up (a defender in his face going up court, or a trap)? */
+  pressured(h: Player): { pressured: boolean; trapped: boolean } {
+    const toFront = norm(sub(this.rim(h.team), h.p));
+    const nd = this.nearestDefender(h);
+    const pressured = !!nd.d && nd.dist < 4 && dot(sub(nd.d.p, h.p), toFront) > 0;
+    const trapped = this.opp(h.team).filter((o) => dist(o.p, h.p) < 6).length >= 2;
+    return { pressured, trapped };
+  }
+
+  /**
+   * Help for a pressured ball handler in the backcourt (AI or you): after 1.2 s of pressure a big comes up to set a
+   * screen on his man (the press outlet is in offBallTarget).
+   */
+  private pressHelp() {
+    const h = this.holder();
+    if (!h || !this.fullCourt || this.crossed || h.team !== this.possession) { if (h) h.pressedSince = -9; return; }
+    const pr = this.pressured(h);
+    if (!pr.pressured && !pr.trapped) { h.pressedSince = -9; return; }
+    if (h.pressedSince < 0) h.pressedSince = this.time;
+    if (this.time - h.pressedSince > (this.pressing[(1 - h.team) as 0 | 1] ? 1.2 : 2.0)) this.callScreenFor(h); // sooner against a press
+  }
+
+  /** Call the nearest big (not you) up to screen for this ball handler. */
+  callScreenFor(h: Player) {
+    if (this.mates(h).some((m) => m.screenFor?.pid === h.id && this.time < m.screenFor.until)) return;
+    const s = this.mates(h).filter((m) => (m.role === '5' || m.role === '4' || m.role === '3') && this.isAI(m) && m.state !== 'fallen')
+      .sort((a, b) => Number(b.role) - Number(a.role) || dist(a.p, h.p) - dist(b.p, h.p))[0];
+    if (!s) return;
+    s.screenFor = { pid: h.id, until: this.time + 3.5 };
+    this.emit({ kind: 'call', text: `${s.name}: "Screen!"`, team: h.team, pid: s.id });
+  }
+
+  /** The 8-second count (and the press ending once the ball crosses). Returns true on a violation. */
+  private backcourtRule(dt: number): boolean {
+    if (!this.fullCourt) return false;
+    const off = this.possession, st = this.ball.st;
+    const controlled = (st.kind === 'held' && st.holder.team === off) || (st.kind === 'pass' && st.from.team === off);
+    if (!this.crossed && controlled) {
+      if (inFrontcourt(this.side(off), this.ball.p)) { this.crossed = true; this.pressEndsAt = this.time + 2; }
+      else {
+        this.backcourtT += dt;
+        if (this.backcourtT > BACKCOURT_S && st.kind === 'held') {
+          const h = st.holder; h.box.tov++;
+          this.emit({ kind: 'violation', text: '8-second violation', team: off });
+          if (h === this.user) applyTrust(this.trust, 'turnover');
+          this.crossed = true;
+          this.deadBall((1 - off) as 0 | 1);
+          return true;
+        }
+      }
+    }
+    if (this.pressEndsAt > 0 && this.time > this.pressEndsAt) { this.pressing = [false, false]; this.pressEndsAt = -1; }
+    return false;
+  }
+
   changePossessionLive(newTeam: 0 | 1) {
     this.possession = newTeam;
     this.shotClock = 24;
@@ -497,7 +590,7 @@ export class GameSim {
     this.assignMatchups();
     if (this.cfg.oneOnOne || this.cfg.halfCourt) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
     else if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
-    else this.transitionUntil = this.time + 5; // live turnover / defensive board: read the break
+    else { this.transitionUntil = this.time + 5; this.newPossession(false); } // live turnover / defensive board: read the break
   }
 
   callPlay() {
@@ -570,13 +663,14 @@ export class GameSim {
       for (const p of this.players) if (this.isAI(p) || this.inb?.inbounder === p) this.think(p, dt);
     } else for (const p of this.players) if (this.isAI(p)) p.target = { ...p.p };
 
+    this.pressHelp(); // a pressured handler in the backcourt gets a screen
     updatePost(this, dt); // after think, before physics: the posting pair's positions
     tickUlt(this, dt);
     this.physics(dt);
     this.collisions();
     this.updateBall(dt);
     this.updatePlay(dt);
-    this.rules();
+    this.rules(dt);
     this.updatePreview();
   }
 
@@ -593,8 +687,9 @@ export class GameSim {
     this.inbound(this.pendingInbound ?? (1 - this.possession) as 0 | 1);
   }
 
-  private rules() {
+  private rules(dt = 0) {
     if (!this.live) return;
+    if (this.backcourtRule(dt)) return;
     const hd = this.holder();
     if (hd && hd.deadDribble && this.time - hd.deadDribbleAt > 5 && hd.state !== 'shoot') {
       hd.box.tov++; hd.deadDribble = false;
@@ -1189,7 +1284,11 @@ export class GameSim {
     this.quiet('burst', {}, p.id);
     return true;
   }
-  topSpeed(p: Player) { return this.time < p.burstUntil ? p.burstSpeed : p.runSpeed; }
+  /** Top speed now: the sprint burst gives half its gain with the ball (handlers are slower than cutters / defenders). */
+  topSpeed(p: Player, hasBall = this.holder() === p) {
+    if (this.time >= p.burstUntil) return p.runSpeed;
+    return hasBall ? p.runSpeed + (p.burstSpeed - p.runSpeed) * BALL_BURST : p.burstSpeed;
+  }
   lastRechargeMsg = -9;
 
   /** Crossover fired by flicking the stick across the hoop line, the other way, during a side drive. side = the new side (±1). */
@@ -1767,6 +1866,7 @@ export class GameSim {
       this.gainUlt(s, ULT_GAINS.score + (st.pts === 3 ? 4 : 0) + (dk?.ult ?? 0)); // flashy dunks charge the ultimate more
       if (s === this.user) applyTrust(this.trust, 'madeShot');
       const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
+      this.lastMadeAt = this.time;
       this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;

@@ -22,6 +22,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
   (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Round 35:** bring-up: `GameSim.pressing` / `newPossession` / `backcourtRule` (8 s) / `pressured` / `pressHelp` /
+  `callScreenFor` / `forcePress`, `topSpeed(p, hasBall)`; `ai/defense.ts` half-court pickup + trap; `ai/offense.ts`
+  `bringUp`, `screenFor` big, press outlet; HUD `8 SEC` + `PRESS`. Headless: ball crosses half court in ~2 s, pace up
+  (~120 FGA a game at 3-min quarters), FG% unchanged.
 - **Round 34:** lob sets: `PlayPhase.lob`, 4 plays tagged `lob`, `callPlay` filter (`canOop`) + re-pick, AI lob read
   in `handlerAI` (`runner.lobPhase`), user credit in `lobPass`, play-line hint.
 - **Round 33:** alley-oops: `GameSim.lobTarget` / `lobPass` / `oopArrive`, pass state `oop`, `UserInput.yHeld` + △

@@ -147,7 +147,7 @@ describe('post up (L2)', () => {
 
   it('AI bigs post up in real games', () => {
     let posts = 0;
-    for (const seed of [3]) {
+    for (const seed of [3, 5]) {
       const g = makeGame({ seed, quarterLen: 90 });
       const orig = g.emit.bind(g);
       g.emit = (e) => { if (e.kind === 'post') posts++; orig(e); };

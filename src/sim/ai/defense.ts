@@ -1,6 +1,6 @@
 import type { GameSim } from '../game';
 import { Player } from '../player';
-import { RESTRICTED_R } from '../court';
+import { RESTRICTED_R, inFrontcourt } from '../court';
 import { add, dist, norm, scale, sub, lerpV, clamp, dot, len } from '../math';
 
 export function thinkDefense(sim: GameSim, d: Player, dt: number) {
@@ -22,7 +22,22 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     return;
   }
 
-  if (man === h) {
+  const pressing = sim.pressing[d.team];
+  const hBack = !!h && sim.fullCourt && !inFrontcourt(sim.side(h.team), h.p);
+  // press trap: the closest other defender leaves his man and doubles the ball near a sideline or half court
+  if (pressing && hBack && h && man !== h && (Math.abs(h.p.y - 25) > 14 || Math.abs(h.p.x - 47) < 10)) {
+    const others = sim.defense().filter((o) => o.guarding !== h.id);
+    const trapper = others.sort((a, b) => dist(a.p, h.p) - dist(b.p, h.p))[0];
+    if (trapper === d && dist(d.p, h.p) < 15) {
+      sim.steer(d, add(h.p, scale(norm(sub({ x: 47, y: 25 }, h.p)), 2.6)), true); // cut off the escape toward half court
+      return;
+    }
+  }
+  if (man === h && hBack && !pressing) {
+    // no press: give ground in the backcourt and pick him up around half court
+    const gap = clamp(4 + 0.35 * Math.abs(man.p.x - 47), 4, 12);
+    target = add(man.p, scale(norm(sub(rim, man.p)), gap));
+  } else if (man === h) {
     const gap = 3.4 - (d.sub.perimD / 99) * 0.9;
     target = add(man.p, scale(norm(sub(rim, man.p)), gap));
     urgent = true;

@@ -242,7 +242,8 @@ describe('playtest round 4 mechanics', () => {
     const { g, u } = practice();
     const run = u.runSpeed;
     g.update(1 / 60, { ...idle, move: { x: 1, y: 0 }, sprint: true });
-    expect(g.topSpeed(u)).toBeCloseTo(u.burstSpeed);
+    expect(g.topSpeed(u, false)).toBeCloseTo(u.burstSpeed); // without the ball: the full burst
+    expect(g.topSpeed(u, true)).toBeCloseTo(run + (u.burstSpeed - run) * 0.5); // with it: half the gain
     expect(u.burstSpeed).toBeGreaterThan(run);
     for (let i = 0; i < 60 * 3; i++) g.update(1 / 60, { ...idle, move: { x: 1, y: 0 } });
     expect(g.topSpeed(u)).toBeCloseTo(u.runSpeed);

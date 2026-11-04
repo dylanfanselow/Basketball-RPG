@@ -1176,7 +1176,12 @@ export class GameScene extends Phaser.Scene {
       const n0 = a.onCourt[0]?.name ?? a.def.id, n1 = b.onCourt[0]?.name ?? b.def.id;
       const ball = sim.possession === 0 ? '● ' : '  ', ball1 = sim.possession === 1 ? ' ●' : '  ';
       this.scoreText.setText(`${ball}${n0} ${a.score}  –  ${b.score} ${n1}${ball1}    to ${o.target}${o.winBy2 ? ' (win by 2)' : ''} · ${o.scoring === '1s2s' ? '1s & 2s' : '2s & 3s'}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}`);
-    } else this.scoreText.setText(`${a.def.id} ${a.score}  –  ${b.score} ${b.def.id}    ${clock}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}`);
+    } else {
+      // 8-second count in its last 3 seconds; PRESS while a team is pressing full court
+      const eight = sim.fullCourt && sim.live && !sim.crossed && sim.backcourtT > 5 ? `    8 SEC ${Math.max(0, Math.ceil(8 - sim.backcourtT))}` : '';
+      const press = sim.pressing[0] || sim.pressing[1] ? `    ${sim.pressing[0] ? a.def.id : b.def.id} PRESS` : '';
+      this.scoreText.setText(`${a.def.id} ${a.score}  –  ${b.score} ${b.def.id}    ${clock}    SHOT ${Math.max(0, Math.ceil(sim.shotClock))}${eight}${press}`);
+    }
     h.fillStyle(0x000000, 0.55); h.fillRect(0, 60, Math.max(560, this.scoreText.width + 24), 32);
 
     const asg = sim.userAssignment();

@@ -274,6 +274,7 @@ export function initDevPanel() {
       gc.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'Post test (L2):'),
         btn('you stronger', () => postTest(20)), btn('even', () => postTest(0)), btn('he is stronger', () => postTest(-20))));
       gc.append(check('Freeze AI', s.freezeAI, (v) => { s.freezeAI = v; }));
+      gc.append(check('Force full-court press (every possession)', s.forcePress, (v) => { s.forcePress = v; }));
       gc.append(check('Force clutch time', s.forceClutch, (v) => { s.forceClutch = v; }));
       gc.append(check('Defense switches everything', s.switchAll, (v) => { s.switchAll = v; }));
       gc.append(check('Feature me equally (testing)', s.featureUser, (v) => { s.featureUser = v; s.focusQueue = []; }));

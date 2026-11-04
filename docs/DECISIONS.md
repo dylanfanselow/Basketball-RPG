@@ -123,6 +123,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
+  **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
+  D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**
+  in full-court games (HUD `8 SEC` countdown). AI handler `bringUp`: runs it up, vs pressure reads the open man, breaks
+  the defender with a move + burst, and after 1.2 s (press) / 2 s of pressure a big comes up to screen (for the user
+  too); a guard flashes back as the press outlet. **With the ball:** `ballSpeedMult` 0.78–0.92 and the sprint burst
+  gives half its gain (`BALL_BURST`).
 - **Round 34: lob sets.** Phases can name a `lob` role; sets tagged `lob`: `pnrLob`, `backScreenLob` (5v5) and
   `pnrLob3`, `backScreenLob3` (3v3). Called only when the focus player can dunk; a lob set is re-picked 70% of the time
   (45% with a good lob passer on the floor) so they're ~8% of calls. AI handler lobs to the lob man once per phase when

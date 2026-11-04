@@ -1,7 +1,7 @@
 import type { GameSim } from '../game';
 import { Player } from '../player';
-import { spot, hc, inFrontcourt, toHc } from '../court';
-import { Vec, dist, norm, sub, add, scale, segDist, clamp01, dot, len, v } from '../math';
+import { spot, hc, inFrontcourt, toHc, clampToCourt } from '../court';
+import { Vec, dist, norm, sub, add, scale, segDist, clamp01, clamp, dot, len, v } from '../math';
 import { evaluateShot, selectShotType, ShotEval } from '../shooting';
 import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
@@ -30,7 +30,28 @@ export function offBallTarget(sim: GameSim, p: Player): { pos: Vec; act: string;
     const lane = p.role === '2' ? hc(side, 7, -18) : p.role === '3' ? hc(side, 7, 18) : p.role === '1' ? hc(side, 24, 0) : hc(side, 22, p.role === '4' ? -7 : 7);
     return { pos: lane, act: 'move', urgent: true };
   }
+  // called up to screen for a pressured ball handler: go set it on his man
+  if (p.screenFor) {
+    if (h && h.id === p.screenFor.pid && sim.time < p.screenFor.until) {
+      const d = sim.defenderOf(h) ?? sim.nearestDefender(h).d;
+      if (d) {
+        const away = norm(sub(d.p, sim.rim(p.team)));
+        const lateral = norm(sub(p.p, d.p));
+        return { pos: clampToCourt(add(d.p, scale(norm(add(scale(away, 0.4), lateral)), 2.0))), act: 'screenFor', urgent: true };
+      }
+    }
+    p.screenFor = null;
+  }
   if (h && !inFrontcourt(side, h.p)) {
+    // press outlet: a guard flashes back toward the pressured handler (up court and toward the middle)
+    if (h !== p && h.pressedSince > 0 && sim.pressing[(1 - p.team) as 0 | 1]) {
+      const guards = sim.mates(h).filter((m) => m.role === '1' || m.role === '2' || m.role === '3');
+      const outlet = guards.sort((a, b) => dist(a.p, h.p) - dist(b.p, h.p))[0];
+      if (outlet === p) {
+        const fx = Math.sign(sim.rim(p.team).x - h.p.x) || 1, my = h.p.y > 25 ? -1 : 1;
+        return { pos: clampToCourt(add(h.p, { x: fx * 10, y: my * 10 })), act: 'move', urgent: true };
+      }
+    }
     const s = FREELANCE[p.role]?.[0] ?? 'top';
     return { pos: spot(side, s), act: 'move', urgent: true };
   }
@@ -55,6 +76,8 @@ export function thinkOffense(sim: GameSim, p: Player, dt: number) {
   if (p.state === 'screen') return;
   const t = offBallTarget(sim, p);
   sim.steer(p, t.pos, t.urgent);
+  // called up to screen for the ball handler against pressure: set it when there
+  if (t.act === 'screenFor' && dist(p.p, t.pos) < 2.4 && sim.time > p.screenCdUntil) { sim.setScreen(p); p.screenFor = null; }
   if (t.act === 'screen' && dist(p.p, t.pos) < 2.2 && sim.time > p.screenCdUntil && p.lastScreenAt < sim.phaseStartedAt) sim.setScreen(p);
   // backdoor cuts when the defender is ball-watching
   if (sim.runner.done || !sim.runner.playId) {
@@ -180,11 +203,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     sim.transitionUntil = 0; // no advantage: walk it up and run something
   }
 
-  if (!inFrontcourt(side, p.p) || toHc(side, p.p).hx > 40) {
-    sim.steer(p, hc(side, 30, 0), false);
-    p.aiMode = 'none';
-    return;
-  }
+  if (!inFrontcourt(side, p.p) || toHc(side, p.p).hx > 40) { bringUp(sim, p); return; }
 
   // drive mode: attack until close, then finish
   if (p.aiMode === 'drive' && sim.time < p.aiModeUntil) {
@@ -415,4 +434,48 @@ function throwTo(sim: GameSim, p: Player, m: Player) {
   const chance = 0.06 + 0.2 * p.sub.lob / 99 + (p.mods.pAdd('lob') > 0 ? 0.2 : 0); // improvised (lob sets throw their own)
   if (sim.lobTarget(p, m) && dot(m.vel, toRim) > 6 && sim.rng.chance(chance)) sim.lobPass(p, m);
   else sim.pass(p, m);
+}
+
+/**
+ * Bringing it up the floor: run it up (sprinting when the clock or the 8 seconds push), and against pressure read
+ * the floor for an open man, break the defender down with a move and burst, or wait for the big's screen
+ * (GameSim.pressHelp calls it).
+ */
+function bringUp(sim: GameSim, p: Player) {
+  const side = sim.side(p.team);
+  const nd = sim.nearestDefender(p);
+  const laneY = nd.d ? clamp(-Math.sign(nd.d.p.y - p.p.y || 1) * 8, -12, 12) : 0;
+  const dest = hc(side, 30, laneY);
+  const toDest = norm(sub(dest, p.p));
+  const { pressured, trapped } = sim.pressured(p);
+  // broke it: burst into the frontcourt
+  if (p.aiMode === 'beatPress' && sim.time < p.aiModeUntil) {
+    sim.steer(p, dest, true);
+    if (p.state !== 'dribbleMove') sim.startBurst(p);
+    return;
+  }
+  if (p.aiMode === 'beatPress' || p.aiMode === 'drive' || p.aiMode === 'post') p.aiMode = 'none';
+  if ((pressured || trapped) && sim.time >= p.aiNextThink) {
+    p.aiNextThink = sim.time + 0.2 + sim.rng.next() * 0.15;
+    // read the floor: whoever the press left open (ahead of the ball preferred)
+    let best: Player | null = null, bv = -1;
+    for (const m of sim.mates(p)) {
+      if (m.state === 'fallen' || m.state === 'screen') continue;
+      const open = sim.openness(m), risk = laneRisk(sim, p, m);
+      if (open < 0.45 || risk > 0.35) continue;
+      const val = open - risk + (dot(sub(m.p, p.p), toDest) > 0 ? 0.25 : 0);
+      if (val > bv) { bv = val; best = m; }
+    }
+    if (best && (trapped || bv > 0.55) && (!best.isUser || sim.rng.chance(passFactor(userTrust(sim))))) { sim.pass(p, best); return; }
+    // break him down: a move across, away from his side, then burst up court
+    if (pressured && !p.deadDribble && p.pressedSince > 0 && sim.time - p.pressedSince > 0.35 && sim.rng.chance(0.22 * p.sub.ankleBreak / 70)) {
+      const pr = { x: -toDest.y, y: toDest.x };
+      const lat = nd.d ? dot(sub(nd.d.p, p.p), pr) : 0;
+      sim.dribbleMove(p, scale(pr, lat > 0 ? -1 : 1));
+      p.aiMode = 'beatPress'; p.aiModeUntil = sim.time + 1.4;
+      return;
+    }
+  }
+  // otherwise get it up the floor (a screen is on its way after 1.2 s of pressure)
+  sim.steer(p, dest, sim.shotClock < 20 || sim.backcourtT > 3 || pressured);
 }
