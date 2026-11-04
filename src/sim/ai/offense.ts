@@ -209,6 +209,16 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const phase = sim.runner.cur;
   const resetting = sim.runner.resetting(sim.time);
 
+  // a lob set: once the lob man is cutting at the rim, throw him the alley-oop (one look per phase; the user only
+  // gets it with the team's trust, and only if he actually cuts)
+  if (phase?.lob && !resetting && sim.runner.lobPhase !== sim.runner.phase) {
+    const m = sim.byPlayRole(p.team, phase.lob);
+    if (m && m !== p && sim.lobTarget(p, m) && dot(m.vel, norm(sub(rim, m.p))) > 4) {
+      sim.runner.lobPhase = sim.runner.phase;
+      if (!m.isUser || sim.rng.chance(passFactor(userTrust(sim)))) { sim.lobPass(p, m); return; }
+    }
+  }
+
   // reset: get the ball back to the top and to the point guard, then the coach calls the next set
   if (resetting) {
     const pg = sim.byRole(p.team, '1');
@@ -402,7 +412,7 @@ function postAI(sim: GameSim, p: Player) {
  */
 function throwTo(sim: GameSim, p: Player, m: Player) {
   const toRim = norm(sub(sim.rim(p.team), m.p));
-  const chance = 0.2 + 0.35 * p.sub.lob / 99 + (p.mods.pAdd('lob') > 0 ? 0.25 : 0);
+  const chance = 0.06 + 0.2 * p.sub.lob / 99 + (p.mods.pAdd('lob') > 0 ? 0.2 : 0); // improvised (lob sets throw their own)
   if (sim.lobTarget(p, m) && dot(m.vel, toRim) > 6 && sim.rng.chance(chance)) sim.lobPass(p, m);
   else sim.pass(p, m);
 }

@@ -44,7 +44,7 @@ export interface MoveDef {
 export interface UltLevel { name: string; cost: number; [k: string]: any }
 export interface UltDef { name: string; positions: string[]; context: 'ball' | 'defense'; desc: string; levels: UltLevel[] }
 export interface PlayRole { to: string; act: 'move' | 'screen' | 'cut' | 'handle' | 'hold' }
-export interface PlayPhase { dur: number; ball?: string; roles: Record<string, PlayRole>; options?: string[] }
+export interface PlayPhase { dur: number; ball?: string; roles: Record<string, PlayRole>; options?: string[]; /** alley-oop: the role the handler lobs to during this phase */ lob?: string }
 export interface PlayDef { name: string; tags: string[]; focus?: string; phases: PlayPhase[] }
 export interface TeamDef { id: string; city: string; name: string; colors: string[]; seed: number }
 

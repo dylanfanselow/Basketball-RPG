@@ -1182,7 +1182,10 @@ export class GameScene extends Phaser.Scene {
     const asg = sim.userAssignment();
     const playName = sim.runner.play ? sim.runner.play.name : '';
     const forYou = sim.runner.focusPid && sim.runner.focusPid === sim.user?.id;
-    this.playText.setText(playName ? `PLAY: ${playName}${forYou ? ' — for YOU' : ''}${asg ? `   —   YOU: ${asg.act.toUpperCase()}` : ''}` : '');
+    // lob sets: when you have the ball in the lob phase, the hint names the lob man
+    const lobRole = sim.runner.cur?.lob, lobMan = lobRole && sim.user && sim.holder() === sim.user ? sim.byPlayRole(sim.possession, lobRole) : null;
+    const lobHint = lobMan && lobMan !== sim.user ? `   ·   hold △ = LOB to ${lobMan.name}` : '';
+    this.playText.setText(playName ? `PLAY: ${playName}${forYou ? ' — for YOU' : ''}${asg ? `   —   YOU: ${asg.act.toUpperCase()}` : ''}${lobHint}` : '');
 
     // trust bars (top left, under the score)
     const tr = sim.trust;

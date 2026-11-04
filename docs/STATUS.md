@@ -22,6 +22,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
   (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Round 34:** lob sets: `PlayPhase.lob`, 4 plays tagged `lob`, `callPlay` filter (`canOop`) + re-pick, AI lob read
+  in `handlerAI` (`runner.lobPhase`), user credit in `lobPass`, play-line hint.
 - **Round 33:** alley-oops: `GameSim.lobTarget` / `lobPass` / `oopArrive`, pass state `oop`, `UserInput.yHeld` + △
   tap/hold, shot types `alleyOop` / `alleyOopLayup` (+ `oopTiming` term), clips `passLob` / `oopReach` / `shot_oop` /
   `shot_oopLayup`, HUD "Pass / Lob" + LOB dot tag + landing ring ("✕ GO UP"), AI `throwTo` in `ai/offense.ts`.

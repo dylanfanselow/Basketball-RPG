@@ -508,9 +508,17 @@ export class GameSim {
     const allowed = (pid: string) => PLAYS[pid].tags.includes('3v3') === small && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid));
     const isIso = (pid: string) => PLAYS[pid].tags.includes('iso');
     // iso sets are only for designated stars; everything else is the regular playbook
-    const regular = Object.keys(PLAYS).filter((pid) => !isIso(pid) && allowed(pid));
+    // lob sets only when the player they're for can finish above the rim; a good lob passer calls them more
+    const isLob = (pid: string) => PLAYS[pid].tags.includes('lob');
+    const canOop = (pid: string) => { const f = PLAYS[pid].focus, m = f ? this.byRole(this.possession, f) : null; return !!m && m.sub.dunk >= 50 + (7 - m.height) * 30; };
+    const regular = Object.keys(PLAYS).filter((pid) => !isIso(pid) && allowed(pid) && (!isLob(pid) || canOop(pid)));
+    const lobber = off.some((p) => p.sub.lob >= 75 || p.mods.pAdd('lob') > 0);
+    const pool = regular;
     const isos = Object.keys(PLAYS).filter((pid) => isIso(pid) && allowed(pid) && pid !== this.runner.lastPlayId);
-    let id = PlayRunner.pick(this.rng, regular.length ? regular : isos.length ? isos : this.cfg.allowedPlays, this.runner.lastPlayId);
+    let id = PlayRunner.pick(this.rng, pool.length ? pool : isos.length ? isos : this.cfg.allowedPlays, this.runner.lastPlayId);
+    // lob sets are a wrinkle, not the base offense: usually re-pick (less often with a good lob passer on the floor)
+    const nonLob = pool.filter((pid) => !isLob(pid));
+    if (isLob(id) && nonLob.length && this.rng.chance(lobber ? 0.45 : 0.7)) id = PlayRunner.pick(this.rng, nonLob, this.runner.lastPlayId);
     let swap: [string, string] | null = null;
     let focus: Player | null = null;
     const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
@@ -1102,6 +1110,17 @@ export class GameSim {
     from.face = norm(sub(spot, from.p));
     this.quiet('pass', { lob: true, dist: d }, from.id);
     this.emit({ kind: 'move', text: 'Lob!', pid: from.id });
+    // a lob set, and you threw it to the lob man: that's running the play
+    const ph = this.runner.cur;
+    if (ph?.lob && this.playRole(to) === ph.lob) {
+      this.runner.lobPhase = this.runner.phase;
+      if (from === this.user && from.isUser) {
+        this.grade.good++; this.grade.points += 1;
+        applyTrust(this.trust, 'playExec');
+        this.gainUlt(from, ULT_GAINS.playExec);
+        this.emit({ kind: 'grade', text: `✓ Threw the lob (${this.runner.play?.name})`, good: true, pid: from.id });
+      }
+    }
     // the AI receiver times his leap so his apex meets it (better leapers time it better); rim protectors go up too
     const arrive = this.time + dur;
     if (this.isAI(to)) {

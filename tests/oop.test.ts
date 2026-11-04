@@ -3,6 +3,9 @@ import { Player } from '../src/sim/player';
 import { add, dist, norm, scale, sub, v } from '../src/sim/math';
 import { GameSim, UserInput, OOP_CATCH_Z } from '../src/sim/game';
 import { makeGame, simToEnd } from './helpers';
+import { PLAYS } from '../src/sim/data';
+import { REAL_ROSTERS } from '../src/career/roster';
+import { buildThrees, defaultLineup } from '../src/sim/threes';
 
 const idle: UserInput = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
 const core = (n = 80, o: Partial<Record<string, number>> = {}) => ({ shooting: n, finishing: n, strength: n, mobility: n, playmaking: n, ...o });
@@ -120,4 +123,63 @@ describe('alley-oops: hold △ to lob', () => {
     }
     expect(oops).toBeGreaterThan(0);
   }, 30000);
+});
+
+
+describe('lob sets in the playbook (5v5 and 3v3)', () => {
+  it('every lob phase names a role that is cutting to the rim in that play', () => {
+    const lobPlays = Object.entries(PLAYS).filter(([, pl]) => pl.phases.some((ph) => ph.lob));
+    expect(lobPlays.filter(([, pl]) => pl.tags.includes('3v3')).length).toBeGreaterThanOrEqual(2);
+    expect(lobPlays.filter(([, pl]) => !pl.tags.includes('3v3')).length).toBeGreaterThanOrEqual(2);
+    for (const [id, pl] of lobPlays) {
+      expect(pl.tags, id).toContain('lob');
+      for (const ph of pl.phases) if (ph.lob) expect(ph.roles[ph.lob], id).toEqual({ to: 'rim', act: 'cut' });
+    }
+  });
+
+  const runGame = (g: GameSim) => {
+    const lobSets = new Set<string>(); let lobsInSet = 0;
+    const o = g.emit.bind(g);
+    g.emit = (e) => { if (e.text === 'Lob!' && g.runner.play?.tags.includes('lob')) lobsInSet++; o(e); };
+    const tick = g.update.bind(g);
+    g.update = (dt, i1, i2) => { tick(dt, i1, i2); if (g.runner.playId && PLAYS[g.runner.playId].tags.includes('lob')) lobSets.add(g.runner.playId); };
+    simToEnd(g);
+    return { lobSets, lobsInSet };
+  };
+
+  it('5v5: the coach calls lob sets and the handler throws them', () => {
+    let calls = 0, lobs = 0;
+    for (const seed of [2, 7, 11]) {
+      const g = makeGame({ seed, quarterLen: 150 });
+      for (const t of g.teams) for (const p of t.onCourt) if (p.role === '5' || p.role === '3') { p.sub.dunk = 95; }
+      const r = runGame(g);
+      calls += r.lobSets.size; lobs += r.lobsInSet;
+      for (const id of r.lobSets) expect(PLAYS[id].tags).not.toContain('3v3');
+    }
+    expect(calls).toBeGreaterThan(0);
+    expect(lobs).toBeGreaterThan(0);
+  }, 40000);
+
+  it('no lob sets for a team without a leaper', () => {
+    const g = makeGame({ seed: 4, quarterLen: 100 });
+    for (const t of g.teams) for (const p of [...t.roster]) { p.sub.dunk = 10; p.height = 6.0; }
+    // re-derive each tick (recompute would restore the ratings)
+    const tick = g.update.bind(g); let lobSet = false;
+    g.update = (dt, i1, i2) => { for (const t of g.teams) for (const p of t.onCourt) p.sub.dunk = 10; tick(dt, i1, i2); if (g.runner.play?.tags.includes('lob')) lobSet = true; };
+    simToEnd(g);
+    expect(lobSet).toBe(false);
+  }, 30000);
+
+  it('3v3: only 3v3 lob sets, and they produce lobs', () => {
+    let calls = 0, lobs = 0;
+    for (const seed of [3, 8]) for (const court of ['full', 'half'] as const) {
+      const g = buildThrees({ myTeam: 'MIN', oppTeam: 'NOP', mine: defaultLineup(REAL_ROSTERS.MIN), theirs: defaultLineup(REAL_ROSTERS.NOP), playAs: 0, court }, seed, { cpuOnly: true, quarterLen: 120 });
+      for (const t of g.teams) for (const p of t.onCourt) p.sub.dunk = 95;
+      const r = runGame(g);
+      calls += r.lobSets.size; lobs += r.lobsInSet;
+      for (const id of r.lobSets) expect(PLAYS[id].tags).toContain('3v3');
+    }
+    expect(calls).toBeGreaterThan(0);
+    expect(lobs).toBeGreaterThan(0);
+  }, 40000);
 });

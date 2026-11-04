@@ -16,12 +16,14 @@ export class PlayRunner {
   roleSwap: [string, string] | null = null;
   /** id of the player this set is run for */
   focusPid: string | null = null;
+  /** lob sets: the phase the alley-oop was already thrown (or passed on) in */
+  lobPhase = -1;
 
   get play(): PlayDef | null { return this.playId ? PLAYS[this.playId] : null; }
   get cur(): PlayPhase | null { return !this.done && this.play ? this.play.phases[this.phase] ?? null : null; }
 
-  call(id: string, swap: [string, string] | null = null, focusPid: string | null = null) { this.roleSwap = swap && swap[0] !== swap[1] ? swap : null; this.focusPid = focusPid; this.playId = id; this.lastPlayId = id; this.phase = 0; this.t = 0; this.done = false; this.ballCalledAt = -1; this.resetUntil = -1; }
-  reset() { this.roleSwap = null; this.focusPid = null; this.playId = null; this.phase = 0; this.t = 0; this.done = false; this.resetUntil = -1; this.swungAt = -1; }
+  call(id: string, swap: [string, string] | null = null, focusPid: string | null = null) { this.roleSwap = swap && swap[0] !== swap[1] ? swap : null; this.focusPid = focusPid; this.lobPhase = -1; this.playId = id; this.lastPlayId = id; this.phase = 0; this.t = 0; this.done = false; this.ballCalledAt = -1; this.resetUntil = -1; }
+  reset() { this.lobPhase = -1; this.roleSwap = null; this.focusPid = null; this.playId = null; this.phase = 0; this.t = 0; this.done = false; this.resetUntil = -1; this.swungAt = -1; }
   resetting(now: number) { return this.resetUntil > now; }
 
   static pick(rng: Rng, allowed?: string[], exclude?: string | null): string {
