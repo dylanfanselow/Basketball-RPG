@@ -2,7 +2,7 @@ import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES } from './shooting';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
@@ -764,7 +764,7 @@ export class GameSim {
       if (inp.a) { ux.aDownAt = this.time; ux.aPending = true; }
       if (ux.aPending) {
         if (inp.aHeld && this.time - ux.aDownAt >= TAP_S) { ux.aPending = false; this.startShot(u, selectShotType(u, this.side(u.team), inp.move, this.time)); }
-        else if (!inp.aHeld) { ux.aPending = false; this.pumpFake(u); }
+        else if (!inp.aHeld) { ux.aPending = false; this.pumpFake(u, inp.move); }
       }
       if (inp.y && passTarget && !ux.aPending) this.pass(u, passTarget);
       // ○: press with the stick pushed = move now; hold ○ and drag = move per flick; quick neutral tap = jab step
@@ -802,19 +802,22 @@ export class GameSim {
    * Pump fake: ball up, defenders may bite. Repeatable. It picks up the dribble once you've dribbled; a fake on the
    * catch (before the first dribble) keeps it, so you can still put it on the floor and attack the closeout.
    */
-  pumpFake(p: Player) {
+  pumpFake(p: Player, stick: Vec = v()) {
     if (this.holder() !== p || p.busy) return;
+    // Dreamer: sell the shot that's lined up (hook / floater / layup fake); everyone else has the one pump fake
+    const clip = p.mods.pAdd('dreamer') > 0 ? fakeClipFor(selectShotType(p, this.side(p.team), stick, this.time)) : 'pumpfake';
     if (!p.deadDribble && p.dribbledSinceCatch) { p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
     p.pumpFakeAt = this.time;
-    p.anim = { name: 'pumpfake', start: this.time, dur: PUMP_FAKE_S };
+    p.anim = { name: clip, start: this.time, dur: PUMP_FAKE_S };
     p.state = 'dribbleMove'; p.stateT = 0; p.stateDur = PUMP_FAKE_S; p.moveVel = v(); p.move = { id: 'pumpfake', dir: v(), t: 0 };
-    this.emit({ kind: 'move', text: 'Pump Fake', pid: p.id });
+    this.emit({ kind: 'move', text: FAKE_NAMES[clip] ?? 'Pump Fake', pid: p.id, data: { clip } });
+    const sell = clip === 'pumpfake' ? 1 : p.mods.pMult('fakeBite'); // Dreamer fakes fool them more
     for (const def of this.opp(p.team)) {
       const dd = dist(def.p, p.p);
-      if (dd > 6 || def.z > 0 || def.state === 'fallen') continue;
+      if (dd > 6 || def.z > 0 || def.state === 'fallen' || postLocked(this, def) || this.time < def.stunnedUntil) continue;
       const ratio = (p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20);
       const prox = clamp01(1 - (dd - 2) / 4);
-      if (this.isAI(def) && this.rng.chance((0.22 + 0.3 * ratio * prox) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? 0.4 : 1))) {
+      if (this.isAI(def) && this.rng.chance(Math.min(0.95, (0.22 + 0.3 * ratio * prox) * sell) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? 0.4 : 1))) {
         def.lastBitAt = this.time; this.jump(def, 0.9);
         this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id });
       }

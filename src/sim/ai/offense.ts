@@ -143,6 +143,8 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const rim = sim.rim(p.team);
   const d = dist(p.p, rim);
   if (p.state === 'dribbleMove' || p.state === 'shoot') return;
+  // post mode: back him down, then a post shot out of the window (or a Dreamer fake, or kick it out of a double)
+  if (p.aiMode === 'post') { postAI(sim, p); return; }
   // dribble picked up: pass to the best option, or shoot if nobody is open
   if (p.deadDribble) {
     p.want = v();
@@ -183,9 +185,6 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     p.aiMode = 'none';
     return;
   }
-
-  // post mode: back him down, then a post shot out of the window (or kick it out of a double)
-  if (p.aiMode === 'post') { postAI(sim, p); return; }
 
   // drive mode: attack until close, then finish
   if (p.aiMode === 'drive' && sim.time < p.aiModeUntil) {
@@ -358,10 +357,18 @@ function wantsPost(sim: GameSim, p: Player): boolean {
 function postAI(sim: GameSim, p: Player) {
   const side = sim.side(p.team), rim = sim.rim(p.team), d = dist(p.p, rim);
   const toRim = norm(sub(rim, p.p));
+  const lat = { x: -toRim.y, y: toRim.x };
   // let go -> shoot out of the window (hook mostly: stick sideways; layup when deep)
   if (!p.post) {
+    // Dreamer: off the hook fake, step through if his man bit, otherwise the hook
+    if (p.aiFakeFollow) {
+      p.aiFakeFollow = false; p.aiMode = 'none';
+      const def = sim.players.find((q) => q.id === p.postDefId);
+      const bit = !!def && (def.z > 0.3 || sim.time - def.lastJumpAt < 0.8);
+      sim.startShot(p, selectShotType(p, side, bit ? toRim : lat, sim.time));
+      return;
+    }
     if (sim.time < p.postWindowUntil) {
-      const lat = { x: -toRim.y, y: toRim.x };
       const stick = d <= 5 ? v() : sim.rng.chance(0.75) ? lat : v();
       sim.startShot(p, selectShotType(p, side, stick, sim.time));
       p.aiMode = 'none';
@@ -383,6 +390,8 @@ function postAI(sim: GameSim, p: Player) {
   }
   const locked = !!def && sim.players.some((q) => q.id === def && sim.time < q.postLockUntil);
   const release = d <= 7 || sim.time > p.aiModeUntil || (locked && sim.time - p.post.since > 1.2) || p.post.mode === 'weaker' && sim.time - p.post.since > 1.5;
+  // Dreamer: when he can't lock his man up, sell the hook instead of letting go (a locked defender can't bite)
+  if (release && !locked && p.mods.pAdd('dreamer') > 0 && sim.rng.chance(0.4)) { sim.pumpFake(p, lat); p.aiFakeFollow = true; return; }
   postIntent(p, !release, toRim); // letting go opens the window; next think shoots
   if (release && p.post.mode === 'weaker') p.aiMode = 'none'; // no window when he's stronger: back to the offense
 }

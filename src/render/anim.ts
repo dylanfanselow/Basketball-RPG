@@ -488,6 +488,44 @@ export function leanBack(p: Pose, deg: number): Pose {
   if (p.ball) out.ball = rot(p.ball);
   return out;
 }
+// ---------- Dreamer fakes (✕ tap with the Finishing ability): each sells its own shot, feet stay planted ----------
+/** A fake pose: torso up/down (hip y), shoulders turned (turn > 0 = near shoulder back, for the hook), the hands
+ * placed at fixed arm length and the ball carried at the shooting hand (+ offset); feet planted at fF/fB. */
+const fakePose = (o: { hip: number; head?: J; hF: J; hB: J; ball?: J; turn?: number; fF?: J; fB?: J }): Pose => {
+  const lift = o.hip - 47, t = o.turn ?? 0;
+  const torso = P({ hip: [0, o.hip], head: o.head ?? [2, 89 + lift], neck: [1, 80 + lift], sF: [2 - t, 77 + lift], sB: [-2 + t, 77 + lift] });
+  const pz = arms(legs(torso, o.fF ?? [9, 0], o.fB ?? [-9, 0]), o.hF, o.hB);
+  const off = o.ball ?? [1, 3];
+  return { ...pz, ball: [pz.hF[0] + off[0], pz.hF[1] + off[1]] };
+};
+CLIPS.push(
+  // layup fake: gather, rise onto the toes and lift it one-handed toward the rim (front knee coming up), drop back
+  { name: 'fake_layup', frames: 14, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.22, pose: fakePose({ hip: 45, hF: [9, 63], hB: [7, 61], ball: [1, 2] }) },
+    { t: 0.45, pose: fakePose({ hip: 51, head: [3, 93], hF: [12, 94], hB: [3, 78], ball: [1, 4], fF: [11, 7] }) },
+    { t: 0.62, pose: fakePose({ hip: 52, head: [3, 94], hF: [13, 97], hB: [3, 79], ball: [1, 4], fF: [11, 7] }) },
+    { t: 0.82, pose: fakePose({ hip: 48, hF: [9, 73], hB: [7, 71], ball: [1, 2] }) },
+    { t: 1, pose: TRIPLE }] },
+  // floater fake: a dip, then a quick one-hand teardrop flick high out front (off arm out for balance), back down
+  { name: 'fake_floater', frames: 14, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.2, pose: fakePose({ hip: 44, hF: [8, 61], hB: [6, 60], ball: [1, 2] }) },
+    { t: 0.42, pose: fakePose({ hip: 50, head: [4, 92], hF: [15, 96], hB: [-6, 73], ball: [2, 4], fF: [10, 3] }) },
+    { t: 0.6, pose: fakePose({ hip: 50, head: [4, 92], hF: [16, 99], hB: [-6, 74], ball: [2, 4], fF: [10, 3] }) },
+    { t: 0.82, pose: fakePose({ hip: 47, hF: [9, 74], hB: [6, 70], ball: [1, 2] }) },
+    { t: 1, pose: TRIPLE }] },
+  // hook fake: shoulders turn, the ball swings out to the far side and sweeps up over the head (off arm barred out
+  // front), then swings back to the chest
+  { name: 'fake_hook', frames: 14, keys: [
+    { t: 0, pose: TRIPLE },
+    { t: 0.24, pose: fakePose({ hip: 46, turn: 3, hF: [-8, 70], hB: [12, 70], ball: [-2, 1] }) },
+    { t: 0.46, pose: fakePose({ hip: 50, turn: 3, head: [2, 92], hF: [-4, 102], hB: [13, 73], ball: [0, 4], fF: [7, 6] }) },
+    { t: 0.62, pose: fakePose({ hip: 50, turn: 3, head: [2, 92], hF: [-3, 103], hB: [13, 73], ball: [0, 4], fF: [7, 6] }) },
+    { t: 0.84, pose: fakePose({ hip: 47, turn: 1, hF: [4, 75], hB: [9, 69], ball: [2, 2] }) },
+    { t: 1, pose: TRIPLE }] },
+);
+
 // ---------- post up (L2) ----------
 // Authored facing +x = AWAY from the rim (back to the basket); the defender is behind (-x). Angled clips: the view
 // turns with the post angle (GameScene.viewFor), like the defensive stance.

@@ -63,17 +63,20 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   if (now - p.pumpFakeAt < STEP_THROUGH_WINDOW && d <= 28 && toward > 0.5) return d - stepStride(p) > STEP_FINISH_FT ? 'stepThroughJumper' : 'stepThrough';
   // Fade Away (unlockable): stick away from the rim + shoot, at any distance (replaces the floater)
   if (back && p.hasShot('fade')) return 'fade';
+  // close shots follow the stick: away = floater, toward = layup (push farther out), perpendicular = hook
+  // (a Euro Step owner driving at the rim gets the Euro instead of the hook)
+  const driving = speedToRim > 6;
   if (d <= 6.5) {
     if (back && d >= 3) return 'floater';
-    if (side_) return p.hasShot('euro') && d >= 2.5 ? 'euro' : 'hook';
+    if (side_) return p.hasShot('euro') && driving && d >= 2.5 ? 'euro' : 'hook';
     const canDunk = p.sub.dunk >= 50 + (7 - p.height) * 30; // taller players dunk with lower ratings
     if (canDunk && (speedToRim > 4 || d < 3.2)) return 'dunk';
     return 'layup';
   }
   if (d <= 12) {
     if (back) return 'floater';
-    if (side_) return 'hook';
-    if (d <= 9 && speedToRim > 6) return p.hasShot('euro') && side_ ? 'euro' : 'layup';
+    if (side_) return p.hasShot('euro') && driving && d <= 9 ? 'euro' : 'hook';
+    if (d <= 9 && driving) return 'layup';
     return 'push';
   }
   if (isThree(side, p.p)) return d >= 27.5 ? 'deep3' : 'three';
@@ -81,7 +84,7 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
 }
 
 /**
- * Post shots: stick sideways = hook, toward the rim = layup (close) or floater, away = fade (if unlocked) or floater,
+ * Post shots: stick sideways = hook, toward the rim = layup (close) or push shot, away = fade (if unlocked) or floater,
  * neutral = layup (close) or hook.
  */
 export function postShotType(p: Player, side: Side, stick: Vec): string {
@@ -89,10 +92,22 @@ export function postShotType(p: Player, side: Side, stick: Vec): string {
   const toward = sl > 0.3 ? dot(stick, toRim) / sl : 0;
   const lateral = sl > 0.3 ? Math.abs(cross(toRim, stick)) / sl : 0;
   if (lateral > 0.65 && Math.abs(toward) < 0.6) return 'hook';
-  if (toward > 0.45) return d <= 6.5 ? 'layup' : 'floater';
+  if (toward > 0.45) return d <= 6.5 ? 'layup' : 'push';
   if (toward < -0.45) return p.hasShot('fade') ? 'fade' : 'floater';
   return d <= 6.5 ? 'layup' : 'hook';
 }
+
+/**
+ * Dreamer (Finishing ability): the pump fake sells the shot that's lined up, with its own animation. Close finishes
+ * get a hook / floater / layup fake; jumpers (and the fade) keep the regular pump fake.
+ */
+export function fakeClipFor(type: string): string {
+  if (type === 'hook') return 'fake_hook';
+  if (type === 'floater') return 'fake_floater';
+  if (type === 'layup' || type === 'push' || type === 'euro' || type === 'dunk' || type === 'stepThrough') return 'fake_layup';
+  return 'pumpfake';
+}
+export const FAKE_NAMES: Record<string, string> = { fake_hook: 'Hook Fake', fake_floater: 'Floater Fake', fake_layup: 'Layup Fake', pumpfake: 'Pump Fake' };
 
 export interface ShotContext {
   now: number; clutch: boolean;

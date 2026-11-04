@@ -500,7 +500,7 @@ export class GameScene extends Phaser.Scene {
     if (now < p.stunnedUntil && a && (a.name === 'stripped' || a.name === 'blockedLand')) return { clip: a.name, u: (now - a.start) / (a.dur ?? 1) };
     if (sim.inb?.inbounder === p && sim.inb.hasBall && len(p.vel) < 2) return { clip: 'inbound', u: now };
     // the fake picks up the dribble, so it must be checked before the dead-dribble hold
-    if (p.state === 'dribbleMove' && a?.name === 'pumpfake') return { clip: 'pumpfake', u: (now - a.start) / (a.dur ?? 0.42) };
+    if (p.state === 'dribbleMove' && a && (a.name === 'pumpfake' || a.name.startsWith('fake_'))) return { clip: CLIP[a.name] ? a.name : 'pumpfake', u: (now - a.start) / (a.dur ?? 0.42) }; // Dreamer fakes: their own clip
     if (hasBall && p.deadDribble && p.state !== 'shoot') return { clip: 'hold', u: now * 1.5 };
     if (a && a.name.startsWith('shot_')) {
       const clip = SHOT_CLIP[a.name.slice(5)] ?? 'shot_jumper';

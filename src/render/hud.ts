@@ -7,6 +7,7 @@ import type { Player } from '../sim/player';
 import { norm, sub, len } from '../sim/math';
 import { Sheet, frameRect, ART } from './sprites';
 import { CLIP, frameAt } from './anim';
+import { fakeClipFor } from '../sim/shooting';
 
 const FONT = '"Courier New", monospace';
 const R = 26;            // button radius (px)
@@ -21,6 +22,10 @@ const ACTION_POSE: Record<string, [string, number]> = {
   Shoot: ['shot_jumper', 0.58], 'Shoot / Fake': ['pumpfake', 0.5], 'Step-Through': ['shot_stepThrough', 0.26], Pass: ['pass', 0.6], Dribble: ['move_crossover', 0.4],
   Ultimate: ['shot_dunk', 0.6], Block: ['block', 0.6], Steal: ['swipe', 0.5], Charge: ['charge', 1], Screen: ['screen', 1],
   Call: ['cheer', 0], 'Box Out': ['boxout', 0], Rebound: ['block', 0.5],
+  // special shots (Fade Away, post shots) and Dreamer fakes
+  'Fade Away': ['shot_fade', 0.58], 'Hook Shot': ['shot_hook', 0.6], Floater: ['shot_floater', 0.55], Layup: ['shot_layup', 0.65],
+  'Push Shot': ['shot_push', 0.55], Dunk: ['shot_dunk', 0.6], 'Euro Step': ['shot_euro', 0.65],
+  'Hook / Fake': ['fake_hook', 0.5], 'Floater / Fake': ['fake_floater', 0.5], 'Layup / Fake': ['fake_layup', 0.5],
 };
 
 interface Btn { key: BtnKey; x: number; y: number; c: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glyph: Phaser.GameObjects.Text; action: string; pressedAt: number }
@@ -205,6 +210,9 @@ export class ControllerHud {
 function shotName(sim: GameSim, u: Player): string | null {
   const t = sim.preview?.type;
   if (!t) return null;
+  // Dreamer: a ✕ tap sells this close shot with its own fake
+  const fake = u.mods.pAdd('dreamer') > 0 ? fakeClipFor(t) : 'pumpfake';
+  if (fake !== 'pumpfake') return fake === 'fake_hook' ? 'Hook / Fake' : fake === 'fake_floater' ? 'Floater / Fake' : 'Layup / Fake';
   if (u.post || sim.time < u.postWindowUntil) return SHOT_TYPES[t]?.name ?? null;
   return t === 'fade' ? 'Fade Away' : null;
 }

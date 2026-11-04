@@ -123,6 +123,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 28: Dreamer + directional close shots.**
+  - Close shots follow the stick: **away = floater** (Fade Away owners: fade, everywhere), **toward = layup** (push
+    shot from 6.5–12 ft), **perpendicular = hook**. The Euro Step only replaces the hook for owners **on a drive**
+    (moving at the rim > 6 ft/s). In the post, toward = layup / push.
+  - **Dreamer** (Finishing ability `fi_dreamer`, cost 2, after Sky Hook or Euro Step): the ✕ tap fakes the lined-up
+    close shot with its own animation (`fake_hook` / `fake_floater` / `fake_layup`), bite chance ×1.35. **Without it
+    everyone keeps the one generic pump fake** (and Step-Through off it). Jumpers / fades keep the generic fake even
+    with Dreamer. Post-locked or sealed defenders never bite. The 8 real centers with Sky Hook have Dreamer; AI
+    Dreamer bigs sometimes hook-fake out of an even post and step through if the man bit.
 - **Round 27: Fade Away + Post Up.**
   - **Fade Away** is an unlockable ability (the Shooting tree's old "Fadeaway" passive `sh_fade` became it). Stick away
     from the basket + shoot = fade **anywhere** (it replaces the floater for players who own it). Smaller cone (3.5 ft

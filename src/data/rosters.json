@@ -4057,6 +4057,7 @@
      "pa_skip",
      "fi_float",
      "fi_hook",
+     "fi_dreamer",
      "pa_lob",
      "pa_dimes",
      "pa_bullet"
@@ -5619,6 +5620,7 @@
      "pa_skip",
      "fi_float",
      "fi_hook",
+     "fi_dreamer",
      "pa_lob",
      "pa_dimes"
     ],
@@ -6175,6 +6177,7 @@
      "fi_float",
      "in_getlow",
      "fi_hook",
+     "fi_dreamer",
      "in_wall"
     ],
     "appearance": {
@@ -7857,6 +7860,7 @@
      "fi_float",
      "in_getlow",
      "fi_hook",
+     "fi_dreamer",
      "in_wall"
     ],
     "appearance": {
@@ -11056,6 +11060,7 @@
      "fi_float",
      "in_getlow",
      "fi_hook",
+     "fi_dreamer",
      "in_wall"
     ],
     "appearance": {
@@ -12162,6 +12167,7 @@
      "fi_float",
      "in_getlow",
      "fi_hook",
+     "fi_dreamer",
      "in_wall",
      "in_anchor",
      "sc_ghost"
@@ -13710,6 +13716,7 @@
      "pa_skip",
      "fi_float",
      "fi_hook",
+     "fi_dreamer",
      "pa_lob",
      "pa_dimes"
     ],
@@ -14863,6 +14870,7 @@
      "fi_float",
      "in_getlow",
      "fi_hook",
+     "fi_dreamer",
      "in_wall"
     ],
     "appearance": {

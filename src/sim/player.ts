@@ -38,7 +38,9 @@ export class Player {
   box: BoxScore = emptyBox();
   /** AI scratch */
   target: Vec = v(); guarding: string | null = null; aiNextThink = 0; callForBallUntil = 0;
-  aiMode: 'none' | 'drive' | 'post' = 'none'; aiModeUntil = 0; cutUntil = 0;
+  aiMode: 'none' | 'drive' | 'post' = 'none';
+  /** AI: just did a Dreamer fake out of the post; shoot off it next */
+  aiFakeFollow = false; aiModeUntil = 0; cutUntil = 0;
   /** runtime sim fields */
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
   /** current animation clip for the renderer (shots, moves, falls) */

@@ -21,7 +21,7 @@ npm run dev
 
 | Button | With ball | Offense, off ball | Defense |
 |---|---|---|---|
-| **✕** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater (or **Fade Away** anywhere, if unlocked), **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
+| **✕** (bottom) | Shoot. Close shots follow the stick: **away** = floater (or **Fade Away** anywhere, if unlocked), **toward** = layup / push shot, **sideways** = hook (Euro Step instead on a drive, if unlocked). Tap = pump fake | — | Block / contest |
 | **△** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
 | **○** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
 | **□** (left) | Ultimate | Ultimate | Ultimate |
@@ -53,6 +53,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - **Even:** a slow steady push; he only half-contests.
   - **Weaker:** you barely move, and he can **bump you back** and stun you for a second.
   Let go of L2 and he stays locked in his bumped pose for a moment (**SHOOT!**): stick sideways = hook, toward the rim = layup/floater, away = fade (if unlocked) or floater. AI bigs post up too. Dev panel → *Post test* sets one up.
+- **Dreamer** (Finishing tree ability, after Sky Hook or Euro Step): a ✕ tap fakes the close shot you have lined up with its own animation (hook fake, floater fake, layup fake; the ✕ badge says which), and defenders bite on them 35% more. Without it everyone has the one regular pump fake. Step-Through works off any fake. Several real centers (Jokić, Embiid, Sabonis…) have it.
 - **Fade Away** (Shooting tree, replaces the old Fadeaway passive): hold the stick away from the basket and shoot, from anywhere. The contest cone gets much smaller, but accuracy drops off exponentially with distance (the `fade` term in the equation).
 - **Pump fake on the catch** (before your first dribble) keeps your dribble, so you can fake and drive past the closeout.
 - **Pixel editor:** dev panel → *Pixel editor: celebs* or *Pixel editor: face parts* (or open the game with `?editor` / `?editor=parts`). Edits show up in your next game; under `npm run dev`, *Save to repo* writes the PNGs into `src/art/`.

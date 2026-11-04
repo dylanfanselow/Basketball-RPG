@@ -127,12 +127,12 @@ describe('post up (L2)', () => {
     expect(ev.terms.find((t: any) => t.kind === 'contest').label).toMatch(/sealed/);
   });
 
-  it('post shots: sideways hook, toward layup/floater, away fade (if unlocked) or floater, neutral layup/hook', () => {
+  it('post shots: sideways hook, toward layup/push, away fade (if unlocked) or floater, neutral layup/hook', () => {
     const { g, u, rim, toRim } = setup(70, 70);
     const side = g.side(u.team), lat = { x: -toRim.y, y: toRim.x }, away = scale(toRim, -1), none = { x: 0, y: 0 };
     u.p = add(rim, scale(toRim, -10));
     expect(postShotType(u, side, lat)).toBe('hook');
-    expect(postShotType(u, side, toRim)).toBe('floater');
+    expect(postShotType(u, side, toRim)).toBe('push');
     expect(postShotType(u, side, away)).toBe('floater');
     expect(postShotType(u, side, none)).toBe('hook');
     u.p = add(rim, scale(toRim, -5));

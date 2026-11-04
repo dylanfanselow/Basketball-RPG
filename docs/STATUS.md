@@ -22,6 +22,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
   (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Dreamer** (`fi_dreamer`, round 28): `pumpFake(p, stick)` picks `fakeClipFor(selectShotType(...))` for owners
+  (`fake_hook` / `fake_floater` / `fake_layup` clips via `fakePose`), `fakeBite` ×1.35, `FAKE_NAMES` event text, HUD ✕
+  "Hook / Fake" etc.; AI hook fake in `postAI` (`aiFakeFollow`). Close-shot selection is directional (euro only on
+  drives; post toward = layup / push).
 - **Fade Away** (`sh_fade` ability, round 27): `fade` shot type, `coneHalf`/`contestReach`, `fadeFalloff` term, backward
   drift (`FADE_DRIFT`), `shot_fade` clip (the jumper leaned back via `leanBack`), AI uses it on contested looks.
 - ✕ badge reads **"Step-Through"** while a recent fake + stick toward the rim lines one up.
