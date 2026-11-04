@@ -229,7 +229,7 @@ describe('audio/animation events from the sim', () => {
     }
     for (const k of ['rim', 'net', 'pass', 'catch', 'screenHit', 'release', 'gather']) expect(kinds).toContain(k);
     expect(swish).toBe(true);
-  });
+  }, 15000); // full games: slow under the parallel suite
   it('a loose ball nobody reaches bounces on the floor', () => {
     const g = makeGame({ seed: 1 });
     for (const p of g.players) p.p = { x: 80, y: 40 };

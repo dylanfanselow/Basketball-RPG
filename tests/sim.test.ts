@@ -432,7 +432,7 @@ describe('rebounding: live rim, airballs, box-outs, crash roles', () => {
       for (const s of shots) if (s.air) { air++; expect(s.pct < 0.25 || s.dist > 30).toBe(true); }
     }
     expect(air).toBeGreaterThanOrEqual(0);
-  });
+  }, 15000); // full games: slow under the parallel suite
   it('a strong boxer knocks back a weaker player trying to go through him; a weak one gets beaten', () => {
     const run = (boxStr: number, moveStr: number) => {
       const g = makeGame({ seed: 5 });

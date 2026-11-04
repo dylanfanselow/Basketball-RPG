@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import type { GameSim } from '../sim/game';
 import type { InputMapper } from '../input/input';
 import { availableMoves } from '../sim/moves';
-import { MOVES } from '../sim/data';
+import { MOVES, SHOT_TYPES } from '../sim/data';
+import type { Player } from '../sim/player';
 import { norm, sub, len } from '../sim/math';
 import { Sheet, frameRect, ART } from './sprites';
 import { CLIP, frameAt } from './anim';
@@ -36,6 +37,7 @@ export class ControllerHud {
   sprintPill: Phaser.GameObjects.Graphics;
   sprintText: Phaser.GameObjects.Text;
   l2Text: Phaser.GameObjects.Text;
+  postText: Phaser.GameObjects.Text;
   private iconKeys = new Map<string, string>();
   readonly cx: number; readonly cy: number;
   readonly sx0 = 112; readonly sy0: number;
@@ -55,7 +57,8 @@ export class ControllerHud {
     }
     this.ultRing = scene.add.graphics().setScrollFactor(0).setDepth(9101);
     this.sprintPill = scene.add.graphics().setScrollFactor(0).setDepth(9100);
-    this.l2Text = scene.add.text(this.cx, this.cy - 136, 'hold L2  ICON PASS', { fontFamily: FONT, fontSize: '11px', color: '#cfe8ff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
+    this.l2Text = scene.add.text(this.cx, this.cy - 136, 'hold R1  ICON PASS', { fontFamily: FONT, fontSize: '11px', color: '#cfe8ff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
+    this.postText = scene.add.text(this.cx, this.cy - 150, 'hold L2  POST UP', { fontFamily: FONT, fontSize: '11px', color: '#cfe8ff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
     this.sprintText = scene.add.text(this.cx, this.cy - 112, 'R2  SPRINT', { fontFamily: FONT, fontSize: '12px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(9101);
     this.stickG = scene.add.graphics().setScrollFactor(0).setDepth(9100);
     for (let i = 0; i < 4; i++) this.arcLabels.push(scene.add.text(0, 0, '', { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#ffffff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(9101));
@@ -108,11 +111,12 @@ export class ControllerHud {
     const shotUp = sim.ball.st.kind === 'shot';
     const ult = sim.ult.state;
     const actions: Record<BtnKey, string> = hasBall
-      ? { a: sim.stepThroughReady(u!) ? 'Step-Through' : u!.deadDribble ? 'Shoot / Fake' : 'Shoot', y: 'Pass', b: 'Dribble', x: 'Ultimate' }
+      ? { a: sim.stepThroughReady(u!) ? 'Step-Through' : shotName(sim, u!) ?? (u!.deadDribble ? 'Shoot / Fake' : 'Shoot'), y: 'Pass', b: 'Dribble', x: 'Ultimate' }
       : shotUp ? { a: 'Rebound', y: onO ? 'Call' : 'Steal', b: 'Box Out', x: 'Ultimate' }
       : onO ? { a: 'Rebound', y: 'Call', b: 'Screen', x: 'Ultimate' }
       : { a: 'Block', y: 'Steal', b: 'Charge', x: 'Ultimate' };
-    this.l2Text.setVisible(hasBall && sim.mates(u!).length > 0).setColor(inp.held('l2') ? '#ffe14d' : '#cfe8ff');
+    this.l2Text.setVisible(hasBall && sim.mates(u!).length > 0).setColor(inp.held('icon') ? '#ffe14d' : '#cfe8ff');
+    this.postText.setVisible(hasBall).setColor(inp.held('post') ? '#ffe14d' : '#cfe8ff');
     for (const b of this.btns) {
       b.c.setVisible(onCourt);
       if (!onCourt) continue;
@@ -195,4 +199,12 @@ export class ControllerHud {
     g.fillStyle(inp.held('b') && hasBall ? 0xff7f8f : 0xdfe5f5, 1); g.fillCircle(kx, ky, 20);
     g.fillStyle(0xffffff, 0.5); g.fillCircle(kx - 6, ky - 6, 6);
   }
+}
+
+/** ✕ label for the special shots: Fade Away, and the post shot you'd get (hook / floater / layup / fade). */
+function shotName(sim: GameSim, u: Player): string | null {
+  const t = sim.preview?.type;
+  if (!t) return null;
+  if (u.post || sim.time < u.postWindowUntil) return SHOT_TYPES[t]?.name ?? null;
+  return t === 'fade' ? 'Fade Away' : null;
 }

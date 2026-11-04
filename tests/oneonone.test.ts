@@ -239,13 +239,13 @@ describe('passing', () => {
     g.freezeAI = true;
     return { g, u };
   };
-  it('L2 + a face button passes to the teammate wearing that icon', () => {
+  it('R1 + a face button passes to the teammate wearing that icon', () => {
     const { g, u } = mk(3);
-    g.update(1 / 60, { ...idle, l2Held: true });
+    g.update(1 / 60, { ...idle, iconHeld: true });
     const icons = g.iconTargets!;
     expect(icons.map((i) => i.btn)).toEqual(['a', 'b', 'x', 'y']);
     const target = icons.find((i) => i.btn === 'b')!.pid;
-    g.update(1 / 60, { ...idle, l2Held: true, b: true, bHeld: true });
+    g.update(1 / 60, { ...idle, iconHeld: true, b: true, bHeld: true });
     expect(g.ball.st.kind).toBe('pass');
     expect((g.ball.st as any).to.id).toBe(target);
     expect(u.state).not.toBe('dribbleMove'); // ○ did not also do a dribble move

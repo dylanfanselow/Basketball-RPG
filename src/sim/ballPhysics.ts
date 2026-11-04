@@ -120,7 +120,7 @@ export function launchVelocity(p0: V3, aim: V3, theta: number, g = GRAVITY): V3 
 }
 
 /** Arc by shot type (degrees above horizontal at release). */
-const ARC: Record<string, number> = { mid: 50, three: 49, deep3: 47, stepThroughJumper: 50, floater: 62, hook: 56, layup: 58, euro: 58, stepThrough: 58, push: 55 };
+const ARC: Record<string, number> = { mid: 50, fade: 53, three: 49, deep3: 47, stepThroughJumper: 50, floater: 62, hook: 56, layup: 58, euro: 58, stepThrough: 58, push: 55 };
 const BANKERS = new Set(['layup', 'euro', 'stepThrough', 'push']);
 
 export interface ShotPlan extends ShotSim { aim: V3; swish: boolean; airball: boolean; fallback: boolean }

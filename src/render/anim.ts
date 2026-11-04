@@ -476,11 +476,78 @@ export const CLIPS: Clip[] = [
     { t: 1, pose: P({ hF: [21, 80], eF: [12, 77], head: [3, 91] }) }] },
 ];
 
+/**
+ * Lean a whole pose back about the hip (rigid rotation, so every limb keeps its length): the head and the ball go
+ * back (away from the facing), the feet kick forward. deg > 0 = lean back.
+ */
+export function leanBack(p: Pose, deg: number): Pose {
+  const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), [hx, hy] = p.hip;
+  const rot = (j: J): J => { const x = j[0] - hx, y = j[1] - hy; return [hx + x * c - y * s, hy + x * s + y * c]; };
+  const out = { ...p } as Pose;
+  for (const k of JOINTS) if (k !== 'hip') out[k] = rot(p[k]);
+  if (p.ball) out.ball = rot(p.ball);
+  return out;
+}
+// ---------- post up (L2) ----------
+// Authored facing +x = AWAY from the rim (back to the basket); the defender is behind (-x). Angled clips: the view
+// turns with the post angle (GameScene.viewFor), like the defensive stance.
+/** Back-down stance: low and wide, hips back into the defender, the ball dribbled out front on the near hand, the
+ * off arm barred back toward him. dip = extra crouch, back = hips further back (a bump). */
+const postPose = (o: { dip?: number; back?: number; hand: J; ball: J | null; bar?: J; lean?: number }): Pose => {
+  const dip = o.dip ?? 0, back = o.back ?? 0, lean = o.lean ?? 0;
+  const torso = P({ hip: [-5 - back, 41 - dip], neck: [2 + lean - back * 0.4, 70 - dip], head: [5 + lean - back * 0.4, 79 - dip], sF: [3 + lean - back * 0.4, 67 - dip], sB: [-1 + lean - back * 0.4, 67 - dip] });
+  const lg = legs(torso, [8, 0], [-11, 0]);
+  return { ...arms(lg, o.hand, o.bar ?? [-13 - back, 57 - dip], [-1, 1]), ball: o.ball, lat: { fF: 8, kF: 7, fB: -8, kB: -7 } };
+};
+/** Posted defender: low, chest and forearm into the attacker's back (he's in front, +x). */
+const postDefPose = (o: { dip?: number; push?: number } = {}): Pose => {
+  const dip = o.dip ?? 0, push = o.push ?? 0;
+  const torso = P({ hip: [-3 + push * 0.5, 43 - dip], neck: [4 + push, 72 - dip], head: [7 + push, 81 - dip], sF: [5 + push, 69 - dip], sB: [1 + push, 69 - dip] });
+  return { ...arms(legs(torso, [7, 0], [-11, 0]), [16 + push, 60 - dip], [12 + push, 50 - dip]), lat: { fF: 9, kF: 8, fB: -9, kB: -8, hF: 6, hB: -6 } };
+};
+CLIPS.push(
+  { name: 'postUp', frames: 8, loop: true, bounce: [0.5], keys: [
+    { t: 0, pose: postPose({ hand: [14, 40], ball: [15, 35] }) },
+    { t: 0.25, pose: postPose({ dip: 0.8, back: 0.6, hand: [15, 37], ball: [16, 26] }) },
+    { t: 0.5, pose: postPose({ dip: 1.2, back: 1, hand: [14, 38], ball: [16, 4] }) },
+    { t: 0.75, pose: postPose({ dip: 0.6, back: 0.4, hand: [14, 41], ball: [15, 24] }) },
+    { t: 1, pose: postPose({ hand: [14, 40], ball: [15, 35] }) }] },
+  // the bump: hips and the barred arm drive back into him, ball tucked up to the chest
+  { name: 'postBump', frames: 6, keys: [
+    { t: 0, pose: postPose({ hand: [14, 40], ball: [15, 35] }) },
+    { t: 0.35, pose: postPose({ dip: 3, back: 5, lean: 3, hand: [12, 52], ball: [13, 50], bar: [-20, 62] }) },
+    { t: 0.6, pose: postPose({ dip: 2, back: 3, lean: 2, hand: [13, 48], ball: [14, 45], bar: [-17, 60] }) },
+    { t: 1, pose: postPose({ hand: [14, 40], ball: [15, 35] }) }] },
+  // shoved off by a stronger defender: lurches forward (away from the rim), ball tucked, then gathers himself
+  { name: 'postBumpedBack', frames: 7, keys: [
+    { t: 0, pose: postPose({ hand: [14, 40], ball: [15, 35] }) },
+    { t: 0.3, pose: { ...arms(legs(P({ hip: [3, 43], neck: [12, 69], head: [16, 77], sF: [12, 66], sB: [8, 66] }), [19, 3], [-6, 0]), [16, 54], [13, 50]), ball: [17, 53] } },
+    { t: 0.6, pose: { ...arms(legs(P({ hip: [2, 45], neck: [8, 73], head: [11, 81], sF: [8, 70], sB: [4, 70] }), [16, 0], [-7, 0]), [15, 56], [12, 52]), ball: [16, 55] } },
+    { t: 1, pose: { ...arms(athletic, [11, 58], [9, 56]), ball: [12, 57] } }] },
+  { name: 'postDefend', frames: 8, loop: true, keys: [
+    { t: 0, pose: postDefPose() },
+    { t: 0.5, pose: postDefPose({ dip: 1, push: 1.2 }) },
+    { t: 1, pose: postDefPose() }] },
+  // bumped by the post: rocked back on his heels, arms out for balance (held while stun-locked)
+  { name: 'postBumped', frames: 7, keys: [
+    { t: 0, pose: postDefPose({ push: 1 }) },
+    { t: 0.3, pose: { ...arms(legs(P({ hip: [-6, 46], neck: [-7, 76], head: [-9, 85], sF: [-6, 73], sB: [-9, 73] }), [5, 2], [-17, 0]), [8, 74], [-17, 66]), lat: { hF: 10, hB: -10 } } },
+    { t: 0.65, pose: { ...arms(legs(P({ hip: [-5, 45], neck: [-5, 75], head: [-7, 84], sF: [-4, 72], sB: [-7, 72] }), [6, 0], [-15, 0]), [9, 66], [-16, 62]), lat: { hF: 12, hB: -12 } } },
+    { t: 1, pose: { ...arms(legs(P({ hip: [-4, 44], neck: [-3, 74], head: [-5, 83], sF: [-2, 71], sB: [-5, 71] }), [6, 0], [-14, 0]), [10, 62], [-14, 60]), lat: { hF: 12, hB: -12 } } }] },
+);
+
+// Fade Away: the jumper, drifting back: the lean grows through the rise and release, eases off on the way down.
+{
+  const j = CLIPS.find((c) => c.name === 'shot_jumper')!;
+  const lean = (t: number) => (t < 0.2 ? 0 : t < 0.35 ? 8 : t <= 0.8 ? 17 : 10);
+  CLIPS.push({ ...j, name: 'shot_fade', keys: j.keys.map((k) => ({ t: k.t, pose: leanBack(k.pose, lean(k.t)) })) });
+}
+
 export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c.name, c]));
 
 /** Map a sim shot type to its animation clip. */
 export const SHOT_CLIP: Record<string, string> = {
-  three: 'shot_jumper', deep3: 'shot_jumper', mid: 'shot_jumper', push: 'shot_push', floater: 'shot_floater',
+  three: 'shot_jumper', deep3: 'shot_jumper', mid: 'shot_jumper', fade: 'shot_fade', push: 'shot_push', floater: 'shot_floater',
   hook: 'shot_hook', layup: 'shot_layup', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
 };
 

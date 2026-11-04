@@ -18,7 +18,7 @@ import { FrameCache, yawFor } from '../render/frameCache';
 import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
-import { CONE_HALF, contestReach, computeContest, selectShotType } from '../sim/shooting';
+import { coneHalf, contestReach, computeContest, selectShotType } from '../sim/shooting';
 import { Crowd } from '../render/crowd';
 import { ControllerHud } from '../render/hud';
 import { randomAppearance } from '../render/appearance';
@@ -38,11 +38,13 @@ const FONT = '"Courier New", monospace';
 const SHEET_CACHE = new Map<string, Sheet>();
 const SHEETS_LOADING = new Set<string>();
 const MAX_SHEETS = 16;
+/** Post-up clips: both players face away from the rim (back to the basket), turned a little toward the camera. */
+const POST_CLIPS = ['postUp', 'postBump', 'postBumpedBack', 'postDefend', 'postBumped'];
 /**
  * Multi-angle players: clips that turn with the player (locomotion, stances, dribbles). Everything else (shots,
  * moves, passes, box-outs...) stays in side view toward the rim so ball offsets and timing match the sim.
  */
-const ANGLED = new Set(['idle', 'jog', 'sprint', 'burst', 'defend', 'slide', 'dribble', 'dribbleRun', 'dribbleBurst', 'hold']);
+const ANGLED = new Set(['idle', 'jog', 'sprint', 'burst', 'defend', 'slide', 'dribble', 'dribbleRun', 'dribbleBurst', 'hold', ...POST_CLIPS]);
 /** Angled frames are drawn on demand into pages of 8 x 6 slots, per sheet (look) key; freed with the sheet. */
 const ANG_COLS = 8, ANG_ROWS = 6, ANG_PAGES = 6, ANG_BUDGET = 4, ANG_PREWARM = 2;
 const ANGLE_CACHE = new Map<string, { cache: FrameCache; prewarm: string[] }>();
@@ -272,6 +274,10 @@ export class GameScene extends Phaser.Scene {
     if (clip === 'defend' || clip === 'slide') {
       const man = p.guarding ? this.sim.players.find((q) => q.id === p.guarding) : null;
       if (man) { dx = man.p.x - p.p.x; dy = man.p.y - p.p.y; bias = 35; }
+    } else if (POST_CLIPS.includes(clip)) {
+      // post up: facing away from the rim (the sim keeps p.face there), turned toward us so the back-down reads
+      const rim = this.sim.rim(this.sim.possession);
+      dx = p.p.x - rim.x; dy = p.p.y - rim.y; bias = 25;
     }
     let ang = (Math.atan2(dy, dx) * 180) / Math.PI;
     if (bias) { // turn toward the camera (+90) on whichever side he faces, so the open stance shows
@@ -503,6 +509,8 @@ export class GameScene extends Phaser.Scene {
       if (p.state === 'shoot' || inPost) return { clip, u: shotU(c, now, a.start, p.state === 'shoot' ? a.release : a.release) };
     }
     if (p.state === 'dribbleMove' && a?.name.startsWith('move_')) return { clip: CLIP[a.name] ? a.name : 'move_lateral', u: (now - a.start) / (a.dur ?? 0.35) };
+    const post = this.postClip(p, hasBall);
+    if (post) return post;
     if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? bumpedU(now - a.start, a.dur ?? 0.5) : 0.5 };
     if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
     if (a?.name === 'scoop' && now - a.start < (a.dur ?? 0.55)) return { clip: 'scoop', u: (now - a.start) / (a.dur ?? 0.55) };
@@ -528,6 +536,26 @@ export class GameScene extends Phaser.Scene {
     if (hasBall) return { clip: 'dribble', u: now * 1.7 + phase };
     if (p.team !== sim.possession && sim.live) return { clip: 'defend', u: now * 1.2 + phase };
     return { clip: 'idle', u: now * 0.5 + phase };
+  }
+
+  /**
+   * Post up: the attacker backs down (bump / bumped back), his defender leans on him or is rocked back and held there
+   * while stun-locked / sealed.
+   */
+  postClip(p: Player, hasBall: boolean): { clip: string; u: number } | null {
+    const now = this.sim.time, a = p.anim;
+    if (now < p.stunnedUntil && a?.name === 'postBumpedBack') return { clip: 'postBumpedBack', u: Math.min(1, (now - a.start) / 0.7) };
+    if (now < p.postLockUntil || now < p.postSealUntil) {
+      const e = a?.name === 'postBumped' ? now - a.start : 1;
+      // rocked back fast, then held off balance (a little wobble) while locked
+      return { clip: 'postBumped', u: e < 0.3 ? e / 0.3 * 0.85 : 0.85 + 0.15 * Math.abs(Math.sin(e * 6)) };
+    }
+    if (p.postedBy) return { clip: 'postDefend', u: now * 1.2 + (p.number * 0.137) % 1 };
+    if (hasBall && (p.post || now < p.postWindowUntil)) {
+      if (now - p.postBumpAt < 0.3) return { clip: 'postBump', u: (now - p.postBumpAt) / 0.3 };
+      if (p.post) return { clip: 'postUp', u: now * 1.6 };
+    }
+    return null;
   }
 
   /**
@@ -942,7 +970,7 @@ export class GameScene extends Phaser.Scene {
         const L = contestReach(type);
         const dir = norm(sub(rimPos(mside), m.p));
         const rot = (ang: number) => ({ x: dir.x * Math.cos(ang) - dir.y * Math.sin(ang), y: dir.x * Math.sin(ang) + dir.y * Math.cos(ang) });
-        const l = rot(-CONE_HALF), r = rot(CONE_HALF);
+        const l = rot(-coneHalf(type)), r = rot(coneHalf(type));
         const c = computeContest(m, [u], mside, type, sim.time).raw;
         const col = c > 0.3 ? 0x40ff70 : c > 0.1 ? 0xffb030 : 0xff4040;
         const alpha = sim.holder() === m ? 1 : 0.25;
@@ -974,9 +1002,10 @@ export class GameScene extends Phaser.Scene {
       // contest cone
       if (dbg.cone) {
         const dir = norm(sub(rim, u.p));
-        const L = contestReach(sim.preview?.type ?? 'three');
+        const ptype = sim.preview?.type ?? 'three';
+        const L = contestReach(ptype);
         const rot = (a: number) => ({ x: dir.x * Math.cos(a) - dir.y * Math.sin(a), y: dir.x * Math.sin(a) + dir.y * Math.cos(a) });
-        const l = rot(-CONE_HALF), r = rot(CONE_HALF);
+        const l = rot(-coneHalf(ptype)), r = rot(coneHalf(ptype));
         const c = sim.preview?.contest ?? 0;
         const col = c > 0.35 ? 0xff4040 : c > 0.15 ? 0xffb030 : 0x40ff70;
         g.fillStyle(col, 0.18); g.lineStyle(1, col, 0.6);
@@ -1000,6 +1029,22 @@ export class GameScene extends Phaser.Scene {
         const unsafe = !sim.passSafety(u, t).ok, flash = unsafe && Math.floor(this.time.now / 160) % 2 === 0;
         gt.fillStyle(0x000000, 0.6); gt.fillCircle(px, py, unsafe ? 11 : 9);
         gt.fillStyle(unsafe ? (flash ? 0xff1a1a : 0x8a0000) : 0xffe600, 1); gt.fillCircle(px, py, unsafe ? 8 : 6);
+      }
+    }
+    // post up: your battle over your head (mode + post vs post D), "SHOOT" in the window; post debug: everyone's
+    const pnow = sim.time;
+    for (const p of sim.players) {
+      const mine = p === u;
+      if (!mine && !dbg.post) continue;
+      const y = sy(p.p.y, p.z + p.height + 1.0) - (mine ? 34 : 18);
+      if (p.post) {
+        const md = p.post.mode, def = sim.players.find((q) => q.id === p.post!.defId);
+        const col = md === 'stronger' ? '#7dff9a' : md === 'even' ? '#ffe680' : '#ff8a8a';
+        this.label(sx(p.p.x), y, def ? `POST · ${md.toUpperCase()} ${p.sub.post.toFixed(0)} vs ${def.sub.postD.toFixed(0)}` : 'POST', col, mine ? 15 : 12);
+      } else if (pnow < p.postWindowUntil && sim.holder() === p) this.label(sx(p.p.x), y, 'SHOOT!', '#ffe14d', mine ? 16 : 12);
+      if (dbg.post && (pnow < p.postLockUntil || pnow < p.postSealUntil || p.postedBy)) {
+        const txt = pnow < p.postLockUntil ? `LOCKED ${(p.postLockUntil - pnow).toFixed(1)}s` : pnow < p.postSealUntil ? 'SEALED' : 'LEANED ON';
+        this.label(sx(p.p.x), sy(p.p.y) + 16, txt, '#ff9f6a', 12); // at his feet (clear of the post label above)
       }
     }
     // chase-down lock-on reticle

@@ -4,6 +4,10 @@ import { ModSet, ModSource } from './modifiers';
 import { Vec, v } from './math';
 import { Appearance, defaultAppearance } from '../render/appearance';
 
+/** Post-up battle: mode from the strength gap (post vs postD). */
+export type PostMode = 'stronger' | 'even' | 'weaker';
+export interface PostState { defId: string | null; mode: PostMode; gap: number; nextBumpAt: number; since: number; pushing: boolean }
+
 export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe';
 
 export interface BoxScore { pts: number; fgm: number; fga: number; tpm: number; tpa: number; ast: number; reb: number; stl: number; blk: number; tov: number; secs: number; usage: number; touches: number }
@@ -34,7 +38,7 @@ export class Player {
   box: BoxScore = emptyBox();
   /** AI scratch */
   target: Vec = v(); guarding: string | null = null; aiNextThink = 0; callForBallUntil = 0;
-  aiMode: 'none' | 'drive' = 'none'; aiModeUntil = 0; cutUntil = 0;
+  aiMode: 'none' | 'drive' | 'post' = 'none'; aiModeUntil = 0; cutUntil = 0;
   /** runtime sim fields */
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
   /** current animation clip for the renderer (shots, moves, falls) */
@@ -56,6 +60,22 @@ export class Player {
   flickDir = 0; flickUntil = 0;
   bufferedMove: { stick: Vec; at: number } | null = null;
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number } } | null = null;
+  /** post up (post.ts): the attacker's battle with the defender on his back */
+  post: PostState | null = null;
+  /** posted defender: stun-locked by bumps (no contest, no actions) until then */
+  postLockUntil = -9;
+  /** posted defender: held in the bumped pose after the attacker's release (reduced contest) until then */
+  postSealUntil = -9;
+  /** posted defender: the attacker leaning on him (engaged; even battle = reduced contest) */
+  postedBy: string | null = null;
+  /** attacker: post scoring window after letting go (post shots, the defender stays locked) */
+  postWindowUntil = -9;
+  /** attacker: the last bump (drives the bump / bumped-back animations) */
+  postBumpAt = -9; postBumpedBackAt = -9;
+  /** the defender of the last post (for the window / post shot) */
+  postDefId: string | null = null;
+  /** this tick's post intent (L2 held + stick, or the AI's), consumed by updatePost */
+  postHeldIn = false; postStickIn: Vec = v();
 
   constructor(init: PlayerInit) {
     this.id = init.id; this.name = init.name; this.team = init.team; this.pos = init.pos;

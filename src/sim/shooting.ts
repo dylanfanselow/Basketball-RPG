@@ -4,16 +4,27 @@ import { Player } from './player';
 import { Side, rimPos, isThree, isCorner } from './court';
 import { Vec, dist, sub, norm, dot, cross, clamp, clamp01, curve, len } from './math';
 
-export interface EqTerm { label: string; value: number; kind: 'base' | 'stat' | 'contest' | 'fatigue' | 'perk' | 'contact' | 'ult' }
+export interface EqTerm { label: string; value: number; kind: 'base' | 'stat' | 'contest' | 'fatigue' | 'perk' | 'contact' | 'ult' | 'fade' }
 export interface ShotEval {
   type: string; dist: number; pts: number; pct: number; contest: number;
   terms: EqTerm[]; conds: Set<string>; contestBy: { name: string; dist: number; c: number }[];
 }
 
+/** Post up, even battle: share of a true contest a leaned-on / sealed defender still gets. */
+export const POST_EVEN_CONTEST = 0.55;
 export const CONE_HALF = 0.7; // ~40 degrees
+/** Fade Away: a narrower cone (the shooter leans away from the contest). */
+export const FADE_CONE_HALF = 0.45;
+/** Fade Away accuracy falls off exponentially past FADE_FREE_FT: x exp(-(d - 8) / 16). */
+export const FADE_FREE_FT = 8, FADE_FALLOFF_FT = 16;
+export const fadeFalloff = (d: number) => Math.exp(-Math.max(0, d - FADE_FREE_FT) / FADE_FALLOFF_FT);
+
+/** Half-angle (rad) of the contest cone for this shot type. */
+export const coneHalf = (type: string) => (type === 'fade' ? FADE_CONE_HALF : CONE_HALF);
 
 /** Distance (ft) at which a defender stops contesting this shot type. Also the drawn cone length. */
 export function contestReach(type: string): number {
+  if (type === 'fade') return 3.5;
   if (type === 'mid' || type === 'three' || type === 'deep3') return 5.5;
   if (type === 'floater') return 4;
   return 6;
@@ -45,9 +56,13 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   const side_ = lateral > 0.65 && Math.abs(toward) < 0.6;
   const speedToRim = dot(p.vel, toRim);
 
+  // out of a post up (or its window after letting go): post shots
+  if (p.post || now < p.postWindowUntil) return postShotType(p, side, stick);
   // Step-Through (everyone): right after a pump fake, hold the stick toward the rim and shoot.
   // Close in it's a one-hand finish; from mid-range or the arc it's a stride into a pull-up jumper.
   if (now - p.pumpFakeAt < STEP_THROUGH_WINDOW && d <= 28 && toward > 0.5) return d - stepStride(p) > STEP_FINISH_FT ? 'stepThroughJumper' : 'stepThrough';
+  // Fade Away (unlockable): stick away from the rim + shoot, at any distance (replaces the floater)
+  if (back && p.hasShot('fade')) return 'fade';
   if (d <= 6.5) {
     if (back && d >= 3) return 'floater';
     if (side_) return p.hasShot('euro') && d >= 2.5 ? 'euro' : 'hook';
@@ -65,6 +80,20 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   return 'mid';
 }
 
+/**
+ * Post shots: stick sideways = hook, toward the rim = layup (close) or floater, away = fade (if unlocked) or floater,
+ * neutral = layup (close) or hook.
+ */
+export function postShotType(p: Player, side: Side, stick: Vec): string {
+  const rim = rimPos(side), d = dist(p.p, rim), toRim = norm(sub(rim, p.p)), sl = len(stick);
+  const toward = sl > 0.3 ? dot(stick, toRim) / sl : 0;
+  const lateral = sl > 0.3 ? Math.abs(cross(toRim, stick)) / sl : 0;
+  if (lateral > 0.65 && Math.abs(toward) < 0.6) return 'hook';
+  if (toward > 0.45) return d <= 6.5 ? 'layup' : 'floater';
+  if (toward < -0.45) return p.hasShot('fade') ? 'fade' : 'floater';
+  return d <= 6.5 ? 'layup' : 'hook';
+}
+
 export interface ShotContext {
   now: number; clutch: boolean;
   override?: { base?: number; label?: string; contestMult?: number };
@@ -78,6 +107,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
   const reachFt = contestReach(type);
   let keep = 1;
   const by: { name: string; dist: number; c: number }[] = [];
+  const notes: string[] = [];
   for (const d of defenders) {
     if (d.state === 'fallen') continue;
     const rel = sub(d.p, shooter.p);
@@ -86,7 +116,8 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     const along = dot(rel, dir);
     const lat = Math.abs(cross(dir, rel));
     const ang = Math.atan2(lat, along);
-    let angF = ang <= CONE_HALF ? 1 : clamp01(1 - (ang - CONE_HALF) / 0.8) * 0.55;
+    const half = coneHalf(type);
+    let angF = ang <= half ? 1 : clamp01(1 - (ang - half) / 0.8) * 0.55;
     if (r < 2.2) angF = Math.max(angF, 0.5); // bodies right on you still bother you
     const closeness = clamp01(1 - (r - 1.5) / Math.max(0.5, reachFt - 1.5));
     const heightF = clamp(0.8 + (d.height - shooter.height) * 0.3, 0.6, 1.35);
@@ -97,11 +128,14 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     if (d.state === 'stagger' || now < d.staggerUntil) state = 0.35;
     if (now < d.screenedUntil) state = Math.min(state, 0.5);
     if (isStepThrough(type) && bitOnFake(d, shooter, now)) state = Math.min(state, 0.15); // bit on the fake: stepped right past him
+    // post up: a defender stun-locked by bumps can't contest; one leaned on / sealed (even battle) only half-contests
+    if (now < d.postLockUntil) { state = 0; notes.push(`${d.name} bumped`); }
+    else if (now < d.postSealUntil || d.postedBy === shooter.id) { state = Math.min(state, POST_EVEN_CONTEST); notes.push(`${d.name} sealed`); }
     const c = 0.62 * closeness * angF * heightF * handUp * skill * state * d.mods.contestOutMult(type);
     if (c > 0.01) { by.push({ name: d.name, dist: r, c }); keep *= 1 - clamp(c, 0, 0.95); }
   }
   by.sort((a, b) => b.c - a.c);
-  return { raw: 1 - keep, by };
+  return { raw: 1 - keep, by, notes };
 }
 
 export function shotConditions(p: Player, side: Side, type: string, now: number, clutch: boolean): Set<string> {
@@ -114,6 +148,7 @@ export function shotConditions(p: Player, side: Side, type: string, now: number,
   if (clutch) c.add('clutch');
   if (p.lastMove && now - p.lastMove.endAt < 0.8) c.add('afterMove');
   if (now - p.lastScreenAt < 2.5) c.add('afterScreen');
+  if (p.post || now < p.postWindowUntil) c.add('post');
   return c;
 }
 
@@ -128,6 +163,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
 
   const base = ctx.override?.base ?? curve(def.base, d);
   terms.push({ label: `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
+  if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
 
   const rating = shooter.sub[def.sub];
   terms.push({ label: `${def.sub} ${rating.toFixed(0)}`, value: statFactor(rating), kind: 'stat' });
@@ -144,7 +180,8 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   contest = clamp(contest, 0, 0.9);
   const top = con.by[0];
   const cinLabel = cin.length ? ` (${cin.map((t) => t.label).join(', ')})` : '';
-  terms.push({ label: top ? `contest ${(contest * 100).toFixed(0)}%: ${top.name} ${top.dist.toFixed(1)}ft${cinLabel}` : 'open', value: 1 - contest, kind: 'contest' });
+  const noteLabel = con.notes.length ? ` (${con.notes.join(', ')})` : '';
+  terms.push({ label: top ? `contest ${(contest * 100).toFixed(0)}%: ${top.name} ${top.dist.toFixed(1)}ft${cinLabel}${noteLabel}` : con.notes.length ? `contest 0%: ${con.notes.join(', ')}` : 'open', value: 1 - contest, kind: 'contest' });
 
   if (contest > 0.25) {
     const contactKey = def.contact ? 'contactFinish' : 'contactShot';

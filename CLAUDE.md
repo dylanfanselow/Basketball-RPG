@@ -17,7 +17,7 @@ Key rules from the owner:
 - Real 2026-27 rosters are intentionally committed.
 - Eyes on every face (players, fans, celebs, coaches…) match the owner's celeb art: `W I · · · · I W` (white outside,
   iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells` — never cross-eyed or uneven.
-- L1 = escape/back everywhere; L2 (hold) = icon pass; everyone can Step-Through (fake → stick to rim + ✕).
+- L1 = escape/back everywhere; R1 (hold) = icon pass; L2 (hold) = post up; everyone can Step-Through (fake → stick to rim + ✕).
 
 Code rules that bite (details in WORKFLOW.md "Gotchas"):
 - The canvas is 1920×1080 but scenes lay out in **1280×720 units**: every scene calls `hiRes(this)` first in `create()`.

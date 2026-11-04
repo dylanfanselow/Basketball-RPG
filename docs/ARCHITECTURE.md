@@ -10,7 +10,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `player.ts` | `Player` state: core/sub ratings, `mods`, position/velocity/z, state machine, timers (many default to −9 so "time < x" checks work at t=0), box score, anim record. |
 | `attributes.ts` | Core stats → sub-ratings via `statInfluence.json`; `statFactor`, `rmap`. |
 | `modifiers.ts` | Effect/hook system (`sub`, `shot`, `contestIn`, `contestOut`, `param`, `move`, `shotType`; code hooks with expiry). |
-| `shooting.ts` | `selectShotType` (step-through first: `STEP_THROUGH_WINDOW` 1.5 s, `stepStride`, `STEP_FINISH_FT` → `stepThrough` or `stepThroughJumper`), `computeContest` (cone, `contestReach`; ×0.15 for defenders who `bitOnFake`), `evaluateShot` (equation terms), `formatEquation`, `isStepThrough`. |
+| `shooting.ts` | `selectShotType` (step-through first: `STEP_THROUGH_WINDOW` 1.5 s, `stepStride`, `STEP_FINISH_FT` → `stepThrough` or `stepThroughJumper`), post shots first (`postShotType`), Fade Away for owners on stick-away; `computeContest` (cone `coneHalf`, `contestReach`; post-locked = 0, sealed/leaned ×`POST_EVEN_CONTEST`; ×0.15 for defenders who `bitOnFake`), `evaluateShot` (equation terms), `formatEquation`, `isStepThrough`. |
+| `post.ts` | Post up (L2): `POST` tuning, `postGap`/`postMode` (post vs postD, ±8), `postDefender`, `canPost`, `updatePost` (before physics; sets the pair's positions: bumps / push / bump-back), `endPost` (release window + lock/seal), `onPostShot`, `postLocked`, `postIntent` (user/AI intent per tick). |
 | `moves.ts` | `classifyStick` (basket-relative), `resolveMove` (chains first), `availableMoves` (HUD), `moveDirection` (canonical directions), `sideOf`. |
 | `boxScore.ts` | `topStats` / `STAT_WEIGHTS`: which 3 of your stats the HUD box score shows. |
 | `ballPhysics.ts` | Physical shots: `simulateShot` (ball vs rim ring / glass / net, fixed 1/240 s step), `planShot` (outcome-steered launch search), `samplePlan`. Pure, deterministic. |
@@ -50,7 +51,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
 | Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |
-| `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `l2` (L2/Q, icon pass), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
+| `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `icon` (R1/Q, icon pass), `post` (L2/E, post up), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
 | `dev/devPanel.ts` | DOM dev tools overlay. |
 | `dev/pixelEditor.ts` | Pixel editor overlay (dev panel buttons or `?editor` / `?editor=parts`): one editor, two documents (`CelebDoc`, `PartsDoc`); "Save to repo" POSTs to the dev-only `/__dev/save-art` endpoint in `vite.config.ts`. |
 | `dev/partSeeds.ts` | Exports the code-drawn face parts as gray pictures (`renderSeedParts`, `seedLook`, `renderPartCanvas`); used once to seed `src/art/parts` and for the editor's head guide. |
@@ -61,6 +62,6 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## Tests (`tests/`)
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
-`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, L2 icon pass), `helpers.ts` (`makeGame`, `simToEnd`).
+`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).

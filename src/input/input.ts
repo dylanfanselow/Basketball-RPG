@@ -7,6 +7,7 @@ import { Vec, len, scale } from '../sim/math';
  *   ✕ (bottom, 0) = Shoot / Block      △ (top, 3) = Pass / Call for ball / Steal
  *   ○ (right, 1)  = Dribble move / Screen / Take charge
  *   □ (left, 2)   = Ultimate           Left stick = move, R2 (7) = sprint burst (tap)
+ *   R1 (5, hold)  = icon pass (Q)      L2 (6, hold) = post up (E)
  * Keyboard fallback mirrors the diamond on I/J/K/L: K=✕, L=○, J=□, I=△, WASD = move, Shift = sprint.
  */
 export const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
@@ -59,7 +60,7 @@ export class InputMapper {
     let m = { x: mx, y: my };
     if (len(m) > 1) m = scale(m, 1 / len(m));
     this.move = m;
-    this.sprint = this.btn(BTN.RT) || this.btn(BTN.RB) || this.key('SHIFT');
+    this.sprint = this.btn(BTN.RT) || this.key('SHIFT');
     this.cur = {
       a: this.btn(BTN.A) || this.key('K') || this.key('SPACE'),
       b: this.btn(BTN.B) || this.key('L'),
@@ -70,7 +71,9 @@ export class InputMapper {
       left: this.btn(BTN.LEFT) || this.key('LEFT') || this.key('A'),
       right: this.btn(BTN.RIGHT) || this.key('RIGHT') || this.key('D'),
       lb: this.btn(BTN.LB), rb: this.btn(BTN.RB),
-      l2: this.btn(BTN.LT) || this.key('Q'),
+      // in game: R1 (Q) held = icon pass, L2 (E) held = post up
+      icon: this.btn(BTN.RB) || this.key('Q'),
+      post: this.btn(BTN.LT) || this.key('E'),
       // menu tabs / columns: L2 or Q = previous, R1 or E = next (L1 is the escape button)
       tabPrev: this.btn(BTN.LT) || this.key('Q'), tabNext: this.btn(BTN.RB) || this.key('E'),
       // L1 = escape / back out of any screen (keyboard Esc)
@@ -79,7 +82,7 @@ export class InputMapper {
       back: this.btn(BTN.BACK) || this.key('ESC') || this.key('BACKSPACE'),
       dev: this.btn(BTN.BACK) && this.btn(BTN.START),
       mute: this.key('M'),
-      sprint: this.btn(BTN.RT) || this.btn(BTN.RB) || this.key('SHIFT'),
+      sprint: this.btn(BTN.RT) || this.key('SHIFT'),
     };
     // Anything already held when the scene starts (e.g. the ✕ that picked this mode) is ignored until released,
     // so a fresh screen never reads a leftover press as a new one.
@@ -96,7 +99,7 @@ export class InputMapper {
     return {
       move: this.move, sprint: this.pressed('sprint'),
       a: this.pressed('a'), b: this.pressed('b'), x: this.pressed('x'), y: this.pressed('y'),
-      aHeld: this.held('a'), bHeld: this.held('b'), l2Held: this.held('l2'),
+      aHeld: this.held('a'), bHeld: this.held('b'), iconHeld: this.held('icon'), postHeld: this.held('post'),
     };
   }
 }

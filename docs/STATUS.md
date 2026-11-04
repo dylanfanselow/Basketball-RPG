@@ -17,7 +17,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   window events. Buttons held when a scene starts are ignored until released. Presses are latched until a sim
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
-- **L2 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold L2 ICON PASS" hint above the diamond.
+- **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
+- **L2 (hold) post up** (keyboard E, round 27): `src/sim/post.ts` (stronger = bumps + stun-lock, even = slow push +
+  half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
+  (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`
+  (angled, `GameScene.postClip`), HUD label over you + ✕ shows the post shot, dev panel *Post test* + *Post up debug*.
+- **Fade Away** (`sh_fade` ability, round 27): `fade` shot type, `coneHalf`/`contestReach`, `fadeFalloff` term, backward
+  drift (`FADE_DRIFT`), `shot_fade` clip (the jumper leaned back via `leanBack`), AI uses it on contested looks.
 - ✕ badge reads **"Step-Through"** while a recent fake + stick toward the rim lines one up.
 - **Fullscreen**: F key, ⛶ corner button (DOM, `main.ts`), main-menu and pause-menu items.
 
@@ -45,7 +51,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Blocks launch the ball 20–26 ft/s with a 0.7 s no-grab window; strips pop it past the stealer; the victim is
   stunned (`stunnedUntil`, `stripped`/`blockedLand` clips, stars) and can't regrab.
 - Passing 55–90 ft/s; short passes (≤ 0.6 × safe range) home in, ×0.15 pick chance; long ones riskier with wider
-  deflection lanes. L2 icon pass.
+  deflection lanes. R1 icon pass.
 
 ## Team play & AI
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me
@@ -56,7 +62,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Reads (`ai/offense.ts`): open-man read (`openForPass`, timing/chance by `readSkill`), catch read (`catchRead`:
   catch-and-shoot / pump fake / attack the closeout, once per catch), fast-break throw-aheads to anyone past his man.
 - Passing: `GameSim.passSafety` (lead point, safe range `rmap(passRange, 30, 60)`, overhead ×1.35 for runners /
-  transition; overhead passes arc over the middle). Unsafe targets flash red (dot + L2 icons).
+  transition; overhead passes arc over the middle). Unsafe targets flash red (dot + R1 icons).
 - Handler utility AI: shot EV vs pass value (openness, separation, ahead-of-defense, lane risk, trust) vs drive.
 - Transition reads: throw ahead, attack numbers, outlet, fill lanes; otherwise walk it up.
 - Walk-out inbounds (baseline after makes by C/PF, sideline otherwise, midcourt for quarters).

@@ -28,6 +28,7 @@
 | 23 | `e45453d` | FG text in the box score clipped; static hiss in the main menu | FG right-aligned on its own, panel widens, long names shortened; crowd murmur gated to games (`sfx.setArena`) |
 | 24 | `3d80546` | Asked how to reach the pixel editor; wants to edit players' faces as mix-and-match parts (hair 2 + beard 1 + eyes 3) | Face-part library (pictures per part/view, recolored per player, code fallback), 59 seeded pictures, editor Face-parts mode with live player preview, dev-panel variant pickers |
 | 26 | `d8bf928` | Generated faces cross-eyed / one eye with more white; match the owner's celeb eyes on every character, now and later | Eye pictures redrawn `W I · · · · I W` (were wall-eyed and lopsided), eyes plotted pixel-snapped and mirrored at any scale, code fallbacks match, skull-mask glints mirrored, symmetry test + rule in DECISIONS/CLAUDE.md |
+| 27 | (this round) | Fade Away (unlockable, stick away + shoot: smaller cone, exponential accuracy falloff); Post Up on L2 (icon pass to R1): strength decides bumps + stun-lock / slow push / bumped back, axis-only stick, release window for hook/floater/layup, angle-dependent animations | `fade` shot + `sh_fade` ability, `post.ts`, 5 post clips + `shot_fade`, AI bigs post up, dev *Post test*, R1 icon pass, sprint R2 only |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

@@ -21,13 +21,15 @@ npm run dev
 
 | Button | With ball | Offense, off ball | Defense |
 |---|---|---|---|
-| **✕** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater, **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
+| **✕** (bottom) | Shoot. Near the rim: layup/dunk; hold stick **back** = floater (or **Fade Away** anywhere, if unlocked), **sideways** = hook (or Euro Step if unlocked) | — | Block / contest |
 | **△** (top) | Pass to the teammate under the yellow **dot** (aim with the stick) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
 | **○** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
 | **□** (left) | Ultimate | Ultimate | Ultimate |
 | Left stick / R2 | Move / tap for a sprint burst (then a cooldown) | | |
+| **L2** (hold) | **Post up**: back your man down (stick toward / away from the rim only) | | |
+| **R1** (hold) | Icon pass: teammates wear ✕ ○ □ △ | | |
 
-Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, Enter pause, **M** mute. **F1** or **`** toggles dev tools
+Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, **E** post up (L2), **Q** icon pass (R1), Enter pause, **M** mute. **F1** or **`** toggles dev tools
 (gamepad: Create+Options).
 
 ## Things to know while testing
@@ -38,14 +40,20 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, E
 - **✕ tap = pump fake** (fake as many times as you like; it picks up your dribble so you can only pass or shoot). **✕ hold = shoot.**
 - **Step-Through** (everyone): within 1.5 seconds of a pump fake, **hold the stick toward the rim and hold ✕** (the ✕ badge says "Step-Through" when it's lined up). You take one long stride around your man: close in you finish at the rim, from mid-range or the arc you stride into a pull-up jumper. A defender who jumped on the fake can't contest or block it. The Finishing-tree Step-Through perk makes the stride longer and the finish better.
 - **Blocks and steals stick:** a block swats the ball away hard and nobody can touch it for a moment; a strip pops it past the defender. The player who lost it is rocked (stars over his head) for about a second and can't grab it back.
-- **Passing:** passes are faster. Short passes curve to your teammate and are rarely picked off; long passes through traffic get intercepted. **Hold L2 (Q)** for icon passing: each teammate wears ✕ ○ □ △, press his button to pass to him.
+- **Passing:** passes are faster. Short passes curve to your teammate and are rarely picked off; long passes through traffic get intercepted. **Hold R1 (Q)** for icon passing: each teammate wears ✕ ○ □ △, press his button to pass to him.
 - **Fullscreen:** press **F**, click ⛶ in the top-right corner, or pick Fullscreen in the main menu / pause menu. (Browsers only allow it from a key or click, not a controller button.)
 - **L1 = back / escape.** In menus it goes back a screen. In a game, L1 opens the pause menu with Quit highlighted, and a second L1 leaves. Options (Enter) also pauses. On the keyboard, Esc does the same as L1.
 - **1v1 · Make It, Take It** (main menu): pick a team and any player on its roster for each side. P2 can be a **second player** (a second controller, or the keyboard if only one controller is plugged in) or the **CPU**. Score and you keep the ball. A defensive board or steal means the other player checks it up top. The default is 1s & 2s to 11, win by 2, and you can change it on the setup screen. 14-second shot clock, no ultimates.
 - **Hold ○** and the left-stick widget shows which move each direction does; drag that way to do it. Directions are relative to **your line to the hoop** (toward it = hesi, away = step-back, across it = crossover / side drive), and every move travels a fixed distance. While ○ is still held, flick again for the chain move (gold arcs). A quick **○ tap** = jab step (keeps your dribble).
 - **○ while a shot is in the air = box out.** Stronger box-outs knock players back, and so do screens.
 - **Hold ○ to keep a screen up** (on offense) or **stay set for a charge** (on defense) until you let go. How long a defender stays stuck depends on your screen rating, your strength vs his, and how mobile he is (Brick Wall makes it longer, Screen Navigator on defense makes it shorter).
-- **Passing range:** the yellow pass dot (and the L2 icons) **flash red** when the target is beyond your safe passing distance. Long leads to a teammate running the floor go overhead and reach further.
+- **Passing range:** the yellow pass dot (and the R1 icons) **flash red** when the target is beyond your safe passing distance. Long leads to a teammate running the floor go overhead and reach further.
+- **Post up (hold L2 / E)** within 20 ft with a live dribble: you turn your back to the basket and the stick only goes straight toward or away from the rim. Your post rating vs his post D (mostly Strength) decides it, shown over your head:
+  - **Stronger:** each push is a bump that knocks him back a step and **stun-locks** him (no contest while you keep bumping).
+  - **Even:** a slow steady push; he only half-contests.
+  - **Weaker:** you barely move, and he can **bump you back** and stun you for a second.
+  Let go of L2 and he stays locked in his bumped pose for a moment (**SHOOT!**): stick sideways = hook, toward the rim = layup/floater, away = fade (if unlocked) or floater. AI bigs post up too. Dev panel → *Post test* sets one up.
+- **Fade Away** (Shooting tree, replaces the old Fadeaway passive): hold the stick away from the basket and shoot, from anywhere. The contest cone gets much smaller, but accuracy drops off exponentially with distance (the `fade` term in the equation).
 - **Pump fake on the catch** (before your first dribble) keeps your dribble, so you can fake and drive past the closeout.
 - **Pixel editor:** dev panel → *Pixel editor: celebs* or *Pixel editor: face parts* (or open the game with `?editor` / `?editor=parts`). Edits show up in your next game; under `npm run dev`, *Save to repo* writes the PNGs into `src/art/`.
 - **Editing faces (mix and match):** heads are built from parts — hair (front + back layer), beard, brows, eyes, nose, mouth — each a small picture per view (side, front). In *Face parts* mode pick a part and view, draw in grays (they take each player's hair color / skin tone; pure green in eyes = eye color), or *＋ New variant* to make `hair_1`, `beard_2`…; the preview shows any roster player wearing it. Then in the dev panel's **NBA player looks**, pick the player, set his hair / facial hair / nose / mouth / eyes / brows to your variants and *Save look to rosters.json*.

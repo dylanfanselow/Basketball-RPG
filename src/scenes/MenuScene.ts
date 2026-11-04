@@ -34,7 +34,8 @@ export class MenuScene extends Phaser.Scene {
       '□  ultimate                           J',
       'R2 sprint burst (tap)  Options pause  Shift / Enter',
       'L1  back / quit (in game: L1 twice)  Esc',
-      'L2 (hold) icon pass: ✕○□△ = teammate  Q',
+      'R1 (hold) icon pass: ✕○□△ = teammate  Q',
+      'L2 (hold) post up: stick to/away rim  E',
       'Create+Options  dev tools             F1 or `',
       '                                      F fullscreen · M mute',
     ].join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });

@@ -35,8 +35,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   → **superseded (round 9): everyone, from any range** (close = finish, far = stride into a pull-up jumper); the
   `fi_stepthru` perk is an upgrade (7 ft stride, ×1.12). A defender who jumped on the fake gets ×0.15 contest and
   can't block it.
-- **L2 = icon pass:** hold L2 (keyboard Q), teammates wear ✕ ○ □ △ (by role), press one to pass to him; other
-  actions are paused while L2 is held.
+- **R1 = icon pass** (was L2 until round 27): hold R1 (keyboard Q), teammates wear ✕ ○ □ △ (by role), press one to pass
+  to him; other actions are paused while R1 is held. R1 is no longer a second sprint button (sprint = R2 / Shift).
 - **Blocks/steals:** the ball flies (block) or pops (steal) with a short no-grab window; the victim is stunned
   ~1 s with an animation and can't regrab it.
 - **Passes:** faster (55–90 ft/s); short passes home in and are rarely picked; long passes are riskier.
@@ -103,7 +103,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   roster tier, at most 2; the user earns it at coach trust ≥ 85 + top-2 rating) get **iso** sets (~30%, 50% clutch).
   AI makes the **open-man read** (sooner/more often for better passers), throws ahead on breaks (overhead lead
   passes, ×1.35 range), and receivers read the catch (shoot / pump fake / attack the closeout). Safe pass range
-  30–60 ft; an unsafe pass target **flashes red** (dot and L2 icons). **Celebs are a fixed cast of 16**, hand-editable
+  30–60 ft; an unsafe pass target **flashes red** (dot and R1 icons). **Celebs are a fixed cast of 16**, hand-editable
   in the dev panel's **pixel editor**; saved edits live in `src/art/celebs/` and replace the generated sprites.
 - **Round 22:** loose-ball grabs depend on the ball's height (scoop / chest catch / reach, jump only above standing
   reach). **Coaches face the camera**, drift slowly, raise an arm with a **speech bubble** naming the play.
@@ -123,6 +123,19 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 27: Fade Away + Post Up.**
+  - **Fade Away** is an unlockable ability (the Shooting tree's old "Fadeaway" passive `sh_fade` became it). Stick away
+    from the basket + shoot = fade **anywhere** (it replaces the floater for players who own it). Smaller cone (3.5 ft
+    reach, 0.45 rad half-angle) but accuracy × e^(−(d−8)/16), shown as a `fade` equation term. AI owners use it on
+    contested mid-range looks.
+  - **Post Up = hold L2** (keyboard E), **everyone** can (no perk). The stick only goes straight toward / away from
+    the rim. Strength battle = post vs post D, ±8 = "noticeably":
+    - stronger: discrete bumps (1.5 ft every 0.8 s) that stun-lock the defender (no contest, no actions);
+    - even: a slow continuous push (1.1 ft/s), the defender contests at ×0.55 (lower than a true contest);
+    - weaker: you barely move and he can bump you back 1.5 ft and stun you for 1 s.
+    Letting go opens a 0.6 s window where the defender stays locked (stronger) or sealed (even) in his bumped pose:
+    post hook / layup / floater (or fade). Post animations turn with the angle to the basket like the defensive
+    stance. **AI bigs post up too** (C/PF or strong post players with an edge), and kick out of doubles.
 - **Round 24: faces are mix-and-match parts** the owner can hand-draw (hair front/back, beard, brows, eyes, nose,
   mouth; side + front views), drawn in grays and recolored per player; players pick variants by name
   (e.g. Tatum = hair_2 / beard_1 / eyes_3) saved in rosters.json. The owner sends edits by Save to repo + push.

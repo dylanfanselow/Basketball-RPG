@@ -235,6 +235,10 @@ export function initDevPanel() {
         btn('… 6ft', () => spawnDefender(6)),
         btn('Put me in the game', () => { if (s.cfg.rotation) s.cfg.rotation.stints = [[0, 1e9]]; (s as any).putUserOnCourt?.(); s.refreshOnCourt(); s.assignMatchups(); }),
       ));
+      // post up testing: the ball, 12 ft out (at your current angle to the rim), a defender on your back whose post D
+      // is set to give that strength gap (your post - his post D)
+      gc.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'Post test (L2):'),
+        btn('you stronger', () => postTest(20)), btn('even', () => postTest(0)), btn('he is stronger', () => postTest(-20))));
       gc.append(check('Freeze AI', s.freezeAI, (v) => { s.freezeAI = v; }));
       gc.append(check('Force clutch time', s.forceClutch, (v) => { s.forceClutch = v; }));
       gc.append(check('Defense switches everything', s.switchAll, (v) => { s.switchAll = v; }));
@@ -291,6 +295,7 @@ export function initDevPanel() {
     dd.append(check('Play assignment path', d.paths, (v) => (d.paths = v)));
     dd.append(check('AI targets', d.aiTargets, (v) => (d.aiTargets = v)));
     dd.append(check('Hitboxes', d.hitboxes, (v) => (d.hitboxes = v)));
+    dd.append(check('Post up debug (mode, locks)', d.post, (v) => (d.post = v)));
     root.append(section('Debug draw', dd));
 
     // presets
@@ -311,6 +316,22 @@ export function initDevPanel() {
     root.append(section('Presets / save', pz));
   }
 
+  function postTest(gap: number) {
+    const s = app.sim; const u = s?.user;
+    if (!s || !u || !s.userOnCourt) return;
+    s.giveBall(u); s.possession = u.team; s.live = true; s.assignMatchups();
+    const rim = s.rim(u.team);
+    const out = { x: u.p.x - rim.x, y: u.p.y - rim.y }, l = Math.hypot(out.x, out.y) || 1;
+    u.p = { x: rim.x + (out.x / l) * 12, y: rim.y + (out.y / l) * 12 };
+    u.vel = { x: 0, y: 0 }; u.deadDribble = false; u.dribbledSinceCatch = true;
+    const d = spawnDefender(2.4);
+    if (!d) return;
+    // pick his strength so post - postD lands as close to the gap as it can
+    let best = d.core.strength, bd = 1e9;
+    for (let st = 1; st <= 99; st++) { d.core.strength = st; d.recompute(); const e = Math.abs(u.sub.post - d.sub.postD - gap); if (e < bd) { bd = e; best = st; } }
+    d.core.strength = best; d.recompute();
+  }
+
   function spawnDefender(ft: number) {
     const s = app.sim; const u = s?.user;
     if (!s || !u) return;
@@ -324,6 +345,7 @@ export function initDevPanel() {
     d.p = { x: u.p.x + (dir.x / l) * ft, y: u.p.y + (dir.y / l) * ft };
     d.guarding = u.id; d.vel = { x: 0, y: 0 };
     app.changed();
+    return d;
   }
 }
 

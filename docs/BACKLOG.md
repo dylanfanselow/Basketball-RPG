@@ -30,7 +30,8 @@
 - **Random in-season events** and off-court **story** (`src/career/story.ts` has the types/effects).
 - Character creator UI (appearance editing exists only in the dev panel).
 - Season standings, other games simulated, playoffs (playoff games should set `GameConfig.bigGame` → home crowd in team colors).
-- Post-up moves (Strength currently only affects contact, screens, box-outs).
+- Post moves beyond the basics (drop step, up-and-under, spin out of the post), post perks (e.g. a post-hook / anchor
+  tree branch), AI double-team rules against post-ups.
 
 ## Known gaps / polish
 - Courtside celebrities and bench players only have seated / standing / phone / shock frames (no walking).

@@ -2,7 +2,8 @@ import type { GameSim } from '../game';
 import { Player } from '../player';
 import { spot, hc, inFrontcourt, toHc } from '../court';
 import { Vec, dist, norm, sub, add, scale, segDist, clamp01, dot, len, v } from '../math';
-import { evaluateShot, selectShotType } from '../shooting';
+import { evaluateShot, selectShotType, ShotEval } from '../shooting';
+import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
@@ -183,6 +184,9 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     return;
   }
 
+  // post mode: back him down, then a post shot out of the window (or kick it out of a double)
+  if (p.aiMode === 'post') { postAI(sim, p); return; }
+
   // drive mode: attack until close, then finish
   if (p.aiMode === 'drive' && sim.time < p.aiModeUntil) {
     sim.steer(p, rim, true);
@@ -244,8 +248,14 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   }
 
-  const type = selectShotType(p, side, v(), sim.time);
-  const ev = evaluateShot(p, sim.opp(p.team), side, type, { now: sim.time, clutch: sim.clutch });
+  // bigs with an edge on their man post him up
+  if (!iso && sinceCatch > 0.3 && urgency < 0.75 && wantsPost(sim, p)) {
+    p.aiMode = 'post'; p.aiModeUntil = sim.time + sim.rng.range(2.5, 4.5);
+    postAI(sim, p);
+    return;
+  }
+
+  const { type, ev } = bestShot(sim, p);
   const myEV = ev.pct * ev.pts;
   // keep everyone involved: high-usage players get pickier, low-touch teammates get looked for
   const team = sim.teams[p.team].onCourt;
@@ -315,4 +325,64 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const pos = a && a.act === 'handle' ? sim.assignmentPos(p, a) : add(p.p, scale(norm(sub(spot(side, 'top'), p.p)), Math.min(3, dist(p.p, spot(side, 'top')))));
   sim.steer(p, pos, false, 0.8);
   void len; void dt;
+}
+
+/**
+ * The handler's best look from here: the normal shot, or a Fade Away (if he owns it) when the jumper is contested and
+ * fading off the contest is worth more.
+ */
+function bestShot(sim: GameSim, p: Player): { type: string; ev: ShotEval } {
+  const side = sim.side(p.team), now = sim.time, opp = sim.opp(p.team);
+  const type = selectShotType(p, side, v(), now);
+  const ev = evaluateShot(p, opp, side, type, { now, clutch: sim.clutch });
+  if (p.hasShot('fade') && (type === 'mid' || type === 'push' || type === 'floater') && ev.contest > 0.25) {
+    const fev = evaluateShot(p, opp, side, 'fade', { now, clutch: sim.clutch });
+    if (fev.pct * fev.pts > ev.pct * ev.pts * 1.05) return { type: 'fade', ev: fev };
+  }
+  return { type, ev };
+}
+
+/** Should this handler post his man up? Bigs (or strong post players) 6-16 ft out with an edge, now and then. */
+function wantsPost(sim: GameSim, p: Player): boolean {
+  if (!(p.pos === 'C' || p.pos === 'PF' || p.sub.post >= 62) || !canPost(sim, p)) return false;
+  const d = dist(p.p, sim.rim(p.team));
+  if (d < 6 || d > 16) return false;
+  const def = postDefender(sim, p);
+  if (!def) return false;
+  const gap = postGap(p, def);
+  if (gap < -4) return false;
+  return sim.rng.chance(clamp01(0.12 + gap * 0.02));
+}
+
+/** Post mode: back down toward the rim, then let go and score out of the window; kick out of a double team. */
+function postAI(sim: GameSim, p: Player) {
+  const side = sim.side(p.team), rim = sim.rim(p.team), d = dist(p.p, rim);
+  const toRim = norm(sub(rim, p.p));
+  // let go -> shoot out of the window (hook mostly: stick sideways; layup when deep)
+  if (!p.post) {
+    if (sim.time < p.postWindowUntil) {
+      const lat = { x: -toRim.y, y: toRim.x };
+      const stick = d <= 5 ? v() : sim.rng.chance(0.75) ? lat : v();
+      sim.startShot(p, selectShotType(p, side, stick, sim.time));
+      p.aiMode = 'none';
+      return;
+    }
+    if (sim.time - p.postBumpedBackAt < POST.BACK_STUN + 0.3 && sim.time < p.aiModeUntil) { postIntent(p, true, toRim); return; }
+    if (sim.time - p.postWindowUntil < 0.3) { p.aiMode = 'none'; return; } // the window just closed unused
+    if (!canPost(sim, p) || sim.time > p.aiModeUntil) { p.aiMode = 'none'; return; }
+    postIntent(p, true, toRim); // (re)start the post
+    return;
+  }
+  // a second defender collapsing on him: kick it out
+  const def = p.post.defId;
+  const doubled = sim.opp(p.team).some((o) => o.id !== def && dist(o.p, p.p) < 4 && sim.time >= o.stunnedUntil);
+  if (doubled) {
+    let best: Player | null = null, bv = -1;
+    for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+    if (best && bv > 0.1) { sim.pass(p, best); p.aiMode = 'none'; return; }
+  }
+  const locked = !!def && sim.players.some((q) => q.id === def && sim.time < q.postLockUntil);
+  const release = d <= 7 || sim.time > p.aiModeUntil || (locked && sim.time - p.post.since > 1.2) || p.post.mode === 'weaker' && sim.time - p.post.since > 1.5;
+  postIntent(p, !release, toRim); // letting go opens the window; next think shoots
+  if (release && p.post.mode === 'weaker') p.aiMode = 'none'; // no window when he's stronger: back to the offense
 }
