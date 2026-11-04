@@ -420,6 +420,7 @@ export class GameScene extends Phaser.Scene {
     switch (e.kind) {
       case 'plant': if (d.move !== 'jab') sfx.squeak(pan); break;
       case 'dive': sfx.squeak(pan, 1.2); sfx.thud(pan, false); break;
+      case 'jelly': sfx.squeak(pan, 0.9); break;
       case 'gather': if (['layup', 'dunk', 'euro', 'stepThrough', 'stepThroughJumper'].includes(d.type)) sfx.squeak(pan, 0.7); break;
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;

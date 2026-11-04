@@ -33,6 +33,7 @@
 | 29 | `367b919` | Dev mode should let me add/remove perks and edit my player's name, appearance, stats and position | New *My player* section (name, position applied live, height, jersey #); perk search box (hides trees with no match); stats / perks / looks were already there |
 | 30 | `dab390b` | A 3v3 mode like Quick 5v5 with the same teams, 3v3 plays plus iso ball, lineup Guard (PG/SG) / Wing (SG/SF/PF) / Big (PF/C); try both full and half court | Quick 3v3: setup screen with swappable slots, play as, Full / Half court toggle; `halfCourt` sim option (check up top); 3v3 playbook (6 sets + 3 isos) at roles 1/3/5; iso for the best player |
 | 31 | `086ee6d` | Many new dunk animations unlocked by stats; D-Wade / D-Mitch windmill gather ability; High IQ perimeter perk showing who their play is for; ✕ on a loose ball = dive | 9-dunk package by Dunk rating (power vs flash risk/reward), Windmill Gather (Driving ability, `_wm` clips), High IQ banner + marker, loose-ball dive (state, clip, HUD, AI) |
+| 32 | (this round) | A fake where pressing shoot again mid-dunk hangs in the air into a jelly layup, delaying the shot past a block attempt; clean animation, large accuracy penalty, deep in the tree | Jelly Fake ability after Posterizer, `jelly` shot type + penalty term, hang physics, bit-on-the-dunk defenders can't block, `shot_jelly` clip, AI use |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

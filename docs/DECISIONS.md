@@ -123,6 +123,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 32: Jelly Fake** (`fi_jelly`, Finishing ability, cost 3, after Posterizer = far down the dunk prong): ✕ again
+  during a dunk windup aborts it into a hang (gravity ×0.25 until the release, +0.5 s) and a jelly layup (shot type
+  `jelly`: base 0.46 → 0.36, × `JELLY_MULT` 0.85 = the large penalty). Defenders who jumped at the dunk and are coming
+  down (`bitOnDunk`) can't block and contest ×0.3. AI owners jelly over a jumping shot blocker ~50%.
 - **Round 31: dunk package, Windmill Gather, High IQ, dives.**
   - Dunk styles unlock by Dunk rating (`dunks.ts`): flush / two-hand (all), tomahawk 62, hammer 68, cock-back 74,
     reverse 78, windmill 84, 360 90, 360 windmill 95. **Small risk / reward:** contested = power dunks; open = leaning to

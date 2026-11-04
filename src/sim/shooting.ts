@@ -43,6 +43,13 @@ export const isStepThrough = (type: string) => type === 'stepThrough' || type ==
 export const STEP_FINISH_FT = 11;
 
 /** Did this defender leave his feet on the shooter's most recent pump fake (and is still paying for it)? */
+/** Jelly Fake: did this defender jump at the dunk and is he coming down already? */
+export function bitOnDunk(def: Player, shooter: Player, now: number): boolean {
+  return shooter.dunkStartAt > -5 && def.lastJumpAt >= shooter.dunkStartAt - 0.05 && def.z < 0.6 && now - def.lastJumpAt < 1.6;
+}
+/** Jelly Fake: the hang (s) it adds before the release, and its make-chance term. */
+export const JELLY_HANG = 0.5, JELLY_MULT = 0.85;
+
 export function bitOnFake(def: Player, shooter: Player, now: number): boolean {
   return shooter.pumpFakeAt > -50 && def.lastJumpAt >= shooter.pumpFakeAt - 0.05 && now - def.lastJumpAt < 1.2;
 }
@@ -157,6 +164,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     if (d.state === 'stagger' || now < d.staggerUntil) state = 0.35;
     if (now < d.screenedUntil) state = Math.min(state, 0.5);
     if (isStepThrough(type) && bitOnFake(d, shooter, now)) state = Math.min(state, 0.15); // bit on the fake: stepped right past him
+    if (type === 'jelly' && bitOnDunk(d, shooter, now)) { state = Math.min(state, 0.3); notes.push(`${d.name} bit on the dunk`); }
     // post up: a defender stun-locked by bumps can't contest; one leaned on / sealed (even battle) only half-contests
     if (now < d.postLockUntil) { state = 0; notes.push(`${d.name} bumped`); }
     else if (now < d.postSealUntil || d.postedBy === shooter.id) { state = Math.min(state, POST_EVEN_CONTEST); notes.push(`${d.name} sealed`); }
@@ -193,6 +201,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const base = ctx.override?.base ?? curve(def.base, d);
   terms.push({ label: `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
   if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
+  if (type === 'jelly') terms.push({ label: 'Jelly Fake', value: JELLY_MULT, kind: 'perk' }); // finger-roll at the top of a hang
   const dk = type === 'dunk' && ctx.dunk ? DUNK[ctx.dunk] : null;
   if (dk && dk.mult !== 1) terms.push({ label: dk.name, value: dk.mult, kind: 'perk' }); // flashy dunks are riskier
 

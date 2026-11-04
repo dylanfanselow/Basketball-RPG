@@ -649,6 +649,21 @@ CLIPS.push(
     [0.85, dk('hang', [13, 107], [6, 92], null)], [1, DK_LAND]]),
 );
 
+// Jelly Fake (Finishing ability): up for the dunk, then the ball is pulled down to the hip, he hangs (knees tucked,
+// leaning back, off arm shielding) and swoops it up underhand off the fingertips. Release 0.75.
+const jellyPose = (legs: PosePatch, torso: PosePatch, hF: J, hB: J, ball: J | null): Pose => {
+  const pz = arms(P({ ...legs, ...torso }), hF, hB);
+  return { ...pz, ball: ball ? [pz.hF[0] + ball[0], pz.hF[1] + ball[1]] : null };
+};
+const JELLY_TUCK: PosePatch = { hip: [0, 54], kF: [10, 42], fF: [2, 26], kB: [-6, 38], fB: [-12, 24] };
+const JELLY_LEAN: PosePatch = { head: [-2, 90], neck: [-2, 81], sF: [-1, 78], sB: [-4, 78] };
+CLIPS.push({ name: 'shot_jelly', frames: 12, release: 0.75, post: 0.5, keys: [
+  { t: 0, pose: dk('rise', [7, 97], [5, 96], [1, 3]) },
+  { t: 0.25, pose: jellyPose(JELLY_TUCK, JELLY_LEAN, [6, 57], [16, 73], [0, 4]) },
+  { t: 0.5, pose: jellyPose(JELLY_TUCK, JELLY_LEAN, [-1, 58], [16, 75], [0, 4]) },
+  { t: 0.75, pose: jellyPose({ hip: [0, 54], kF: [8, 38], fF: [4, 20], kB: [-5, 34], fB: [-10, 18] }, { head: [1, 91], neck: [0, 82], sF: [1, 79], sB: [-2, 79] }, [13, 93], [12, 72], [1, 4]) },
+  { t: 1, pose: jellyPose({ hip: [0, 52], kF: [4, 26], fF: [4, 4], kB: [-2, 26], fB: [-4, 3] }, { head: [2, 90] }, [10, 100], [8, 74], null) }] });
+
 /**
  * Windmill Gather (Driving ability, D-Wade / Donovan Mitchell): the gather swings the ball in a big arm circle away
  * from the defender (forward and low, back past the hip, up and over) before the finish. Replaces the finish clip's
@@ -684,7 +699,7 @@ export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c
 /** Map a sim shot type to its animation clip. */
 export const SHOT_CLIP: Record<string, string> = {
   three: 'shot_jumper', deep3: 'shot_jumper', mid: 'shot_jumper', fade: 'shot_fade', push: 'shot_push', floater: 'shot_floater',
-  hook: 'shot_hook', layup: 'shot_layup', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
+  hook: 'shot_hook', layup: 'shot_layup', jelly: 'shot_jelly', euro: 'shot_euro', stepThrough: 'shot_stepThrough', stepThroughJumper: 'shot_stepThroughJumper', dunk: 'shot_dunk',
 };
 
 const lerpJ = (a: J, b: J, t: number): J => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];

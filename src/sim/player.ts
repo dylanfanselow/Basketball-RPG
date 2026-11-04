@@ -61,7 +61,7 @@ export class Player {
   /** side-drive direction (screen up/down) the flick-cross watches for, and until when */
   flickDir = 0; flickUntil = 0;
   bufferedMove: { stick: Vec; at: number } | null = null;
-  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean } | null = null;
+  pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean; jellyRead?: boolean } | null = null;
   /** post up (post.ts): the attacker's battle with the defender on his back */
   post: PostState | null = null;
   /** posted defender: stun-locked by bumps (no contest, no actions) until then */
@@ -74,6 +74,8 @@ export class Player {
   postWindowUntil = -9;
   /** attacker: the last bump (drives the bump / bumped-back animations) */
   postBumpAt = -9; postBumpedBackAt = -9;
+  /** dunk start (Jelly Fake: who jumped at the dunk) and the jelly hang (low gravity until then) */
+  dunkStartAt = -9; hangUntil = -9;
   /** the defender of the last post (for the window / post shot) */
   postDefId: string | null = null;
   /** this tick's post intent (L2 held + stick, or the AI's), consumed by updatePost */

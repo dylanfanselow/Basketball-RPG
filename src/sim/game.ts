@@ -2,7 +2,7 @@ import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG } from './shooting';
 import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -802,6 +802,8 @@ export class GameSim {
     u.boxOutHeld = shotUp && inp.bHeld; // ○ held while a shot is in the air = box out (either side)
     u.boxingOut = u.boxOutHeld && u.z === 0;
     if (hasBall) {
+      // ✕ again while going up for a dunk = Jelly Fake (owners)
+      if (inp.a && this.jellyFake(u)) { ux.aPending = false; return; }
       // ✕: tap = pump fake (repeatable), hold past TAP_S = shoot
       if (inp.a) { ux.aDownAt = this.time; ux.aPending = true; }
       if (ux.aPending) {
@@ -898,6 +900,7 @@ export class GameSim {
     const dunk = type === 'dunk' ? pickDunk(p, { contested: computeContest(p, this.opp(p.team), this.side(p.team), 'dunk', this.time).raw > 0.25, speedToRim, d: dist(p.p, this.rim(p.team)) }, this.rng) : null;
     const windmill = windmillGather(p, type, speedToRim);
     p.pendingShot = { type, override, dunk: dunk?.id, windmill };
+    if (type === 'dunk') p.dunkStartAt = this.time;
     onPostShot(this, p, this.time + p.stateDur); // out of the post: the defender stays locked / sealed through the release
     p.anim = { name: (dunk ? dunk.clip : `shot_${type}`) + (windmill ? '_wm' : ''), start: this.time, release: this.time + p.stateDur };
     this.quiet('gather', { type }, p.id);
@@ -1141,6 +1144,30 @@ export class GameSim {
     p.screenHit = false;
   }
 
+  /** Jelly Fake possible right now? Owner, mid-dunk, before the release, not already jellied. */
+  canJelly(p: Player): boolean {
+    return p.state === 'shoot' && p.pendingShot?.type === 'dunk' && p.stateT < p.stateDur && p.mods.pAdd('jelly') > 0;
+  }
+
+  /**
+   * Jelly Fake (Finishing ability): abort the dunk in the air, hang, and flick a jelly layup JELLY_HANG later. Shot
+   * blockers who jumped at the dunk come down first (no block, contest x0.3); the jelly itself is a hard shot.
+   */
+  jellyFake(p: Player): boolean {
+    if (!this.canJelly(p)) return false;
+    const ps = p.pendingShot!;
+    p.pendingShot = { type: 'jelly', override: ps.override };
+    p.stateDur += JELLY_HANG;
+    const release = this.time + (p.stateDur - p.stateT);
+    p.anim = { name: 'shot_jelly', start: this.time, release };
+    p.hangUntil = release;
+    p.vz = Math.max(p.vz, 3); // keep rising a touch, then float
+    p.vel = scale(p.vel, 0.6); // drift under the rim
+    this.quiet('jelly', {}, p.id);
+    this.emit({ kind: 'move', text: 'Jelly Fake!', pid: p.id });
+    return true;
+  }
+
   /** Is the ball loose and on (or just off) the floor? Then ✕ is a dive. */
   diveable(): boolean { return this.live && this.ball.st.kind === 'loose' && this.ball.z < DIVE_BALL_Z; }
 
@@ -1227,6 +1254,11 @@ export class GameSim {
     for (const p of this.players) {
       p.stateT += dt;
       // timed states
+      // AI Jelly Fake: a shot blocker left his feet at the dunk -> hang and jelly it (about half the time)
+      if (p.state === 'shoot' && p.pendingShot?.type === 'dunk' && !p.pendingShot.jellyRead && this.isAI(p) && this.canJelly(p)) {
+        const jumper = this.opp(p.team).find((o) => o.z > 0.5 && dist(o.p, p.p) < 5);
+        if (jumper) { p.pendingShot.jellyRead = true; if (this.rng.chance(0.5)) this.jellyFake(p); }
+      }
       if (p.state === 'shoot' && p.stateT >= p.stateDur) this.releaseShot(p);
       if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove' || p.state === 'dive') && p.stateT >= p.stateDur) {
         const wasMove = p.state === 'dribbleMove';
@@ -1271,7 +1303,7 @@ export class GameSim {
       }
       p.p = this.clampFor(p, add(p.p, scale(p.vel, dt)));
       if (p.z > 0 || p.vz > 0) {
-        p.vz -= 32 * dt; p.z += p.vz * dt;
+        p.vz -= 32 * dt * (this.time < p.hangUntil ? 0.25 : 1); p.z += p.vz * dt; // Jelly Fake: hang time
         if (p.z <= 0) { p.z = 0; p.vz = 0; if (p.state === 'jump') p.state = 'idle'; }
       }
       const sp = len(p.vel);
