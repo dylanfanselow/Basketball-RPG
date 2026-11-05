@@ -41,7 +41,7 @@
 | 36b | `7f5a1bc` | Cat on the couch on the blanket, calendar on the garage-door wall by the fridge, bookshelf merged into the wall, doors too long, TV + couch should face each other, plump pillow / blanket, cabinet doors facing left, dish rack, dirty cereal bowl behind the bonsai, peninsula not island, pole from the top fume duct to its end | All of those (cat perch + hops + pathfinding, `SPOTS`, layout + art rework) |
 | 36c | `10347b3` | Cat more angular and taller (pixel-cat reference); pillow and blanket need volume, pillow on the seat + back cushion, blanket the other way round; armchair by the door faces left; remove the bowl | New cat frames, shaded dome-fold blanket heap + tilted thick pillow, side-view armchair facing left, bowl removed |
 | 36d | `664ce10` | The blanket looks like a sausage, it should be a sheet | Blanket redrawn as one draped sheet (surface-lit, wrinkles from under the cat, border + fringe) |
-| 36e | `TBD` | Remove the pole and the shoes by the cabinet; rotate that cabinet 90° counter-clockwise | Pole + top duct removed, slippers removed, wardrobe against the left wall with doors facing right |
+| 36e | `6eba32d` | Remove the pole and the shoes by the cabinet; rotate that cabinet 90° counter-clockwise | Pole + top duct removed, slippers removed, wardrobe against the left wall with doors facing right |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
