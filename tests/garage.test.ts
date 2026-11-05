@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GARAGE } from '../src/world/garage';
-import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, rightBound } from '../src/world/apartment';
+import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, stationNear, wallL, rightBound } from '../src/world/apartment';
+import { CLIP } from '../src/render/anim';
 
 const polys = solids([], GARAGE);
 const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
@@ -34,7 +35,7 @@ describe('garage', () => {
   });
 
   it('equipment, the hoop base and the van are solid from every side', () => {
-    for (const piece of GARAGE.furniture) {
+    for (const piece of GARAGE.furniture.filter((f) => f.solid)) {
       const poly = footprint(piece);
       const cx = poly.reduce((a, p) => a + p.x, 0) / poly.length, cy = poly.reduce((a, p) => a + p.y, 0) / poly.length;
       for (let k = 0; k < 12; k++) {
@@ -66,5 +67,19 @@ describe('garage', () => {
     expect(arrive.side).toBe('L'); // the door from the apartment is on the garage's left wall
     expect(arrive.to!.scene).toBe('Apartment');
     expect(APARTMENT.doors.some((d) => d.id === arrive.to!.at)).toBe(true);
+  });
+
+  it('every workout has its animation, a free spot you can reach, and ✕ there picks it', () => {
+    const ids = GARAGE.stations!.map((s) => s.id);
+    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'rope', 'treadmill']));
+    for (const s of GARAGE.stations!) {
+      expect(CLIP[s.clip]).toBeDefined();
+      expect(CLIP[s.clip].loop).toBe(true);
+      expect(isFree(s.spot, PLAYER_R * 0.9, polys)).toBe(true);
+      expect(stationNear(s.spot, GARAGE)?.id).toBe(s.id);
+    }
+    // the squat is shown facing us, the treadmill from behind, the rest side-on
+    expect(GARAGE.stations!.find((s) => s.id === 'squat')!.yaw).toBe(90);
+    expect(GARAGE.stations!.find((s) => s.id === 'treadmill')!.yaw).toBe(-90);
   });
 });

@@ -209,10 +209,6 @@ function drawFloorStuff(c: C) {
     if (y === my0 || x === mx0) col = '#7a3e12';
     P(c, x, y, col);
   }
-  // jump rope coiled on the floor, yellow handles
-  const jx = Math.round(AX(10.6)), jy = Math.round(AY(18.6));
-  for (let k = 0; k < 120; k++) { const a = k * 0.16, r = 6 + (k % 40) * 0.25; P(c, jx + Math.round(Math.cos(a) * r * 1.6), jy + Math.round(Math.sin(a) * r * 0.6), '#d8c048'); }
-  R(c, jx + 14, jy - 2, 7, 3, '#e2a83a'); R(c, jx - 22, jy + 3, 7, 3, '#e2a83a');
   // a pair of trainers by the boxes, black kettlebell shadows are on the piece
   const SNEAKER = ['...ooooo.........', '..oCCCCUoo.......', '..oUUUUULLoo.....', '.oUHUUUUULLUoo...', '.oUUAAAAAUUUUUoo.', 'oSSSSSSSSSSSSSSSo', '.ooooooooooooooo.'];
   const pal: Record<string, string> = { o: '#1d1d1d', U: '#e8e4da', H: '#ffffff', C: '#2a2a2a', L: '#c8433a', A: '#c8433a', S: '#3a3a3a' };
@@ -248,7 +244,7 @@ const plateFace = (c: C, cx: number, cy: number, r: number) => {
 };
 
 /** Bench press: pad long axis left→right, uprights at the left end, the bar running into the room (plates face-on). */
-function drawBench(c: C, p: Piece) {
+function drawBench(c: C, p: Piece, frame = 0) {
   const padX0 = p.x + 1.7, padX1 = p.x + p.w - 0.2, py0 = p.y + 0.9, py1 = p.y + 2.1;
   // frame legs + pad
   for (const lx of [padX0 + 0.3, padX1 - 0.5]) block(c, lx, lx + 0.25, py0 + 0.2, py1 - 0.2, 1.25, STEEL);
@@ -260,16 +256,15 @@ function drawBench(c: C, p: Piece) {
   const back = block(c, ux, ux + 0.3, p.y + 0.2, p.y + 0.5, 3.9, STEEL);
   const plateR = 11, bx = Math.round(AX(ux + 0.15));
   const by0 = Math.round(AY(p.y) - barH * HF), by1 = Math.round(AY(p.y + p.d) - barH * HF);
-  plateFace(c, bx, by0, plateR);                                        // far plate (higher on screen)
-  R(c, bx - 1, by0, 3, by1 - by0, '#8e969a'); R(c, bx - 1, by0, 1, by1 - by0, CHROME);   // the bar
+  if (frame === 0) { plateFace(c, bx, by0, plateR); R(c, bx - 1, by0, 3, by1 - by0, '#8e969a'); R(c, bx - 1, by0, 1, by1 - by0, CHROME); } // far plate + the bar
   const front = block(c, ux, ux + 0.3, p.y + p.d - 0.5, p.y + p.d - 0.2, 3.9, STEEL);
   for (const u of [back, front]) R(c, u.x0 - 2, u.faceTop + 6, u.x1 - u.x0 + 4, 2, STEEL_L);
-  plateFace(c, bx, by1, plateR);                                        // near plate
+  if (frame === 0) plateFace(c, bx, by1, plateR);                       // near plate
   void footprint;
 }
 
 /** Squat rack against the back wall, facing us: four uprights, J-hooks, a loaded bar left→right (plates edge-on). */
-function drawSquatRack(c: C, p: Piece) {
+function drawSquatRack(c: C, p: Piece, frame = 0) {
   const x0 = p.x + 0.3, x1 = p.x + p.w - 0.3, yb = p.y + 0.2, yf = p.y + p.d - 0.3, H = 7.6;
   R(c, Math.round(AX(x0)) - 2, Math.round(AY(yf)) - 3, Math.round(AX(x1) - AX(x0)) + 6, 4, '#24272b'); // floor frame
   for (const ux of [x0, x1 - 0.3]) block(c, ux, ux + 0.3, yb, yb + 0.3, H, '#2c2f34');                // back uprights
@@ -281,8 +276,8 @@ function drawSquatRack(c: C, p: Piece) {
   for (const ux of [x0 + 0.05, x1 - 0.25]) R(c, Math.round(AX(ux)), Math.round(AY(yb) - 2.3 * HF), 3, Math.round(AY(yf) - AY(yb)) + 1, '#9aa2a6');
   // the loaded bar on the J-hooks (in front of the back uprights, behind the front ones)
   const barY = Math.round(AY(yf - 0.2) - 4.6 * HF), bL = Math.round(AX(p.x - 0.8)), bR = Math.round(AX(p.x + p.w + 0.8));
-  R(c, bL, barY - 1, bR - bL, 3, '#6e767a'); R(c, bL, barY - 1, bR - bL, 1, CHROME);
-  for (const [px, dir] of [[Math.round(AX(p.x - 0.1)), -1], [Math.round(AX(p.x + p.w + 0.1)), 1]] as const) {
+  if (frame === 0) R(c, bL, barY - 1, bR - bL, 3, '#6e767a'); if (frame === 0) R(c, bL, barY - 1, bR - bL, 1, CHROME);
+  if (frame === 0) for (const [px, dir] of [[Math.round(AX(p.x - 0.1)), -1], [Math.round(AX(p.x + p.w + 0.1)), 1]] as const) {
     for (let k = 0; k < 2; k++) {
       const ex = px + dir * k * 4, r = 13 - k * 3;
       R(c, ex - 2, barY - r - 1, 4, r * 2 + 2, '#141618'); R(c, ex - 1, barY - r, 2, r * 2, k ? '#3a6fb5' : '#2a2d31'); R(c, ex - 1, barY - r, 1, r * 2, k ? '#6a9ad8' : '#55595c');
@@ -435,6 +430,13 @@ function drawBoxes(c: C, p: Piece) {
   }
 }
 
+/** The jump rope lying coiled on the floor, yellow handles. */
+function drawJumpRope(c: C, p: Piece) {
+  const jx = Math.round(AX(p.x + 1.0)), jy = Math.round(AY(p.y + 0.4));
+  for (let k = 0; k < 120; k++) { const a = k * 0.16, r = 6 + (k % 40) * 0.25; P(c, jx + Math.round(Math.cos(a) * r * 1.6), jy + Math.round(Math.sin(a) * r * 0.6), '#d8c048'); }
+  R(c, jx + 14, jy - 2, 7, 3, '#e2a83a'); R(c, jx - 22, jy + 3, 7, 3, '#e2a83a');
+}
+
 function drawKettlebells(c: C, p: Piece) {
   for (const [dx, dy, r] of [[0.3, 0.6, 5], [1.0, 0.4, 6], [1.5, 0.9, 4]] as const) {
     const cx = Math.round(AX(p.x + dx)), cy = Math.round(AY(p.y + dy)) - r;
@@ -443,7 +445,8 @@ function drawKettlebells(c: C, p: Piece) {
   }
 }
 
-const DRAW: Record<string, (c: C, p: Piece) => void> = {
+const DRAW: Record<string, (c: C, p: Piece, frame: number) => void> = {
+  jumpRope: drawJumpRope,
   bench: drawBench, squatRack: drawSquatRack, treadmill: drawTreadmill, hoop: drawHoop, car: drawCar, boxes: drawBoxes, kettlebells: drawKettlebells,
 };
 
@@ -456,7 +459,8 @@ export function buildGarageArt(tm: Phaser.Textures.TextureManager): { bg: string
   for (const p of GARAGE_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
     const key = `garage_${p.id}`;
-    const art = CACHE.get(key) ?? bake(tm, key, 1, (c) => draw(c, p));
+    const frames = p.kind === 'bench' || p.kind === 'squatRack' ? 2 : 1;
+    const art = CACHE.get(key) ?? bake(tm, key, frames, (c, f) => draw(c, p, f));
     CACHE.set(key, art);
     pieces.push({ ...art, depthFt: p.y + p.d, piece: p });
   }

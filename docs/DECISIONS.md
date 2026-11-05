@@ -154,6 +154,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 38: garage workouts.** Animations for the player using the **squat rack, push-up mat, jump rope, bench
+  press and treadmill**: ✕ at the equipment starts it, ✕ / ○ / L1 stops. Orientation follows the equipment: squat
+  facing us inside the rack (bar across the shoulders, off the hooks), bench press lying along the bench with the head
+  under the uprights (bar into the room, plates face-on, off the uprights), push-ups and jump rope side-on (the rope
+  loops around you; the coiled rope leaves the floor), treadmill from behind running toward the console. No stat or
+  energy effects yet.
 - **Round 37: the garage gym + an art rule.**
   - **Rule (owner):** for this and all future drawings, **follow the reference material's orientation** for every
     object — don't draw things facing the camera by default. (Also in CLAUDE.md.)

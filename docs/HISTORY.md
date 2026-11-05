@@ -50,6 +50,7 @@
 | 37c | `8476dcf` | Keep the earlier angle (slanted right wall); just don't show the house siding past the right post | Right wall restored, nothing drawn past the post, fastback along the right wall, posters/shelf refit to the back wall |
 | 37d | `ce79749` | The garage backboard looks strange, make it normal | Backboard redrawn as a normal rectangle (frame, shooter's square, padded edge) turned slightly toward us, rim + net out front |
 | 37e | `f95594b` | The board should face fully right — only the side view, no perspective | Garage hoop drawn in pure side view: board edge as a thin slab, flat rim straight out to the right, net below |
+| 38 | `TBD` | Animations for the player using the squat rack, push-up mat, jump rope, bench press and treadmill | Workout stations (✕ to start/stop), clips squat / pushup / benchPress / jumpRope (+ jog from behind), moving bar + rope props, equipment frames without the bar |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

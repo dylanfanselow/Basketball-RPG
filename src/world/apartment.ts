@@ -30,7 +30,7 @@ export type Kind =
   | 'fridge' | 'counter' | 'island' | 'lamp' | 'couch' | 'tank' | 'tvTable' | 'coffeeTable' | 'armchair'
   | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash'
   // garage (round 37)
-  | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'car' | 'boxes' | 'kettlebells';
+  | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'car' | 'boxes' | 'kettlebells' | 'jumpRope';
 
 /** x/y/w/d = bounding footprint; `poly` (optional) = the real footprint when it isn't a rectangle (along a slanted wall). */
 export interface Piece { id: string; kind: Kind; x: number; y: number; w: number; d: number; solid: boolean; poly?: Poly }
@@ -114,9 +114,18 @@ export function actorDepthFt(pos: V, pieces: Piece[], overlaps: (p: Piece) => bo
 /** A piece's fixed depth (feet): the front edge of its footprint. */
 export const pieceDepthFt = (p: Piece) => Math.max(...footprint(p).map((q) => q.y));
 
-/** A walkable room: its furniture, doors and default spawn (all rooms share the cutaway frame `ROOM`). */
-/** `rightX`: the room runs straight to a cut-off at this x (feet) instead of a slanted right wall (the garage). */
-export interface RoomDef { id: string; furniture: Piece[]; doors: Door[]; spawn: V; rightX?: number }
+/**
+ * Something you can use (round 38: garage workouts). ✕ within reach of `spot` starts it: you move to `at` and loop
+ * `clip` (one rep every `period` s), shown at `yaw` (0 = side view, 90 = facing us, -90 = facing away), mirrored if
+ * `flip`, raised `lift` ft (standing on a treadmill deck). `depthFt` overrides the draw depth while in use.
+ */
+export interface Station { id: string; label: string; spot: V; at: V; clip: string; period: number; yaw: number; flip: boolean; lift: number; depthFt?: number }
+
+/**
+ * A walkable room: its furniture, doors, default spawn and stations (all rooms share the cutaway frame `ROOM`).
+ * `rightX`: the room runs straight to a cut-off at this x (feet) instead of a slanted right wall.
+ */
+export interface RoomDef { id: string; furniture: Piece[]; doors: Door[]; spawn: V; rightX?: number; stations?: Station[] }
 export const APARTMENT: RoomDef = { id: 'apartment', furniture: FURNITURE, doors: DOORS, spawn: SPAWN };
 
 /** Everything solid: furniture footprints + the four walls (big polygons outside the floor). */
@@ -194,6 +203,13 @@ export function isFree(p: V, r: number, polys: Poly[]): boolean {
 
 /** The room's right boundary at depth y (feet). */
 export const rightBound = (y: number, room: RoomDef = APARTMENT) => room.rightX ?? wallR(y);
+
+/** The station within reach of p (closest first), if any. */
+export function stationNear(p: V, room: RoomDef, reach = 1.4): Station | null {
+  let best: Station | null = null, bd = reach;
+  for (const s of room.stations ?? []) { const k = Math.hypot(p.x - s.spot.x, p.y - s.spot.y); if (k <= bd) { bd = k; best = s; } }
+  return best;
+}
 
 /** The door within reach of p (closest first), if any. */
 export function doorNear(p: V, reach = 1.6, room: RoomDef = APARTMENT): Door | null {

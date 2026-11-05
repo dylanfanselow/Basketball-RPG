@@ -25,8 +25,8 @@
    stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)
-- **Garage follow-ups (round 37):** training on the equipment (squat rack, bench, treadmill, speed bag, hoop for
-  shooting practice), energy cost, maybe drive the van somewhere.
+- **Garage follow-ups (round 38):** workouts animate but don't train yet — stat gains / energy + food cost per rep or
+  session, speed bag and dip station, the hoop for shooting practice, maybe fix up the car.
 - **Apartment follow-ups (round 36):** fridge = eat
   (food bar), sleep on the couch to end the day (energy bar, `life.day`++), calendar screen (key games + special
   events), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in

@@ -585,6 +585,35 @@ CLIPS.push({ name: 'dive', frames: 12, keys: [
   { t: 0.86, pose: { head: [12, 50], neck: [9, 43], sF: [8, 40], sB: [5, 41], eF: [15, 30], hF: [20, 20], eB: [12, 31], hB: [16, 20], hip: [-6, 24], kF: [8, 14], fF: [12, 0], kB: [-14, 2], fB: [-36, 1], ball: null } },
   { t: 1, pose: P({ hip: [0, 46], kF: [5, 23], fF: [8, 0], kB: [-6, 23], fB: [-9, 0], head: [3, 87], neck: [2, 78], sF: [3, 75], sB: [-1, 75], eF: [7, 63], hF: [11, 52], eB: [3, 63], hB: [6, 52] }) }] });
 
+// ---------- garage workouts (round 38) ----------
+// Side-view poses like every clip (+x = facing). The squat is shown from the front (multi-angle yaw 90) and the
+// treadmill reuses `jog` from behind (yaw -90); push-ups, bench press and jump rope are side views. `lat: {}` keeps the
+// keyed arm lengths (rigArms only stretches arms of free clips without lat).
+const kneeUp = (p: Pose, fF: J, fB: J): Pose => {            // legs bending the knee upward (lying on a bench)
+  const a = limb(p.hip, fF, THIGH, SHIN, -1), b = limb(p.hip, fB, THIGH, SHIN, -1);
+  return { ...p, kF: a.mid, fF: a.end, kB: b.mid, fB: b.end };
+};
+const SQ_LAT = { hF: 15, hB: -15, eF: 13, eB: -13, kF: 4, kB: -4, fF: 5, fB: -5 };
+const SQ_UP = arms(legs(P({ head: [1, 91], neck: [0, 82], sF: [1, 79], sB: [-1, 79], hip: [0, 51] }), [3, 0], [-3, 0]), [-2, 82], [-3, 82]);
+const SQ_DOWN = arms(legs(P({ head: [9, 67], neck: [6, 58], sF: [6, 55], sB: [4, 55], hip: [-12, 30] }), [3, 0], [-3, 0]), [3, 58], [2, 58]);
+CLIPS.push({ name: 'squat', frames: 12, loop: true, keys: [
+  { t: 0, pose: { ...SQ_UP, lat: SQ_LAT } },
+  { t: 0.42, pose: { ...SQ_DOWN, lat: { ...SQ_LAT, kF: 9, kB: -9 } } },
+  { t: 0.55, pose: { ...SQ_DOWN, lat: { ...SQ_LAT, kF: 9, kB: -9 } } },
+  { t: 1, pose: { ...SQ_UP, lat: SQ_LAT } }] });
+const PU_UP = arms({ head: [37, 32], neck: [33, 30], sF: [30, 27], sB: [29, 28], eF: [30, 13], eB: [29, 13], hF: [30, 0], hB: [28, 0], hip: [4, 18], kF: [-18, 11], kB: [-19, 12], fF: [-44, 2], fB: [-45, 3], ball: null, lat: {} }, [30, 0], [28, 0]);
+const PU_DOWN = arms({ head: [37, 14], neck: [33, 12], sF: [30, 9], sB: [29, 10], eF: [20, 12], eB: [19, 12], hF: [30, 0], hB: [28, 0], hip: [7, 7], kF: [-17, 5], kB: [-18, 6], fF: [-44, 2], fB: [-45, 3], ball: null, lat: {} }, [30, 0], [28, 0], [-1, -1]);
+CLIPS.push({ name: 'pushup', frames: 10, loop: true, keys: [{ t: 0, pose: PU_UP }, { t: 0.45, pose: PU_DOWN }, { t: 0.55, pose: PU_DOWN }, { t: 1, pose: PU_UP }] });
+// bench press: lying on the back, head toward +x (the scene flips it so the head is under the uprights)
+const BP_BODY = kneeUp({ head: [28, 31], neck: [21, 29], sF: [16, 28], sB: [16, 29], eF: [16, 28], eB: [16, 29], hF: [16, 28], hB: [16, 29], hip: [-12, 26], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {} }, [-30, 0], [-35, 0]);
+const BP_UP = arms(BP_BODY, [17, 55], [16, 55]);
+const BP_DOWN = arms(BP_BODY, [14, 37], [13, 37], [1, 1]);
+CLIPS.push({ name: 'benchPress', frames: 12, loop: true, keys: [{ t: 0, pose: BP_UP }, { t: 0.45, pose: BP_DOWN }, { t: 0.55, pose: BP_DOWN }, { t: 1, pose: BP_UP }] });
+// jump rope: small hops on the balls of the feet, hands by the hips turning the rope
+const JR_DOWN = arms(legs(P({ head: [2, 90], neck: [1, 81], sF: [2, 78], sB: [-1, 78], hip: [0, 49] }), [3, 0], [-2, 0]), [10, 52], [8, 52]);
+const JR_UP = arms(legs(P({ head: [2, 96], neck: [1, 87], sF: [2, 84], sB: [-1, 84], hip: [0, 56] }), [4, 6], [-1, 5]), [10, 58], [8, 58]);
+CLIPS.push({ name: 'jumpRope', frames: 8, loop: true, keys: [{ t: 0, pose: { ...JR_DOWN, lat: {} } }, { t: 0.5, pose: { ...JR_UP, lat: {} } }, { t: 1, pose: { ...JR_DOWN, lat: {} } }] });
+
 // ---------- dunk package (dunks.ts: unlocks with the Dunk rating) ----------
 // Same timing as shot_dunk (11 frames, release 0.7, post 0.6) so the ball flight and the sound stay in sync.
 // Legs / hips per phase are shot_dunk's; the arms are solved at fixed length and the ball rides the hand.

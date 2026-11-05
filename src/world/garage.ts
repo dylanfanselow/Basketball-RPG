@@ -1,4 +1,4 @@
-import { Piece, Door, RoomDef, V, Poly, alongLeftWall, wallR } from './apartment';
+import { Piece, Door, RoomDef, Station, V, Poly, alongLeftWall, wallR } from './apartment';
 
 /**
  * The garage gym behind the apartment's left door (round 37), laid out like the owner's reference, in the same
@@ -22,6 +22,8 @@ export const GARAGE_FURNITURE: Piece[] = [
   { id: 'car', kind: 'car', x: 35.0, y: CAR.y0, w: 12, d: CAR.y1 - CAR.y0, solid: true, poly: carPoly() },
   { id: 'boxesL', kind: 'boxes', x: 2.3, y: 20.6, w: 3.4, d: 2.6, solid: true },
   { id: 'kettlebells', kind: 'kettlebells', x: 6.2, y: 22.0, w: 1.9, d: 1.2, solid: true },
+  // the jump rope lies coiled on the floor (its own piece so it can disappear while you skip)
+  { id: 'jumpRope', kind: 'jumpRope', x: 9.6, y: 18.2, w: 2.0, d: 0.8, solid: false },
   { id: 'boxesR', kind: 'boxes', x: 29.6, y: 20.4, w: 3.6, d: 2.6, solid: true },
 ];
 
@@ -32,4 +34,18 @@ export const GARAGE_DOORS: Door[] = [
 ];
 
 export const GARAGE_SPAWN: V = { x: 20.0, y: 13.0 };
-export const GARAGE: RoomDef = { id: 'garage', furniture: GARAGE_FURNITURE, doors: GARAGE_DOORS, spawn: GARAGE_SPAWN };
+
+/** Workouts (round 38): stand at the spot, ✕ to start, ✕ / L1 to stop. */
+export const GARAGE_STATIONS: Station[] = [
+  // squat inside the rack, facing us (the rack faces the camera), the bar across the shoulders
+  { id: 'squat', label: 'Squat', spot: { x: 20.8, y: 4.4 }, at: { x: 20.8, y: 1.9 }, clip: 'squat', period: 2.6, yaw: 90, flip: false, lift: 0, depthFt: 3.2 },
+  // bench press lying along the bench (long axis left→right), head under the uprights at the left end
+  { id: 'bench', label: 'Bench press', spot: { x: 14.4, y: 6.2 }, at: { x: 14.3, y: 3.7 }, clip: 'benchPress', period: 2.4, yaw: 0, flip: true, lift: 0, depthFt: 5.3 },
+  // push-ups on the mat, side view
+  { id: 'pushup', label: 'Push-ups', spot: { x: 19.4, y: 10.2 }, at: { x: 18.8, y: 10.4 }, clip: 'pushup', period: 1.5, yaw: 0, flip: false, lift: 0 },
+  // jump rope where it lies, side view
+  { id: 'rope', label: 'Jump rope', spot: { x: 10.6, y: 18.6 }, at: { x: 10.6, y: 18.6 }, clip: 'jumpRope', period: 0.5, yaw: 0, flip: false, lift: 0 },
+  // treadmill: on the belt, running toward the console (back to us)
+  { id: 'treadmill', label: 'Treadmill', spot: { x: 28.2, y: 7.9 }, at: { x: 28.2, y: 4.6 }, clip: 'jog', period: 0.62, yaw: -90, flip: false, lift: 0.65, depthFt: 7.0 },
+];
+export const GARAGE: RoomDef = { id: 'garage', furniture: GARAGE_FURNITURE, doors: GARAGE_DOORS, spawn: GARAGE_SPAWN, stations: GARAGE_STATIONS };

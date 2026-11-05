@@ -119,7 +119,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   right from the left wall), squat rack, bench press, treadmill, dip station + speed bag, shelves, duct + three
   hanging lamps with STONEY / KG / ADMIRAL posters under them, gym mat, jump rope, trainers, kettlebells, boxes; yard
   with a tree and pull-up bars outside. All solid,
-  same HUD and draw order as the apartment. No training interactions yet.
+  same HUD and draw order as the apartment.
+- **Workouts (round 38):** `RoomDef.stations` (`Station`: spot, at, clip, period, yaw, flip, lift, depthFt) +
+  `stationNear`; `RoomScene` start/stop (`activity`, prompt "✕ Squat" → "Squat · ✕ stop"), plays the station's clip
+  at its yaw (angled frames for the squat / treadmill), `activityFrame` / `jointToScreen` for props. Clips `squat`,
+  `pushup`, `benchPress`, `jumpRope` (+ `jog` from behind on the treadmill). `GarageScene` swaps the rack / bench to
+  their empty-hooks frame, hides the coiled rope, and draws the moving bar (edge-on plates for the squat, face-on for
+  the bench) and the turning rope loop. No stat / energy effects yet.
 
 ## Apartment (round 36)
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in

@@ -4,12 +4,12 @@ import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS } from '../sim/data';
 import { xpToNext, nextKeyGame } from '../career/career';
-import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade } from '../render/sprites';
-import { CLIP, frameAt } from '../render/anim';
+import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
+import { CLIP, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildIcons, ArtPiece, AS } from '../render/roomArt';
-import { V, Piece, RoomDef, actorDepthFt, pieceDepthFt, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
+import { V, Piece, RoomDef, Station, actorDepthFt, pieceDepthFt, PLAYER_R, RS, solids, moveWithCollision, doorNear, stationNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
 
 export const WALK = 6.2, JOG = 10.5; // ft/s
 export const ART = 1 / AS;           // scene units per art px (4/3)
@@ -36,6 +36,9 @@ export abstract class RoomScene extends Phaser.Scene {
   sheetKey = '';
   artOf = new Map<string, ArtPiece>();
   kit!: Kit;
+  /** The workout in progress (round 38), and how long it's been going. */
+  activity: Station | null = null;
+  actT = 0;
 
   abstract room(): RoomDef;
   /** Bake (or reuse) the background + piece textures. */
@@ -48,13 +51,15 @@ export abstract class RoomScene extends Phaser.Scene {
   onUpdate(_dt: number): void { /* optional */ }
   /** Room-specific draw order for other walkers. */
   sortExtras(_overlapsAt: (pos: V, w: number, h: number) => (p: Piece) => boolean): void { /* optional */ }
+  /** A workout started (station) or stopped (null): swap equipment pictures etc. */
+  onActivity(_st: Station | null): void { /* optional */ }
 
   /** `at` = the id of the door you come in through (you appear in front of it). */
   init(data?: { at?: string }) {
     const r = this.room(), door = data?.at ? r.doors.find((d) => d.id === data.at) : undefined;
     this.pos = { ...(door ? door.spot : r.spawn) };
     this.vel = { x: 0, y: 0 }; this.face = door ? { x: 0, y: 1 } : { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map();
+    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0;
   }
 
   create() {
@@ -127,6 +132,16 @@ export abstract class RoomScene extends Phaser.Scene {
     this.t += dt;
     this.inp.poll();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
+    if (this.activity) {
+      // working out: stay on the equipment; ✕, ○ or L1 stops
+      this.actT += dt;
+      if (this.inp.pressed('a') || this.inp.pressed('b') || this.inp.pressed('escape') || this.inp.pressed('back')) { this.stopActivity(); this.drawPlayer(0); return; }
+      {
+        this.prompt.setVisible(true).setText(`${this.activity.label}  ·  ✕ stop`).setPosition(sxOf(this.pos.x), syOf(this.pos.y) - 175);
+        this.drawPlayer(0); this.onUpdate(dt); this.sortDepths(); this.drawDebug();
+        return;
+      }
+    }
     if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Menu'); return; }
 
     // movement: stick = feet across / into the room, R2 or Shift hurries
@@ -140,9 +155,14 @@ export abstract class RoomScene extends Phaser.Scene {
     if (mag > 0.2) this.face = { x: m.x, y: m.y };
     this.dist += moved;
 
-    // doors
-    const door = doorNear(this.pos, 1.6, this.room());
-    this.prompt.setVisible(!!door);
+    // equipment first, then doors
+    const st = stationNear(this.pos, this.room());
+    const door = st ? null : doorNear(this.pos, 1.6, this.room());
+    this.prompt.setVisible(!!door || !!st);
+    if (st) {
+      this.prompt.setText(`✕ ${st.label}`).setPosition(sxOf(st.spot.x), syOf(st.spot.y) - 165);
+      if (this.inp.pressed('a')) this.startActivity(st);
+    }
     if (door) {
       this.prompt.setText(`✕ ${door.label}`).setPosition(sxOf(door.spot.x), syOf(door.spot.y) - 160);
       if (this.inp.pressed('a')) {
@@ -157,18 +177,44 @@ export abstract class RoomScene extends Phaser.Scene {
     this.drawDebug();
   }
 
+  startActivity(st: Station) {
+    this.activity = st; this.actT = 0; this.pos = { ...st.at }; this.vel = { x: 0, y: 0 };
+    this.onActivity(st);
+  }
+  stopActivity() {
+    const st = this.activity; if (!st) return;
+    this.activity = null; this.pos = { ...st.spot }; this.face = { x: 0, y: 1 }; this.view = undefined;
+    this.onActivity(null);
+  }
+  /** The clip, frame and pose (as drawn: arms rigged) the player shows right now in a workout. */
+  activityFrame(): { clip: string; fi: number; pose: Pose } | null {
+    const st = this.activity; if (!st) return null;
+    const cl = CLIP[st.clip], fi = frameAt(cl, this.actT / st.period);
+    return { clip: st.clip, fi, pose: rigArms(sampleClip(cl, frameTime(cl, fi)), false) };
+  }
+  /** Screen position of a pose joint for the player as drawn now (side view; mirrored if flipped). */
+  jointToScreen(j: J): V {
+    const k = (figureHeight(app.career.height) / 100) * SPRITE_SCALE, st = this.activity;
+    const flip = this.view?.flip ?? false;
+    void st;
+    return { x: this.player.x + (flip ? -j[0] : j[0]) * k, y: this.player.y - j[1] * k };
+  }
+
   drawPlayer(speed: number) {
     const c = app.career;
     const sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
-    const sx = sxOf(this.pos.x), sy = syOf(this.pos.y);
-    this.shadow.clear().fillStyle(0x2a1a0e, 0.32).fillEllipse(sx, sy, 34, 10);
+    const st = this.activity;
+    const sx = sxOf(this.pos.x), sy = syOf(this.pos.y) - (st ? st.lift * RS : 0);
+    this.shadow.clear();
+    if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat') this.shadow.fillStyle(0x2a1a0e, 0.32).fillEllipse(sx, sy, 34, 10);
     if (!sheet) return;
-    const clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
-    const u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
+    let clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
+    let u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
+    if (st) { clip = st.clip; u = this.actT / st.period; }
     const cl = CLIP[clip], fi = frameAt(cl, u);
     // multi-angle: facing toward the camera = +90 (room y grows toward us, like court y)
     const ang = (Math.atan2(this.face.y, this.face.x) * 180) / Math.PI;
-    this.view = yawFor(ang, this.view, 10);
+    this.view = st ? { yaw: st.yaw, flip: st.flip } : yawFor(ang, this.view, 10);
     let tex = this.sheetKey, frame: string | number = sheet.index[clip].start + fi;
     if (this.view.yaw !== 0) {
       const cache = angleCache(this, this.sheetKey, c.height, c.appearance, this.kit, ['idle', 'jog']);
@@ -178,6 +224,7 @@ export abstract class RoomScene extends Phaser.Scene {
     pumpSheet(this, this.sheetKey, 3, true);
     if (this.player.texture.key !== tex) this.player.setTexture(tex, frame); else this.player.setFrame(frame);
     this.player.setVisible(true).setPosition(sx, sy).setFlipX(this.view.flip);
+    void st;
   }
 
   /** Furniture keeps a fixed depth; walkers are sorted against the pieces their picture overlaps (`actorDepthFt`). */
@@ -190,7 +237,8 @@ export abstract class RoomScene extends Phaser.Scene {
         return ax0 < x1 && ax1 > x0 && ay0 < y1 && ay1 > y0;
       };
     };
-    this.player.setDepth(syOf(actorDepthFt(this.pos, this.room().furniture, overlapsAt(this.pos, 24, 155))));
+    const st = this.activity;
+    this.player.setDepth(st?.depthFt !== undefined ? syOf(st.depthFt) + 0.5 : syOf(actorDepthFt(this.pos, this.room().furniture, overlapsAt(this.pos, 24, 155))));
     this.sortExtras(overlapsAt);
   }
 
