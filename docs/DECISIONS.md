@@ -144,8 +144,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     stands off the wall (top, thickness, shadow).
   - **Round 36c:** the cat is **taller and more angular** (sharp ears with pink insides, tabby stripes, white chest;
     owner's pixel-cat reference for style only, eyes still `W I … I W`); the **pillow sits on the seat cushion and
-    leans on the back cushion**, the **blanket is a heap on the seat pulled up over the back cushion**, both shaded
-    with volume; the **armchair by the front door faces left**; the dirty cereal bowl is gone.
+    leans on the back cushion**, the **blanket is one draped sheet** (round 36d: not a heap) over the back cushion, down
+    across the seat and over the front edge, both shaded with volume; the **armchair by the front door faces left**; the dirty cereal bowl is gone.
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**

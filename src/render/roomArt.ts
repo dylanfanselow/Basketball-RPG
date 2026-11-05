@@ -478,35 +478,54 @@ function drawCouch(c: C, p: Piece) {
   }
   // feet
   for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
-  // rust blanket: a heap of soft rolled folds piled on the seat and pulled up over the back cushion. Each fold is a
-  // shaded dome (light from the top left, dark rims where folds tuck under each other), so the pile has volume.
-  const bx0 = Math.round(AX(x0 + p.w * 0.42)), bx1 = Math.round(AX(x1 - arm)) + 2, W = bx1 - bx0, top = back.top + 1;
-  const RAMP = ['#33100a', '#4e1a0a', '#6e2814', '#8c3a1d', '#a94b27', '#c25f35', '#d97a4a', '#e8956a'];
-  const folds: [number, number, number, number, number][] = [ // cx, cy (px from top), rx, ry, angle
-    [0.22, 7, 0.26, 7, -0.25], [0.6, 5, 0.3, 6, 0.08], [0.86, 9, 0.17, 7, 0.4],
-    [0.38, 17, 0.34, 9, 0.18], [0.78, 19, 0.24, 9, -0.3],
-    [0.55, 25, 0.2, 6, 0.7],
-    [0.27, 31, 0.3, 9, -0.12], [0.7, 33, 0.32, 9, 0.16],
-  ];
-  const hemRows: number[] = new Array(W).fill(-1);
-  for (const [fx, fy, frx, fry, ang] of folds) {
-    const cx = bx0 + fx * W, cy = top + fy, rx = frx * W, ry = fry, ca = Math.cos(ang), sa = Math.sin(ang), R0 = Math.max(rx, ry) + 2;
-    for (let y = Math.floor(cy - R0); y <= cy + R0; y++) for (let x = Math.floor(cx - R0); x <= cx + R0; x++) {
-      if (x < bx0 || x >= bx1) continue;
-      const dx = x - cx, dy = y - cy, u = (dx * ca + dy * sa) / rx, v = (-dx * sa + dy * ca) / ry, d = u * u + v * v;
-      if (d > 1) continue;
-      const nz = Math.sqrt(1 - d);                                  // dome normal
-      const light = nz * 0.55 - u * 0.25 - v * 0.55;                  // top-left light
-      let k = Math.round(2 + light * 5.5);
-      if (d > 0.86) k = v > 0.2 ? 1 : v < -0.2 ? Math.max(k, 4) : 2;   // tucked-under rim below, soft lit edge on top
-      if (y > seat.faceTop + 2) k -= 1;                               // hanging over the front: in shade
-      if (hn(x, y, 41) < 0.06) k -= 1;                                // weave
-      P(c, x, y, RAMP[Math.max(0, Math.min(RAMP.length - 1, k))]);
-      if (y > hemRows[x - bx0]) hemRows[x - bx0] = y;
+  // rust blanket: one sheet of fabric draped over the right half — over the top of the back cushion, down its face,
+  // across the seat and over the seat's front edge. Volume comes from how each surface catches the light (tops lit,
+  // faces mid, the hanging part in shade), soft wrinkles running out from where it bunches, and a woven border.
+  const bx0 = Math.round(AX(x0 + p.w * 0.44)), bx1 = Math.round(AX(x1 - arm)) + 1;
+  const RAMP = ['#3a1208', '#56200d', '#742c15', '#91391c', '#ab4825', '#c45b31', '#d9743f', '#e88f5c'];
+  const backFace = back.faceTop, seatTopRow = seat.top, seatFront = seat.faceTop;
+  const startRow = back.top + 2;
+  for (let y = startRow - 2; y < seat.yf; y++) {
+    // the sheet's side edges wander a little (it's draped, not cut square); the right side tucks against the arm
+    const lx = bx0 + Math.round(Math.sin(y * 0.23) * 2 + (y > seatFront ? (y - seatFront) * 0.5 : 0));
+    const rx = bx1 - Math.round(Math.abs(Math.sin(y * 0.19 + 1)) * 2);
+    for (let x = lx; x < rx; x++) {
+      const u = (x - bx0) / (bx1 - bx0);
+      // where the sheet ends: a soft wavy top edge on the back cushion, a scalloped hem hanging over the front
+      const topEdge = startRow + Math.round(Math.abs(Math.sin(u * 5.1)) * 2);
+      const hem = seatFront + 7 + Math.round(Math.sin(u * 11) * 2 + Math.sin(u * 4.3 + 1) * 2) + (u < 0.2 ? Math.round((0.2 - u) * 30) : 0);
+      if (y < topEdge || y > hem) continue;
+      // base tone by surface
+      let k = y < backFace ? 6 : y < seatTopRow ? 4 : y < seatFront ? 5 : 3;
+      // soft wrinkles fanning out from where it bunches on the seat (around the cat), plus a long diagonal fold
+      const ang = Math.atan2(y - (seatTopRow + 6), x - (bx0 + (bx1 - bx0) * 0.62));
+      const wr = Math.sin(ang * 7 + Math.hypot(x - bx0, y) * 0.05);
+      const diag = Math.sin((x * 0.5 - y * 0.9) * 0.22);
+      if (wr > 0.72) k += 1; else if (wr < -0.78) k -= 1;
+      if (diag > 0.85) k -= 1;
+      if (y >= seatFront && y <= seatFront + 1) k -= 1;          // the fold over the seat's front edge
+      if (y >= backFace - 1 && y <= backFace) k += 1;             // rolling over the top of the cushion face
+      if (y >= seatTopRow - 1 && y <= seatTopRow) k -= 1;         // tucked into the crease between back and seat
+      if (y > seatFront + 2) {                                    // hanging folds: vertical light / dark bands
+        const f = Math.sin(x * 0.55 + Math.sin(y * 0.2));
+        k += f > 0.5 ? 1 : f < -0.5 ? -1 : 0;
+      }
+      if (hn(x, y, 43) < 0.05) k -= 1;                             // weave
+      let col = RAMP[Math.max(0, Math.min(RAMP.length - 1, k))];
+      // woven border along the hem and the left edge
+      const dEdge = Math.min(hem - y, x - lx);
+      if (dEdge === 2 || dEdge === 3) col = mix(col, '#e2b35a', 0.55);
+      if (y === topEdge || x === lx || x === rx - 1 || y === hem) col = '#2e0e06';
+      P(c, x, y, col);
     }
   }
-  // fringe on the front folds + a little shadow on the seat front under the pile
-  hemRows.forEach((y, i) => { if (y < seat.faceTop) return; const x = bx0 + i; if (i % 2 === 0) { P(c, x, y + 1, '#e6c08a'); P(c, x, y + 2, '#c9a06a'); } c.fillStyle = 'rgba(40,10,5,0.3)'; c.fillRect(x, y + 3, 1, 2); });
+  // fringe on the hem + a soft shadow it throws on the seat front
+  for (let x = bx0; x < bx1; x++) {
+    const u = (x - bx0) / (bx1 - bx0);
+    const hem = seatFront + 7 + Math.round(Math.sin(u * 11) * 2 + Math.sin(u * 4.3 + 1) * 2) + (u < 0.2 ? Math.round((0.2 - u) * 30) : 0);
+    if (x % 2 === 0) { P(c, x, hem + 1, '#e6c08a'); P(c, x, hem + 2, '#c9a06a'); }
+    c.fillStyle = 'rgba(40,10,5,0.28)'; c.fillRect(x, hem + 3, 1, 2);
+  }
 
   // plump cream pillow: sitting on the seat cushion and leaning on the back cushion, tilted, with real thickness
   const pw = 30, ph = 27, pl = Math.round(AX(x0 + arm + 0.15)), pt = back.faceTop + 2, tilt = -0.2;
