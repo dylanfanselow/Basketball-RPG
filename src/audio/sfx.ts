@@ -313,25 +313,6 @@ class Sfx {
   }
 
   // ---------- garage workouts (round 39b) ----------
-  /** The rope cutting the air once a turn (faster spin = brighter, louder). */
-  ropeWhoosh(speed = 1) {
-    if (!this.ok()) return;
-    const k = Math.max(0.4, Math.min(1.6, speed));
-    this.noiseHit({ type: 'bandpass', f: 700 * k, f2: 2600 * k, q: 2.2, peak: 0.1 + 0.08 * k, a: 0.05, d: 0.12 });
-  }
-  /** The rope tapping the floor as you clear it. */
-  ropeTap() {
-    if (!this.ok()) return;
-    this.noiseHit({ type: 'highpass', f: 2600, peak: 0.16, d: 0.025 });
-    this.tone({ f: 220, f2: 120, peak: 0.08, d: 0.04 });
-  }
-  /** Caught on the rope: a slap and a stumble. */
-  ropeTrip() {
-    if (!this.ok()) return;
-    this.noiseHit({ type: 'bandpass', f: 1800, q: 1, peak: 0.3, d: 0.05 });
-    this.tone({ f: 110, f2: 55, peak: 0.35, d: 0.18, at: 0.06 });
-    this.squeak(0, 0.7);
-  }
   /** Iron plates clinking on the bar. */
   plates(heavy = false) {
     if (!this.ok()) return;
@@ -390,6 +371,15 @@ class Sfx {
   meterTick(level: number) {
     if (!this.ok()) return;
     this.tone({ type: 'triangle', f: 500 + 900 * Math.max(0, Math.min(1, level)), peak: 0.045, a: 0.002, d: 0.035 });
+  }
+  /** The red-slice perfect release: a bigger fanfare — rising bright arpeggio, sparkle, and a whoosh of fire. */
+  perfect() {
+    if (!this.ok()) return;
+    const notes = [784, 1046.5, 1318.5, 1568, 2093];
+    notes.forEach((f, i) => { const at = i * 0.055; this.tone({ f, peak: 0.14, a: 0.003, d: 0.45, at }); this.tone({ type: 'square', f: f / 2, peak: 0.03, a: 0.003, d: 0.25, at, lp: 2500 }); });
+    for (let k = 0; k < 6; k++) this.tone({ f: 3000 + Math.random() * 2500, peak: 0.035, a: 0.002, d: 0.12, at: 0.28 + k * 0.045 }); // sparkle
+    this.noiseHit({ type: 'lowpass', f: 300, f2: 2400, peak: 0.28, a: 0.12, d: 0.55 });                                       // whoosh of fire
+    this.tone({ f: 98, f2: 196, peak: 0.25, a: 0.02, d: 0.4 });
   }
   /** A perfect (green) release. */
   greenChime() {

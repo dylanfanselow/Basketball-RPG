@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { buildGarageArt, garageRim } from '../render/garageArt';
+import { AS } from '../render/roomArt';
 import { sheetFor } from '../render/playerBank';
 import { SPRITE_SCALE } from '../render/sprites';
 import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
-import { JumpRopeGame, SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
+import { SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
 import { RoomDef, Station, RS, syOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
@@ -31,6 +32,7 @@ export class GarageScene extends RoomScene {
   shotText!: Phaser.GameObjects.Text;
   startedAt = 0;
   greenText!: Phaser.GameObjects.Text;
+  netFront!: Phaser.GameObjects.Graphics;
   private lastTick = 0; private lastStep = 0; private lastShotPhase = '';
 
   constructor() { super('Garage'); }
@@ -50,6 +52,7 @@ export class GarageScene extends RoomScene {
     this.cardText = this.add.text(640, 150, '', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold', align: 'center', lineSpacing: 8 }).setOrigin(0.5, 0).setDepth(9311).setVisible(false);
     this.shotText = T(20).setOrigin(0.5, 1);
     this.greenText = T(16, '#7dff9a').setOrigin(0, 0.5);
+    this.netFront = this.add.graphics();
   }
 
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
@@ -59,8 +62,7 @@ export class GarageScene extends RoomScene {
     this.lastShotPhase = '';
     (this.piece('squatRack') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'squat' ? 1 : 0);
     (this.piece('bench') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'bench' ? 1 : 0);
-    this.piece('jumpRope')?.setVisible(st?.id !== 'rope');
-    this.gear.clear(); this.gearBack.clear(); this.ballG?.clear();
+    this.gear.clear(); this.gearBack.clear(); this.ballG?.clear(); this.netFront?.clear();
     this.startedAt = this.t;
     if (!st) { for (const o of [this.hudTitle, this.hudHint, this.hudBig, this.cardText, this.shotText, this.greenText]) o.setVisible(false); this.hudG.clear(); this.cardG.clear(); }
   }
@@ -97,23 +99,6 @@ export class GarageScene extends RoomScene {
       plateFace(g, h.x, h.y + off + tilt, 12);
     } else if (st.id === 'shoot') {
       this.drawShot(st);
-    } else if (st.id === 'rope') {
-      // the rope turns around you (one turn per hop): from the hands out to a point circling the body
-      const turn = this.mini instanceof JumpRopeGame ? this.mini.theta : (this.actT / st.period) * Math.PI * 2;
-      const c = { x: 2, y: 52 }, rx = 22, ry = 60;
-      const tip: [number, number] = [c.x + rx * Math.sin(turn), c.y + ry * Math.cos(turn)];
-      const hand = fr.pose.hF;
-      const H = this.jointToScreen(hand), T = this.jointToScreen(tip);
-      // two strands (one per hand, side by side in depth) bow out around the body: a thin loop from the hands to the tip
-      const bow = (side: number) => {
-        const nx = -(tip[1] - hand[1]), ny = tip[0] - hand[0], nl = Math.hypot(nx, ny) || 1; // normal to hand→tip
-        const ctrl: [number, number] = [(hand[0] + tip[0]) / 2 + (tip[0] - c.x) * 0.35 + (nx / nl) * 9 * side, (hand[1] + tip[1]) / 2 + (tip[1] - c.y) * 0.35 + (ny / nl) * 9 * side];
-        const M = this.jointToScreen(ctrl), pts: Phaser.Math.Vector2[] = [];
-        for (let k = 0; k <= 14; k++) { const t = k / 14, a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, cc = t * t; pts.push(new Phaser.Math.Vector2(a * H.x + b * M.x + cc * T.x, a * H.y + b * M.y + cc * T.y)); }
-        return pts;
-      };
-      g.lineStyle(2, 0x2a2a2a, 1); g.strokePoints(bow(1), false); g.lineStyle(2, 0x3a3a3a, 1); g.strokePoints(bow(-1), false);
-      g.fillStyle(0xe2a83a, 1).fillRect(H.x - 2, H.y - 4, 4, 8);
     }
   }
 
@@ -139,8 +124,8 @@ export class GarageScene extends RoomScene {
     const T = this.t - game.shotAt;
     if (game.state !== 'shot') pos = ballAt(game.animU(rel));
     else if (game.made) {
-      if (T < 0.85) { pos = arc(Rl, { x: rim.x, y: rim.y - 3 }, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60); if (T > 0.68) depth = hoopDepth; }
-      else if (T < 1.13) { const s2 = (T - 0.85) / 0.28; pos = { x: rim.x, y: rim.y - 3 + 36 * s2 * s2 }; depth = hoopDepth; }
+      if (T < 0.85) pos = arc(Rl, { x: rim.x, y: rim.y - 8 }, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
+      else if (T < 1.13) { const s2 = (T - 0.85) / 0.28; pos = { x: rim.x, y: rim.y - 8 + 44 * s2 * s2 }; }   // down through the rim and the net
       else if (T < 1.35) { const s2 = (T - 1.13) / 0.22; pos = { x: rim.x + 6 * s2, y: rim.y + 33 + (floor - rim.y - 33) * s2 * s2 }; }
       else pos = arc({ x: rim.x + 6, y: floor }, H0, Math.min(1, (T - 1.35) / (ShootGame.FLIGHT - 1.35)), 60);
     } else {
@@ -149,10 +134,27 @@ export class GarageScene extends RoomScene {
       else if (T < 1.45) pos = arc(front2, { x: rim.x + 110, y: floor }, (T - 0.85) / 0.6, 40);   // clank, kicks out
       else pos = arc({ x: rim.x + 110, y: floor }, H0, Math.min(1, (T - 1.45) / (ShootGame.FLIGHT - 1.45)), 25);
     }
+    void hoopDepth;
     const b = this.ballG.setDepth(depth), r = 7, { x, y } = pos;
     b.fillStyle(0x000000, 0.22).fillEllipse(x, syOf(st.at.y) + 1, 14, 5);
     b.fillStyle(0x5a2410, 1).fillCircle(x, y, r + 1); b.fillStyle(0xe0702e, 1).fillCircle(x, y, r); b.fillStyle(0xf09050, 1).fillCircle(x - 2, y - 2, r * 0.45);
     b.lineStyle(1, 0x3a1a0a, 1).lineBetween(x - r, y, x + r, y).lineBetween(x, y - r, x, y + r);
+    // the front of the rim and the net go over the ball while it's at the hoop (so it drops *through* them); the net
+    // stretches and sways as it swishes, then settles
+    const nf = this.netFront.clear().setDepth(depth + 0.1);
+    if (game.state === 'shot' && T > 0.6 && T < 1.7) {
+      const swish = game.made && T > 0.85 ? Math.max(0, 1 - (T - 0.95) / 0.6) : 0;
+      const stretch = 9 * swish * Math.min(1, (T - 0.85) / 0.12), sway = 3 * swish * Math.sin(T * 26);
+      const rw = 0.75 * 16.5 / AS, netH = 1.4 * 16.5 / AS + stretch, ry = rim.y;
+      for (let yy = 0; yy <= netH; yy += 1) {
+        const t2 = yy / netH, hw = rw * (1 - 0.42 * t2), x0 = rim.x - hw + sway * t2, x1 = rim.x + hw + sway * t2;
+        for (let xx = Math.round(x0); xx <= Math.round(x1); xx += 1) {
+          const dp = ((xx - rim.x) + yy * 0.9) % 8, dn = ((xx - rim.x) - yy * 0.9) % 8;
+          if (Math.abs(dp) < 0.9 || Math.abs(dn) < 0.9 || xx === Math.round(x0) || xx === Math.round(x1)) nf.fillStyle(0xf4f4f4, 0.95).fillRect(xx, ry + 3 + yy, 1.4, 1.4);
+        }
+      }
+      nf.lineStyle(3, 0xe05a14, 1).beginPath().arc(rim.x, ry, rw, 0, Math.PI, false).strokePath(); // front of the ring
+    }
     // call it when it gets there
     this.shotText.setVisible(game.state === 'shot' && T > 0.85 && T < 1.9).setText(game.made ? 'BUCKET!' : 'MISS').setColor(game.made ? '#7dff9a' : '#ff7d7d').setPosition(rim.x + 10, rim.y - 26);
     void RS;
@@ -164,7 +166,7 @@ export class GarageScene extends RoomScene {
    */
   drawShotMeter(m: ShootGame) {
     const since = this.t - m.shotAt;
-    const show = m.state === 'meter' || (m.state === 'shot' && since < 0.9);
+    const show = m.state === 'meter' || (m.state === 'shot' && since < (m.perfect ? 1.0 : 0.9));
     this.greenText.setVisible(false);
     if (!show) return;
     const g = this.hudG, x = this.player.x + 26, y = this.player.y - 118, r = 46;
@@ -174,12 +176,28 @@ export class GarageScene extends RoomScene {
     arc(0, 1, 13, 0x0b0d14);                                   // outline
     arc(0, 1, 9, 0x2a2f3e);                                    // track
     arc(ShootGame.GREEN[0], ShootGame.GREEN[1], 9, 0x2f7a3a);  // the green window
+    arc(ShootGame.PERFECT[0], ShootGame.PERFECT[1], 9, 0xd62a2a); // the tiny red slice: perfect
     const v = m.state === 'shot' ? m.releasedAt : m.meter;
-    const col = m.state === 'shot' ? (m.made ? 0x7dff9a : 0xe0403a) : v >= ShootGame.GREEN[0] && v <= ShootGame.GREEN[1] ? 0x9dffb0 : 0xffd23a;
+    const col = m.state === 'shot' ? (m.perfect ? 0xff6a2a : m.made ? 0x7dff9a : 0xe0403a) : v >= ShootGame.GREEN[0] && v <= ShootGame.GREEN[1] ? 0x9dffb0 : 0xffd23a;
     if (v > 0.01) arc(0, v, 7, col);
     for (const e of [0, 1]) { const a = at(e); g.fillStyle(0xffffff, alpha).fillCircle(x + Math.cos(a) * r, y + Math.sin(a) * r, 2.5); } // end caps
     const a = at(v); g.fillStyle(0xffffff, alpha).fillRect(x + Math.cos(a) * (r - 8) - 2, y + Math.sin(a) * (r - 8) - 2, 4, 4); // the tip
-    if (m.state === 'shot' && m.made) { this.greenText.setVisible(true).setAlpha(alpha).setText('GREEN!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r); }
+    if (m.state === 'shot' && m.perfect && since < 1.0) {
+      // the meter catches fire: flickering flame tongues along the filled arc, embers rising
+      const flick = (k: number) => 0.6 + 0.4 * Math.sin(this.t * 31 + k * 2.3) * Math.sin(this.t * 17 + k);
+      const fade = 1 - since;
+      for (let k = 0; k <= 16; k++) {
+        const vv = (k / 16) * v, aa = at(vv), cx2 = x + Math.cos(aa) * r, cy2 = y + Math.sin(aa) * r, h = (16 + 13 * flick(k)) * fade;
+        const ox = Math.cos(aa), oy = Math.sin(aa); // outward from the arc, bent upward like fire
+        const tip = { x: cx2 + ox * h * 0.6, y: cy2 + oy * h * 0.3 - h };
+        g.fillStyle(0xff5a10, 0.18 * fade).fillCircle(cx2, cy2 - h * 0.35, h * 0.55);   // glow
+        g.fillStyle(0xd62a10, 0.85 * fade).fillTriangle(cx2 - 7, cy2 + 3, cx2 + 7, cy2 + 3, tip.x, tip.y);
+        g.fillStyle(0xff9a1a, 0.9 * fade).fillTriangle(cx2 - 4.5, cy2 + 2, cx2 + 4.5, cy2 + 2, tip.x, tip.y + h * 0.3);
+        g.fillStyle(0xffe45a, 0.9 * fade).fillTriangle(cx2 - 1.5, cy2, cx2 + 1.5, cy2, tip.x, tip.y + h * 0.6);
+      }
+      for (let k = 0; k < 8; k++) { const ph = (since * 1.6 + k / 8) % 1, aa = at(v * ((k * 37) % 16) / 16); g.fillStyle(0xffc04a, (1 - ph) * fade).fillRect(x + Math.cos(aa) * r + Math.sin(k * 3) * 6, y + Math.sin(aa) * r - ph * 34, 2, 2); }
+      this.greenText.setVisible(true).setAlpha(1).setColor('#ff9a3a').setText('PERFECT!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r);
+    } else if (m.state === 'shot' && m.made) { this.greenText.setVisible(true).setAlpha(alpha).setColor('#7dff9a').setText('GREEN!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r); }
   }
 
   /** Sounds for whatever the mini-game did this frame, plus the timed ones (meter ticks, footfalls, the shot ball). */
@@ -187,9 +205,7 @@ export class GarageScene extends RoomScene {
     const m = this.mini;
     if (!m) return;
     for (const e of m.takeEvents()) {
-      if (e === 'miss') { if (m instanceof JumpRopeGame) sfx.ropeTrip(); sfx.blip(false); }
-      else if (e === 'hop') sfx.ropeTap();
-      else if (e === 'turn' && m instanceof JumpRopeGame) sfx.ropeWhoosh(Math.min(1.6, m.spin / 12));
+      if (e === 'miss') sfx.blip(false);
       else if (e === 'press') { if (m instanceof PushupGame) sfx.blip(true); sfx.effort(); }
       else if (e === 'hit') sfx.blip(true);
       else if (e === 'rep') { sfx.ding(); if (m instanceof SquatGame || m instanceof BenchGame) sfx.plates(true); }
@@ -197,6 +213,7 @@ export class GarageScene extends RoomScene {
       else if (e === 'creak') sfx.plates(false);
       else if (e === 'release') sfx.release();
       else if (e === 'green') sfx.greenChime();
+      else if (e === 'perfect') sfx.perfect();
     }
     if (m instanceof TreadmillGame) {
       sfx.beltHum(true, m.speed / TreadmillGame.BASE);
@@ -276,14 +293,6 @@ export class GarageScene extends RoomScene {
     } else if (m instanceof ShootGame) {
       this.hudBig.setVisible(true).setFontSize(12).setPosition(cx, y0 + 44).setText('hold ✕\nrelease at the\ntop of the jump').setColor('#cfe8ff');
       this.drawShotMeter(m);
-    } else if (m instanceof JumpRopeGame) {
-      // the rope's turn around you: the zone at the bottom is "under your feet"
-      const rx = cx, ry = y0 + 44, r = 32;
-      g.lineStyle(3, 0x3c4876, 1).strokeCircle(rx, ry, r);
-      g.lineStyle(5, 0x6fd24a, 1).beginPath().arc(rx, ry, r, Math.PI / 2 - JumpRopeGame.WINDOW, Math.PI / 2 + JumpRopeGame.WINDOW).strokePath();
-      const a = m.theta - Math.PI / 2; // 0 = top
-      g.fillStyle(0xffcc33, 1).fillCircle(rx + Math.cos(a) * r, ry + Math.sin(a) * r, 6);
-      g.fillStyle(0xffffff, 1).fillCircle(rx, ry - 10, 4).fillRect(rx - 2, ry - 6, 4, 14); // you, in the middle
     }
     // red ✗ after a mistake
     if (m.missing) {

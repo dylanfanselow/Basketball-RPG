@@ -65,14 +65,15 @@ describe('garage', () => {
     const toGarage = APARTMENT.doors.find((d) => d.id === 'garage')!;
     expect(toGarage.to!.scene).toBe('Garage');
     const arrive = GARAGE.doors.find((d) => d.id === toGarage.to!.at)!;
-    expect(arrive.side).toBe('L'); // the door from the apartment is on the garage's left wall
+    expect(arrive.side).toBe('B'); // the door from the apartment is the garage's back-wall door
     expect(arrive.to!.scene).toBe('Apartment');
     expect(APARTMENT.doors.some((d) => d.id === arrive.to!.at)).toBe(true);
   });
 
   it('every workout has its animation, a free spot you can reach, and ✕ there picks it', () => {
     const ids = GARAGE.stations!.map((s) => s.id);
-    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'rope', 'treadmill', 'shoot']));
+    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'treadmill', 'shoot']));
+    expect(ids).not.toContain('rope');
     for (const s of GARAGE.stations!) {
       expect(CLIP[s.clip]).toBeDefined();
       if (!s.shotDur) expect(CLIP[s.clip].loop).toBe(true);

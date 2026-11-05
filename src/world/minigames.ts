@@ -54,44 +54,6 @@ abstract class RepBar extends MiniGame {
   }
 }
 
-// ---------------------------------------------------------------- jump rope
-/** Spin the stick to swing the rope (angle 0 = over your head, π = under your feet); ○ when it's under you = hop. */
-export class JumpRopeGame extends MiniGame {
-  id = 'rope';
-  controls = ['Spin the L-stick to swing the rope  (WASD around)', '○ when it passes under your feet  (L)'];
-  static WINDOW = 0.61; // ±35°
-  theta = 0;
-  spin = 0;             // rad/s, smoothed (for the HUD)
-  cleared = false;
-  hopAt = -9;
-  private lastAng: number | null = null;
-  private lastAngAt = -9;
-  protected step(dt: number, inp: MiniInput) {
-    if (this.missing) { this.lastAng = null; return; }
-    // the rope turns with the stick: the angle swept since last frame (either direction). The last direction is
-    // remembered for a moment, so rolling W → D → S → A on a keyboard (with gaps between keys) still turns it.
-    let swept = 0;
-    if (Math.hypot(inp.stick.x, inp.stick.y) > 0.5) {
-      const a = Math.atan2(inp.stick.y, inp.stick.x);
-      if (this.lastAng !== null) { let d = a - this.lastAng; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; swept = Math.min(Math.abs(d), 1.6); }
-      this.lastAng = a; this.lastAngAt = this.t;
-    } else if (this.t - this.lastAngAt > 0.3) this.lastAng = null;
-    this.spin = this.spin * 0.85 + (swept / Math.max(dt, 1e-3)) * 0.15;
-    const before = this.theta;
-    this.theta += swept;
-    const lo = Math.PI - JumpRopeGame.WINDOW, hi = Math.PI + JumpRopeGame.WINDOW;
-    const inWindow = this.theta >= lo && this.theta <= hi;
-    if (inp.b) {
-      if (inWindow && !this.cleared) { this.cleared = true; this.hopAt = this.t; this.reps++; this.emit('hop'); }
-      else if (!this.cleared || !inWindow) return this.trip();
-    }
-    if (before <= hi && this.theta > hi && !this.cleared) return this.trip(); // it went under you and you didn't hop
-    if (this.theta >= 2 * Math.PI) { this.theta -= 2 * Math.PI; this.cleared = false; this.emit('turn'); }
-  }
-  private trip() { this.miss(); this.theta = 0; this.cleared = false; this.lastAng = null; this.lastAngAt = -9; }
-  animU() { const k = (this.t - this.hopAt) / 0.4; return k >= 0 && k < 1 ? k : 0; }
-}
-
 // ---------------------------------------------------------------- squat
 /** Alternate L2 / R2 to drive up out of the squat; the bar drains. */
 export class SquatGame extends RepBar {
@@ -132,14 +94,14 @@ export class TreadmillGame extends MiniGame {
 export class PushupGame extends RepBar {
   id = 'pushup';
   controls = ['Press the button shown  (✕ K  ○ L  □ J  △ I)', 'Wrong button = ✗ for a second'];
-  drain = 0.2; descendTime = 0.5;
+  drain = 0.12; descendTime = 0.5;
   want: FaceBtn = 'a';
   constructor(rand?: () => number) { super(rand); this.want = this.pick(); }
   private pick(): FaceBtn { const all: FaceBtn[] = ['a', 'b', 'x', 'y'].filter((b) => b !== this.want) as FaceBtn[]; return all[Math.floor(this.rand() * all.length) % all.length]; }
   protected step(dt: number, inp: MiniInput) {
     const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
     if (pressed.length && !this.descending) {
-      if (pressed.length === 1 && pressed[0] === this.want) { this.emit('press'); this.add(0.17); this.want = this.pick(); }
+      if (pressed.length === 1 && pressed[0] === this.want) { this.emit('press'); this.add(0.26); this.want = this.pick(); }
       else this.miss();
     }
     this.drainStep(dt);
@@ -152,6 +114,9 @@ export class ShootGame extends MiniGame {
   id = 'shoot';
   controls = ['Hold ✕ to load the shot  (K)', 'Release in the green to make it'];
   static FILL = 0.9; static GREEN: [number, number] = [0.8, 0.95]; static FLIGHT = 2.1;
+  /** a tiny red slice in the middle of the green: perfect release */
+  static PERFECT: [number, number] = [0.866, 0.886];
+  perfect = false;
   state: 'idle' | 'meter' | 'shot' = 'idle';
   meter = 0; rising = true; attempts = 0; made = false; shotAt = -9; releasedAt = 0;
   private armed = false; // the ✕ that started the game must be let go first
@@ -169,7 +134,8 @@ export class ShootGame extends MiniGame {
         this.made = this.meter >= ShootGame.GREEN[0] && this.meter <= ShootGame.GREEN[1];
         this.attempts++; if (this.made) this.reps++;
         this.state = 'shot'; this.shotAt = this.t; this.jumpAtRelease = this.jumpFt0(this.meter);
-        this.emit('release'); if (this.made) this.emit('green');
+        this.perfect = this.meter >= ShootGame.PERFECT[0] && this.meter <= ShootGame.PERFECT[1];
+        this.emit('release'); if (this.perfect) this.emit('perfect'); else if (this.made) this.emit('green');
       }
     }
   }
@@ -198,17 +164,17 @@ export class BenchGame extends RepBar {
   drain = 0.3; descendTime = 0.8;
   tilt = 0;
   private dir = 1; private flipAt = 0; private creakAt = -9;
-  static LEVEL = 0.35;
+  static LEVEL = 0.5;
   protected step(dt: number, inp: MiniInput) {
     if (this.descending) { this.tilt *= 0.9; return; }
     if (this.t > this.flipAt) { this.dir = this.rand() < 0.5 ? -1 : 1; this.flipAt = this.t + 0.8 + this.rand() * 0.8; }
     if (inp.aHeld) {
-      const drift = (0.5 + 1.2 * this.fill) * this.dir;
+      const drift = (0.35 + 0.8 * this.fill) * this.dir;
       // the bar wants to tip (the more it leans, the faster it goes) and drifts; push the stick the other way
-      this.tilt += (drift + this.tilt * 1.6 + inp.stick.x * 2.2) * dt;
+      this.tilt += (drift + this.tilt * 1.0 + inp.stick.x * 2.6) * dt;
       if (Math.abs(this.tilt) >= 1) { this.miss(); this.emit('drop'); this.fill = 0; this.tilt = 0; return; }
       if (Math.abs(this.tilt) > 0.55 && this.t - this.creakAt > 0.45) { this.creakAt = this.t; this.emit('creak'); }
-      if (Math.abs(this.tilt) < BenchGame.LEVEL) this.add(0.28 * dt);
+      if (Math.abs(this.tilt) < BenchGame.LEVEL) this.add(0.4 * dt);
     } else {
       this.tilt *= Math.pow(0.2, dt);
       this.drainStep(dt);
@@ -218,7 +184,6 @@ export class BenchGame extends RepBar {
 
 export function makeMiniGame(stationId: string, rand: () => number = Math.random): MiniGame | null {
   switch (stationId) {
-    case 'rope': return new JumpRopeGame(rand);
     case 'squat': return new SquatGame(rand);
     case 'treadmill': return new TreadmillGame(rand);
     case 'pushup': return new PushupGame(rand);

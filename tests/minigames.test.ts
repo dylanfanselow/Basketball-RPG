@@ -1,38 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { MiniInput, NO_INPUT, JumpRopeGame, SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
+import { MiniInput, NO_INPUT, SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
 
 const DT = 1 / 60;
 const inp = (p: Partial<MiniInput> = {}): MiniInput => ({ ...NO_INPUT, ...p });
 const seeded = (s = 7) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-
-describe('jump rope', () => {
-  // spin the stick one notch per frame (counter-clockwise), press ○ as the rope reaches the bottom
-  const spinStep = 0.12;
-  const play = (g: JumpRopeGame, frames: number, press: (g: JumpRopeGame) => boolean) => {
-    let ang = 0;
-    for (let i = 0; i < frames; i++) { ang += spinStep; g.update(DT, inp({ stick: { x: Math.cos(ang), y: Math.sin(ang) }, b: press(g) })); }
-  };
-  it('spinning + ○ when the rope is under you = hops (reps)', () => {
-    const g = new JumpRopeGame();
-    play(g, 600, (g) => !g.cleared && Math.abs(g.theta - Math.PI) < 0.3);
-    expect(g.reps).toBeGreaterThan(5);
-    expect(g.missing).toBe(false);
-  });
-  it('letting it pass under you trips (red ✗ for a second, rope back to the top)', () => {
-    const g = new JumpRopeGame();
-    play(g, 120, () => false);
-    expect(g.reps).toBe(0);
-    expect(g.missUntil).toBeGreaterThan(0);
-  });
-  it('○ at the wrong time trips; no spin = no rope', () => {
-    const g = new JumpRopeGame();
-    g.update(DT, inp({ b: true }));
-    expect(g.missing).toBe(true);
-    const h = new JumpRopeGame();
-    for (let i = 0; i < 100; i++) h.update(DT, inp());
-    expect(h.theta).toBe(0);
-  });
-});
 
 describe('squat', () => {
   it('alternating L2 / R2 fills the bar to a rep; the same button twice does nothing; idle drains', () => {
@@ -76,8 +47,8 @@ describe('treadmill', () => {
 describe('push-ups', () => {
   it('the right button fills; a wrong one locks for a second; full = a rep', () => {
     const g = new PushupGame(seeded());
-    for (let i = 0; i < 6; i++) { g.update(DT, inp({ [g.want]: true })); }
-    expect(g.reps).toBe(1);
+    for (let i = 0; i < 4; i++) { g.update(DT, inp({ [g.want]: true })); }
+    expect(g.reps).toBe(1); // easier: four right buttons
     const h = new PushupGame(seeded(3));
     const wrong = (['a', 'b', 'x', 'y'] as const).find((b) => b !== h.want)!;
     h.update(DT, inp({ [wrong]: true }));
@@ -126,7 +97,8 @@ describe('bench press', () => {
 });
 
 it('every garage station has its mini-game', () => {
-  for (const id of ['rope', 'squat', 'treadmill', 'pushup', 'shoot', 'bench']) expect(makeMiniGame(id)?.id).toBe(id);
+  for (const id of ['squat', 'treadmill', 'pushup', 'shoot', 'bench']) expect(makeMiniGame(id)?.id).toBe(id);
+  expect(makeMiniGame('rope')).toBeNull();
 });
 
 describe('round 39b: shot jump + events', () => {
@@ -153,5 +125,26 @@ describe('round 39b: shot jump + events', () => {
     while (Math.abs(tm.dot) < 0.5) tm.update(DT, inp());
     tm.update(DT, inp({ b: true }));
     expect(tm.takeEvents()).toContain('miss');
+  });
+});
+
+describe('round 39c: perfect release', () => {
+  const release = (g: ShootGame, target: number) => {
+    g.update(DT, inp());
+    g.update(DT, inp({ aHeld: true }));
+    // hold until just past the target (the meter rises 1/FILL per second)
+    while (g.meter < target) g.update(Math.min(DT, (target - g.meter) * ShootGame.FILL + 1e-4), inp({ aHeld: true }));
+    g.update(1e-4, inp());
+    return g.takeEvents();
+  };
+  it('the red slice in the middle of the green = perfect (a make too)', () => {
+    const g = new ShootGame();
+    const ev = release(g, (ShootGame.PERFECT[0] + ShootGame.PERFECT[1]) / 2);
+    expect(ev).toContain('perfect'); expect(g.made).toBe(true); expect(g.perfect).toBe(true);
+  });
+  it('green outside the red = a make without the perfect', () => {
+    const g = new ShootGame();
+    const ev = release(g, 0.82);
+    expect(ev).toContain('green'); expect(ev).not.toContain('perfect'); expect(g.made).toBe(true);
   });
 });

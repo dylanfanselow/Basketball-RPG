@@ -172,6 +172,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     release, "GREEN!"). **Sound effects for every mini-game**: rope whoosh / floor tap / trip, effort breaths, plate
     clinks + rep ding, bar drop, treadmill belt hum + footfalls, HUD blip / buzzer, meter ticks, release, green chime,
     swish / clank, ball bounces.
+  - **Round 39c:** the garage's **back-wall door** is the one to the apartment (the left-wall door = outside, soon);
+    the **jump rope is removed**; push-ups and bench are **easier**; the shot meter has a **tiny red "perfect" slice**
+    in the middle of the green — releasing there plays a bigger success sound and **sets the meter on fire** for a
+    second ("PERFECT!"); the ball now visibly drops **through** the rim and net (front of the rim + net drawn over it,
+    the net stretches on a swish).
 - **Round 38: garage workouts.** Animations for the player using the **squat rack, push-up mat, jump rope, bench
   press and treadmill**: ✕ at the equipment starts it, ✕ / ○ / L1 stops. Orientation follows the equipment: squat
   facing us inside the rack (bar across the shoulders, off the hooks), bench press lying along the bench with the head

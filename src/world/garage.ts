@@ -22,15 +22,14 @@ export const GARAGE_FURNITURE: Piece[] = [
   { id: 'car', kind: 'car', x: 35.0, y: CAR.y0, w: 12, d: CAR.y1 - CAR.y0, solid: true, poly: carPoly() },
   { id: 'boxesL', kind: 'boxes', x: 2.3, y: 20.6, w: 3.4, d: 2.6, solid: true },
   { id: 'kettlebells', kind: 'kettlebells', x: 6.2, y: 22.0, w: 1.9, d: 1.2, solid: true },
-  // the jump rope lies coiled on the floor (its own piece so it can disappear while you skip)
-  { id: 'jumpRope', kind: 'jumpRope', x: 9.6, y: 18.2, w: 2.0, d: 0.8, solid: false },
   { id: 'boxesR', kind: 'boxes', x: 29.6, y: 20.4, w: 3.6, d: 2.6, solid: true },
 ];
 
 export const GARAGE_DOORS: Door[] = [
-  // the door you come in through from the apartment, on the left wall
-  { id: 'apartment', label: 'Apartment', spot: { x: 7.6, y: 5.6 }, side: 'L', span: [4.2, 7.0], to: { scene: 'Apartment', at: 'garage' } },
-  { id: 'outside', label: 'Outside', spot: { x: 31.8, y: 1.4 }, side: 'B', span: [30.4, 33.2], soon: 'Outside — coming soon' },
+  // the back-wall door goes back into the apartment (you come in through it too)
+  { id: 'apartment', label: 'Apartment', spot: { x: 31.8, y: 1.4 }, side: 'B', span: [30.4, 33.2], to: { scene: 'Apartment', at: 'garage' } },
+  // the left-wall door: outside (not yet)
+  { id: 'outside', label: 'Outside', spot: { x: 7.6, y: 5.6 }, side: 'L', span: [4.2, 7.0], soon: 'Outside — coming soon' },
 ];
 
 export const GARAGE_SPAWN: V = { x: 20.0, y: 12.6 };
@@ -45,8 +44,6 @@ export const GARAGE_STATIONS: Station[] = [
   { id: 'bench', label: 'Bench press', spot: { x: 14.4, y: 6.2 }, at: { x: 14.3, y: 3.7 }, clip: 'benchPress', period: 2.4, yaw: 0, flip: false, lift: 0, depthFt: 5.3 },
   // push-ups on the mat, side view
   { id: 'pushup', label: 'Push-ups', spot: { x: 19.4, y: 10.2 }, at: { x: 18.8, y: 10.4 }, clip: 'pushup', period: 1.5, yaw: 0, flip: false, lift: 0 },
-  // jump rope where it lies, side view
-  { id: 'rope', label: 'Jump rope', spot: { x: 10.6, y: 18.6 }, at: { x: 10.6, y: 18.6 }, clip: 'jumpRope', period: 0.5, yaw: 0, flip: false, lift: 0 },
   // shooting: a red square straight out from the rim; jump shots facing the hoop (to the left)
   { id: 'shoot', label: 'Shoot', spot: { x: 20.6, y: 15.2 }, at: { x: 20.6, y: 15.2 }, clip: 'shot_jumper', period: 2.7, yaw: 0, flip: true, lift: 0, shotDur: 1.1 },
   // treadmill: on the belt, running toward the console (back to us)

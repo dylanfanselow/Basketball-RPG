@@ -112,7 +112,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 
 ## Garage gym (round 37)
 - `Garage` scene (`GarageScene` → `RoomScene`, layout `world/garage.ts`, art `render/garageArt.ts`): reached through the
-  apartment's left door (you arrive at the garage's left-wall door, which takes you back; the back-wall door is
+  apartment's left door (you arrive at the garage's back-wall door, which takes you back; the left-wall door is
   "Outside — coming soon"), or the dev menu "Garage (gym)". Slanted right wall as in the apartment, nothing drawn past
   the right brick post; the broken fastback is parked nose-first along the right wall (`RoomDef.rightX` exists for
   an open side but isn't used). Hoop (arena style, facing
@@ -132,6 +132,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   ✕ held) and stops only on L1 / Esc; `GarageScene.drawMiniHud` draws the controls card (away from you), the panel
   (bars, level gauge, dot line, glyph, shot meter, rope ring), the red ✗, and the props follow the games (rope angle,
   bench bar tilt, shot make / miss with "BUCKET!" / "MISS").
+- Round 39c: doors swapped (back door ↔ apartment), jump rope removed, `ShootGame.PERFECT` + `perfect` event /
+  `sfx.perfect()` / flaming arc, `GarageScene.netFront` overlay (ball through the net), easier `PushupGame` /
+  `BenchGame` tuning.
 - Round 39b: `MiniGame.events` / `takeEvents()` → `GarageScene.playSounds()` (new `sfx` sounds: `ropeWhoosh`,
   `ropeTap`, `ropeTrip`, `plates`, `barDrop`, `effort`, `footfall`, `beltHum`, `blip`, `meterTick`, `greenChime`);
   `MiniGame.jumpFt()` (the shot jump: `RoomScene.drawPlayer` lifts the sprite, the shadow stays down);
