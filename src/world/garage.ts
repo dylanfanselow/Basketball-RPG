@@ -1,4 +1,4 @@
-import { Piece, Door, RoomDef, V, Poly, ROOM, alongLeftWall, wallR } from './apartment';
+import { Piece, Door, RoomDef, V, Poly, alongLeftWall, wallR } from './apartment';
 
 /**
  * The garage gym behind the apartment's left door (round 37), laid out like the owner's reference, in the same
@@ -7,7 +7,7 @@ import { Piece, Door, RoomDef, V, Poly, ROOM, alongLeftWall, wallR } from './apa
  * its back to the left wall facing right, the van parked along the right wall nose toward the camera.
  */
 /** The car: its left side runs along a line slanted like the room's perspective (as the right wall would be). */
-export const CAR = { y0: 10.4, y1: 22.4, sideAt: (y: number) => 33.6 + (wallR(y) - wallR(12)), width: 6.0, height: 4.3 };
+export const CAR = { y0: 10.8, y1: 22.6, sideAt: (y: number) => wallR(y) - 6.3, width: 6.0, height: 4.3 };
 function carPoly(): Poly {
   return [{ x: CAR.sideAt(CAR.y0), y: CAR.y0 }, { x: CAR.sideAt(CAR.y0) + CAR.width + 6, y: CAR.y0 }, { x: CAR.sideAt(CAR.y1) + CAR.width + 6, y: CAR.y1 }, { x: CAR.sideAt(CAR.y1), y: CAR.y1 }];
 }
@@ -18,7 +18,7 @@ export const GARAGE_FURNITURE: Piece[] = [
   { id: 'treadmill', kind: 'treadmill', x: 26.8, y: 0.5, w: 2.8, d: 6.4, solid: true },
   // portable hoop like the arena's: base against the left wall, board + rim facing right into the room
   { id: 'hoop', kind: 'hoop', x: 0.0, y: 13.2, w: 6.4, d: 4.0, solid: true, poly: alongLeftWall(13.2, 17.2, 3.1) },
-  // a broken-down fastback, parked along the right side nose toward the camera, cut off by the brick post
+  // a broken-down fastback parked along the right wall, nose toward the camera
   { id: 'car', kind: 'car', x: 35.0, y: CAR.y0, w: 12, d: CAR.y1 - CAR.y0, solid: true, poly: carPoly() },
   { id: 'boxesL', kind: 'boxes', x: 2.3, y: 20.6, w: 3.4, d: 2.6, solid: true },
   { id: 'kettlebells', kind: 'kettlebells', x: 6.2, y: 22.0, w: 1.9, d: 1.2, solid: true },
@@ -32,6 +32,4 @@ export const GARAGE_DOORS: Door[] = [
 ];
 
 export const GARAGE_SPAWN: V = { x: 20.0, y: 13.0 };
-/** No right wall: the garage runs to the right brick post (x where the apartment's right wall meets the front). */
-export const GARAGE_RIGHT = wallR(ROOM.depth);
-export const GARAGE: RoomDef = { id: 'garage', furniture: GARAGE_FURNITURE, doors: GARAGE_DOORS, spawn: GARAGE_SPAWN, rightX: GARAGE_RIGHT };
+export const GARAGE: RoomDef = { id: 'garage', furniture: GARAGE_FURNITURE, doors: GARAGE_DOORS, spawn: GARAGE_SPAWN };

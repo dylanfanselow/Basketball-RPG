@@ -47,6 +47,7 @@
 | 36h | `0974702` | Weird clipping: player behind the bookshelf, ball over his feet, back chair over the table, counter over the peninsula | Furniture depth fixed (footprint front edge); walker depth from footprints vs overlapping sprites (`actorDepthFt`); ball solid and moved off the shelf |
 | 37 | `eaf9ddc` | Make the garage from a reference image (follow each object's direction — write that rule down); cupboard → arena-style hoop, wing-chun dummy → squat rack, keep the STONEY poster, add KG + David Robinson, drop the chairs | `GarageScene` + `RoomScene` base, `world/garage.ts`, `render/garageArt.ts`, door travel both ways, orientation rule in CLAUDE.md / DECISIONS |
 | 37b | `dc6b741` | Right brick wall is the cutoff; the car → a super broken Mustang; a door on the left wall; posters behind the lights; push-up mat higher | Open right side (`rightX`), broken fastback cut off by the post, left-wall door to the apartment (back door = outside soon), posters under the lamps, mat moved back |
+| 37c | `TBD` | Keep the earlier angle (slanted right wall); just don't show the house siding past the right post | Right wall restored, nothing drawn past the post, fastback along the right wall, posters/shelf refit to the back wall |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

@@ -113,8 +113,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 ## Garage gym (round 37)
 - `Garage` scene (`GarageScene` → `RoomScene`, layout `world/garage.ts`, art `render/garageArt.ts`): reached through the
   apartment's left door (you arrive at the garage's left-wall door, which takes you back; the back-wall door is
-  "Outside — coming soon"), or the dev menu "Garage (gym)". No right wall: the room runs to the right brick post
-  (`RoomDef.rightX`), which cuts off the broken fastback parked nose-first along the right. Hoop (arena style, facing
+  "Outside — coming soon"), or the dev menu "Garage (gym)". Slanted right wall as in the apartment, nothing drawn past
+  the right brick post; the broken fastback is parked nose-first along the right wall (`RoomDef.rightX` exists for
+  an open side but isn't used). Hoop (arena style, facing
   right from the left wall), squat rack, bench press, treadmill, dip station + speed bag, shelves, duct + three
   hanging lamps with STONEY / KG / ADMIRAL posters under them, gym mat, jump rope, trainers, kettlebells, boxes; yard
   with a tree and pull-up bars outside. All solid,

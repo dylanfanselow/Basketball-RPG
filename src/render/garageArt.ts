@@ -44,16 +44,6 @@ function drawYardLeft(c: C) {
   R(c, 18, 346, 74, 4, '#2e3134'); R(c, 18, 346, 74, 1, '#9aa2a6');
 }
 
-function drawHouseRight(c: C) {
-  const x0 = POST_R[1];
-  for (let y = 0; y < ART_H; y++) for (let x = x0; x < ART_W; x++) {
-    const ty = y % 8;
-    P(c, x, y, ty === 7 ? '#a3afb3' : ty === 0 ? '#d6dfe1' : hn(x, y) < 0.04 ? '#b9c3c6' : '#c3cdd0');
-  }
-  R(c, x0 + 20, 180, 56, 70, '#eeeae2'); R(c, x0 + 24, 184, 48, 62, '#b9d8e0'); R(c, x0 + 47, 184, 2, 62, '#eeeae2'); R(c, x0 + 24, 214, 48, 2, '#eeeae2');
-  R(c, x0, 470, ART_W - x0, 70, '#a5a7a2');
-}
-
 function drawShell(c: C) {
   // roof tiles above the beam (the garage has a pitched roof)
   for (let y = 0; y < BEAM_TOP; y++) for (let x = POST_L[1]; x < POST_R[0]; x++) {
@@ -68,8 +58,8 @@ function drawShell(c: C) {
     P(c, x, y, col);
   }
   // back wall: tan brick panels between plaster pillars, a concrete plinth at the bottom
-  const bx0 = Math.round(AX(ROOM.backL)), bx1 = POST_R[0]; // no right wall: the back wall runs to the brick post
-  const pillars: [number, number][] = [[bx0, bx0 + 12], [426, 438], [604, 616], [742, 754]];
+  const bx0 = Math.round(AX(ROOM.backL)), bx1 = Math.round(AX(ROOM.backR));
+  const pillars: [number, number][] = [[bx0, bx0 + 12], [426, 438], [604, 616], [bx1 - 12, bx1]];
   for (let y = WALL_TOP; y < FLOOR_ROW; y++) for (let x = bx0; x < bx1; x++) {
     const pil = pillars.find(([a, b]) => x >= a && x < b);
     let col: string;
@@ -86,41 +76,42 @@ function drawShell(c: C) {
   // side walls: plaster
   for (let y = WALL_TOP; y < ART_H; y++) {
     const yf = y < FLOOR_ROW ? 0 : yOfRow(y);
-    const lx = y < FLOOR_ROW ? bx0 : AX(wallL(yf));
+    const lx = y < FLOOR_ROW ? bx0 : AX(wallL(yf)), rx = y < FLOOR_ROW ? bx1 : AX(wallR(yf));
+    for (let x = Math.round(rx); x < POST_R[0]; x++) P(c, x, y, x <= Math.round(rx) + 1 ? '#a08f70' : hn(x, y, 13) < 0.05 ? '#a99878' : y < WALL_TOP + 8 ? '#a49374' : '#b5a383');
     for (let x = POST_L[1]; x < Math.round(lx); x++) P(c, x, y, x >= Math.round(lx) - 2 ? '#857761' : hn(x, y, 12) < 0.05 ? '#8f8169' : y < WALL_TOP + 8 ? '#867862' : '#9b8d74');
   }
   // concrete floor: mottled, darker toward the walls, a few cracks and an oil stain by the van
   for (let y = FLOOR_ROW; y < ART_H; y++) {
-    const yf = yOfRow(y), lx = Math.round(AX(wallL(yf))), rx = POST_R[0];
+    const yf = yOfRow(y), lx = Math.round(AX(wallL(yf))), rx = Math.round(AX(wallR(yf)));
     for (let x = lx; x < rx; x++) {
       let col = FLOOR[Math.floor(hn(x >> 1, y >> 1, 21) * FLOOR.length)];
       if (hn(x >> 3, y >> 2, 22) < 0.12) col = shade(col, 0.95);
       if (hn(x, y, 23) < 0.03) col = tint(col, 0.12);
       const lamp = Math.max(0, 1 - Math.hypot((x - 520) / 300, (y - 300) / 90));
       col = mix(col, '#d8cfb8', lamp * 0.18);
-      const edge = Math.min(1, (x - lx) / 40, (rx - x) / 80);
+      const edge = Math.min(1, (x - lx) / 40, (rx - x) / 40);
       col = shade(col, 0.8 + 0.2 * Math.max(0, edge));
-      if (Math.hypot((x - AX(37.5)) / 34, (y - AY(19.0)) / 9) < 1) col = mix(col, '#2a2b2e', 0.55 + 0.2 * hn(x, y, 24)); // oil stain
+      if (Math.hypot((x - AX(34.6)) / 30, (y - AY(19.0)) / 9) < 1) col = mix(col, '#2a2b2e', 0.55 + 0.2 * hn(x, y, 24)); // oil stain
       P(c, x, y, col);
     }
   }
   const crack = (pts: [number, number][]) => { for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let k = 0; k <= n; k++) P(c, Math.round(x0 + ((x1 - x0) * k) / n), Math.round(y0 + ((y1 - y0) * k) / n), '#5f6166'); } };
   crack([[300, 380], [312, 386], [318, 384], [330, 392]]); crack([[560, 470], [566, 462], [578, 458], [584, 450]]); crack([[420, 330], [428, 336], [440, 335]]);
   // expansion joints
-  for (let x = Math.round(AX(wallL(14))); x < POST_R[0]; x++) if (hn(x, 0, 25) > 0.1) P(c, x, Math.round(AY(14)), '#727479');
+  for (let x = Math.round(AX(wallL(14))); x < Math.round(AX(wallR(14))); x++) if (hn(x, 0, 25) > 0.1) P(c, x, Math.round(AY(14)), '#727479');
   // baseboard shadow along the back wall
   R(c, bx0, FLOOR_ROW, bx1 - bx0, 2, '#5a5c60');
 }
 
 function drawWallStuff(c: C) {
-  const bx0 = Math.round(AX(ROOM.backL)), bx1 = POST_R[0];
+  const bx0 = Math.round(AX(ROOM.backL)), bx1 = Math.round(AX(ROOM.backR));
   drawPosters(c); // posters go up first: the duct and the hanging lamps are in front of them
   // galvanised duct along the top of the back wall with hangers, and three hanging lamps
   R(c, bx0, 112, bx1 - bx0, 13, '#5f676b'); R(c, bx0, 113, bx1 - bx0, 11, '#a3abaf'); R(c, bx0, 113, bx1 - bx0, 3, '#c6cdd0'); R(c, bx0, 121, bx1 - bx0, 3, '#7d8589');
   for (let x = bx0 + 30; x < bx1; x += 64) { R(c, x, 113, 2, 11, '#7d8589'); R(c, x, WALL_TOP, 2, 19, '#55595c'); }
   R(c, 340, 115, 10, 7, '#5f676b'); R(c, 341, 116, 8, 5, '#3a3f42'); // vent grilles
   R(c, 560, 115, 10, 7, '#5f676b'); R(c, 561, 116, 8, 5, '#3a3f42');
-  for (const lx of [387, 571, 709]) {
+  for (const lx of [387, 571, 609]) {
     R(c, lx - 1, 124, 3, 8, '#3a3f42');
     for (let y = 0; y < 10; y++) { const hw = 4 + Math.round(y * 0.9); R(c, lx - hw - 1, 132 + y, hw * 2 + 3, 1, '#2f3437'); R(c, lx - hw, 132 + y, hw * 2 + 1, 1, y < 2 ? '#8e979c' : '#5f686d'); }
     R(c, lx - 4, 142, 9, 3, '#fff3c0'); R(c, lx - 2, 145, 5, 1, '#ffe08a');
@@ -139,15 +130,15 @@ function drawWallStuff(c: C) {
     for (const bx of [x0 + 6, x1 - 8]) { R(c, bx, y + 4, 2, 8, '#3a3f42'); R(c, bx, y + 10, 6, 2, '#3a3f42'); }
     R(c, x0 + 2, y + 5, x1 - x0, 2, 'rgba(60,40,20,0.25)');
   };
-  shelf(278, 352, 190); shelf(278, 352, 226); shelf(766, 812, 206);
+  shelf(278, 352, 190); shelf(278, 352, 226); shelf(636, 674, 158);
   // clutter: paint cans, a toolbox, spray bottles, a trophy, folded towels
   R(c, 284, 178, 10, 12, '#33373b'); R(c, 285, 179, 8, 10, '#c9c2b0'); R(c, 285, 183, 8, 3, '#3f7fb3');
   R(c, 298, 180, 12, 10, '#33373b'); R(c, 299, 181, 10, 8, '#c9c2b0'); R(c, 299, 184, 10, 3, '#c84d3c');
   R(c, 316, 182, 22, 8, '#5a1d14'); R(c, 317, 183, 20, 6, '#c8433a'); R(c, 324, 180, 6, 2, '#2a2a2a');
   R(c, 342, 180, 4, 10, '#2f6fb5'); R(c, 343, 177, 2, 3, '#e8e8e8');
   R(c, 284, 216, 18, 10, '#6e4a1e'); R(c, 285, 217, 16, 8, '#b8864a'); R(c, 304, 214, 8, 12, '#3a3a3a'); R(c, 316, 219, 14, 7, '#a9b0b4'); R(c, 334, 212, 6, 14, '#e2b84a'); R(c, 333, 210, 8, 3, '#f0c44c');
-  for (let k = 0; k < 3; k++) { R(c, 770, 200 - k * 4, 18, 4, '#5a2a0e'); R(c, 771, 200 - k * 4, 16, 3, k % 2 ? '#e07a2c' : '#f09040'); }
-  R(c, 794, 196, 10, 10, '#2f3f5a'); R(c, 795, 197, 8, 8, '#4f6f9a');
+  for (let k = 0; k < 3; k++) { R(c, 640, 152 - k * 4, 18, 4, '#5a2a0e'); R(c, 641, 152 - k * 4, 16, 3, k % 2 ? '#e07a2c' : '#f09040'); }
+  R(c, 662, 148, 10, 10, '#2f3f5a'); R(c, 663, 149, 8, 8, '#4f6f9a');
   // wall-mounted dip station (two handles out from a bracket) and a speed bag under its platform
   const dx = Math.round(AX(25.1));
   R(c, dx - 9, 196, 18, 26, STEEL); R(c, dx - 8, 197, 16, 24, STEEL_L);
@@ -167,18 +158,18 @@ function drawPosters(c: C) {
     for (let k = 0; k < 7; k++) R(pc, x + 4 + k * 3, y + 30 - (k % 3) * 2, 2, 8 + (k % 3) * 2, '#6e5236'); // the steps / city
     figure(pc, x + 15, y + 30, '#2a1a10', '#2a1a10', { head: [0, -14], hands: [[-8, -24], [8, -24]], feet: [[-4, 8], [4, 8]] });
     text3(pc, x + Math.round((w - textW('STONEY')) / 2), y + 2, 'STONEY', '#3a2a1a'); });
-  hang(c, 556, 149, 30, 46, 0.05, (pc) => { const x = 1, y = 1, w = 30, h = 46;
+  hang(c, 554, 157, 30, 46, 0.05, (pc) => { const x = 1, y = 1, w = 30, h = 46;
     posterFrame(pc, x, y, w, h, (u, v) => mix('#1f5a3a', '#0e2e1d', v));
     figure(pc, x + 15, y + 34, '#0a1a10', '#f4f1e8', { head: [0, -14], hands: [[-10, -12], [10, -12]], feet: [[-4, 8], [4, 8]] });
     R(pc, x + 13, y + 15, 4, 2, '#c8433a'); // the scream
     text3(pc, x + Math.round((w - textW('KG')) / 2), y + 2, 'KG', '#f4f1e8');
     text3(pc, x + Math.round((w - textW('21')) / 2), y + 39, '21', '#8fd0a8'); });
-  hang(c, 691, 148, 36, 50, -0.02, (pc) => { const x = 1, y = 1, w = 36, h = 50;
+  hang(c, 594, 148, 30, 40, -0.02, (pc) => { const x = 1, y = 1, w = 30, h = 40;
     posterFrame(pc, x, y, w, h, (u, v) => (v > 0.84 ? '#101010' : mix('#c9ccd0', '#6f757b', v / 0.84)));
     for (let k = 0; k < 6; k++) P(pc, x + 4 + Math.round(hn(k, 31) * 28), y + 10 + Math.round(hn(k, 32) * 14), ['#00a0a8', '#f2a03a', '#e2466a'][k % 3]); // fiesta confetti
-    figure(pc, x + 18, y + 34, '#101010', '#f4f1e8', { head: [2, -14], hands: [[10, -23], [8, -21]], feet: [[-5, 7], [-1, 9]] });
+    figure(pc, x + 15, y + 28, '#101010', '#f4f1e8', { head: [2, -13], hands: [[9, -20], [7, -18]], feet: [[-4, 5], [-1, 6]] });
     text3(pc, x + Math.round((w - textW('ADMIRAL')) / 2), y + 2, 'ADMIRAL', '#101010');
-    text3(pc, x + Math.round((w - textW('50')) / 2), y + 43, '50', '#f4f1e8'); });
+    text3(pc, x + Math.round((w - textW('50')) / 2), y + 34, '50', '#f4f1e8'); });
 }
 
 function drawHouseDoor(c: C) {
@@ -240,7 +231,8 @@ function drawContactShadows(c: C) {
 export function drawGarageBackground(): HTMLCanvasElement {
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
-  drawYardLeft(c); drawHouseRight(c); drawShell(c); drawWallStuff(c); drawHouseDoor(c); drawFloorStuff(c); drawContactShadows(c);
+  // nothing is drawn past the right brick post: that's where the picture ends
+  drawYardLeft(c); drawShell(c); drawWallStuff(c); drawHouseDoor(c); drawFloorStuff(c); drawContactShadows(c);
   drawPost(c, POST_L[0], POST_L[1]); drawPost(c, POST_R[0], POST_R[1]);
   return cv;
 }
@@ -373,8 +365,7 @@ function drawHoop(c: C, p: Piece) {
 /**
  * A super broken classic fastback (our own drawing, no badges): faded red with grey primer and rust, the front-left
  * wheel gone (brake drum on cinder blocks), a flat rear tyre, a cracked windshield, one headlight missing, the bumper
- * hanging. Parked nose toward us along a line slanted like the room's perspective (as the reference's van), and cut
- * off by the right brick post.
+ * hanging. Parked along the right wall, nose toward us (as the reference's van).
  */
 function drawCar(c: C, p: Piece) {
   const { y0, y1, width: W } = CAR, cut = POST_R[0];
