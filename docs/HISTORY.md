@@ -53,7 +53,7 @@
 | 38 | `87f29f5` | Animations for the player using the squat rack, push-up mat, jump rope, bench press and treadmill | Workout stations (✕ to start/stop), clips squat / pushup / benchPress / jumpRope (+ jog from behind), moving bar + rope props, equipment frames without the bar |
 | 38b | `bcbbf29` | Push-up face clipped; squat arms under the bar; bench head should lie on the bench looking up, feet backwards, round out the stomach; a red square straight out from the hoop with a shooting animation | Fixed poses, rotated lying torso + head turn, red-square shooting station with the ball going in |
 | 39 | `b6ddb9f` | A mini-game for each workout with on-screen controls: rope (spin + ○ under you), squat (alternate L2/R2 vs a falling bar), treadmill (dot through a square, faster each hit), push-ups (random button, red ✗ on a wrong one), hoop (shot meter on ✕), bench (my design) | `minigames.ts` + tests, mini-game input / L1-only stop in `RoomScene`, garage panel / controls card / red ✗, props driven by the games; bench = keep the bar level |
-| 39b | `TBD` | The basketball should actually shoot; a curved shot meter like 2K's; sound effects for all the mini-games | Jump shot that rises with the meter, curved arc meter + GREEN!, procedural sounds for every mini-game (events → sfx) |
+| 39b | `d261c81` | The basketball should actually shoot; a curved shot meter like 2K's; sound effects for all the mini-games | Jump shot that rises with the meter, curved arc meter + GREEN!, procedural sounds for every mini-game (events → sfx) |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
