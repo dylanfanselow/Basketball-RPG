@@ -47,7 +47,8 @@ export const FURNITURE: Piece[] = [
   { id: 'tvTable', kind: 'tvTable', x: 25.3, y: 9.8, w: 3.0, d: 1.5, solid: true },
   { id: 'armchair', kind: 'armchair', x: 33.8, y: 9.6, w: 3.4, d: 3.0, solid: true },
   { id: 'bookshelf', kind: 'bookshelf', x: 37.0, y: 13.8, w: 5.6, d: 8.6, solid: true, poly: alongRightWall(13.8, 22.4, 1.9) },
-  { id: 'wardrobe', kind: 'wardrobe', x: 1.6, y: 16.6, w: 3.0, d: 3.2, solid: true },
+  // against the left wall, doors facing right into the room
+  { id: 'wardrobe', kind: 'wardrobe', x: 0.4, y: 16.0, w: 4.2, d: 3.6, solid: true, poly: alongLeftWall(16.0, 19.6, 2.1) },
   { id: 'diningTable', kind: 'diningTable', x: 17.6, y: 17.6, w: 7.2, d: 3.6, solid: true },
   { id: 'chairL', kind: 'chairL', x: 16.0, y: 18.4, w: 1.5, d: 1.8, solid: true },
   { id: 'chairR', kind: 'chairR', x: 24.9, y: 18.4, w: 1.5, d: 1.8, solid: true },
@@ -75,6 +76,9 @@ export const CALENDAR = { y0: 2.9, y1: 5.9, h0: 4.2, h1: 7.0 };
 export const PLAYER_R = 0.8;
 export const SPAWN: V = { x: 20.5, y: 9.5 };
 
+function alongLeftWall(y0: number, y1: number, depth: number): Poly {
+  return [{ x: wallL(y0) - 1, y: y0 }, { x: wallL(y0) + depth, y: y0 }, { x: wallL(y1) + depth, y: y1 }, { x: wallL(y1) - 1, y: y1 }];
+}
 function alongRightWall(y0: number, y1: number, depth: number): Poly {
   return [{ x: wallR(y0) - depth, y: y0 }, { x: wallR(y0) + 1, y: y0 }, { x: wallR(y1) + 1, y: y1 }, { x: wallR(y1) - depth, y: y1 }];
 }

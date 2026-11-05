@@ -320,11 +320,6 @@ function drawDoors(c: C) {
 }
 
 function drawFloorClutter(c: C) {
-  // slippers by the front-left wall
-  for (const [x, y] of [[7.4, 22.3], [8.6, 22.6]] as const) {
-    const px = Math.round(AX(x)), py = Math.round(AY(y));
-    R(c, px - 1, py - 1, 13, 6, '#3e3a36'); R(c, px, py, 11, 4, '#6d675f'); R(c, px + 1, py, 5, 2, '#8b847a');
-  }
   // magazines near the coffee table, a phone with its cord by the TV, popcorn by the box
   const mags: [number, number, string][] = [[29.6, 7.6, '#3f7fb3'], [30.4, 8.0, '#d9d2c2'], [31.0, 7.4, '#c84d3c']];
   for (const [x, y, col] of mags) { const px = Math.round(AX(x)), py = Math.round(AY(y)); R(c, px - 1, py - 1, 16, 9, OL(col)); R(c, px, py, 14, 7, col); R(c, px + 2, py + 2, 8, 1, tint(col, 0.5)); R(c, px + 2, py + 4, 6, 1, tint(col, 0.5)); }
@@ -404,8 +399,8 @@ function drawCounter(c: C, p: Piece) {
   R(c, rx + 18, ry - 8, 6, 8, '#3c4245'); R(c, rx + 19, ry - 7, 4, 7, '#d65a4a'); R(c, rx + 19, ry - 7, 1, 7, '#e8806e');
 }
 
-/** Peninsula joined to the back counter: cabinet doors on its left side, cooktop under a fume hood, a duct up to the
- * ceiling and along the top, and the pole dropping from that duct to the peninsula's end (like the reference). */
+/** Peninsula joined to the back counter: cabinet doors on its left side, cooktop under a fume hood with a duct up to
+ * the ceiling. */
 function drawIsland(c: C, p0: Piece) {
   const sideF = 0.55, p = { ...p0, x: p0.x + sideF, w: p0.w - sideF };
   const H = Math.round(3.1 * HF);
@@ -437,21 +432,11 @@ function drawIsland(c: C, p0: Piece) {
   const pads: [number, number, number][] = [[4, -12, 5], [13, -11, 5], [9, -15, 6], [16, -8, 3]];
   for (const [ox, oy, w] of pads) { R(c, px + ox - 1, py + oy - 1, w * 2 + 2, 6, '#1f4a1a'); R(c, px + ox, py + oy, w * 2, 4, '#3f8a2f'); R(c, px + ox + 1, py + oy, w * 2 - 3, 1, '#6cbf4a'); }
   // fume hood over the cooktop, a duct up to the ceiling and one along the top to the end, then the pole down
-  const hoodX0 = b.x0 + 2, hoodX1 = b.x1 - 2, cen = Math.round((b.x0 + b.x1) / 2), mid = b.x1 - 9;
+  const hoodX0 = b.x0 + 2, hoodX1 = b.x1 - 2, cen = Math.round((b.x0 + b.x1) / 2);
   const hTop = Math.round(AY(p.y + 1.6) - 8.4 * HF), hBot = Math.round(AY(p.y + 1.6) - 6.4 * HF);
-  const ductRow = (y: number) => Math.round(AY(y) - 8.6 * HF);
-  const endY = p.y + p.d - 0.7, ductEnd = ductRow(endY);
-  R(c, cen - 6, WALL_TOP, 12, hTop - WALL_TOP, '#8e969a'); R(c, cen - 6, WALL_TOP, 2, hTop - WALL_TOP, '#b5bcbf'); R(c, cen + 4, WALL_TOP, 2, hTop - WALL_TOP, '#6b7377');
-  const dTop = hBot - 6;
-  R(c, mid - 5, dTop, 10, ductEnd - dTop + 6, '#3f4649'); R(c, mid - 4, dTop, 8, ductEnd - dTop + 5, '#9ba3a7'); R(c, mid - 4, dTop, 2, ductEnd - dTop + 5, '#c0c7ca'); R(c, mid + 2, dTop, 2, ductEnd - dTop + 5, '#7d8589');
-  for (let y = dTop + 14; y < ductEnd; y += 16) R(c, mid - 4, y, 8, 1, '#7d8589');
   for (let y = 0; y < hBot - hTop; y++) { const t = y / (hBot - hTop), ins = Math.round((1 - t) * ((hoodX1 - hoodX0) / 2 - 7)), cx = Math.round((hoodX0 + hoodX1) / 2), hw = Math.round((hoodX1 - hoodX0) / 2);
     void cx; void hw; R(c, hoodX0 + ins - 1, hTop + y, hoodX1 - hoodX0 - ins * 2 + 2, 1, '#5f676b'); R(c, hoodX0 + ins, hTop + y, hoodX1 - hoodX0 - ins * 2, 1, mix('#b5bcbf', '#8a9296', t)); }
   R(c, hoodX0 - 1, hBot, hoodX1 - hoodX0 + 2, 3, '#4a5155'); R(c, hoodX0 + 3, hBot + 1, hoodX1 - hoodX0 - 6, 1, '#f3e7b5');
-  // the pole: from the end of the top duct down into the end of the peninsula
-  const poleTop = ductEnd + 4, poleBot = Math.round(AY(endY) - H) + 2;
-  R(c, mid - 3, poleTop, 6, poleBot - poleTop, '#5c6468'); R(c, mid - 2, poleTop, 4, poleBot - poleTop, '#9aa2a6'); R(c, mid - 2, poleTop, 1, poleBot - poleTop, '#c3cacd');
-  R(c, mid - 5, poleBot - 2, 10, 3, '#3f4649'); R(c, mid - 6, ductEnd + 2, 12, 4, '#6b7377');
 }
 
 function drawLamp(c: C, p: Piece) {
@@ -682,13 +667,43 @@ function drawBookshelf(c: C, p: Piece) {
   R(c, tx, ty - 4, 8, 4, '#6e4a1e'); R(c, tx + 3, ty - 10, 2, 6, '#e2b84a'); R(c, tx + 1, ty - 16, 6, 6, '#f0c44c'); P(c, tx + 2, ty - 15, '#fff2b8');
 }
 
+/** Wardrobe with its back to the slanted left wall and its doors facing right into the room, drawn column by column
+ * on a plane parallel to the wall (like the bookshelf on the other side): door face, lit top, end panel toward us. */
 function drawWardrobe(c: C, p: Piece) {
-  const w = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 5.3, WOOD, { top: '#a06c40' });
-  const mid = Math.round((w.x0 + w.x1) / 2);
-  R(c, mid, w.faceTop + 3, 1, w.H - 9, shade(WOOD, 0.6));
-  for (const [dx0, dx1] of [[w.x0 + 3, mid - 2], [mid + 3, w.x1 - 3]]) { R(c, dx0, w.faceTop + 6, dx1 - dx0, w.H - 18, shade(WOOD, 0.92)); R(c, dx0, w.faceTop + 6, dx1 - dx0, 1, tint(WOOD, 0.2)); }
-  R(c, mid - 4, w.faceTop + w.H / 2, 2, 5, '#d8b24a'); R(c, mid + 3, w.faceTop + w.H / 2, 2, 5, '#d8b24a');
-  R(c, w.x0, w.faceTop - 1, w.x1 - w.x0, 3, tint(WOOD, 0.1));
+  const y0 = p.y, y1 = p.y + p.d, T = 2.1, H = Math.round(5.6 * HF);
+  const face = (y: number) => AX(wallL(y) + T), wallX = (y: number) => AX(wallL(y));
+  const yAt = (x: number, off: number) => ((x / AS - ROOM.ox) / RS - off - ROOM.backL) / ROOM.slopeL;
+  const fa = Math.round(face(y1)), fb = Math.round(face(y0));
+  // top (between the wall line and the door-face line), lit
+  for (let x = Math.round(wallX(y1)); x <= fb; x++) {
+    const yF = Math.min(y1, Math.max(y0, yAt(x, T))), yW = Math.min(y1, Math.max(y0, yAt(x, 0)));
+    const rF = Math.round(AY(yF)) - H, rW = Math.round(AY(yW)) - H;
+    for (let y = Math.min(rF, rW); y <= Math.max(rF, rW); y++) P(c, x, y, y === Math.min(rF, rW) ? OL(WOOD) : tint(WOOD, 0.28));
+  }
+  // door face (facing right): two doors with raised panels, brass knobs at the middle, a little darker than the top
+  for (let x = fa; x <= fb; x++) {
+    const y = Math.min(y1, Math.max(y0, yAt(x, T))), floor = Math.round(AY(y)), top = floor - H, u = (y - y0) / (y1 - y0);
+    for (let r = top; r < floor; r++) {
+      const v = (floor - r) / H; // 0 floor .. 1 top
+      let col = shade(WOOD, 0.9);
+      if (v < 0.05) col = shade(WOOD, 0.7);                                              // plinth
+      else if (Math.abs(u - 0.5) < 0.02) col = shade(WOOD, 0.55);                         // gap between the doors
+      else if ((u > 0.09 && u < 0.43 || u > 0.57 && u < 0.91) && v > 0.12 && v < 0.9) {
+        col = shade(WOOD, 0.82);                                                          // raised panel
+        if (v > 0.885 || u < 0.105 || (u > 0.57 && u < 0.585)) col = shade(WOOD, 0.66);
+        if (v < 0.135) col = tint(WOOD, 0.12);
+      } else if (hn(Math.floor(u * 30), r, 51) < 0.1) col = shade(WOOD, 0.85);
+      if ((Math.abs(u - 0.45) < 0.025 || Math.abs(u - 0.55) < 0.025) && Math.abs(v - 0.5) < 0.03) col = '#e2b84a';
+      if (r === top) col = tint(WOOD, 0.35);
+      P(c, x, r, col);
+    }
+    P(c, x, floor, OL(WOOD));
+  }
+  // end panel toward the camera (shows the depth), and outlines
+  const ex0 = Math.round(wallX(y1)), ex1 = fa, eb = Math.round(AY(y1)), et = eb - H;
+  R(c, ex0, et, ex1 - ex0 + 1, H + 1, OL(WOOD));
+  R(c, ex0 + 1, et + 1, ex1 - ex0 - 1, H - 1, WOOD); R(c, ex0 + 1, et + 1, 2, H - 1, tint(WOOD, 0.18)); R(c, ex0 + 1, eb - 4, ex1 - ex0 - 1, 3, shade(WOOD, 0.75));
+  R(c, ex0 + 1, et + 1, ex1 - ex0 - 1, 2, tint(WOOD, 0.3));
 }
 
 function drawDiningTable(c: C, p: Piece) {

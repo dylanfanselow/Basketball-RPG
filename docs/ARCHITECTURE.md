@@ -29,7 +29,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## World (`src/world`)
 `apartment.ts` (pure): room feet ↔ screen (`RS`, `RD`, `sxOf`/`syOf`, slanted `wallL`/`wallR`), `FURNITURE`
-footprints (optional `poly`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
+footprints (optional `poly`, `alongLeftWall` / `alongRightWall`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
 ends inside a gap narrower than the body), `isFree`, `doorNear`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
 
 ## Career (`src/career`)
