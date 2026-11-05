@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Piece, ROOM, wallL, wallR, footprint } from '../world/apartment';
-import { GARAGE_FURNITURE, GARAGE_DOORS } from '../world/garage';
+import { GARAGE_FURNITURE, GARAGE_DOORS, CAR } from '../world/garage';
 import { shade, tint } from './sprites';
 import {
   C, ArtPiece, ART_W, ART_H, AS, HF, AX, AY, yOfRow, BEAM_TOP, WALL_TOP, FLOOR_ROW, POST_L, POST_R,
@@ -68,8 +68,8 @@ function drawShell(c: C) {
     P(c, x, y, col);
   }
   // back wall: tan brick panels between plaster pillars, a concrete plinth at the bottom
-  const bx0 = Math.round(AX(ROOM.backL)), bx1 = Math.round(AX(ROOM.backR));
-  const pillars: [number, number][] = [[bx0, bx0 + 12], [426, 438], [604, 616], [bx1 - 12, bx1]];
+  const bx0 = Math.round(AX(ROOM.backL)), bx1 = POST_R[0]; // no right wall: the back wall runs to the brick post
+  const pillars: [number, number][] = [[bx0, bx0 + 12], [426, 438], [604, 616], [742, 754]];
   for (let y = WALL_TOP; y < FLOOR_ROW; y++) for (let x = bx0; x < bx1; x++) {
     const pil = pillars.find(([a, b]) => x >= a && x < b);
     let col: string;
@@ -86,44 +86,44 @@ function drawShell(c: C) {
   // side walls: plaster
   for (let y = WALL_TOP; y < ART_H; y++) {
     const yf = y < FLOOR_ROW ? 0 : yOfRow(y);
-    const lx = y < FLOOR_ROW ? bx0 : AX(wallL(yf)), rx = y < FLOOR_ROW ? bx1 : AX(wallR(yf));
+    const lx = y < FLOOR_ROW ? bx0 : AX(wallL(yf));
     for (let x = POST_L[1]; x < Math.round(lx); x++) P(c, x, y, x >= Math.round(lx) - 2 ? '#857761' : hn(x, y, 12) < 0.05 ? '#8f8169' : y < WALL_TOP + 8 ? '#867862' : '#9b8d74');
-    for (let x = Math.round(rx); x < POST_R[0]; x++) P(c, x, y, x <= Math.round(rx) + 1 ? '#a08f70' : hn(x, y, 13) < 0.05 ? '#a99878' : y < WALL_TOP + 8 ? '#a49374' : '#b5a383');
   }
   // concrete floor: mottled, darker toward the walls, a few cracks and an oil stain by the van
   for (let y = FLOOR_ROW; y < ART_H; y++) {
-    const yf = yOfRow(y), lx = Math.round(AX(wallL(yf))), rx = Math.round(AX(wallR(yf)));
+    const yf = yOfRow(y), lx = Math.round(AX(wallL(yf))), rx = POST_R[0];
     for (let x = lx; x < rx; x++) {
       let col = FLOOR[Math.floor(hn(x >> 1, y >> 1, 21) * FLOOR.length)];
       if (hn(x >> 3, y >> 2, 22) < 0.12) col = shade(col, 0.95);
       if (hn(x, y, 23) < 0.03) col = tint(col, 0.12);
-      const lamp = Math.max(0, 1 - Math.hypot((x - 480) / 260, (y - 300) / 90));
+      const lamp = Math.max(0, 1 - Math.hypot((x - 520) / 300, (y - 300) / 90));
       col = mix(col, '#d8cfb8', lamp * 0.18);
-      const edge = Math.min(1, (x - lx) / 40, (rx - x) / 40);
+      const edge = Math.min(1, (x - lx) / 40, (rx - x) / 80);
       col = shade(col, 0.8 + 0.2 * Math.max(0, edge));
-      if (Math.hypot((x - AX(33.8)) / 30, (y - AY(19.5)) / 9) < 1) col = mix(col, '#2a2b2e', 0.55 + 0.2 * hn(x, y, 24)); // oil stain
+      if (Math.hypot((x - AX(37.5)) / 34, (y - AY(19.0)) / 9) < 1) col = mix(col, '#2a2b2e', 0.55 + 0.2 * hn(x, y, 24)); // oil stain
       P(c, x, y, col);
     }
   }
   const crack = (pts: [number, number][]) => { for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let k = 0; k <= n; k++) P(c, Math.round(x0 + ((x1 - x0) * k) / n), Math.round(y0 + ((y1 - y0) * k) / n), '#5f6166'); } };
   crack([[300, 380], [312, 386], [318, 384], [330, 392]]); crack([[560, 470], [566, 462], [578, 458], [584, 450]]); crack([[420, 330], [428, 336], [440, 335]]);
   // expansion joints
-  for (let x = Math.round(AX(wallL(14))); x < Math.round(AX(wallR(14))); x++) if (hn(x, 0, 25) > 0.1) P(c, x, Math.round(AY(14)), '#727479');
+  for (let x = Math.round(AX(wallL(14))); x < POST_R[0]; x++) if (hn(x, 0, 25) > 0.1) P(c, x, Math.round(AY(14)), '#727479');
   // baseboard shadow along the back wall
   R(c, bx0, FLOOR_ROW, bx1 - bx0, 2, '#5a5c60');
 }
 
 function drawWallStuff(c: C) {
-  const bx0 = Math.round(AX(ROOM.backL)), bx1 = Math.round(AX(ROOM.backR));
+  const bx0 = Math.round(AX(ROOM.backL)), bx1 = POST_R[0];
+  drawPosters(c); // posters go up first: the duct and the hanging lamps are in front of them
   // galvanised duct along the top of the back wall with hangers, and three hanging lamps
   R(c, bx0, 112, bx1 - bx0, 13, '#5f676b'); R(c, bx0, 113, bx1 - bx0, 11, '#a3abaf'); R(c, bx0, 113, bx1 - bx0, 3, '#c6cdd0'); R(c, bx0, 121, bx1 - bx0, 3, '#7d8589');
   for (let x = bx0 + 30; x < bx1; x += 64) { R(c, x, 113, 2, 11, '#7d8589'); R(c, x, WALL_TOP, 2, 19, '#55595c'); }
   R(c, 340, 115, 10, 7, '#5f676b'); R(c, 341, 116, 8, 5, '#3a3f42'); // vent grilles
   R(c, 560, 115, 10, 7, '#5f676b'); R(c, 561, 116, 8, 5, '#3a3f42');
-  for (const lx of [360, 478, 590]) {
-    R(c, lx - 1, 124, 3, 26, '#3a3f42');
-    for (let y = 0; y < 10; y++) { const hw = 4 + Math.round(y * 0.9); R(c, lx - hw - 1, 150 + y, hw * 2 + 3, 1, '#2f3437'); R(c, lx - hw, 150 + y, hw * 2 + 1, 1, y < 2 ? '#8e979c' : '#5f686d'); }
-    R(c, lx - 4, 160, 9, 3, '#fff3c0'); R(c, lx - 2, 163, 5, 1, '#ffe08a');
+  for (const lx of [387, 571, 709]) {
+    R(c, lx - 1, 124, 3, 8, '#3a3f42');
+    for (let y = 0; y < 10; y++) { const hw = 4 + Math.round(y * 0.9); R(c, lx - hw - 1, 132 + y, hw * 2 + 3, 1, '#2f3437'); R(c, lx - hw, 132 + y, hw * 2 + 1, 1, y < 2 ? '#8e979c' : '#5f686d'); }
+    R(c, lx - 4, 142, 9, 3, '#fff3c0'); R(c, lx - 2, 145, 5, 1, '#ffe08a');
   }
   // cobweb in the top-left corner
   const cw = { x: POST_L[1] + 2, y: WALL_TOP + 2 };
@@ -139,15 +139,15 @@ function drawWallStuff(c: C) {
     for (const bx of [x0 + 6, x1 - 8]) { R(c, bx, y + 4, 2, 8, '#3a3f42'); R(c, bx, y + 10, 6, 2, '#3a3f42'); }
     R(c, x0 + 2, y + 5, x1 - x0, 2, 'rgba(60,40,20,0.25)');
   };
-  shelf(278, 352, 190); shelf(278, 352, 226); shelf(560, 600, 196);
+  shelf(278, 352, 190); shelf(278, 352, 226); shelf(766, 812, 206);
   // clutter: paint cans, a toolbox, spray bottles, a trophy, folded towels
   R(c, 284, 178, 10, 12, '#33373b'); R(c, 285, 179, 8, 10, '#c9c2b0'); R(c, 285, 183, 8, 3, '#3f7fb3');
   R(c, 298, 180, 12, 10, '#33373b'); R(c, 299, 181, 10, 8, '#c9c2b0'); R(c, 299, 184, 10, 3, '#c84d3c');
   R(c, 316, 182, 22, 8, '#5a1d14'); R(c, 317, 183, 20, 6, '#c8433a'); R(c, 324, 180, 6, 2, '#2a2a2a');
   R(c, 342, 180, 4, 10, '#2f6fb5'); R(c, 343, 177, 2, 3, '#e8e8e8');
   R(c, 284, 216, 18, 10, '#6e4a1e'); R(c, 285, 217, 16, 8, '#b8864a'); R(c, 304, 214, 8, 12, '#3a3a3a'); R(c, 316, 219, 14, 7, '#a9b0b4'); R(c, 334, 212, 6, 14, '#e2b84a'); R(c, 333, 210, 8, 3, '#f0c44c');
-  for (let k = 0; k < 3; k++) { R(c, 564, 190 - k * 4, 18, 4, '#5a2a0e'); R(c, 565, 190 - k * 4, 16, 3, k % 2 ? '#e07a2c' : '#f09040'); }
-  R(c, 586, 186, 10, 10, '#2f3f5a'); R(c, 587, 187, 8, 8, '#4f6f9a');
+  for (let k = 0; k < 3; k++) { R(c, 770, 200 - k * 4, 18, 4, '#5a2a0e'); R(c, 771, 200 - k * 4, 16, 3, k % 2 ? '#e07a2c' : '#f09040'); }
+  R(c, 794, 196, 10, 10, '#2f3f5a'); R(c, 795, 197, 8, 8, '#4f6f9a');
   // wall-mounted dip station (two handles out from a bracket) and a speed bag under its platform
   const dx = Math.round(AX(25.1));
   R(c, dx - 9, 196, 18, 26, STEEL); R(c, dx - 8, 197, 16, 24, STEEL_L);
@@ -157,19 +157,23 @@ function drawWallStuff(c: C) {
   R(c, dx, 242, 1, 2, '#2a2a2a');
   // power strip beside the door
   R(c, 622, 200, 6, 32, '#d8d4c8'); R(c, 622, 200, 6, 1, '#f2efe6'); for (let k = 0; k < 4; k++) R(c, 624, 204 + k * 7, 2, 3, '#5a5a5a');
+
+}
+
+function drawPosters(c: C) {
   // tribute posters: STONEY (the training-montage boxer, arms up), KG, THE ADMIRAL
-  hang(c, 292, 124, 30, 46, -0.035, (pc) => { const x = 1, y = 1, w = 30, h = 46;
+  hang(c, 372, 148, 30, 46, -0.035, (pc) => { const x = 1, y = 1, w = 30, h = 46;
     posterFrame(pc, x, y, w, h, (u, v) => (v < 0.2 ? '#efe4c8' : mix('#cbb48a', '#8a6a44', (v - 0.2) / 0.8)));
     for (let k = 0; k < 7; k++) R(pc, x + 4 + k * 3, y + 30 - (k % 3) * 2, 2, 8 + (k % 3) * 2, '#6e5236'); // the steps / city
     figure(pc, x + 15, y + 30, '#2a1a10', '#2a1a10', { head: [0, -14], hands: [[-8, -24], [8, -24]], feet: [[-4, 8], [4, 8]] });
     text3(pc, x + Math.round((w - textW('STONEY')) / 2), y + 2, 'STONEY', '#3a2a1a'); });
-  hang(c, 512, 118, 30, 46, 0.05, (pc) => { const x = 1, y = 1, w = 30, h = 46;
+  hang(c, 556, 149, 30, 46, 0.05, (pc) => { const x = 1, y = 1, w = 30, h = 46;
     posterFrame(pc, x, y, w, h, (u, v) => mix('#1f5a3a', '#0e2e1d', v));
     figure(pc, x + 15, y + 34, '#0a1a10', '#f4f1e8', { head: [0, -14], hands: [[-10, -12], [10, -12]], feet: [[-4, 8], [4, 8]] });
     R(pc, x + 13, y + 15, 4, 2, '#c8433a'); // the scream
     text3(pc, x + Math.round((w - textW('KG')) / 2), y + 2, 'KG', '#f4f1e8');
     text3(pc, x + Math.round((w - textW('21')) / 2), y + 39, '21', '#8fd0a8'); });
-  hang(c, 636, 100, 36, 50, -0.02, (pc) => { const x = 1, y = 1, w = 36, h = 50;
+  hang(c, 691, 148, 36, 50, -0.02, (pc) => { const x = 1, y = 1, w = 36, h = 50;
     posterFrame(pc, x, y, w, h, (u, v) => (v > 0.84 ? '#101010' : mix('#c9ccd0', '#6f757b', v / 0.84)));
     for (let k = 0; k < 6; k++) P(pc, x + 4 + Math.round(hn(k, 31) * 28), y + 10 + Math.round(hn(k, 32) * 14), ['#00a0a8', '#f2a03a', '#e2466a'][k % 3]); // fiesta confetti
     figure(pc, x + 18, y + 34, '#101010', '#f4f1e8', { head: [2, -14], hands: [[10, -23], [8, -21]], feet: [[-5, 7], [-1, 9]] });
@@ -178,7 +182,20 @@ function drawWallStuff(c: C) {
 }
 
 function drawHouseDoor(c: C) {
-  const d = GARAGE_DOORS[0];
+  // left wall: the door to the apartment (frame, two panels, brass knob), a doormat in front
+  const L = GARAGE_DOORS.find((g) => g.side === 'L')!;
+  onWall(c, 'L', L.span[0] - 0.25, L.span[1] + 0.25, 0, 7.4, (_x, _y, u, v) => (u < 0.06 || u > 0.94 || v > 0.965 ? '#d9cfb8' : null));
+  onWall(c, 'L', L.span[0], L.span[1], 0, 7.0, (_x, _y, u, v) => {
+    const wood = '#7b5235', pu = 1 - u;
+    let col = wood;
+    if (u < 0.04 || u > 0.96 || v > 0.985) col = shade(wood, 0.6);
+    else if (pu > 0.16 && pu < 0.84 && ((v > 0.56 && v < 0.92) || (v > 0.08 && v < 0.48))) col = shade(wood, 0.88);
+    if (pu > 0.84 && pu < 0.92 && v > 0.47 && v < 0.53) col = '#e2b84a';
+    return col;
+  });
+  { const sx = AX(L.spot.x), sy = AY(L.spot.y);
+    for (let y = -8; y < 8; y++) for (let x = -14; x < 14; x++) P(c, Math.round(sx + x + 0.55 * y - 4), Math.round(sy + y * 0.9), Math.abs(x) > 12 || Math.abs(y) > 6 ? '#5a4632' : (x + y) % 3 === 0 ? '#7a5e3c' : '#8a6a44'); }
+  const d = GARAGE_DOORS.find((g) => g.side === 'B')!;
   const x0 = Math.round(AX(d.span[0])), x1 = Math.round(AX(d.span[1])), top = Math.round(AY(0) - 7 * HF);
   R(c, x0 - 4, top - 4, x1 - x0 + 8, FLOOR_ROW - top + 4, '#5a4632'); R(c, x0 - 3, top - 3, x1 - x0 + 6, 2, '#8a6e50');
   R(c, x0, top, x1 - x0, FLOOR_ROW - top, '#7a3f2e');
@@ -191,7 +208,7 @@ function drawHouseDoor(c: C) {
 
 function drawFloorStuff(c: C) {
   // orange gym mat with a diamond pattern in the middle
-  const mx0 = Math.round(AX(15.2)), mx1 = Math.round(AX(23.0)), my0 = Math.round(AY(14.8)), my1 = Math.round(AY(18.2));
+  const mx0 = Math.round(AX(15.6)), mx1 = Math.round(AX(23.2)), my0 = Math.round(AY(8.6)), my1 = Math.round(AY(11.8));
   for (let y = my0; y < my1; y++) for (let x = mx0; x < mx1; x++) {
     const u = (x - mx0) / (mx1 - mx0) * 2 - 1, v = (y - my0) / (my1 - my0) * 2 - 1, d = Math.abs(u) + Math.abs(v);
     let col = '#d9822e';
@@ -353,63 +370,80 @@ function drawHoop(c: C, p: Piece) {
   for (let k = 0; k <= 40; k++) { const a = (k / 40) * Math.PI * 2; R(c, Math.round(rimX + Math.cos(a) * rw), Math.round(rimY + Math.sin(a) * rh), 2, 2, Math.sin(a) < 0 ? '#b8430e' : '#e05a14'); }
 }
 
-/** Old boxy van parked along the right wall, nose toward us (drawn like the bookshelf: side face along the wall). */
-function drawVan(c: C, p: Piece) {
-  const y0 = p.y, y1 = p.y + p.d, W = 6.2, H = 6.3;
-  const sideX = (y: number) => AX(wallR(y) - W), wallX = (y: number) => AX(wallR(y));
-  const yAt = (x: number, off: number) => ((x / AS - ROOM.ox) / 22 + off - ROOM.backR) / ROOM.slopeR;
-  void 0;
-  const BODY = '#7fa0b0', BODY_D = '#5f7f8f', CREAM = '#e6dcc2';
-  const wheelAt = [y0 + 2.6, y1 - 2.4];
-  const xa = Math.round(sideX(y0)), xb = Math.round(sideX(y1));
-  // long side face (facing into the garage)
+/**
+ * A super broken classic fastback (our own drawing, no badges): faded red with grey primer and rust, the front-left
+ * wheel gone (brake drum on cinder blocks), a flat rear tyre, a cracked windshield, one headlight missing, the bumper
+ * hanging. Parked nose toward us along a line slanted like the room's perspective (as the reference's van), and cut
+ * off by the right brick post.
+ */
+function drawCar(c: C, p: Piece) {
+  const { y0, y1, width: W } = CAR, cut = POST_R[0];
+  const side = (y: number) => AX(CAR.sideAt(y));
+  const yAt = (x: number, off: number) => { // depth where the line (side + off) crosses column x
+    let lo = y0 - 2, hi = y1 + 2;
+    for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (AX(CAR.sideAt(m) + off) < x) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  };
+  // profile: height of the body top along the car (u = 0 tail .. 1 nose): trunk, fastback slope, roof, windshield, hood
+  const topH = (u: number) => u < 0.12 ? 3.0 + u * 2 : u < 0.42 ? 3.25 + (u - 0.12) / 0.3 * 1.05 : u < 0.58 ? 4.3 : u < 0.66 ? 4.3 - (u - 0.58) / 0.08 * 1.3 : 3.0 - (u - 0.66) * 0.9;
+  const RED = '#a33a2a', RED_D = '#7e2a1e', PRIMER = '#8a8d8f', RUST = ['#7a3e1a', '#9a5020', '#5e2c12'];
+  const rearW = 0.2, frontW = 0.8;
+  const xa = Math.round(side(y0)), xb = Math.min(cut - 1, Math.round(side(y1)));
+  // long left side
   for (let x = xa; x <= xb; x++) {
-    const y = Math.min(y1, Math.max(y0, yAt(x, W))), floor = Math.round(AY(y)), u = (y - y0) / (y1 - y0);
-    for (let r = Math.round(floor - H * HF); r < floor; r++) {
+    const y = Math.min(y1, Math.max(y0, yAt(x, 0))), u = (y - y0) / (y1 - y0), floor = Math.round(AY(y)), top = topH(u);
+    for (let r = Math.round(floor - top * HF); r < floor; r++) {
       const h = (floor - r) / HF;
-      let col = h > 4.1 ? CREAM : BODY;
-      if (h > 6.5) col = tint(CREAM, 0.15);
-      if (h > 4.3 && h < 6.2 && ((u > 0.08 && u < 0.3) || (u > 0.36 && u < 0.62) || (u > 0.7 && u < 0.86))) col = h > 5.8 ? '#5a7a8a' : '#2a3e4a'; // windows
-      if (Math.abs(h - 4.15) < 0.08) col = '#9a8e72';                                            // body line
-      if (h < 4.1 && (Math.abs(u - 0.34) < 0.008 || Math.abs(u - 0.64) < 0.008)) col = BODY_D;    // sliding door seams
-      if (h > 2.2 && h < 2.5 && u > 0.56 && u < 0.6) col = '#c9cfd2';                            // door handle
-      if (h < 0.9) col = '#4a5a64';                                                              // rocker panel
-      for (const wy of wheelAt) {
-        const d = Math.hypot((y - wy) / 1.25, (h - 1.15) / 1.2);
-        if (d < 1) col = d < 0.42 ? '#b9c0c4' : d < 0.52 ? '#5a6266' : '#1a1c1e';
-        else if (d < 1.18 && h > 1.15) col = '#3a4a54';                                           // wheel arch
-      }
-      if (hn(x, r, 41) < 0.03 && h > 1.3 && h < 4) col = shade(col, 0.9);                          // faded paint
+      let col = h > top - 0.12 ? tint(RED, 0.25) : RED;
+      if (h > 3.0 && u > 0.36 && u < 0.62) col = h > top - 0.15 ? '#5a2018' : (u > 0.45 && u < 0.47) ? RED_D : '#22303a'; // side glass + B pillar
+      if (Math.abs(h - 2.3) < 0.07) col = RED_D;                                                 // body crease
+      if (h > 1.0 && h < 2.0 && u > 0.47 && u < 0.53) col = '#33100a';                            // side scoop
+      if (u > 0.55 && u < 0.78 && h > 0.6 && h < 2.3) col = PRIMER;                               // primer door
+      if (u > 0.55 && u < 0.78 && h > 0.6 && h < 2.3 && hn(x, r, 61) < 0.08) col = '#7a7d7f';
+      const rust = hn(Math.floor(x / 2), Math.floor(r / 2), 62);
+      if (h < 1.3 && hn(x >> 2, r >> 1, 67) < 0.4) col = RUST[Math.floor(hn(x, r, 68) * 3)];     // rotten sills
+      if (u > 0.85 && h > 1.6 && h < 2.6 && rust < 0.3) col = RUST[1];                            // dented fender rust
+      if (u > 0.86 && u < 0.9 && h > 1.4 && h < 2.2) col = shade(col, 0.7);                       // the dent
+      if (h < 0.45) col = '#2a1a14';
+      // rear wheel: flat tyre (squashed), front wheel: gone — drum on cinder blocks
+      const dR = Math.hypot((u - rearW) / 0.085, (h - 0.95) / 0.95);
+      if (dR < 1 && h < 1.85) col = dR < 0.38 ? '#9aa2a6' : dR < 0.5 ? '#55595c' : h < 0.35 ? '#141414' : '#1a1a1a';
+      const dF = Math.hypot((u - frontW) / 0.085, (h - 1.2) / 1.0);
+      if (dF < 1 && h > 0.25) col = dF < 0.45 ? '#6e5a4a' : dF < 1 ? '#18100c' : col;              // empty wheel well
+      if (dF < 0.45) col = hn(x, r, 63) < 0.4 ? '#7a3e1a' : '#5a5c5e';                            // rusty brake drum
       P(c, x, r, col);
     }
   }
-  // roof (lit) with a rack
-  for (let x = xa; x <= Math.round(wallX(y1)); x++) {
-    const yF = Math.min(y1, Math.max(y0, yAt(x, W))), yW = Math.min(y1, Math.max(y0, yAt(x, 0)));
-    const rF = Math.round(AY(yF) - H * HF), rW = Math.round(AY(yW) - H * HF);
-    const yMid = yAt(x, W / 2), front = y1 - yMid < 1.4;
-    for (let r = Math.min(rF, rW); r <= Math.max(rF, rW); r++) {
-      const v = (r - Math.min(rF, rW)) / Math.max(1, Math.abs(rF - rW));
-      let col = mix('#b9ae90', '#d6ccb0', 1 - Math.abs(v - 0.45) * 1.6);         // a slightly domed roof
-      if (front) col = shade(col, 0.88);                                         // slopes down to the windshield
-      if (Math.abs(v - 0.25) < 0.03 || Math.abs(v - 0.7) < 0.03) col = '#9a937c'; // roof rack rails
-      if (((yMid - y0) % 2.2) < 0.2 && v > 0.22 && v < 0.73) col = '#a39c84';     // rack cross bars
-      if (r === Math.min(rF, rW)) col = '#6e6650';
+  // cinder blocks under the front axle
+  { const bx = Math.round(side(y0 + (y1 - y0) * frontW)), by = Math.round(AY(y0 + (y1 - y0) * frontW));
+    for (const [ox, oy] of [[-10, -2], [0, -2], [-5, -12]] as const) { R(c, bx + ox - 1, by + oy - 11, 12, 12, '#5a5c5e'); R(c, bx + ox, by + oy - 10, 10, 10, '#9a9c9a'); R(c, bx + ox + 2, by + oy - 8, 2, 6, '#5f6163'); R(c, bx + ox + 6, by + oy - 8, 2, 6, '#5f6163'); } }
+  // top surfaces: trunk, fastback glass, roof, windshield (cracked), long hood
+  for (let x = xa; x <= Math.min(cut - 1, Math.round(AX(CAR.sideAt(y1) + W))); x++) {
+    const yF = Math.min(y1, Math.max(y0, yAt(x, 0))), yB = Math.min(y1, Math.max(y0, yAt(x, W)));
+    const uF = (yF - y0) / (y1 - y0), uB = (yB - y0) / (y1 - y0);
+    const rF = Math.round(AY(yF) - topH(uF) * HF), rB = Math.round(AY(yB) - topH(uB) * HF);
+    for (let r = Math.min(rF, rB); r <= Math.max(rF, rB); r++) {
+      const t = (r - Math.min(rF, rB)) / Math.max(1, Math.abs(rF - rB)), u = uB + (uF - uB) * t;
+      let col = mix(RED, tint(RED, 0.35), 0.5 + 0.5 * Math.sin(t * Math.PI));
+      if (u > 0.36 && u < 0.45) col = '#2a3a46';                                                 // fastback glass
+      if (u > 0.58 && u < 0.66) { col = '#3a5262'; if ((x * 3 + r * 7) % 23 === 0 || Math.abs((x - r * 0.6) % 17) < 0.6) col = '#c8d8e0'; } // cracked windshield
+      if (u > 0.68 && Math.abs(t - 0.5) < 0.06) col = '#22100a';                                  // hood scoop seam
+      if (u > 0.45 && u < 0.58) col = mix('#5e2018', '#7e2e22', 0.5 + 0.5 * Math.sin(t * Math.PI));   // faded vinyl roof
+      if (u > 0.74 && u < 0.92 && t > 0.15 && t < 0.62) col = hn(x >> 2, r >> 2, 64) < 0.15 ? '#7a7d7f' : PRIMER; // primer patch on the hood
+      if (hn(x >> 3, r >> 2, 65) < 0.07) col = RUST[hn(x, r, 66) < 0.5 ? 0 : 2];                      // rust patches
+      if (r === Math.min(rF, rB)) col = '#3a120a';
       P(c, x, r, col);
     }
   }
-  // front end toward us: windshield, grille, round headlights, bumper, plate
-  const fx0 = Math.round(sideX(y1)), fx1 = Math.round(wallX(y1)), fb = Math.round(AY(y1)), ft = Math.round(fb - H * HF);
-  R(c, fx0 - 1, ft, fx1 - fx0 + 2, fb - ft + 1, '#2a3238');
-  R(c, fx0, ft + 1, fx1 - fx0, fb - ft - 1, BODY); R(c, fx0, ft + 1, fx1 - fx0, Math.round(2.7 * HF), CREAM);
-  R(c, fx0 + 5, ft + 6, fx1 - fx0 - 10, Math.round(1.9 * HF), '#2a3e4a'); R(c, fx0 + 7, ft + 8, 18, 3, '#6a8a9a'); R(c, fx0 + 10, ft + 12, 10, 2, '#6a8a9a');
-  R(c, Math.round((fx0 + fx1) / 2) - 1, ft + 6, 2, Math.round(1.9 * HF), '#2a3238');
-  const gy = ft + Math.round(3.2 * HF);
-  R(c, fx0 + 26, gy, fx1 - fx0 - 52, 16, '#2a2d31'); for (let k = 0; k < 4; k++) R(c, fx0 + 28, gy + 2 + k * 4, fx1 - fx0 - 56, 1, '#8e969a');
-  for (const hx of [fx0 + 14, fx1 - 14]) { for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) { const d = Math.hypot(xx, yy); if (d <= 6) P(c, hx + xx, gy + 8 + yy, d > 5 ? '#55595c' : d < 2 ? '#ffffff' : '#f2ecc8'); } }
-  R(c, fx0 - 2, fb - 22, fx1 - fx0 + 4, 8, '#9aa2a6'); R(c, fx0 - 2, fb - 22, fx1 - fx0 + 4, 2, '#d0d6d9');
-  R(c, Math.round((fx0 + fx1) / 2) - 9, fb - 32, 18, 8, '#f4f1e8'); R(c, Math.round((fx0 + fx1) / 2) - 9, fb - 32, 18, 1, '#9aa2a6');
-  R(c, fx0 + 4, fb - 13, 12, 13, '#1a1c1e'); R(c, fx1 - 16, fb - 13, 12, 13, '#1a1c1e');   // front tyres
+  // nose toward us: grille, one headlight left (the other is a dark hole), bumper hanging off one side
+  const fx0 = Math.round(side(y1)), fx1 = Math.min(cut - 1, Math.round(AX(CAR.sideAt(y1) + W))), fb = Math.round(AY(y1)), ft = Math.round(fb - topH(1) * HF);
+  R(c, fx0 - 1, ft, fx1 - fx0 + 2, fb - ft, '#3a120a');
+  R(c, fx0, ft + 1, fx1 - fx0, fb - ft - 2, RED_D); R(c, fx0, ft + 1, fx1 - fx0, 2, tint(RED, 0.2));
+  R(c, fx0 + 10, ft + 8, Math.min(70, fx1 - fx0 - 12), 14, '#141414'); for (let k = 0; k < 3; k++) R(c, fx0 + 12, ft + 10 + k * 4, Math.min(66, fx1 - fx0 - 16), 1, '#3a3a3a');
+  const hl = (hx: number, ok: boolean) => { for (let yy = -5; yy <= 5; yy++) for (let xx = -5; xx <= 5; xx++) { const d = Math.hypot(xx, yy); if (d <= 5 && hx + xx < cut) P(c, hx + xx, ft + 15 + yy, d > 4 ? '#55595c' : ok ? (d < 2 ? '#ffffff' : '#e8e2c4') : '#0a0a0a'); } };
+  hl(fx0 + 6, true); hl(fx0 + 86, false);
+  for (let k = 0; k < Math.min(96, fx1 - fx0); k++) { const sag = k < 40 ? 0 : Math.round((k - 40) * 0.2); R(c, fx0 - 2 + k, fb - 10 + sag, 1, 4, k % 9 === 0 ? '#7a3e1a' : '#a9b0b4'); P(c, fx0 - 2 + k, fb - 10 + sag, '#d6dcdf'); }
+  if (fx0 + 90 < cut) R(c, fx0 + 78, fb - 5, 12, 6, '#1a1a1a');                                  // the far front tyre (the near one is gone)
 }
 
 function drawBoxes(c: C, p: Piece) {
@@ -431,7 +465,7 @@ function drawKettlebells(c: C, p: Piece) {
 }
 
 const DRAW: Record<string, (c: C, p: Piece) => void> = {
-  bench: drawBench, squatRack: drawSquatRack, treadmill: drawTreadmill, hoop: drawHoop, van: drawVan, boxes: drawBoxes, kettlebells: drawKettlebells,
+  bench: drawBench, squatRack: drawSquatRack, treadmill: drawTreadmill, hoop: drawHoop, car: drawCar, boxes: drawBoxes, kettlebells: drawKettlebells,
 };
 
 const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();

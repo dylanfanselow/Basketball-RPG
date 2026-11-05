@@ -164,6 +164,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (bar into the room, plates face-on), treadmill (console at the back), dip station + speed bag, shelves, duct and
     hanging lamps, door to the house, gym mat, jump rope, kettlebells, boxes, an old van along the right wall (our own
     design), outdoor pull-up bars in the yard.
+  - **Round 37b:** no right wall — the garage runs to the **right brick post, which cuts things off** (like the
+    reference's edge); the van → a **super broken classic fastback** (our own drawing, no badges: faded red, primer,
+    rust, a front wheel gone and the drum on cinder blocks, flat tyre, cracked windshield, missing headlight, hanging
+    bumper), parked nose toward us and cut off by the post; the **door from the apartment is on the left wall** (the
+    back-wall door = outside, coming soon); **posters hang under the lamps** (lamps and duct in front); the gym mat
+    sits further back.
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**

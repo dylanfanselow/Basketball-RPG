@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GARAGE } from '../src/world/garage';
-import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR } from '../src/world/apartment';
+import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, rightBound } from '../src/world/apartment';
 
 const polys = solids([], GARAGE);
 const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
@@ -55,16 +55,16 @@ describe('garage', () => {
       let p = { ...GARAGE.spawn };
       for (let i = 0; i < 400; i++) p = moveWithCollision(p, { x: dir.x * 0.15, y: dir.y * 0.15 }, PLAYER_R, polys);
       expect(p.y).toBeGreaterThan(0); expect(p.y).toBeLessThan(ROOM.depth);
-      expect(p.x).toBeGreaterThan(wallL(p.y)); expect(p.x).toBeLessThan(wallR(p.y));
+      expect(p.x).toBeGreaterThan(wallL(p.y)); expect(p.x).toBeLessThan(rightBound(p.y, GARAGE));
     }
   });
 
   it('the doors link the apartment and the garage both ways', () => {
     const toGarage = APARTMENT.doors.find((d) => d.id === 'garage')!;
-    expect(toGarage.to.scene).toBe('Garage');
-    expect(GARAGE.doors.some((d) => d.id === toGarage.to.at)).toBe(true);
-    const back = GARAGE.doors.find((d) => d.id === 'house')!;
-    expect(back.to.scene).toBe('Apartment');
-    expect(APARTMENT.doors.some((d) => d.id === back.to.at)).toBe(true);
+    expect(toGarage.to!.scene).toBe('Garage');
+    const arrive = GARAGE.doors.find((d) => d.id === toGarage.to!.at)!;
+    expect(arrive.side).toBe('L'); // the door from the apartment is on the garage's left wall
+    expect(arrive.to!.scene).toBe('Apartment');
+    expect(APARTMENT.doors.some((d) => d.id === arrive.to!.at)).toBe(true);
   });
 });

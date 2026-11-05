@@ -145,7 +145,10 @@ export abstract class RoomScene extends Phaser.Scene {
     this.prompt.setVisible(!!door);
     if (door) {
       this.prompt.setText(`✕ ${door.label}`).setPosition(sxOf(door.spot.x), syOf(door.spot.y) - 160);
-      if (this.inp.pressed('a')) { this.scene.start(door.to.scene, door.to.at ? { at: door.to.at } : undefined); return; }
+      if (this.inp.pressed('a')) {
+        if (door.to) { this.scene.start(door.to.scene, door.to.at ? { at: door.to.at } : undefined); return; }
+        (window as any).__toast?.(door.soon ?? 'Coming soon');
+      }
     }
 
     this.drawPlayer(moved / Math.max(dt, 1e-3));

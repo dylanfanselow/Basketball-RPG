@@ -112,10 +112,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 
 ## Garage gym (round 37)
 - `Garage` scene (`GarageScene` → `RoomScene`, layout `world/garage.ts`, art `render/garageArt.ts`): reached through the
-  apartment's left door (you arrive at its back door; that door takes you back to the apartment's garage door), or
-  the dev menu "Garage (gym)". Hoop (arena style, facing right from the left wall), squat rack, bench press, treadmill,
-  dip station + speed bag, shelves, duct + three hanging lamps, STONEY / KG / ADMIRAL posters, gym mat, jump rope,
-  trainers, kettlebells, boxes, an old van along the right wall; yard with a tree and pull-up bars outside. All solid,
+  apartment's left door (you arrive at the garage's left-wall door, which takes you back; the back-wall door is
+  "Outside — coming soon"), or the dev menu "Garage (gym)". No right wall: the room runs to the right brick post
+  (`RoomDef.rightX`), which cuts off the broken fastback parked nose-first along the right. Hoop (arena style, facing
+  right from the left wall), squat rack, bench press, treadmill, dip station + speed bag, shelves, duct + three
+  hanging lamps with STONEY / KG / ADMIRAL posters under them, gym mat, jump rope, trainers, kettlebells, boxes; yard
+  with a tree and pull-up bars outside. All solid,
   same HUD and draw order as the apartment. No training interactions yet.
 
 ## Apartment (round 36)
