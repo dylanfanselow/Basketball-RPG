@@ -32,6 +32,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 footprints (optional `poly`, `alongLeftWall` / `alongRightWall`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
 ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pieceDepthFt` / `actorDepthFt`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
 
+`minigames.ts`: the garage workout mini-games (pure, unit-tested in `tests/minigames.test.ts`).
 `garage.ts`: `GARAGE` (`RoomDef`: furniture / doors / spawn / `GARAGE_STATIONS` workouts). Rooms share the cutaway frame; `solids(extra, room)`,
 `doorNear(p, reach, room)`; `Door` has `side` (L / R / B), `span`, `to` (scene + door you arrive at).
 

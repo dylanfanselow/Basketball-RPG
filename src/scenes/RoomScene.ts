@@ -9,6 +9,7 @@ import { CLIP, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../rende
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildIcons, ArtPiece, AS } from '../render/roomArt';
+import { MiniGame, MiniInput, makeMiniGame } from '../world/minigames';
 import { V, Piece, RoomDef, Station, stationU, actorDepthFt, pieceDepthFt, PLAYER_R, RS, solids, moveWithCollision, doorNear, stationNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
 
 export const WALK = 6.2, JOG = 10.5; // ft/s
@@ -39,6 +40,8 @@ export abstract class RoomScene extends Phaser.Scene {
   /** The workout in progress (round 38), and how long it's been going. */
   activity: Station | null = null;
   actT = 0;
+  /** The workout's mini-game (round 39), if it has one. */
+  mini: MiniGame | null = null;
 
   abstract room(): RoomDef;
   /** Bake (or reuse) the background + piece textures. */
@@ -59,7 +62,7 @@ export abstract class RoomScene extends Phaser.Scene {
     const r = this.room(), door = data?.at ? r.doors.find((d) => d.id === data.at) : undefined;
     this.pos = { ...(door ? door.spot : r.spawn) };
     this.vel = { x: 0, y: 0 }; this.face = door ? { x: 0, y: 1 } : { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0;
+    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null;
   }
 
   create() {
@@ -133,11 +136,12 @@ export abstract class RoomScene extends Phaser.Scene {
     this.inp.poll();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
     if (this.activity) {
-      // working out: stay on the equipment; ✕, ○ or L1 stops
+      // working out: stay on the equipment and play its mini-game; only L1 (Esc) stops (✕ / ○ are game buttons)
       this.actT += dt;
-      if (this.inp.pressed('a') || this.inp.pressed('b') || this.inp.pressed('escape') || this.inp.pressed('back')) { this.stopActivity(); this.drawPlayer(0); return; }
+      if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.stopActivity(); this.drawPlayer(0); return; }
       {
-        this.prompt.setVisible(true).setText(`${this.activity.label}  ·  ✕ stop`).setPosition(sxOf(this.pos.x), syOf(this.pos.y) - 175);
+        this.mini?.update(dt, this.miniInput());
+        this.prompt.setVisible(!this.mini).setText(`${this.activity.label}  ·  L1 stop`).setPosition(sxOf(this.pos.x), syOf(this.pos.y) - 175);
         this.drawPlayer(0); this.onUpdate(dt); this.sortDepths(); this.drawDebug();
         return;
       }
@@ -177,19 +181,30 @@ export abstract class RoomScene extends Phaser.Scene {
     this.drawDebug();
   }
 
+  /** This frame's controller state for the mini-games. */
+  miniInput(): MiniInput {
+    const p = (k: string) => this.inp.pressed(k);
+    return { stick: this.inp.move, a: p('a'), b: p('b'), x: p('x'), y: p('y'), l2: p('post'), r2: p('sprint'), aHeld: this.inp.held('a') };
+  }
+  /** Where in its clip the player is during a workout: the mini-game drives it (or a plain loop without one). */
+  activityU(st: Station): number {
+    return this.mini ? this.mini.animU() : stationU(st, this.actT, !!CLIP[st.clip].loop);
+  }
+
   startActivity(st: Station) {
     this.activity = st; this.actT = 0; this.pos = { ...st.at }; this.vel = { x: 0, y: 0 };
+    this.mini = makeMiniGame(st.id);
     this.onActivity(st);
   }
   stopActivity() {
     const st = this.activity; if (!st) return;
-    this.activity = null; this.pos = { ...st.spot }; this.face = { x: 0, y: 1 }; this.view = undefined;
+    this.activity = null; this.mini = null; this.pos = { ...st.spot }; this.face = { x: 0, y: 1 }; this.view = undefined;
     this.onActivity(null);
   }
   /** The clip, frame and pose (as drawn: arms rigged) the player shows right now in a workout. */
   activityFrame(): { clip: string; fi: number; pose: Pose } | null {
     const st = this.activity; if (!st) return null;
-    const cl = CLIP[st.clip], fi = frameAt(cl, stationU(st, this.actT, !!cl.loop));
+    const cl = CLIP[st.clip], fi = frameAt(cl, this.activityU(st));
     return { clip: st.clip, fi, pose: rigArms(sampleClip(cl, frameTime(cl, fi)), false) };
   }
   /** Screen position of a pose joint for the player as drawn now (side view; mirrored if flipped). */
@@ -210,7 +225,7 @@ export abstract class RoomScene extends Phaser.Scene {
     if (!sheet) return;
     let clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
     let u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
-    if (st) { clip = st.clip; u = stationU(st, this.actT, !!CLIP[st.clip].loop); }
+    if (st) { clip = st.clip; u = this.activityU(st); }
     const cl = CLIP[clip], fi = frameAt(cl, u);
     // multi-angle: facing toward the camera = +90 (room y grows toward us, like court y)
     const ang = (Math.atan2(this.face.y, this.face.x) * 180) / Math.PI;

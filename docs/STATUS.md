@@ -126,6 +126,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `pushup`, `benchPress`, `jumpRope` (+ `jog` from behind on the treadmill). `GarageScene` swaps the rack / bench to
   their empty-hooks frame, hides the coiled rope, and draws the moving bar (edge-on plates for the squat, face-on for
   the bench) and the turning rope loop. No stat / energy effects yet.
+- **Mini-games (round 39):** `world/minigames.ts` (pure: `JumpRopeGame`, `SquatGame`, `TreadmillGame`,
+  `PushupGame`, `ShootGame`, `BenchGame`, `makeMiniGame`; `update(dt, MiniInput)`, `reps`, `missing` (1 s ✗ lock),
+  `animU()` drives the clip). `RoomScene` feeds `miniInput()` (stick, ✕ ○ □ △ edges, L2 = `post`, R2 = `sprint`,
+  ✕ held) and stops only on L1 / Esc; `GarageScene.drawMiniHud` draws the controls card (away from you), the panel
+  (bars, level gauge, dot line, glyph, shot meter, rope ring), the red ✗, and the props follow the games (rope angle,
+  bench bar tilt, shot make / miss with "BUCKET!" / "MISS").
 - Round 38b: `Pose.headTurn` (head drawn rotated: the bench press looks up), lying torsos drawn along the body
   (`drawTorso` turns the upright torso when it's > ~45° from vertical — push-ups, bench, dives), shooting station
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).

@@ -154,12 +154,24 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 39: workout mini-games** (controls shown on a card when one starts, then a hint line; panel by the player
+  with reps + the game's widget; a wrong input = red ✗ and a 1 s lock; **L1 is the only way out** — ✕ / ○ are game
+  buttons):
+  - **Jump rope:** spin the L-stick to swing the rope, ○ when it's under your feet (miss / mistime = trip).
+  - **Squat:** alternate L2 / R2 to push up a bar that keeps falling; full = a rep.
+  - **Treadmill:** a dot slides back and forth along a line, ○ while it's in the centre square; each hit speeds it
+    up, a press outside = ✗ and slower.
+  - **Push-ups:** press the random button shown (✕ ○ □ △) to fill a falling bar; wrong button = ✗ for a second.
+  - **Shooting (red square):** a **shot meter** on ✕ (hold to load, release in the green = make, else it clanks off
+    the front rim). This is the garage practice spot only — **games still have no shot meter**.
+  - **Bench press (Claude's design, "keep it level"):** hold ✕ to press while the bar wobbles; keep the level gauge
+    centred with the L-stick (it tips faster the more it leans); tipping over drops the bar.
+  No stat / energy rewards yet.
 - **Round 38: garage workouts.** Animations for the player using the **squat rack, push-up mat, jump rope, bench
   press and treadmill**: ✕ at the equipment starts it, ✕ / ○ / L1 stops. Orientation follows the equipment: squat
   facing us inside the rack (bar across the shoulders, off the hooks), bench press lying along the bench with the head
   under the uprights (bar into the room, plates face-on, off the uprights), push-ups and jump rope side-on (the rope
-  loops around you; the coiled rope leaves the floor), treadmill from behind running toward the console. No stat or
-  energy effects yet.
+  loops around you; the coiled rope leaves the floor), treadmill from behind running toward the console.
   - **Round 38b:** push-up face stays in frame; squat hands grip the bar from below (elbows down, bar through the
     hands); bench press: back of the head on the bench, looking up, feet pointing away, and the torso drawn with its
     full rounded volume when lying (chest / belly protrudes); **shooting**: a **red square** on the floor straight out
