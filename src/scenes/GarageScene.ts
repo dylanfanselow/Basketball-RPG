@@ -4,6 +4,7 @@ import { sheetFor } from '../render/playerBank';
 import { SPRITE_SCALE } from '../render/sprites';
 import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
+import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
 import { JumpRopeGame, SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
 import { RoomDef, Station, RS, syOf } from '../world/apartment';
@@ -29,6 +30,8 @@ export class GarageScene extends RoomScene {
   cardText!: Phaser.GameObjects.Text;
   shotText!: Phaser.GameObjects.Text;
   startedAt = 0;
+  greenText!: Phaser.GameObjects.Text;
+  private lastTick = 0; private lastStep = 0; private lastShotPhase = '';
 
   constructor() { super('Garage'); }
   room(): RoomDef { return GARAGE; }
@@ -46,17 +49,20 @@ export class GarageScene extends RoomScene {
     this.cardG = this.add.graphics().setDepth(9310);
     this.cardText = this.add.text(640, 150, '', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold', align: 'center', lineSpacing: 8 }).setOrigin(0.5, 0).setDepth(9311).setVisible(false);
     this.shotText = T(20).setOrigin(0.5, 1);
+    this.greenText = T(16, '#7dff9a').setOrigin(0, 0.5);
   }
 
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
 
   onActivity(st: Station | null) {
+    sfx.beltHum(st?.id === 'treadmill');
+    this.lastShotPhase = '';
     (this.piece('squatRack') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'squat' ? 1 : 0);
     (this.piece('bench') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'bench' ? 1 : 0);
     this.piece('jumpRope')?.setVisible(st?.id !== 'rope');
     this.gear.clear(); this.gearBack.clear(); this.ballG?.clear();
     this.startedAt = this.t;
-    if (!st) { for (const o of [this.hudTitle, this.hudHint, this.hudBig, this.cardText, this.shotText]) o.setVisible(false); this.hudG.clear(); this.cardG.clear(); }
+    if (!st) { for (const o of [this.hudTitle, this.hudHint, this.hudBig, this.cardText, this.shotText, this.greenText]) o.setVisible(false); this.hudG.clear(); this.cardG.clear(); }
   }
 
   onUpdate() {
@@ -64,6 +70,7 @@ export class GarageScene extends RoomScene {
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
     this.drawMiniHud();
+    this.playSounds();
     if (!st || !fr || !this.player.visible) return;
     const d = this.player.depth;
     g.setDepth(d + 0.2); gb.setDepth(d - 0.2);
@@ -151,11 +158,69 @@ export class GarageScene extends RoomScene {
     void RS;
   }
 
+  /**
+   * 2K-style curved shot meter: a thick arc beside you (it rides up with your jump) that fills from the bottom along the
+   * curve, with the green window near the top. On release it freezes where you let go — green flashes "GREEN!".
+   */
+  drawShotMeter(m: ShootGame) {
+    const since = this.t - m.shotAt;
+    const show = m.state === 'meter' || (m.state === 'shot' && since < 0.9);
+    this.greenText.setVisible(false);
+    if (!show) return;
+    const g = this.hudG, x = this.player.x + 26, y = this.player.y - 118, r = 46;
+    const A0 = Math.PI * 0.42, A1 = -Math.PI * 0.42, at = (v: number) => A0 + (A1 - A0) * v; // bottom → top, up the curve
+    const alpha = m.state === 'shot' ? Math.max(0, 1 - since / 0.9) : 1;
+    const arc = (v0: number, v1: number, w: number, col: number, a = alpha) => { g.lineStyle(w, col, a).beginPath().arc(x, y, r, at(v0), at(v1), true).strokePath(); };
+    arc(0, 1, 13, 0x0b0d14);                                   // outline
+    arc(0, 1, 9, 0x2a2f3e);                                    // track
+    arc(ShootGame.GREEN[0], ShootGame.GREEN[1], 9, 0x2f7a3a);  // the green window
+    const v = m.state === 'shot' ? m.releasedAt : m.meter;
+    const col = m.state === 'shot' ? (m.made ? 0x7dff9a : 0xe0403a) : v >= ShootGame.GREEN[0] && v <= ShootGame.GREEN[1] ? 0x9dffb0 : 0xffd23a;
+    if (v > 0.01) arc(0, v, 7, col);
+    for (const e of [0, 1]) { const a = at(e); g.fillStyle(0xffffff, alpha).fillCircle(x + Math.cos(a) * r, y + Math.sin(a) * r, 2.5); } // end caps
+    const a = at(v); g.fillStyle(0xffffff, alpha).fillRect(x + Math.cos(a) * (r - 8) - 2, y + Math.sin(a) * (r - 8) - 2, 4, 4); // the tip
+    if (m.state === 'shot' && m.made) { this.greenText.setVisible(true).setAlpha(alpha).setText('GREEN!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r); }
+  }
+
+  /** Sounds for whatever the mini-game did this frame, plus the timed ones (meter ticks, footfalls, the shot ball). */
+  playSounds() {
+    const m = this.mini;
+    if (!m) return;
+    for (const e of m.takeEvents()) {
+      if (e === 'miss') { if (m instanceof JumpRopeGame) sfx.ropeTrip(); sfx.blip(false); }
+      else if (e === 'hop') sfx.ropeTap();
+      else if (e === 'turn' && m instanceof JumpRopeGame) sfx.ropeWhoosh(Math.min(1.6, m.spin / 12));
+      else if (e === 'press') { if (m instanceof PushupGame) sfx.blip(true); sfx.effort(); }
+      else if (e === 'hit') sfx.blip(true);
+      else if (e === 'rep') { sfx.ding(); if (m instanceof SquatGame || m instanceof BenchGame) sfx.plates(true); }
+      else if (e === 'drop') sfx.barDrop();
+      else if (e === 'creak') sfx.plates(false);
+      else if (e === 'release') sfx.release();
+      else if (e === 'green') sfx.greenChime();
+    }
+    if (m instanceof TreadmillGame) {
+      sfx.beltHum(true, m.speed / TreadmillGame.BASE);
+      const step = Math.floor(m.run * 2);           // two footfalls per stride
+      if (step !== this.lastStep) { this.lastStep = step; sfx.footfall(m.speed / TreadmillGame.BASE); }
+    }
+    if (m instanceof ShootGame) {
+      if (m.state === 'meter' && this.t - this.lastTick > 0.075) { this.lastTick = this.t; sfx.meterTick(m.meter); }
+      // the ball: rim (swish / clank), then the floor, then a bounce on the way back out
+      const T = this.t - m.shotAt, phase = m.state !== 'shot' ? '' : T < 0.85 ? 'fly' : T < (m.made ? 1.35 : 1.45) ? 'rim' : T < 1.75 ? 'floor' : 'back';
+      if (phase !== this.lastShotPhase) {
+        if (phase === 'rim') { if (m.made) sfx.swish(0, true); else sfx.clank(0); }
+        else if (phase === 'floor') sfx.bounce(9);
+        else if (phase === 'back') sfx.bounce(5);
+        this.lastShotPhase = phase;
+      }
+    }
+  }
+
   // ------------------------------------------------------------ mini-game HUD
   /** Panel by the player (reps + the game's widget), the controls card for the first seconds, a red ✗ after a miss. */
   drawMiniHud() {
     const m = this.mini, st = this.activity, g = this.hudG.clear(), cg = this.cardG.clear();
-    for (const o of [this.hudTitle, this.hudHint, this.hudBig]) o.setVisible(false);
+    for (const o of [this.hudTitle, this.hudHint, this.hudBig, this.greenText]) o.setVisible(false);
     if (!m || !st) { this.cardText.setVisible(false); this.shotText.setVisible(false); return; }
     // controls card while it starts
     const since = this.t - this.startedAt;
@@ -169,8 +234,10 @@ export class GarageScene extends RoomScene {
     } else this.cardText.setVisible(false);
     // the panel: beside the player, kept on screen
     const W = 150, H = 132;
-    let px = this.player.x + 58, py = this.player.y - 190;
-    if (px + W > 1250) px = this.player.x - 58 - W;
+    // the shot meter curves beside you, so the panel sits further out when shooting
+    const gap = m instanceof ShootGame ? 92 : 58;
+    let px = this.player.x + gap, py = this.player.y - 190;
+    if (px + W > 1250) px = this.player.x - gap - W;
     py = Math.max(120, Math.min(720 - H - 10, py));
     g.fillStyle(0x10131c, 0.82).fillRoundedRect(px, py, W, H, 8).lineStyle(2, 0x3c4876, 1).strokeRoundedRect(px, py, W, H, 8);
     const cx = px + W / 2;
@@ -207,10 +274,8 @@ export class GarageScene extends RoomScene {
       g.fillStyle(0xff7d7d, 1).fillCircle(cx + (lw / 2) * m.dot, ly, 5);
       this.hudBig.setVisible(true).setFontSize(13).setPosition(cx, ly + 32).setText(`speed ${(m.speed / TreadmillGame.BASE).toFixed(1)}×`).setColor('#cfe8ff');
     } else if (m instanceof ShootGame) {
-      const mx = cx - 7, my = y0, mh = 90;
-      vbar(mx, my, mh, m.state === 'shot' ? m.releasedAt : m.meter, m.state === 'shot' ? (m.made ? 0x6fd24a : 0xc8433a) : 0xffcc33);
-      g.fillStyle(0x6fd24a, 0.55).fillRect(mx, my + mh * (1 - ShootGame.GREEN[1]), 14, mh * (ShootGame.GREEN[1] - ShootGame.GREEN[0]));
-      g.lineStyle(1, 0x6fd24a, 1).strokeRect(mx, my + mh * (1 - ShootGame.GREEN[1]), 14, mh * (ShootGame.GREEN[1] - ShootGame.GREEN[0]));
+      this.hudBig.setVisible(true).setFontSize(12).setPosition(cx, y0 + 44).setText('hold ✕\nrelease at the\ntop of the jump').setColor('#cfe8ff');
+      this.drawShotMeter(m);
     } else if (m instanceof JumpRopeGame) {
       // the rope's turn around you: the zone at the bottom is "under your feet"
       const rx = cx, ry = y0 + 44, r = 32;

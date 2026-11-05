@@ -167,6 +167,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Bench press (Claude's design, "keep it level"):** hold ✕ to press while the bar wobbles; keep the level gauge
     centred with the L-stick (it tips faster the more it leans); tipping over drops the bar.
   No stat / energy rewards yet.
+  - **Round 39b:** the garage shot is a **real jump shot** (you rise with the meter, release at the top of the jump,
+    land after) with a **2K-style curved meter** beside you (fills up the curve, green window at the top, freezes on
+    release, "GREEN!"). **Sound effects for every mini-game**: rope whoosh / floor tap / trip, effort breaths, plate
+    clinks + rep ding, bar drop, treadmill belt hum + footfalls, HUD blip / buzzer, meter ticks, release, green chime,
+    swish / clank, ball bounces.
 - **Round 38: garage workouts.** Animations for the player using the **squat rack, push-up mat, jump rope, bench
   press and treadmill**: ✕ at the equipment starts it, ✕ / ○ / L1 stops. Orientation follows the equipment: squat
   facing us inside the rack (bar across the shoulders, off the hooks), bench press lying along the bench with the head

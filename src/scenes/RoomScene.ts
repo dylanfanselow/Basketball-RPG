@@ -219,9 +219,11 @@ export abstract class RoomScene extends Phaser.Scene {
     const c = app.career;
     const sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
     const st = this.activity;
-    const sx = sxOf(this.pos.x), sy = syOf(this.pos.y) - (st ? st.lift * RS : 0);
+    // standing on something (the treadmill deck) + off the floor in a jump shot; the shadow stays on the floor
+    const jump = this.mini?.jumpFt() ?? 0;
+    const sx = sxOf(this.pos.x), floorY = syOf(this.pos.y) - (st ? st.lift * RS : 0), sy = floorY - jump * RS;
     this.shadow.clear();
-    if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat') this.shadow.fillStyle(0x2a1a0e, 0.32).fillEllipse(sx, sy, 34, 10);
+    if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat' || st.clip === 'shot_jumper') this.shadow.fillStyle(0x2a1a0e, 0.32 - jump * 0.06).fillEllipse(sx, floorY, 34 - jump * 5, 10 - jump);
     if (!sheet) return;
     let clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
     let u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;

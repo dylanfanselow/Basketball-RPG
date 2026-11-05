@@ -19,9 +19,16 @@ export abstract class MiniGame {
   reps = 0;
   t = 0;
   missUntil = -9;
+  /** Things that happened this frame (for sounds): 'rep', 'miss', 'hit', 'press', 'hop', 'release', 'make', 'clank', … */
+  events: string[] = [];
   constructor(public rand: () => number = Math.random) {}
+  protected emit(e: string) { this.events.push(e); }
+  /** Take this frame's events. */
+  takeEvents(): string[] { const e = this.events; this.events = []; return e; }
+  /** How high you are off the floor (ft): only the jump shot leaves the ground. */
+  jumpFt(): number { return 0; }
   get missing() { return this.t < this.missUntil; }
-  protected miss() { this.missUntil = this.t + 1; }
+  protected miss() { this.missUntil = this.t + 1; this.emit('miss'); }
   update(dt: number, inp: MiniInput) { this.t += dt; this.step(dt, this.missing ? { ...NO_INPUT, stick: inp.stick, aHeld: inp.aHeld } : inp); }
   protected abstract step(dt: number, inp: MiniInput): void;
   /** Where the player's clip should be (0..1). */
@@ -36,7 +43,7 @@ abstract class RepBar extends MiniGame {
   abstract descendTime: number;
   protected add(v: number) {
     this.fill = Math.min(1, this.fill + v);
-    if (this.fill >= 1) { this.reps++; this.fill = 0; this.descendUntil = this.t + this.descendTime; }
+    if (this.fill >= 1) { this.reps++; this.fill = 0; this.descendUntil = this.t + this.descendTime; this.emit('rep'); }
   }
   get descending() { return this.t < this.descendUntil; }
   protected drainStep(dt: number) { if (!this.descending) this.fill = Math.max(0, this.fill - this.drain * dt); }
@@ -75,11 +82,11 @@ export class JumpRopeGame extends MiniGame {
     const lo = Math.PI - JumpRopeGame.WINDOW, hi = Math.PI + JumpRopeGame.WINDOW;
     const inWindow = this.theta >= lo && this.theta <= hi;
     if (inp.b) {
-      if (inWindow && !this.cleared) { this.cleared = true; this.hopAt = this.t; this.reps++; }
+      if (inWindow && !this.cleared) { this.cleared = true; this.hopAt = this.t; this.reps++; this.emit('hop'); }
       else if (!this.cleared || !inWindow) return this.trip();
     }
     if (before <= hi && this.theta > hi && !this.cleared) return this.trip(); // it went under you and you didn't hop
-    if (this.theta >= 2 * Math.PI) { this.theta -= 2 * Math.PI; this.cleared = false; }
+    if (this.theta >= 2 * Math.PI) { this.theta -= 2 * Math.PI; this.cleared = false; this.emit('turn'); }
   }
   private trip() { this.miss(); this.theta = 0; this.cleared = false; this.lastAng = null; this.lastAngAt = -9; }
   animU() { const k = (this.t - this.hopAt) / 0.4; return k >= 0 && k < 1 ? k : 0; }
@@ -93,7 +100,7 @@ export class SquatGame extends RepBar {
   drain = 0.22; descendTime = 0.6;
   last: 'l2' | 'r2' | null = null;
   protected step(dt: number, inp: MiniInput) {
-    if (!this.descending) for (const k of ['l2', 'r2'] as const) if (inp[k]) { if (this.last !== k) this.add(0.11); this.last = k; }
+    if (!this.descending) for (const k of ['l2', 'r2'] as const) if (inp[k]) { if (this.last !== k) { this.emit('press'); this.add(0.11); } this.last = k; }
     this.drainStep(dt);
   }
 }
@@ -113,7 +120,7 @@ export class TreadmillGame extends MiniGame {
     const inSquare = Math.abs(this.dot) < TreadmillGame.HALF;
     if (!inSquare) this.hitThisPass = false;
     if (inp.b) {
-      if (inSquare && !this.hitThisPass) { this.hitThisPass = true; this.reps++; this.speed *= 1.1; }
+      if (inSquare && !this.hitThisPass) { this.hitThisPass = true; this.reps++; this.speed *= 1.1; this.emit('hit'); }
       else if (!inSquare) { this.miss(); this.speed = Math.max(TreadmillGame.BASE, this.speed * 0.75); }
     }
   }
@@ -132,7 +139,7 @@ export class PushupGame extends RepBar {
   protected step(dt: number, inp: MiniInput) {
     const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
     if (pressed.length && !this.descending) {
-      if (pressed.length === 1 && pressed[0] === this.want) { this.add(0.17); this.want = this.pick(); }
+      if (pressed.length === 1 && pressed[0] === this.want) { this.emit('press'); this.add(0.17); this.want = this.pick(); }
       else this.miss();
     }
     this.drainStep(dt);
@@ -151,7 +158,7 @@ export class ShootGame extends MiniGame {
   protected step(dt: number, inp: MiniInput) {
     if (!inp.aHeld) this.armed = true;
     if (this.state === 'shot') { if (this.t - this.shotAt > ShootGame.FLIGHT) this.state = 'idle'; return; }
-    if (this.state === 'idle' && this.armed && inp.aHeld) { this.state = 'meter'; this.meter = 0; this.rising = true; }
+    if (this.state === 'idle' && this.armed && inp.aHeld) { this.state = 'meter'; this.meter = 0; this.rising = true; this.emit('load'); }
     if (this.state === 'meter') {
       if (inp.aHeld) {
         this.meter += (this.rising ? 1 : -1) * dt / ShootGame.FILL;
@@ -161,9 +168,19 @@ export class ShootGame extends MiniGame {
         this.releasedAt = this.meter;
         this.made = this.meter >= ShootGame.GREEN[0] && this.meter <= ShootGame.GREEN[1];
         this.attempts++; if (this.made) this.reps++;
-        this.state = 'shot'; this.shotAt = this.t;
+        this.state = 'shot'; this.shotAt = this.t; this.jumpAtRelease = this.jumpFt0(this.meter);
+        this.emit('release'); if (this.made) this.emit('green');
       }
     }
+  }
+  jumpAtRelease = 0;
+  static JUMP = 1.7; static LAND = 0.35;
+  private jumpFt0(m: number) { return ShootGame.JUMP * Math.sin((Math.min(1, Math.max(0, m)) * Math.PI) / 2); }
+  /** You rise with the meter (top of the jump = full meter, 2K-style) and come down after letting go. */
+  jumpFt() {
+    if (this.state === 'meter') return this.jumpFt0(this.meter);
+    if (this.state === 'shot') { const k = (this.t - this.shotAt) / ShootGame.LAND; return k < 1 ? this.jumpAtRelease * (1 - k * k) : 0; }
+    return 0;
   }
   /** jump-shot clip: windup follows the meter, the release + follow-through play after letting go */
   animU(rel = 0.58) {
@@ -180,7 +197,7 @@ export class BenchGame extends RepBar {
   controls = ['Hold ✕ to press the bar  (K)', 'Keep it level with the L-stick  (A / D)'];
   drain = 0.3; descendTime = 0.8;
   tilt = 0;
-  private dir = 1; private flipAt = 0;
+  private dir = 1; private flipAt = 0; private creakAt = -9;
   static LEVEL = 0.35;
   protected step(dt: number, inp: MiniInput) {
     if (this.descending) { this.tilt *= 0.9; return; }
@@ -189,7 +206,8 @@ export class BenchGame extends RepBar {
       const drift = (0.5 + 1.2 * this.fill) * this.dir;
       // the bar wants to tip (the more it leans, the faster it goes) and drifts; push the stick the other way
       this.tilt += (drift + this.tilt * 1.6 + inp.stick.x * 2.2) * dt;
-      if (Math.abs(this.tilt) >= 1) { this.miss(); this.fill = 0; this.tilt = 0; return; }
+      if (Math.abs(this.tilt) >= 1) { this.miss(); this.emit('drop'); this.fill = 0; this.tilt = 0; return; }
+      if (Math.abs(this.tilt) > 0.55 && this.t - this.creakAt > 0.45) { this.creakAt = this.t; this.emit('creak'); }
       if (Math.abs(this.tilt) < BenchGame.LEVEL) this.add(0.28 * dt);
     } else {
       this.tilt *= Math.pow(0.2, dt);

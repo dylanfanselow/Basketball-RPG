@@ -132,6 +132,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   ✕ held) and stops only on L1 / Esc; `GarageScene.drawMiniHud` draws the controls card (away from you), the panel
   (bars, level gauge, dot line, glyph, shot meter, rope ring), the red ✗, and the props follow the games (rope angle,
   bench bar tilt, shot make / miss with "BUCKET!" / "MISS").
+- Round 39b: `MiniGame.events` / `takeEvents()` → `GarageScene.playSounds()` (new `sfx` sounds: `ropeWhoosh`,
+  `ropeTap`, `ropeTrip`, `plates`, `barDrop`, `effort`, `footfall`, `beltHum`, `blip`, `meterTick`, `greenChime`);
+  `MiniGame.jumpFt()` (the shot jump: `RoomScene.drawPlayer` lifts the sprite, the shadow stays down);
+  `GarageScene.drawShotMeter` (curved 2K-style arc).
 - Round 38b: `Pose.headTurn` (head drawn rotated: the bench press looks up), lying torsos drawn along the body
   (`drawTorso` turns the upright torso when it's > ~45° from vertical — push-ups, bench, dives), shooting station
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).

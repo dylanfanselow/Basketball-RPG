@@ -128,3 +128,30 @@ describe('bench press', () => {
 it('every garage station has its mini-game', () => {
   for (const id of ['rope', 'squat', 'treadmill', 'pushup', 'shoot', 'bench']) expect(makeMiniGame(id)?.id).toBe(id);
 });
+
+describe('round 39b: shot jump + events', () => {
+  it('you rise with the meter (top of the jump at a full meter) and land after the release', () => {
+    const g = new ShootGame();
+    g.update(DT, inp());
+    for (let i = 0; i < 20; i++) g.update(DT, inp({ aHeld: true }));
+    const mid = g.jumpFt();
+    for (let i = 0; i < 30; i++) g.update(DT, inp({ aHeld: true }));
+    expect(g.jumpFt()).toBeGreaterThan(mid);
+    expect(g.jumpFt()).toBeLessThanOrEqual(ShootGame.JUMP + 1e-9);
+    g.update(DT, inp());
+    expect(g.takeEvents()).toEqual(expect.arrayContaining(['release']));
+    for (let i = 0; i < 30; i++) g.update(DT, inp());
+    expect(g.jumpFt()).toBe(0);
+  });
+  it('games report what happened for the sounds', () => {
+    const sq = new SquatGame();
+    for (let i = 0; i < 12; i++) sq.update(DT, inp(i % 2 ? { r2: true } : { l2: true }));
+    const ev = sq.takeEvents();
+    expect(ev).toContain('press'); expect(ev).toContain('rep');
+    expect(sq.takeEvents()).toEqual([]);
+    const tm = new TreadmillGame();
+    while (Math.abs(tm.dot) < 0.5) tm.update(DT, inp());
+    tm.update(DT, inp({ b: true }));
+    expect(tm.takeEvents()).toContain('miss');
+  });
+});

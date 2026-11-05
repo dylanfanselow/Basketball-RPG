@@ -311,6 +311,91 @@ class Sfx {
     if (!this.ok()) return;
     this.noiseHit({ type: 'bandpass', f: 520, f2: 260, q: 1.5, peak: 0.25, a: 0.25, d: 1.0, dest: this.crowdBus });
   }
+
+  // ---------- garage workouts (round 39b) ----------
+  /** The rope cutting the air once a turn (faster spin = brighter, louder). */
+  ropeWhoosh(speed = 1) {
+    if (!this.ok()) return;
+    const k = Math.max(0.4, Math.min(1.6, speed));
+    this.noiseHit({ type: 'bandpass', f: 700 * k, f2: 2600 * k, q: 2.2, peak: 0.1 + 0.08 * k, a: 0.05, d: 0.12 });
+  }
+  /** The rope tapping the floor as you clear it. */
+  ropeTap() {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'highpass', f: 2600, peak: 0.16, d: 0.025 });
+    this.tone({ f: 220, f2: 120, peak: 0.08, d: 0.04 });
+  }
+  /** Caught on the rope: a slap and a stumble. */
+  ropeTrip() {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'bandpass', f: 1800, q: 1, peak: 0.3, d: 0.05 });
+    this.tone({ f: 110, f2: 55, peak: 0.35, d: 0.18, at: 0.06 });
+    this.squeak(0, 0.7);
+  }
+  /** Iron plates clinking on the bar. */
+  plates(heavy = false) {
+    if (!this.ok()) return;
+    const base = heavy ? 520 : 760;
+    for (const [at, m] of [[0, 1], [0.045, 1.37], [0.09, 0.83]] as const) {
+      this.tone({ type: 'triangle', f: base * m, peak: heavy ? 0.16 : 0.11, a: 0.002, d: 0.35, at });
+      this.tone({ f: base * m * 2.71, peak: 0.05, a: 0.002, d: 0.18, at });
+    }
+    this.noiseHit({ type: 'highpass', f: 3500, peak: 0.08, d: 0.04 });
+  }
+  /** The bar crashing down (tipped over on the bench). */
+  barDrop() {
+    if (!this.ok()) return;
+    this.plates(true);
+    this.tone({ f: 90, f2: 40, peak: 0.55, a: 0.003, d: 0.3, at: 0.02 });
+    this.noiseHit({ type: 'lowpass', f: 900, peak: 0.35, d: 0.18, at: 0.02 });
+  }
+  /** A short breath out on an effortful push. */
+  effort() {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'bandpass', f: 900, f2: 500, q: 0.9, peak: 0.14, a: 0.02, d: 0.16 });
+    this.tone({ type: 'sawtooth', f: 140, f2: 110, peak: 0.03, a: 0.02, d: 0.12, lp: 600 });
+  }
+  /** A foot landing on the treadmill belt. */
+  footfall(speed = 1) {
+    if (!this.ok()) return;
+    this.tone({ f: 95, f2: 60, peak: 0.18 + 0.06 * Math.min(2, speed), a: 0.002, d: 0.07 });
+    this.noiseHit({ type: 'lowpass', f: 700, peak: 0.08, d: 0.04 });
+  }
+  /** The treadmill motor: a soft hum while it runs (pitch follows the speed). */
+  private hum: { osc: OscillatorNode; g: GainNode } | null = null;
+  beltHum(on: boolean, speed = 1) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (on && this.ok()) {
+      if (!this.hum) {
+        const osc = this.ctx.createOscillator(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter();
+        osc.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0.0001;
+        osc.connect(f).connect(g).connect(this.sfxBus); osc.start();
+        g.gain.exponentialRampToValueAtTime(0.035, t + 0.4);
+        this.hum = { osc, g };
+      }
+      this.hum.osc.frequency.setTargetAtTime(55 + 25 * speed, t, 0.2);
+    } else if (this.hum) {
+      const h = this.hum; this.hum = null;
+      h.g.gain.setTargetAtTime(0.0001, t, 0.15); h.osc.stop(t + 0.6);
+    }
+  }
+  /** HUD feedback: a bright confirm, or a buzzer for a mistake. */
+  blip(good = true) {
+    if (!this.ok()) return;
+    if (good) { this.tone({ type: 'square', f: 880, peak: 0.05, a: 0.002, d: 0.05, lp: 3000 }); this.tone({ type: 'square', f: 1320, peak: 0.04, a: 0.002, d: 0.06, at: 0.045, lp: 3000 }); }
+    else { this.tone({ type: 'square', f: 140, peak: 0.12, a: 0.004, d: 0.28, lp: 1200 }); this.tone({ type: 'square', f: 147, peak: 0.08, a: 0.004, d: 0.28, lp: 1200 }); }
+  }
+  /** Shot meter tick (higher as it fills). */
+  meterTick(level: number) {
+    if (!this.ok()) return;
+    this.tone({ type: 'triangle', f: 500 + 900 * Math.max(0, Math.min(1, level)), peak: 0.045, a: 0.002, d: 0.035 });
+  }
+  /** A perfect (green) release. */
+  greenChime() {
+    if (!this.ok()) return;
+    for (const [at, f] of [[0, 1046.5], [0.06, 1568], [0.12, 2093]] as const) { this.tone({ f, peak: 0.13, a: 0.003, d: 0.35, at }); this.tone({ type: 'triangle', f: f * 2, peak: 0.04, a: 0.002, d: 0.2, at }); }
+  }
 }
 
 export const sfx = new Sfx();
