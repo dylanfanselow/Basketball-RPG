@@ -27,8 +27,13 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
+## World (`src/world`)
+`apartment.ts` (pure): room feet ↔ screen (`RS`, `RD`, `sxOf`/`syOf`, slanted `wallL`/`wallR`), `FURNITURE`
+footprints (optional `poly`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
+ends inside a gap narrower than the body), `isFree`, `doorNear`, cat (`newCat`, `catStep`, `CAT_SPOTS`).
+
 ## Career (`src/career`)
-`career.ts` (state, XP, save/migration v2), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
+`career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
 `rosters.json`, procedural fallback), `story.ts` (future: events/story effects, `unlockUltimate`).
 
 ## Render & scenes
@@ -36,6 +41,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 |---|---|
 | `render/view.ts` | Projection (`S`=22 px/ft, `D`=6.4, `OOB_FT`=10, `sx/sy`), court, hoops (`drawHoops`: glass pane via `pane()`, split rim on `back`/`rimG`, mesh net, stanchions). |
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
+| `render/playerBank.ts` | Shared player sprite sheets + multi-angle frame caches (`SHEET_CACHE`, `ANGLE_CACHE`, `sheetFor`, `angleCache`, `pumpSheet`, `dropSheet`, `playerSheetKey`, `hashStr`); used by GameScene and the apartment. |
+| `render/roomArt.ts` | Apartment art drawn in code at art resolution (960×540 = scene × 0.75): background (exteriors, posts, walls, plank floor, windows, doors, calendar, poster, floor clutter, contact shadows), one cropped texture per furniture piece (`buildRoomArt`, multi-frame tank / fan), cat pixel maps (`buildCatTexture`), HUD icons, lamp glow. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
 | `render/faceParts.ts` | Face-part library (pure, worker-safe): part types/views, `variantOf`, `drawPart` with per-player recolor (`recolorPixels`), `partsFor` (pictures a sheet job needs), `partsVersion` (sprite cache keys). |
@@ -52,7 +59,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
 | `scenes/ThreeSetupScene.ts` | Quick 3v3 setup: team / opponent lists + lineups & options column (6 slots, play as, court); Left/Right changes a row, R1/L2 (Q/E) switch columns. |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
-| Other scenes | Menu, Hub, LevelUp, PerkTree, Ultimate, PostGame. |
+| `scenes/ApartmentScene.ts` | The starter apartment: movement + collision, multi-angle player, depth sorting, doors, cat, roof HUD, dev collision overlay (`settings.debug.room`). |
+| Other scenes | Menu (now the dev menu), Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |
 | `input/input.ts` | `InputMapper` (Gamepad API + window keyboard state, edge detection, first poll ignores held buttons). Keys: `escape` (L1/Esc), `icon` (R1/Q, icon pass), `post` (L2/E, post up), `tabPrev`/`tabNext` (L2,Q / R1,E for menu columns), `start`, `back`, `dev`. Optional `slot` 1/2 for two-player 1v1 (pad 1 / pad 2; keyboard goes to the first slot without a pad). |
 | `dev/devPanel.ts` | DOM dev tools overlay. |
@@ -65,6 +73,6 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 
 ## Tests (`tests/`)
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
-`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `helpers.ts` (`makeGame`, `simToEnd`).
+`rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `apartment.test.ts` (collision, reachability, cat, save v3, key games), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).

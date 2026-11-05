@@ -7,7 +7,7 @@ import { UltState, ULT_MILESTONES } from '../sim/ultimates';
 import type { BoxScore } from '../sim/player';
 import { Appearance, defaultAppearance, withDefaults } from '../render/appearance';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const STAT_POINT_VALUE = 2; // each core-stat point adds this many rating points
 export const STAT_MAX = 99;
 
@@ -26,7 +26,11 @@ export interface CareerState {
   teamId: string;
   season: { gameNo: number; wins: number; losses: number; schedule: string[] };
   forceStarter: boolean;
+  /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
+  life: { day: number; money: number; energy: number; food: number };
 }
+
+export const newLife = () => ({ day: 1, money: 250, energy: 100, food: 100 });
 
 export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerState {
   const core = Object.fromEntries(CORE_STATS.map((s) => [s, 50])) as CoreStats;
@@ -37,7 +41,7 @@ export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerSt
     core, level: 1, xp: 0, statPoints: 5, perkPoints: 2, nodes: [], traits: [], backstory: null,
     flags: { ult_unlocked: false }, ult: { id: null, level: 0, evoPoints: 0, seenMilestones: [] },
     trust: { team: 20, coach: 20 }, teamId,
-    season: { gameNo: 0, wins: 0, losses: 0, schedule }, forceStarter: false,
+    season: { gameNo: 0, wins: 0, losses: 0, schedule }, forceStarter: false, life: newLife(),
   };
 }
 
@@ -105,11 +109,39 @@ export function loadCareer(): CareerState | null {
   } catch { return null; }
 }
 
-/** Upgrade older saves in place. v1 -> v2 adds appearance. */
+/** Upgrade older saves in place. v1 -> v2 adds appearance, v2 -> v3 adds the off-court `life` block. */
 export function migrateCareer(c: any): CareerState | null {
   if (!c || typeof c.version !== 'number') return null;
   if (c.version === 1) { c.appearance = { ...defaultAppearance(), skin: c.skin ?? 2 }; c.version = 2; }
+  if (c.version === 2) { c.life = newLife(); c.version = 3; }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
   return c as CareerState;
+}
+
+/**
+ * Key games (round 36, placeholder until real calendars): the season opener, the finale, games against the team's
+ * rivals, and a national-TV game every 4th game. Games are every other day, the next one tomorrow.
+ */
+export const RIVALS: Record<string, string[]> = {
+  LAL: ['BOS', 'LAC', 'GSW'], BOS: ['LAL', 'NYK', 'PHI'], NYK: ['BKN', 'BOS', 'MIA'], BKN: ['NYK'], LAC: ['LAL'],
+  GSW: ['LAL', 'CLE'], CLE: ['GSW'], MIA: ['NYK', 'BOS'], PHI: ['BOS'], CHI: ['DET'], DET: ['CHI'], DAL: ['HOU', 'SAS'],
+  HOU: ['DAL', 'SAS'], SAS: ['DAL', 'HOU'], OKC: ['DEN'], DEN: ['OKC'],
+};
+export function isKeyGame(c: CareerState, i: number): string | null {
+  const n = c.season.schedule.length, opp = c.season.schedule[i % n];
+  if (i === 0) return 'Opener';
+  if (i === n - 1) return 'Finale';
+  if ((RIVALS[c.teamId] ?? []).includes(opp)) return 'Rivalry';
+  if (i % 4 === 3) return 'National TV';
+  return null;
+}
+export const daysUntilGame = (c: CareerState, i: number) => Math.max(0, (i - c.season.gameNo) * 2 + 1);
+export function nextKeyGame(c: CareerState): { index: number; opponent: string; daysAway: number; why: string } | null {
+  const n = c.season.schedule.length;
+  for (let i = c.season.gameNo; i < n; i++) {
+    const why = isKeyGame(c, i);
+    if (why) return { index: i, opponent: c.season.schedule[i], daysAway: daysUntilGame(c, i), why };
+  }
+  return null;
 }

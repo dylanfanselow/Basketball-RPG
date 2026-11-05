@@ -25,6 +25,11 @@
    stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)
+- **Apartment follow-ups (round 36):** garage gym behind the left door (workout equipment → training), fridge = eat
+  (food bar), sleep on the couch to end the day (energy bar, `life.day`++), calendar screen (key games + special
+  events), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in
+  the apartment (menu stays a dev tool). Ask the owner how the room reads (size of the cat, door visibility on the
+  slanted walls, the island, lamp glow).
 - Ultimate unlock **story event + cutscene** (backstory-specific 1v1, then position-based ult choice).
 - **Backstory selection** at character creation (data exists in `backstories.json`, effects are wired).
 - **Random in-season events** and off-court **story** (`src/career/story.ts` has the types/effects).

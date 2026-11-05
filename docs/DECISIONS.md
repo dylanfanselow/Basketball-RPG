@@ -123,6 +123,18 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
   picture or the code pair stops being mirrored. No cross-eyed / wall-eyed / uneven-white eyes anywhere.
+- **Round 36: the starter apartment (off-court life).**
+  - **End goal:** the game opens on **Start Game / Load Game**; no Career Hub, no mode menu. The current main menu
+    stays as a **dev tool** for testing modes.
+  - The career starts in a small apartment, the **base of operations**, recreated from the owner's reference room
+    (a cutaway house). **Art direction:** keep the reference's warm, cluttered charm, but on our pixel grid with our
+    sprite shading so the player doesn't look out of place.
+  - Walk around (stick / WASD, R2 / Shift to hurry); **furniture and walls are solid**. This round only the doors work
+    (✕ at a door): **left door → garage** (future: workout equipment; placeholder toast for now), **front door → leave**.
+  - Planned objects (owner): **fridge = food you must eat**, **sleep on the couch to end the day**, a **calendar** with
+    upcoming key games and special events, a **cute cat you can pet** (the cat is in and wanders; petting later).
+  - **Top HUD:** level + XP, days until the next key game, money, plus **energy** and **food** bars (styled like the
+    reference's bar panel).
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**

@@ -107,6 +107,21 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   until `flags.ult_unlocked`; milestone evo points.
 - Career: XP/levels, stat & perk points, season schedule (10 games), post-game XP, save in localStorage (v2 with
   migration). Backstory effects wired but not selectable yet.
+- **Save v3 (round 36):** `life` block (`day`, `money` 250, `energy` / `food` 0-100, static for now) + `nextKeyGame`
+  (opener, finale, rivals from `RIVALS`, national TV every 4th game; games every other day).
+
+## Apartment (round 36)
+- `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in
+  code on the players' pixel grid — kitchen (fridge, counter + sink + stove, hood, island with an overhead shelf),
+  floor lamp with a warm glow, couch with a blanket, aquarium (animated), CRT + console, coffee table, armchair,
+  bookshelf along the slanted right wall, wardrobe, dining table + chairs, moving box, ball, ceiling fan (animated),
+  wall calendar, poster, two windows; neighbour's garage on the left, tree + fence on the right.
+- Your career player (casual tee + team-colour shorts, warm room tint) walks with multi-angle frames; walls (slanted
+  sides) and furniture are solid (circle vs polygon, slides along edges); depth sorting by front edge (long pieces drop
+  behind you when you stand beside them).
+- Doors: ✕ at the garage door = "coming soon" toast; ✕ at the front door or L1 / Esc = back to the menu.
+- Orange tabby cat wanders between favourite spots (sit / loaf / walk frames), avoids furniture and you.
+- HUD on the roof: energy + food bars, level + XP bar, days to the next key game (+ why / opponent), money, day.
 
 ## Rosters & looks
 - `src/data/rosters.json`: 30 teams, 323 players (2026-27, compiled from preseason depth-chart reporting via web

@@ -37,6 +37,7 @@
 | 33 | `73f1a97` | Ability to throw lob passes for dunks | Hold △ = lob / alley-oop (everyone; lob rating + Lob City accuracy), receiver catches in the air (AI timed, user ✕ with timing), alley-oop dunk or layup, landing ring, AI throws oops |
 | 34 | `5311d84` | Lob plays in the coach's playbook, 3v3 too | Pick & Roll Lob + Back-Screen Lob (5v5 and 3v3), phase `lob` role, called only for dunkers, AI handler lobs on the cut, user hint + credit; AI improvised lobs toned down |
 | 35 | `a95cd5f` | Defender face to face the whole way up slows the game; keep the full-court press but the AI should sprint, use moves, call screens and find open passes; slower with the ball and a smaller sprint boost with it | Half-court pickup unless pressing (situational press + trap), AI `bringUp`, screen call + press outlet (for the user too), 8-second rule + HUD, ball-handler speed / half burst |
+| 36 | `TBD` | Recreate the reference room in our art style (keep its charm, player mustn't look out of place) with collision; it's the career's first home / base (garage door, fridge, couch sleep, calendar, cat later); HUD: level/XP, days to next key game, money, energy + food | `Apartment` scene + `world/apartment.ts` collision, `roomArt.ts`, shared `playerBank.ts`, save v3 `life`, `nextKeyGame`, wandering cat, dev menu entry |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

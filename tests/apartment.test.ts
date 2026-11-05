@@ -1,0 +1,113 @@
+import { describe, it, expect } from 'vitest';
+import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS } from '../src/world/apartment';
+import { newCareer, migrateCareer, nextKeyGame, isKeyGame } from '../src/career/career';
+
+const polys = solids();
+const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
+  let s = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const c = Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+    if (c !== 0) { if (s === 0) s = c; else if (c !== s) return false; }
+  }
+  return true;
+};
+
+describe('apartment collision', () => {
+  it('spawn and door spots are free', () => {
+    expect(isFree(SPAWN, PLAYER_R, polys)).toBe(true);
+    for (const d of DOORS) expect(isFree(d.spot, PLAYER_R, polys)).toBe(true);
+  });
+
+  it('walking straight at any solid piece from any side never gets inside it', () => {
+    for (const piece of FURNITURE.filter((f) => f.solid)) {
+      const poly = footprint(piece);
+      const cx = poly.reduce((a, p) => a + p.x, 0) / poly.length, cy = poly.reduce((a, p) => a + p.y, 0) / poly.length;
+      for (let k = 0; k < 16; k++) {
+        const ang = (k / 16) * Math.PI * 2;
+        let p = { x: cx + Math.cos(ang) * 8, y: cy + Math.sin(ang) * 8 };
+        if (!isFree(p, PLAYER_R, polys)) continue;
+        for (let i = 0; i < 300; i++) {
+          const dx = cx - p.x, dy = cy - p.y, d = Math.hypot(dx, dy) || 1;
+          p = moveWithCollision(p, { x: (dx / d) * 0.12, y: (dy / d) * 0.12 }, PLAYER_R, polys);
+          expect(inside(poly, p)).toBe(false);
+        }
+        expect(isFree(p, PLAYER_R * 0.98, polys)).toBe(true);
+      }
+    }
+  });
+
+  it('slides along an edge when pushed diagonally into it', () => {
+    // couch front edge: push down-left into it (moving up/back and left) -> x keeps changing, y holds
+    const couch = FURNITURE.find((f) => f.id === 'couch')!;
+    let p = { x: couch.x + 5, y: couch.y + couch.d + PLAYER_R + 0.05 };
+    for (let i = 0; i < 20; i++) p = moveWithCollision(p, { x: -0.1, y: -0.1 }, PLAYER_R, polys);
+    expect(p.x).toBeLessThan(couch.x + 5 - 1.5);
+    expect(p.y).toBeGreaterThan(couch.y + couch.d + PLAYER_R - 0.02);
+  });
+
+  it('the walls hold (slanted sides, back wall, front edge)', () => {
+    const tries = [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 1 }, { x: 1, y: 1 }];
+    for (const dir of tries) {
+      let p = { ...SPAWN };
+      for (let i = 0; i < 400; i++) p = moveWithCollision(p, { x: dir.x * 0.15, y: dir.y * 0.15 }, PLAYER_R, polys);
+      expect(p.y).toBeGreaterThan(0);
+      expect(p.y).toBeLessThan(ROOM.depth);
+      expect(p.x).toBeGreaterThan(wallL(p.y));
+      expect(p.x).toBeLessThan(wallR(p.y));
+    }
+  });
+
+  it('every door and cat spot can be reached from the spawn point', () => {
+    const step = 0.25, seen = new Set<string>(), q = [{ i: Math.round(SPAWN.x / step), j: Math.round(SPAWN.y / step) }];
+    const key = (i: number, j: number) => `${i},${j}`;
+    seen.add(key(q[0].i, q[0].j));
+    while (q.length) {
+      const c = q.pop()!;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const i = c.i + di, j = c.j + dj, k = key(i, j);
+        if (seen.has(k) || !isFree({ x: i * step, y: j * step }, PLAYER_R, polys)) continue;
+        seen.add(k); q.push({ i, j });
+      }
+    }
+    const reach = (p: { x: number; y: number }, r = 1) => [...seen].some((k) => { const [i, j] = k.split(',').map(Number); return Math.hypot(i * step - p.x, j * step - p.y) < r; });
+    for (const d of DOORS) { expect(reach(d.spot)).toBe(true); expect(doorNear(d.spot)?.id).toBe(d.id); }
+    for (const s of CAT_SPOTS) expect(isFree(s, CAT_R, polys)).toBe(true);
+    expect(doorNear(SPAWN)).toBeNull();
+  });
+
+  it('the cat wanders between spots without entering furniture', () => {
+    const cat = newCat();
+    let r = 1; const rand = () => { r = (r * 16807) % 2147483647; return r / 2147483647; };
+    const visited = new Set<string>();
+    for (let t = 0; t < 240; t += 1 / 30) {
+      catStep(cat, t, 1 / 30, polys, rand);
+      expect(isFree(cat.p, CAT_R * 0.97, polys)).toBe(true);
+      if (cat.state !== 'walk') visited.add(`${cat.p.x.toFixed(0)},${cat.p.y.toFixed(0)}`);
+    }
+    expect(visited.size).toBeGreaterThan(2);
+  });
+});
+
+describe('career life + key games', () => {
+  it('new careers have a life block; v2 saves migrate to v3', () => {
+    const c = newCareer('A', 'SG');
+    expect(c.life).toEqual({ day: 1, money: 250, energy: 100, food: 100 });
+    const old: any = { ...newCareer('Old', 'PG'), version: 2 };
+    delete old.life;
+    const m = migrateCareer(old)!;
+    expect(m.version).toBe(3);
+    expect(m.life.energy).toBe(100);
+  });
+  it('the next key game is the opener first, then a later one after it is played', () => {
+    const c = newCareer('A', 'SG', 'LAL');
+    const k = nextKeyGame(c)!;
+    expect(k.index).toBe(0);
+    expect(k.daysAway).toBe(1);
+    c.season.gameNo = 1;
+    const k2 = nextKeyGame(c)!;
+    expect(k2.index).toBeGreaterThan(0);
+    expect(k2.daysAway).toBe((k2.index - 1) * 2 + 1);
+    expect(isKeyGame(c, k2.index)).toBeTruthy();
+  });
+});

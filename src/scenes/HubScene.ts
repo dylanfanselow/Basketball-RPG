@@ -36,6 +36,7 @@ export class HubScene extends Phaser.Scene {
       { label: `Perk Trees${c.perkPoints ? ` (${c.perkPoints})` : ''}`, action: () => this.scene.start('PerkTree', { back: 'Hub' }) },
       { label: c.flags.ult_unlocked ? 'Ultimate' : 'Ultimate  ???', action: () => this.scene.start('Ultimate') },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }) },
+      { label: 'Go Home (apartment)', action: () => this.scene.start('Apartment') },
       { label: 'Main Menu', action: () => this.scene.start('Menu') },
     ]);
   }

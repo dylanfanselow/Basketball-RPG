@@ -212,7 +212,7 @@ describe('appearance', () => {
     const old: any = { ...newCareer('Old', 'PG'), version: 1 };
     delete old.appearance;
     const m = migrateCareer(old)!;
-    expect(m.version).toBe(2);
+    expect(m.version).toBe(3);
     expect(m.appearance.hair).toBeDefined();
   });
 });

@@ -6,7 +6,7 @@ import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
 import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
-import { requestSheet } from '../render/sheetPool';
+import { SHEET_CACHE, MAX_SHEETS, ANGLE_CACHE, angPage, hashStr, playerSheetKey, dropSheet, sheetFor as bankSheetFor, angleCache as bankAngleCache } from '../render/playerBank';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
 import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, castSheet } from '../render/celebArt';
 
@@ -35,9 +35,6 @@ const BENCH_SCALE = SPRITE_SCALE * 0.92;
 const CELEB_SCALE = SPRITE_SCALE * 0.82;
 
 const FONT = '"Courier New", monospace';
-const SHEET_CACHE = new Map<string, Sheet>();
-const SHEETS_LOADING = new Set<string>();
-const MAX_SHEETS = 16;
 /** Post-up clips: both players face away from the rim (back to the basket), turned a little toward the camera. */
 const POST_CLIPS = ['postUp', 'postBump', 'postBumpedBack', 'postDefend', 'postBumped'];
 /**
@@ -45,11 +42,9 @@ const POST_CLIPS = ['postUp', 'postBump', 'postBumpedBack', 'postDefend', 'postB
  * moves, passes, box-outs...) stays in side view toward the rim so ball offsets and timing match the sim.
  */
 const ANGLED = new Set(['idle', 'jog', 'sprint', 'burst', 'defend', 'slide', 'dribble', 'dribbleRun', 'dribbleBurst', 'hold', ...POST_CLIPS]);
-/** Angled frames are drawn on demand into pages of 8 x 6 slots, per sheet (look) key; freed with the sheet. */
-const ANG_COLS = 8, ANG_ROWS = 6, ANG_PAGES = 6, ANG_BUDGET = 4, ANG_PREWARM = 2;
-const ANGLE_CACHE = new Map<string, { cache: FrameCache; prewarm: string[] }>();
+/** Angled frames: per-frame draw budget + prewarm (the caches themselves live in render/playerBank.ts). */
+const ANG_BUDGET = 4, ANG_PREWARM = 2;
 const PREWARM_CLIPS = ['defend', 'slide', 'idle', 'jog', 'dribble'];
-const angPage = (key: string, n: number) => `${key}_ang${n}`;
 /** Sideline layout (court feet): benches toward each baseline, courtside celebrity rows between them and the table. */
 const BENCH_X: [number, number][] = [[4, 22], [72, 90]];
 const CELEB_X: [number, number][] = [[29, 39], [55, 65]];
@@ -181,21 +176,7 @@ export class GameScene extends Phaser.Scene {
    * players who aren't on the floor are dropped to keep memory in check (~28 MB each).
    */
   sheetFor(key: string, heightFt: number, look: Appearance, kit: Kit): Sheet | null {
-    const cached = SHEET_CACHE.get(key);
-    if (cached && this.textures.exists(key)) { SHEET_CACHE.delete(key); SHEET_CACHE.set(key, cached); return cached; }
-    if (!SHEETS_LOADING.has(key)) {
-      SHEETS_LOADING.add(key);
-      requestSheet(heightFt, look, kit).then((sheet) => {
-        SHEETS_LOADING.delete(key);
-        const tm = this.sys.game.textures;
-        if (tm.exists(key)) tm.remove(key);
-        const tex = tm.addCanvas(key, sheet.canvas)!;
-        for (let i = 0; i < sheet.total; i++) { const r = frameRect(i); tex.add(i, 0, r.x, r.y, FRAME_W, FRAME_H); }
-        SHEET_CACHE.set(key, sheet);
-        this.evictSheets();
-      });
-    }
-    return null;
+    return bankSheetFor(this, key, heightFt, look, kit, () => this.evictSheets());
   }
 
   evictSheets() {
@@ -207,11 +188,8 @@ export class GameScene extends Phaser.Scene {
     for (const key of [...SHEET_CACHE.keys()]) {
       if (SHEET_CACHE.size <= MAX_SHEETS) break;
       if (inUse.has(key)) continue;
-      SHEET_CACHE.delete(key);
       for (const [id, e] of this.sheets) if (e.key === key) { this.sheets.delete(id); this.sprites.get(id)?.destroy(); this.sprites.delete(id); this.reflections.get(id)?.destroy(); this.reflections.delete(id); }
-      if (this.textures.exists(key)) this.textures.remove(key);
-      const ang = ANGLE_CACHE.get(key);
-      if (ang) { for (let n = 0; n < ang.cache.pages; n++) if (this.textures.exists(angPage(key, n))) this.textures.remove(angPage(key, n)); ANGLE_CACHE.delete(key); }
+      dropSheet(this, key);
     }
   }
 
@@ -220,31 +198,7 @@ export class GameScene extends Phaser.Scene {
    * texture pages; `pumpAngles` refreshes dirty pages once per frame. Prewarm queues the common stance/run angles.
    */
   angleCache(key: string, heightFt: number, look: Appearance, kit: Kit): FrameCache {
-    let e = ANGLE_CACHE.get(key);
-    if (e) return e.cache;
-    const tm = this.sys.game.textures, H = figureHeight(heightFt);
-    const cache = new FrameCache({
-      newPage: (n) => { if (tm.exists(angPage(key, n))) tm.remove(angPage(key, n)); tm.createCanvas(angPage(key, n), ANG_COLS * FRAME_W, ANG_ROWS * FRAME_H); },
-      draw: (ck, page, index) => {
-        const [clip, frame, yaw] = ck.split('|');
-        const tex = tm.get(angPage(key, page)) as Phaser.Textures.CanvasTexture;
-        const ctx = tex.getContext();
-        const x = (index % ANG_COLS) * FRAME_W, y = Math.floor(index / ANG_COLS) * FRAME_H;
-        ctx.clearRect(x, y, FRAME_W, FRAME_H);
-        ctx.save(); ctx.beginPath(); ctx.rect(x, y, FRAME_W, FRAME_H); ctx.clip();
-        const c = CLIP[clip];
-        const r = drawAngled(ctx, x, y, sampleClip(c, frameTime(c, +frame)), H, look, kit, c.keys.some((k) => !!k.pose.ball), +yaw);
-        ctx.restore();
-        crispenRect(ctx, x, y, FRAME_W, FRAME_H);
-        if (!tex.has(`s${index}`)) tex.add(`s${index}`, 0, x, y, FRAME_W, FRAME_H);
-        return r;
-      },
-    }, ANG_COLS * ANG_ROWS, ANG_PAGES);
-    const prewarm: string[] = [];
-    for (const yaw of [45, 90, -45, -90]) for (const clip of PREWARM_CLIPS) for (let f = 0; f < CLIP[clip].frames; f++) prewarm.push(`${clip}|${f}|${yaw}`);
-    e = { cache, prewarm };
-    ANGLE_CACHE.set(key, e);
-    return cache;
+    return bankAngleCache(this, key, heightFt, look, kit, PREWARM_CLIPS);
   }
 
   /** Draw queued angled frames within the per-frame budget (your player first), prewarm when idle, refresh pages. */
@@ -305,7 +259,7 @@ export class GameScene extends Phaser.Scene {
 
   ensureSprite(p: Player) {
     const kit = this.kitFor(p);
-    const key = `pl_${p.id}_${hashStr(JSON.stringify([p.appearance, p.height.toFixed(2), kit]))}_v${partsVersion()}`;
+    const key = playerSheetKey(p.id, p.appearance, p.height, kit);
     const cur = this.sheets.get(p.id);
     if (cur?.key === key && this.textures.exists(key)) return;
     const sheet = this.sheetFor(key, p.height, p.appearance, kit);
@@ -1235,8 +1189,4 @@ function fmtEq(e: import('../sim/shooting').ShotEval): string {
 }
 void D;
 
-function hashStr(s: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return (h >>> 0).toString(36);
-}
+

@@ -30,6 +30,9 @@ A **5v5 NBA career basketball RPG** in the browser.
   - *Child of an NBA player*: pressure to live up to the legacy → **Clutch Gene**.
   - *European player in a new environment*: struggles to connect with teammates → **Unicorn** trait (can take
     abilities from other positions, e.g. a center with a 3-ball ultimate).
+- **Off-court life (round 36):** the career begins in a small apartment that is your base: a garage gym (train),
+  a fridge (eat; food bar), the couch (sleep → next day; energy bar), a calendar of key games and special events,
+  money, and a cat to pet. The front end will be just **Start Game / Load Game**.
 - **Season content (future):** random in-season events and off-court story. Not a priority yet, but the
   architecture must allow it (it does: `src/career/story.ts`, effect system).
 - **Leagues/rosters:** real 2026-27 NBA teams and players (owner's choice, committed to the public repo).

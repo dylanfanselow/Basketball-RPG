@@ -14,9 +14,10 @@ export class MenuScene extends Phaser.Scene {
     // the scene object is reused: texts from the last visit were destroyed with it, so make fresh ones
     this.padText = this.add.text(80, 640, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
     this.soundText = this.add.text(80, 668, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
-    title(this, 'HOOP CAREER', 'gameplay-first vertical slice  ·  5v5 career basketball RPG');
+    title(this, 'HOOP CAREER', 'dev menu  ·  test any mode (the real game will open on Start / Load Game)');
     const c = app.career;
     this.menu = new MenuList(this, 80, 140, [
+      { label: 'Apartment (career home)', action: () => this.scene.start('Apartment'), hint: 'Your first place: walk around (furniture is solid). ✕ at a door, L1 to leave.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -24,9 +25,9 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
       { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
-    ], 20);
-    this.add.text(80, 394, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
-    this.add.text(80, 420, [
+    ], 18);
+    this.add.text(80, 404, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
+    this.add.text(80, 428, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
       '✕  shoot  |  block                    K / Space',

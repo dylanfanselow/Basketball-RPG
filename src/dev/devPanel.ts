@@ -331,6 +331,7 @@ export function initDevPanel() {
     dd.append(check('AI targets', d.aiTargets, (v) => (d.aiTargets = v)));
     dd.append(check('Hitboxes', d.hitboxes, (v) => (d.hitboxes = v)));
     dd.append(check('Post up debug (mode, locks)', d.post, (v) => (d.post = v)));
+    dd.append(check('Apartment collision boxes', d.room, (v) => (d.room = v)));
     root.append(section('Debug draw', dd));
 
     // presets
