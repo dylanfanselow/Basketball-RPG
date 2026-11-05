@@ -11,35 +11,35 @@ import { shade, tint } from './sprites';
  */
 export const AS = 0.75;
 export const ART_W = 960, ART_H = 540;
-const HF = RS * AS; // art px per foot of height (16.5)
-const AX = (x: number) => (ROOM.ox + x * RS) * AS;
-const AY = (y: number) => (ROOM.oy + y * RD) * AS;
+export const HF = RS * AS; // art px per foot of height (16.5)
+export const AX = (x: number) => (ROOM.ox + x * RS) * AS;
+export const AY = (y: number) => (ROOM.oy + y * RD) * AS;
 /** Room depth (feet) of an art row. */
-const yOfRow = (row: number) => (row / AS - ROOM.oy) / RD;
+export const yOfRow = (row: number) => (row / AS - ROOM.oy) / RD;
 
-type C = CanvasRenderingContext2D;
-const BEAM_TOP = 76, WALL_TOP = 93, FLOOR_ROW = Math.round(AY(0)); // 289
-const POST_L: [number, number] = [105, 129];
-const POST_R: [number, number] = [Math.round(AX(wallR(ROOM.depth))), Math.round(AX(wallR(ROOM.depth))) + 24];
+export type C = CanvasRenderingContext2D;
+export const BEAM_TOP = 76, WALL_TOP = 93, FLOOR_ROW = Math.round(AY(0)); // 289
+export const POST_L: [number, number] = [105, 129];
+export const POST_R: [number, number] = [Math.round(AX(wallR(ROOM.depth))), Math.round(AX(wallR(ROOM.depth))) + 24];
 
-function canvas(w: number, h: number): HTMLCanvasElement { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-const R = (c: C, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-const P = (c: C, x: number, y: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); };
+export function canvas(w: number, h: number): HTMLCanvasElement { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+export const R = (c: C, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+export const P = (c: C, x: number, y: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); };
 /** Deterministic pixel noise in [0, 1). */
-const hn = (x: number, y: number, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-const mix = (a: string, b: string, t: number) => {
+export const hn = (x: number, y: number, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+export const mix = (a: string, b: string, t: number) => {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
   const ch = (s: number) => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
   return '#' + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
 };
-const OL = (col: string) => shade(col, 0.42); // our sprites outline in a dark version of the fill
+export const OL = (col: string) => shade(col, 0.42); // our sprites outline in a dark version of the fill
 
 /** A shaded box in the room's 3/4 view: top face + front face, outlined. Feet in, art px out. */
-function block(c: C, x0f: number, x1f: number, ybf: number, yff: number, hft: number, base: string, o: { top?: string; outline?: string; noTop?: boolean } = {}) {
+export function block(c: C, x0f: number, x1f: number, ybf: number, yff: number, hft: number, base: string, o: { top?: string; outline?: string; noTop?: boolean } = {}) {
   const x0 = Math.round(AX(x0f)), x1 = Math.round(AX(x1f)), yb = Math.round(AY(ybf)), yf = Math.round(AY(yff)), H = Math.round(hft * HF);
   return box(c, x0, x1, yb, yf, H, base, o);
 }
-function box(c: C, x0: number, x1: number, yb: number, yf: number, H: number, base: string, o: { top?: string; outline?: string; noTop?: boolean } = {}) {
+export function box(c: C, x0: number, x1: number, yb: number, yf: number, H: number, base: string, o: { top?: string; outline?: string; noTop?: boolean } = {}) {
   const top = o.top ?? tint(base, 0.22), ol = o.outline ?? OL(base);
   const ty = o.noTop ? yf - H : yb - H;
   R(c, x0 - 1, ty - 1, x1 - x0 + 2, yf - ty + 2, ol);
@@ -53,7 +53,7 @@ function box(c: C, x0: number, x1: number, yb: number, yf: number, H: number, ba
 }
 
 // ---------------------------------------------------------------- background
-const PAL = {
+export const PAL = {
   attic: '#5b3b29', atticSeam: '#3f281a', beam: '#86593a',
   brick: ['#8a4230', '#7d3a2a', '#96503a', '#843f2e'], mortar: '#5a2b20',
   kitchenWall: '#cbc5b5', livingWall: '#dcc79a', leftWall: '#b9ad96', rightWall: '#d3bc8d', base: '#8b6b4f',
@@ -120,7 +120,7 @@ function drawExteriorRight(c: C) {
   for (let y = 312; y < 330; y++) for (let x = 875; x < ART_W; x++) if (Math.hypot((x - 915) / 50, (y - 318) / 9) < 1) P(c, x, y, shade(PAL.grass[0], 0.75));
 }
 
-function drawPost(c: C, xa: number, xb: number) {
+export function drawPost(c: C, xa: number, xb: number) {
   for (let y = 0; y < ART_H; y++) for (let x = xa; x < xb; x++) {
     const row = Math.floor(y / 5), off = (row % 2) * 6, bx = (x - xa + off) % 12, by = y % 5;
     let col = PAL.brick[(Math.floor((x - xa + off) / 12) + row * 3) % 4];
@@ -131,7 +131,7 @@ function drawPost(c: C, xa: number, xb: number) {
 }
 
 /** Fill the strip of a side wall between two room depths and heights, column by column (the wall plane slants). */
-function onWall(c: C, side: 'L' | 'R', y0f: number, y1f: number, h0: number, h1: number, paint: (x: number, y: number, u: number, v: number) => string | null) {
+export function onWall(c: C, side: 'L' | 'R', y0f: number, y1f: number, h0: number, h1: number, paint: (x: number, y: number, u: number, v: number) => string | null) {
   const wx = side === 'L' ? wallL : wallR;
   const xa = Math.round(Math.min(AX(wx(y0f)), AX(wx(y1f)))), xb = Math.round(Math.max(AX(wx(y0f)), AX(wx(y1f))));
   for (let x = xa; x <= xb; x++) {
@@ -221,7 +221,7 @@ function drawRoomShell(c: C) {
   onWall(c, 'R', 0, ROOM.depth + 1, 0, 0.42, (_x, _y, _u, v) => (v > 0.85 ? '#a6866a' : PAL.base));
 }
 
-function drawWindow(c: C, x0: number, y0: number, w: number, h: number, blinds: number) {
+export function drawWindow(c: C, x0: number, y0: number, w: number, h: number, blinds: number) {
   R(c, x0 - 4, y0 - 4, w + 8, h + 8, '#8f8a80');
   R(c, x0 - 3, y0 - 3, w + 6, h + 6, '#eeeae2'); R(c, x0 - 3, y0 + h, w + 6, 3, '#c9c4b8');
   for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
@@ -289,21 +289,23 @@ function drawWallDecor(c: C) {
 
 // ---------------------------------------------------------------- tribute posters
 /** 3x5 pixel font (only the letters the posters use). */
-const FONT3: Record<string, string> = {
+export const FONT3: Record<string, string> = {
   A: '010101111101101', B: '110101110101110', C: '011100100100011', E: '111100110100111', F: '111100110100100',
   G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101', L: '100100100100111',
   M: '101111111101101', N: '110101101101101', O: '010101101101010', 0: '111101101101111', 2: '110001010100111',
   3: '110001010001110', 4: '101101111001001', ' ': '000000000000000',
+  D: '110101101101110', R: '110101110101101', S: '011100010001110', T: '111010010010010', Y: '101101010010010',
+  P: '110101110100100', 1: '010110010010111', 5: '111100110001110', '!': '010010010000010',
 };
-function text3(c: C, x: number, y: number, s: string, col: string, shadow?: string) {
+export function text3(c: C, x: number, y: number, s: string, col: string, shadow?: string) {
   [...s].forEach((ch, i) => {
     const g = FONT3[ch] ?? FONT3[' '];
     for (let k = 0; k < 15; k++) if (g[k] === '1') { if (shadow) P(c, x + i * 4 + (k % 3) + 1, y + Math.floor(k / 3) + 1, shadow); P(c, x + i * 4 + (k % 3), y + Math.floor(k / 3), col); }
   });
 }
-const textW = (s: string) => s.length * 4 - 1;
+export const textW = (s: string) => s.length * 4 - 1;
 /** A pixel figure (silhouette with a bit of jersey colour): pose = joint offsets from the hip. */
-function figure(c: C, hx: number, hy: number, col: string, jersey: string, pose: { head: [number, number]; hands: [number, number][]; feet: [number, number][] }) {
+export function figure(c: C, hx: number, hy: number, col: string, jersey: string, pose: { head: [number, number]; hands: [number, number][]; feet: [number, number][] }) {
   const line = (x0: number, y0: number, x1: number, y1: number, w: number, cl: string) => {
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
     for (let i = 0; i <= n; i++) R(c, Math.round(x0 + ((x1 - x0) * i) / n) - (w >> 1), Math.round(y0 + ((y1 - y0) * i) / n) - (w >> 1), w, w, cl);
@@ -315,13 +317,13 @@ function figure(c: C, hx: number, hy: number, col: string, jersey: string, pose:
   R(c, hx + pose.head[0] - 2, hy + pose.head[1] - 2, 5, 5, col);                           // head
   P(c, hx + pose.head[0] - 2, hy + pose.head[1] - 2, 'rgba(0,0,0,0)');
 }
-function posterFrame(c: C, x: number, y: number, w: number, h: number, bg: (u: number, v: number) => string) {
+export function posterFrame(c: C, x: number, y: number, w: number, h: number, bg: (u: number, v: number) => string) {
   R(c, x - 1, y - 1, w + 2, h + 2, '#2a201a');
   for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) P(c, x + xx, y + yy, bg(xx / w, yy / h));
 }
 /** Hang a poster painted at (1, 1) of a w x h canvas: at (x, y) on the wall, rotated by `tilt` (nearest pixel), with a
  * pin and a soft shadow. */
-function hang(c: C, x: number, y: number, w: number, h: number, tilt: number, paint: (pc: C) => void) {
+export function hang(c: C, x: number, y: number, w: number, h: number, tilt: number, paint: (pc: C) => void) {
   const src = canvas(w + 2, h + 2), sc = src.getContext('2d', { willReadFrequently: true })!;
   paint(sc);
   const d = sc.getImageData(0, 0, w + 2, h + 2).data, cx = (w + 2) / 2, cy = (h + 2) / 2, ca = Math.cos(tilt), sa = Math.sin(tilt);
@@ -338,7 +340,7 @@ function hang(c: C, x: number, y: number, w: number, h: number, tilt: number, pa
   P(c, px, py, '#d8d2c6'); P(c, px, py + 1, '#4a4a4a');
 }
 /** A crumpled paper ball (radius ~3 art px): lumpy outline, creases, lit from the top left. */
-function paperBall(c: C, x: number, y: number, r = 3, seed = 0) {
+export function paperBall(c: C, x: number, y: number, r = 3, seed = 0) {
   for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
     const lump = r + (hn(dx + seed, dy, 71) - 0.5) * 1.2, d = Math.hypot(dx, dy);
     if (d > lump + 0.4) continue;
@@ -348,7 +350,7 @@ function paperBall(c: C, x: number, y: number, r = 3, seed = 0) {
     P(c, x + dx, y + dy, col);
   }
 }
-const ball = (c: C, x: number, y: number) => { R(c, x - 1, y, 3, 1, '#e0702e'); R(c, x, y - 1, 1, 3, '#e0702e'); P(c, x, y, '#5a2410'); };
+export const ball = (c: C, x: number, y: number) => { R(c, x - 1, y, 3, 1, '#e0702e'); R(c, x, y - 1, 1, 3, '#e0702e'); P(c, x, y, '#5a2410'); };
 
 /** Tributes on the back wall (original art, no real logos): Be Like Ike, and nods to Curry, Kobe and LeBron. */
 function drawPosters(c: C) {
@@ -386,11 +388,12 @@ function drawPosters(c: C) {
 
 function drawDoors(c: C) {
   for (const d of DOORS) {
-    const side = d.id === 'garage' ? 'L' : 'R';
+    if (d.side === 'B') continue;
+    const side = d.side;
     const wood = d.id === 'garage' ? '#7b5235' : '#3f6f6a';
     // frame, then the door leaf with two panels and a brass knob
-    onWall(c, side, d.wallY[0] - 0.25, d.wallY[1] + 0.25, 0, 7.4, (_x, _y, u, v) => (u < 0.06 || u > 0.94 || v > 0.965 ? '#e9e3d6' : null));
-    onWall(c, side, d.wallY[0], d.wallY[1], 0, 7.0, (_x, _y, u, v) => {
+    onWall(c, side, d.span[0] - 0.25, d.span[1] + 0.25, 0, 7.4, (_x, _y, u, v) => (u < 0.06 || u > 0.94 || v > 0.965 ? '#e9e3d6' : null));
+    onWall(c, side, d.span[0], d.span[1], 0, 7.0, (_x, _y, u, v) => {
       let col = wood;
       const pu = side === 'L' ? 1 - u : u;
       if (u < 0.04 || u > 0.96 || v > 0.985) col = shade(wood, 0.6);
@@ -507,7 +510,7 @@ export function drawBackground(): HTMLCanvasElement {
 }
 
 // ---------------------------------------------------------------- furniture
-const WOOD = '#8a5a36', WOOD_D = '#6e4428', ROSE = '#b8706a';
+export const WOOD = '#8a5a36', WOOD_D = '#6e4428', ROSE = '#b8706a';
 
 function drawFridge(c: C, p: Piece) {
   const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 6.3, '#e4e6e3', { top: '#f3f4f2' });
@@ -961,7 +964,7 @@ function bbox(c: C): [number, number, number, number] | null {
 }
 
 /** Register a (multi-frame) drawing as a texture cropped to its bounds; frames sit side by side. */
-function bake(tm: Phaser.Textures.TextureManager, key: string, frames: number, draw: (c: C, f: number) => void): Omit<ArtPiece, 'depthFt'> {
+export function bake(tm: Phaser.Textures.TextureManager, key: string, frames: number, draw: (c: C, f: number) => void): Omit<ArtPiece, 'depthFt'> {
   const shots: HTMLCanvasElement[] = [];
   let bb: [number, number, number, number] | null = null;
   for (let f = 0; f < frames; f++) {
@@ -1150,4 +1153,4 @@ export function buildGlow(tm: Phaser.Textures.TextureManager): string {
   return key;
 }
 export const LAMP_ART = { x: AX(21.6), y: AY(1.1) - 98 };
-export { AX, AY };
+

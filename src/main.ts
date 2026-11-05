@@ -10,6 +10,7 @@ import { MatchSetupScene } from './scenes/MatchSetupScene';
 import { ThreeSetupScene } from './scenes/ThreeSetupScene';
 import { OneOnOneSetupScene } from './scenes/OneOnOneSetupScene';
 import { ApartmentScene } from './scenes/ApartmentScene';
+import { GarageScene } from './scenes/GarageScene';
 import { initDevPanel } from './dev/devPanel';
 import { openPixelEditor } from './dev/pixelEditor';
 import { loadFaceParts } from './render/facePartsArt';
@@ -32,7 +33,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   backgroundColor: '#0d0f1a',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, ThreeSetupScene, OneOnOneSetupScene, ApartmentScene],
+  scene: [MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, ThreeSetupScene, OneOnOneSetupScene, ApartmentScene, GarageScene],
 });
 (window as any).__phaser = game;
 void loadFaceParts(); // hand-drawn face parts (src/art/parts + editor drafts)

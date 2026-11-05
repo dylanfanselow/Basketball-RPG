@@ -32,6 +32,9 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 footprints (optional `poly`, `alongLeftWall` / `alongRightWall`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
 ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pieceDepthFt` / `actorDepthFt`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
 
+`garage.ts`: `GARAGE` (`RoomDef`: furniture / doors / spawn). Rooms share the cutaway frame; `solids(extra, room)`,
+`doorNear(p, reach, room)`; `Door` has `side` (L / R / B), `span`, `to` (scene + door you arrive at).
+
 ## Career (`src/career`)
 `career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
 `rosters.json`, procedural fallback), `story.ts` (future: events/story effects, `unlockUltimate`).
@@ -59,6 +62,8 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
 | `scenes/ThreeSetupScene.ts` | Quick 3v3 setup: team / opponent lists + lineups & options column (6 slots, play as, court); Left/Right changes a row, R1/L2 (Q/E) switch columns. |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
+| `scenes/RoomScene.ts` | Base for walkable rooms: init at a door (`{ at }`), movement + collision, multi-angle player, door prompt + travel, roof HUD, `actorDepthFt` sorting, debug overlay. `ApartmentScene` (cat, glow, tank, fan) and `GarageScene` extend it. |
+| `render/garageArt.ts` | Garage background + equipment pieces (hoop, squat rack, bench, treadmill, van, boxes, kettlebells), using the helpers exported from `roomArt.ts`. |
 | `scenes/ApartmentScene.ts` | The starter apartment: movement + collision, multi-angle player, depth sorting, doors, cat, roof HUD, dev collision overlay (`settings.debug.room`). |
 | Other scenes | Menu (now the dev menu), Hub, LevelUp, PerkTree, Ultimate, PostGame. |
 | `audio/sfx.ts` | Procedural Web Audio engine. |

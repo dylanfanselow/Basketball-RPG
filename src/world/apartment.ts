@@ -28,7 +28,9 @@ export const wallR = (y: number) => ROOM.backR + ROOM.slopeR * y;
 
 export type Kind =
   | 'fridge' | 'counter' | 'island' | 'lamp' | 'couch' | 'tank' | 'tvTable' | 'coffeeTable' | 'armchair'
-  | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash';
+  | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash'
+  // garage (round 37)
+  | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'boxes' | 'kettlebells';
 
 /** x/y/w/d = bounding footprint; `poly` (optional) = the real footprint when it isn't a rectangle (along a slanted wall). */
 export interface Piece { id: string; kind: Kind; x: number; y: number; w: number; d: number; solid: boolean; poly?: Poly }
@@ -59,11 +61,14 @@ export const FURNITURE: Piece[] = [
   { id: 'ball', kind: 'ball', x: 32.6, y: 15.6, w: 1.0, d: 0.8, solid: true },
 ];
 
-/** Doors: ✕ within reach of `spot` uses them. */
-export interface Door { id: 'garage' | 'front'; label: string; spot: V; wallY: [number, number] }
+/**
+ * Doors: ✕ within reach of `spot` uses them. `side` = which wall; `span` = its extent along that wall (depth range for
+ * the side walls, x range for the back wall). `to` = the scene it leads to and the door you arrive at there.
+ */
+export interface Door { id: string; label: string; spot: V; side: 'L' | 'R' | 'B'; span: [number, number]; to: { scene: string; at?: string } }
 export const DOORS: Door[] = [
-  { id: 'garage', label: 'Garage', spot: { x: 6.4, y: 9.6 }, wallY: [8.1, 11.1] },
-  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, wallY: [4.5, 7.4] },
+  { id: 'garage', label: 'Garage', spot: { x: 6.4, y: 9.6 }, side: 'L', span: [8.1, 11.1], to: { scene: 'Garage', at: 'house' } },
+  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, side: 'R', span: [4.5, 7.4], to: { scene: 'Menu' } },
 ];
 
 /** Things you'll use later (no action yet): where you stand to use them. */
@@ -78,14 +83,14 @@ export const CALENDAR = { y0: 2.9, y1: 5.9, h0: 4.2, h1: 7.0 };
 export const PLAYER_R = 0.8;
 export const SPAWN: V = { x: 20.5, y: 9.5 };
 
-function alongLeftWall(y0: number, y1: number, depth: number): Poly {
+export function alongLeftWall(y0: number, y1: number, depth: number): Poly {
   return [{ x: wallL(y0) - 1, y: y0 }, { x: wallL(y0) + depth, y: y0 }, { x: wallL(y1) + depth, y: y1 }, { x: wallL(y1) - 1, y: y1 }];
 }
-function alongRightWall(y0: number, y1: number, depth: number): Poly {
+export function alongRightWall(y0: number, y1: number, depth: number): Poly {
   return [{ x: wallR(y0) - depth, y: y0 }, { x: wallR(y0) + 1, y: y0 }, { x: wallR(y1) + 1, y: y1 }, { x: wallR(y1) - depth, y: y1 }];
 }
 
-const rect = (x: number, y: number, w: number, d: number): Poly => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + d }, { x, y: y + d }];
+export const rect = (x: number, y: number, w: number, d: number): Poly => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + d }, { x, y: y + d }];
 
 /** A piece's footprint polygon. */
 export const footprint = (p: Piece): Poly => p.poly ?? rect(p.x, p.y, p.w, p.d);
@@ -109,8 +114,12 @@ export function actorDepthFt(pos: V, pieces: Piece[], overlaps: (p: Piece) => bo
 /** A piece's fixed depth (feet): the front edge of its footprint. */
 export const pieceDepthFt = (p: Piece) => Math.max(...footprint(p).map((q) => q.y));
 
+/** A walkable room: its furniture, doors and default spawn (all rooms share the cutaway frame `ROOM`). */
+export interface RoomDef { id: string; furniture: Piece[]; doors: Door[]; spawn: V }
+export const APARTMENT: RoomDef = { id: 'apartment', furniture: FURNITURE, doors: DOORS, spawn: SPAWN };
+
 /** Everything solid: furniture footprints + the four walls (big polygons outside the floor). */
-export function solids(extra: Poly[] = []): Poly[] {
+export function solids(extra: Poly[] = [], room: RoomDef = APARTMENT): Poly[] {
   const F = ROOM.depth, far = 60;
   const walls: Poly[] = [
     rect(-far, -far, far * 3, far),                                                            // back wall
@@ -118,7 +127,7 @@ export function solids(extra: Poly[] = []): Poly[] {
     [{ x: wallR(-1), y: -1 }, { x: far, y: -1 }, { x: far, y: F + 1 }, { x: wallR(F + 1), y: F + 1 }],     // right wall
     rect(-far, F, far * 3, far),                                                               // front edge
   ];
-  return [...walls, ...FURNITURE.filter((p) => p.solid).map(footprint), ...extra];
+  return [...walls, ...room.furniture.filter((p) => p.solid).map(footprint), ...extra];
 }
 
 /** Closest point on a convex polygon's boundary to p, and whether p is inside. */
@@ -182,9 +191,9 @@ export function isFree(p: V, r: number, polys: Poly[]): boolean {
 }
 
 /** The door within reach of p (closest first), if any. */
-export function doorNear(p: V, reach = 1.6): Door | null {
+export function doorNear(p: V, reach = 1.6, room: RoomDef = APARTMENT): Door | null {
   let best: Door | null = null, bd = reach;
-  for (const d of DOORS) { const k = Math.hypot(p.x - d.spot.x, p.y - d.spot.y); if (k <= bd) { bd = k; best = d; } }
+  for (const d of room.doors) { const k = Math.hypot(p.x - d.spot.x, p.y - d.spot.y); if (k <= bd) { bd = k; best = d; } }
   return best;
 }
 

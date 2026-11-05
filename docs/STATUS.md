@@ -110,6 +110,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - **Save v3 (round 36):** `life` block (`day`, `money` 250, `energy` / `food` 0-100, static for now) + `nextKeyGame`
   (opener, finale, rivals from `RIVALS`, national TV every 4th game; games every other day).
 
+## Garage gym (round 37)
+- `Garage` scene (`GarageScene` → `RoomScene`, layout `world/garage.ts`, art `render/garageArt.ts`): reached through the
+  apartment's left door (you arrive at its back door; that door takes you back to the apartment's garage door), or
+  the dev menu "Garage (gym)". Hoop (arena style, facing right from the left wall), squat rack, bench press, treadmill,
+  dip station + speed bag, shelves, duct + three hanging lamps, STONEY / KG / ADMIRAL posters, gym mat, jump rope,
+  trainers, kettlebells, boxes, an old van along the right wall; yard with a tree and pull-up bars outside. All solid,
+  same HUD and draw order as the apartment. No training interactions yet.
+
 ## Apartment (round 36)
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in
   code on the players' pixel grid — kitchen (fridge, counter + sink + dish rack, peninsula joined to it with left-side
@@ -124,7 +132,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   sides) and furniture are solid (circle vs polygon, slides along edges). Draw order: furniture keeps a fixed depth (front edge of its footprint, `pieceDepthFt`);
   you and the cat get `actorDepthFt` — in front of every overlapping piece you're behind or beside, behind every piece
   that starts in front of your feet (footprint polygons, so the slanted shelf / wardrobe work).
-- Doors: ✕ at the garage door = "coming soon" toast; ✕ at the front door or L1 / Esc = back to the menu.
+- Doors: ✕ at the garage door = the garage gym (round 37); ✕ at the front door or L1 / Esc = back to the menu.
 - Orange tabby cat lives on the couch (sits / loafs on the blanket), hops down now and then, walks to favourite spots
   with grid pathfinding (`findPath`), avoids furniture and you, and hops back up.
 - HUD on the roof: energy + food bars, level + XP bar, days to the next key game (+ why / opponent), money, day.

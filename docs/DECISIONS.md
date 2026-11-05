@@ -154,6 +154,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 37: the garage gym + an art rule.**
+  - **Rule (owner):** for this and all future drawings, **follow the reference material's orientation** for every
+    object — don't draw things facing the camera by default. (Also in CLAUDE.md.)
+  - The apartment's left door leads to a **garage gym** built from the owner's reference, with these changes: the
+    cupboard → a **hoop like the arena's** (base, padded pole, arm, glass board, orange rim, net; facing right from
+    the left wall); the wing-chun dummy → a **squat rack**; posters: keep **STONEY**, add **KG** and **ADMIRAL 50**
+    (David Robinson), drop the others; no chairs by the jump rope. Everything else follows the reference: bench press
+    (bar into the room, plates face-on), treadmill (console at the back), dip station + speed bag, shelves, duct and
+    hanging lamps, door to the house, gym mat, jump rope, kettlebells, boxes, an old van along the right wall (our own
+    design), outdoor pull-up bars in the yard.
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**

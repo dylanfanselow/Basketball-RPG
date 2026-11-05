@@ -45,6 +45,7 @@
 | 36f | `74df23c` | Fume duct should reach the ceiling; nice shoes + workout shoes by the doormat; magazines → a mound of mail; famous NBA posters: Be Like Mike as "Be Like Ike", homages to Curry, Kobe, LeBron | Duct + ceiling collar, pixel shoes, mail mound, four tribute posters with a 3x5 pixel font |
 | 36g | `cd70e1b` | A trash can with balled-up paper inside and some outside like missed shots; space the posters out more randomly | Trash can + paper balls, misses on the floor, posters hung at varied spots / heights / tilts |
 | 36h | `0974702` | Weird clipping: player behind the bookshelf, ball over his feet, back chair over the table, counter over the peninsula | Furniture depth fixed (footprint front edge); walker depth from footprints vs overlapping sprites (`actorDepthFt`); ball solid and moved off the shelf |
+| 37 | `TBD` | Make the garage from a reference image (follow each object's direction — write that rule down); cupboard → arena-style hoop, wing-chun dummy → squat rack, keep the STONEY poster, add KG + David Robinson, drop the chairs | `GarageScene` + `RoomScene` base, `world/garage.ts`, `render/garageArt.ts`, door travel both ways, orientation rule in CLAUDE.md / DECISIONS |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

@@ -1,244 +1,63 @@
 import Phaser from 'phaser';
-import { InputMapper } from '../input/input';
-import { hiRes, FONT } from './ui';
-import { app } from '../state';
-import { TEAMS } from '../sim/data';
-import { xpToNext, nextKeyGame } from '../career/career';
-import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade } from '../render/sprites';
-import { CLIP, frameAt } from '../render/anim';
-import { yawFor } from '../render/frameCache';
-import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
-import { buildRoomArt, buildCatTexture, buildIcons, buildGlow, ArtPiece, AS, CAT_W, CAT_H, LAMP_ART } from '../render/roomArt';
-import { RS, V, Piece, actorDepthFt, pieceDepthFt, SPAWN, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint, FURNITURE, Cat, newCat, catStep, CAT_R, DOORS } from '../world/apartment';
-
-const WALK = 6.2, JOG = 10.5; // ft/s
-const ART = 1 / AS;           // scene units per art px (4/3)
-const ROOM_TINT = 0xfff0dc;   // warm room light on the player, so he sits in the same lighting as the furniture
+import { buildRoomArt, buildCatTexture, buildGlow, CAT_W, LAMP_ART } from '../render/roomArt';
+import { RS, V, Piece, RoomDef, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R } from '../world/apartment';
+import { RoomScene, ART, circlePoly } from './RoomScene';
 
 /**
- * The starter apartment (round 36): your base of operations. Walk around (stick / WASD, R2 / Shift to hurry);
- * furniture and walls are solid. ✕ at a door uses it (garage = coming soon, front door = leave), L1 = leave.
+ * The starter apartment (round 36): your base of operations. The left door leads to the garage gym, the front door
+ * leaves. The cat lives on the couch.
  */
-export class ApartmentScene extends Phaser.Scene {
-  inp!: InputMapper;
-  pos: V = { ...SPAWN };
-  vel: V = { x: 0, y: 0 };
-  face: V = { x: 0, y: 1 };
-  view: { yaw: number; flip: boolean } | undefined;
-  dist = 0; t = 0;
-  polys: Poly[] = [];
-  player!: Phaser.GameObjects.Sprite;
-  shadow!: Phaser.GameObjects.Graphics;
-  debug!: Phaser.GameObjects.Graphics;
-  pieces: { art: ArtPiece; img: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite }[] = [];
+export class ApartmentScene extends RoomScene {
   tank: Phaser.GameObjects.Sprite | null = null;
   fan: Phaser.GameObjects.Sprite | null = null;
   glow!: Phaser.GameObjects.Image;
   cat!: Cat;
   catSprite!: Phaser.GameObjects.Sprite;
-  prompt!: Phaser.GameObjects.Text;
-  hud!: { g: Phaser.GameObjects.Graphics; texts: Phaser.GameObjects.Text[] };
-  sheetKey = '';
-  artOf = new Map<string, ArtPiece>();
-  kit!: Kit;
+  catPolyKey = ''; catPolyCache: Poly[] = [];
 
   constructor() { super('Apartment'); }
+  room(): RoomDef { return APARTMENT; }
+  buildArt(tm: Phaser.Textures.TextureManager) { return buildRoomArt(tm); }
 
-  init() {
-    this.pos = { ...SPAWN }; this.vel = { x: 0, y: 0 }; this.face = { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.tank = null; this.fan = null; this.catPolyKey = '';
+  init(data?: { at?: string }) {
+    super.init(data);
+    this.tank = null; this.fan = null; this.catPolyKey = '';
   }
 
-  create() {
-    hiRes(this);
-    this.cameras.main.setBackgroundColor('#1a120c');
-    this.inp = new InputMapper(this);
-    this.polys = solids();
-    const tm = this.textures;
-    const { bg, pieces } = buildRoomArt(tm);
-    this.add.image(0, 0, bg).setOrigin(0, 0).setScale(ART).setDepth(-1000);
-    for (const art of pieces) {
-      const img = art.frames > 1 ? this.add.sprite(art.x * ART, art.y * ART, art.key, 0) : this.add.image(art.x * ART, art.y * ART, art.key);
-      img.setOrigin(0, 0).setScale(ART).setDepth(syOf(art.piece ? pieceDepthFt(art.piece) : art.depthFt));
-      if (art.piece) this.artOf.set(art.piece.id, art);
-      this.pieces.push({ art, img });
+  onCreate() {
+    for (const { art, img } of this.pieces) {
       if (art.key === 'room_tank') this.tank = img as Phaser.GameObjects.Sprite;
       if (art.key === 'room_fan') this.fan = img as Phaser.GameObjects.Sprite;
     }
-    this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(tm)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
-
-    // you, in a plain tee and your team-colour shorts
-    const c = app.career, team = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[0];
-    this.kit = { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
-    this.sheetKey = playerSheetKey('HOME', c.appearance, c.height, this.kit);
-    this.shadow = this.add.graphics().setDepth(-500);
-    this.player = this.add.sprite(0, 0, '__DEFAULT').setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE).setTint(ROOM_TINT).setVisible(false);
-
+    this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(this.textures)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
     this.cat = newCat();
-    this.catSprite = this.add.sprite(0, 0, buildCatTexture(tm), 0).setOrigin(0.5, 1).setScale(ART);
-
-    this.prompt = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(9500).setVisible(false);
-    this.debug = this.add.graphics().setDepth(9400);
-    buildIcons(tm);
-    this.makeHud();
+    this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
   }
 
-  // ------------------------------------------------------------ HUD (on the roof, styled like the reference's boxes)
-  makeHud() {
-    const g = this.add.graphics().setDepth(9000);
-    const texts: Phaser.GameObjects.Text[] = [];
-    const T = (x: number, y: number, s: string, size = 18, col = '#ffffff') => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 4 }).setDepth(9001); texts.push(t); return t; };
-    const icon = (x: number, y: number, name: string, s = 3) => this.add.image(x, y, `icon_${name}`).setOrigin(0, 0.5).setScale(s * ART * 0.75).setDepth(9001);
-    const c = app.career, L = c.life;
-    const panel = (x: number, y: number, w: number, h: number, fill: number, edge: number) => {
-      g.fillStyle(0x2a1a10, 1).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 7);
-      g.fillStyle(edge, 1).fillRoundedRect(x - 1, y - 1, w + 2, h + 2, 6);
-      g.fillStyle(fill, 1).fillRoundedRect(x + 1, y + 1, w - 2, h - 2, 5);
-      g.fillStyle(0xffffff, 0.12).fillRect(x + 4, y + 3, w - 8, 2);
-    };
-    const bar = (x: number, y: number, w: number, v: number, col: number) => {
-      g.fillStyle(0x1d140d, 1).fillRect(x, y, w, 10);
-      g.fillStyle(col, 1).fillRect(x + 1, y + 1, Math.round((w - 2) * Math.max(0, Math.min(1, v))), 8);
-      g.fillStyle(0xffffff, 0.3).fillRect(x + 1, y + 1, Math.round((w - 2) * Math.max(0, Math.min(1, v))), 2);
-    };
-    // frame for the whole bar
-    panel(300, 16, 680, 76, 0x7a5a3e, 0xb08a5c);
-    // energy + food
-    panel(312, 26, 176, 56, 0x6b4c34, 0x9b7a55);
-    icon(320, 42, 'energy', 2); T(338, 33, 'ENERGY', 11, '#ffe9a8'); bar(400, 37, 80, L.energy / 100, 0x6fd24a);
-    icon(320, 66, 'food', 2); T(338, 57, 'FOOD', 11, '#ffe9a8'); bar(400, 61, 80, L.food / 100, 0x6fd24a);
-    // level + xp
-    panel(500, 26, 136, 56, 0xb02a3c, 0xe0607a);
-    icon(510, 46, 'star', 3); T(540, 30, `LV ${c.level}`, 24);
-    T(512, 62, 'XP', 11, '#ffd6de'); bar(536, 66, 92, c.xp / xpToNext(c.level), 0xff8fa8);
-    // next key game
-    panel(648, 26, 176, 56, 0x1f6f9a, 0x58a8d8);
-    const k = nextKeyGame(c);
-    const opp = k ? TEAMS.find((t) => t.id === k.opponent) : null;
-    icon(658, 46, 'ball', 3);
-    T(686, 28, k ? `${k.daysAway} DAY${k.daysAway === 1 ? '' : 'S'}` : 'SEASON DONE', 20);
-    T(686, 56, k && opp ? `${k.why} vs ${opp.id}` : '', 12, '#d8f0ff');
-    // money + day
-    panel(836, 26, 132, 56, 0x6b4c34, 0x9b7a55);
-    icon(846, 42, 'coin', 2); T(866, 32, `$${L.money}`, 18, '#bfe86a');
-    T(846, 58, `DAY ${L.day}`, 15, '#ffe9a8');
-    this.hud = { g, texts };
-  }
+  extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
 
-  // ------------------------------------------------------------ frame
-  update(_t: number, dms: number) {
-    const dt = Math.min(0.05, dms / 1000);
-    this.t += dt;
-    this.inp.poll();
-    if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
-    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Menu'); return; }
-
-    // movement: stick = feet across / into the room, R2 or Shift hurries
-    const m = this.inp.move, mag = Math.hypot(m.x, m.y);
-    const sp = (this.inp.sprint ? JOG : WALK) * Math.min(1, mag);
-    const want = { x: m.x * (mag > 0 ? sp / mag : 0), y: m.y * (mag > 0 ? sp / mag : 0) };
-    this.vel = { x: this.vel.x + (want.x - this.vel.x) * Math.min(1, dt * 14), y: this.vel.y + (want.y - this.vel.y) * Math.min(1, dt * 14) };
-    const before = this.pos;
-    this.pos = moveWithCollision(this.pos, { x: this.vel.x * dt, y: this.vel.y * dt }, PLAYER_R, this.cat.perch || this.cat.hop ? this.polys : [...this.polys, circlePoly(this.cat.p, CAT_R)]);
-    const moved = Math.hypot(this.pos.x - before.x, this.pos.y - before.y);
-    if (mag > 0.2) this.face = { x: m.x, y: m.y };
-    this.dist += moved;
-
-    // doors
-    const door = doorNear(this.pos);
-    this.prompt.setVisible(!!door);
-    if (door) {
-      this.prompt.setText(`✕ ${door.label}`).setPosition(sxOf(door.spot.x), syOf(door.spot.y) - 160);
-      if (this.inp.pressed('a')) {
-        if (door.id === 'front') { this.scene.start('Menu'); return; }
-        (window as any).__toast?.('Garage — coming soon (workout equipment goes here)');
-      }
-    }
-
-    this.drawPlayer(moved / Math.max(dt, 1e-3));
-    this.updateCat(dt);
-    this.sortDepths();
-    if (this.tank) this.tank.setFrame(Math.floor(this.t / 0.6) % 2);
-    if (this.fan) this.fan.setFrame(Math.floor(this.t / 0.11) % 3);
-    this.glow.setAlpha(0.76 + Math.sin(this.t * 2.1) * 0.04);
-    this.drawDebug();
-  }
-
-  drawPlayer(speed: number) {
-    const c = app.career;
-    const sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
-    const sx = sxOf(this.pos.x), sy = syOf(this.pos.y);
-    this.shadow.clear().fillStyle(0x2a1a0e, 0.32).fillEllipse(sx, sy, 34, 10);
-    if (!sheet) return;
-    const clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
-    const u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
-    const cl = CLIP[clip], fi = frameAt(cl, u);
-    // multi-angle: facing toward the camera = +90 (room y grows toward us, like court y)
-    const ang = (Math.atan2(this.face.y, this.face.x) * 180) / Math.PI;
-    this.view = yawFor(ang, this.view, 10);
-    let tex = this.sheetKey, frame: string | number = sheet.index[clip].start + fi;
-    if (this.view.yaw !== 0) {
-      const cache = angleCache(this, this.sheetKey, c.height, c.appearance, this.kit, ['idle', 'jog']);
-      const ck = `${clip}|${fi}|${this.view.yaw}`, slot = cache.get(ck);
-      if (slot) { tex = angPage(this.sheetKey, slot.page); frame = `s${slot.index}`; } else cache.request(ck, true);
-    }
-    pumpSheet(this, this.sheetKey, 3, true);
-    if (this.player.texture.key !== tex) this.player.setTexture(tex, frame); else this.player.setFrame(frame);
-    this.player.setVisible(true).setPosition(sx, sy).setFlipX(this.view.flip);
-  }
-
-  updateCat(dt: number) {
+  onUpdate(dt: number) {
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);
     const f = cat.hop ? 2 : cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : cat.state === 'loaf' ? 1 : 0;
     const x = sxOf(cat.p.x), y = syOf(cat.p.y), lift = cat.z * RS;
     this.catSprite.setFrame(f).setFlipX(cat.state !== 'sit' && cat.face < 0).setPosition(x, y + 2 - lift);
     if (!cat.perch) this.shadow.fillStyle(0x2a1a0e, 0.28).fillEllipse(x, y + 1, CAT_W * ART * 0.8 * (1 - Math.min(0.5, cat.z / 4)), 6);
-    void CAT_H;
+    if (this.tank) this.tank.setFrame(Math.floor(this.t / 0.6) % 2);
+    if (this.fan) this.fan.setFrame(Math.floor(this.t / 0.11) % 3);
+    this.glow.setAlpha(0.76 + Math.sin(this.t * 2.1) * 0.04);
   }
+
   /** What the cat avoids: the room + you (rebuilt only when you move, so its path cache stays warm). */
   catPolys(): Poly[] {
     const k = `${this.pos.x.toFixed(1)},${this.pos.y.toFixed(1)}`;
     if (k !== this.catPolyKey) { this.catPolyKey = k; this.catPolyCache = [...this.polys, circlePoly(this.pos, PLAYER_R + 0.1)]; }
     return this.catPolyCache;
   }
-  catPolyKey = ''; catPolyCache: Poly[] = [];
 
-  /**
-   * Depth = screen y of each thing's front edge. Long pieces (the island, the slanted bookshelf) get special care:
-   * when you stand beside one (inside its depth range), it drops behind you.
-   */
-  sortDepths() {
-    // the walker's picture (scene units): ~1 ft either side, up to ~7 ft tall for you, ~1.6 ft for the cat
-    const overlapsAt = (pos: V, w: number, h: number) => {
-      const x0 = sxOf(pos.x) - w, x1 = sxOf(pos.x) + w, y1 = syOf(pos.y), y0 = y1 - h;
-      return (p: Piece) => {
-        const a = this.artOf.get(p.id); if (!a) return true;
-        const ax0 = a.x * ART, ay0 = a.y * ART, ax1 = ax0 + a.w * ART, ay1 = ay0 + a.h * ART;
-        return ax0 < x1 && ax1 > x0 && ay0 < y1 && ay1 > y0;
-      };
-    };
-    this.player.setDepth(syOf(actorDepthFt(this.pos, FURNITURE, overlapsAt(this.pos, 24, 155))));
+  sortExtras(overlapsAt: (pos: V, w: number, h: number) => (p: Piece) => boolean) {
     // on (or hopping off) the couch the cat sits in front of it
     const couch = FURNITURE.find((f) => f.id === 'couch')!;
     this.catSprite.setDepth(this.cat.perch || this.cat.z > 0.05 ? Math.max(syOf(this.cat.p.y), syOf(couch.y + couch.d) + 0.5) : syOf(actorDepthFt(this.cat.p, FURNITURE, overlapsAt(this.cat.p, 22, 40))));
   }
-
-  drawDebug() {
-    const g = this.debug.clear();
-    if (!app.settings.debug.room) return;
-    g.lineStyle(2, 0x00ffcc, 0.9);
-    for (const p of FURNITURE) {
-      const poly = footprint(p);
-      g.strokePoints(poly.map((q) => new Phaser.Math.Vector2(sxOf(q.x), syOf(q.y))), true);
-    }
-    g.lineStyle(2, 0xff4060, 0.9);
-    for (const d of DOORS) g.strokeCircle(sxOf(d.spot.x), syOf(d.spot.y), 10);
-    g.lineStyle(2, 0xffff00, 1).strokeEllipse(sxOf(this.pos.x), syOf(this.pos.y), PLAYER_R * 2 * 22, PLAYER_R * 2 * 14);
-  }
-}
-
-/** The player as an obstacle for the cat (octagon). */
-function circlePoly(c: V, r: number): Poly {
-  return Array.from({ length: 8 }, (_, i) => ({ x: c.x + Math.cos((i / 8) * Math.PI * 2) * r, y: c.y + Math.sin((i / 8) * Math.PI * 2) * r }));
 }

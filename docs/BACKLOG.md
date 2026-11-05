@@ -25,7 +25,9 @@
    stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)
-- **Apartment follow-ups (round 36):** garage gym behind the left door (workout equipment → training), fridge = eat
+- **Garage follow-ups (round 37):** training on the equipment (squat rack, bench, treadmill, speed bag, hoop for
+  shooting practice), energy cost, maybe drive the van somewhere.
+- **Apartment follow-ups (round 36):** fridge = eat
   (food bar), sleep on the couch to end the day (energy bar, `life.day`++), calendar screen (key games + special
   events), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in
   the apartment (menu stays a dev tool). Ask the owner how the room reads (size of the cat, door visibility on the

@@ -17,6 +17,9 @@ Key rules from the owner:
 - Real 2026-27 rosters are intentionally committed.
 - Eyes on every face (players, fans, celebs, coaches…) match the owner's celeb art: `W I · · · · I W` (white outside,
   iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells` — never cross-eyed or uneven.
+- **Art from a reference: match each object's orientation in the given material** (which way it faces / points, e.g.
+  a treadmill console at the back, a hoop facing right, a van nose toward the camera). Never default to drawing
+  everything front-facing.
 - L1 = escape/back everywhere; R1 (hold) = icon pass; L2 (hold) = post up; everyone can Step-Through (fake → stick to rim + ✕).
 
 Code rules that bite (details in WORKFLOW.md "Gotchas"):
