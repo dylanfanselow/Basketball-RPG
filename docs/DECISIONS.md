@@ -154,6 +154,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 39e: Fade Away smoother** — the `shot_fade` clip is resampled from the jumper at 21 points with a smoothly
+  easing lean and drawn with 24 frames (was 14 with a stepped lean). The fade's smaller cone (3.5 ft, 0.45 rad) was
+  already used; the user's cone now **eases to its new size** (~0.2 s) so you can see it shrink when you pull back.
 - **Round 39: workout mini-games** (controls shown on a card when one starts, then a hint line; panel by the player
   with reps + the game's widget; a wrong input = red ✗ and a 1 s lock; **L1 is the only way out** — ✕ / ○ are game
   buttons):

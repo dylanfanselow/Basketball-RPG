@@ -22,6 +22,14 @@ export const BASE: Pose = {
 
 const P = (patch: PosePatch, from: Pose = BASE): Pose => ({ ...from, ...patch });
 
+/** Catmull-Rom between p1 and p2 (defined up here so clips can be resampled while they're being built). */
+const cr = (p0: J, p1: J, p2: J, p3: J, t: number): J => {
+  const t2 = t * t, t3 = t2 * t;
+  const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+  return [f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])];
+};
+
+
 export interface Key { t: number; pose: Pose }
 export interface Clip {
   name: string; frames: number; loop?: boolean; keys: Key[];
@@ -739,11 +747,16 @@ export function windmillGatherOf(c: Clip): Clip {
   return { ...c, name: `${c.name}_wm`, keys: [keep[0], ...swing, ...keep.slice(1)] };
 }
 
-// Fade Away: the jumper, drifting back: the lean grows through the rise and release, eases off on the way down.
+// Fade Away: the jumper, drifting back. Resampled from the jumper at 21 points with a smoothly easing lean (it grows
+// through the rise and release, eases off on the way down) and drawn with more frames, so it flows instead of
+// stepping between a few leaned keys.
 {
   const j = CLIPS.find((c) => c.name === 'shot_jumper')!;
-  const lean = (t: number) => (t < 0.2 ? 0 : t < 0.35 ? 8 : t <= 0.8 ? 17 : 10);
-  CLIPS.push({ ...j, name: 'shot_fade', keys: j.keys.map((k) => ({ t: k.t, pose: leanBack(k.pose, lean(k.t)) })) });
+  const ease = (t: number, a: number, b: number) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const lean = (t: number) => 17 * ease(t, 0.1, 0.5) - 7 * ease(t, 0.78, 1);
+  const N = 20;
+  const keys = Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return { t, pose: leanBack(sampleClip(j, t), lean(t)) }; });
+  CLIPS.push({ ...j, name: 'shot_fade', frames: 24, keys });
 }
 
 // Windmill Gather variants of every layup / Euro / dunk finish
@@ -759,11 +772,6 @@ export const SHOT_CLIP: Record<string, string> = {
 
 const lerpJ = (a: J, b: J, t: number): J => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 /** Catmull-Rom through p1..p2 using neighbours p0/p3: smooth curves that still pass through every key. */
-const cr = (p0: J, p1: J, p2: J, p3: J, t: number): J => {
-  const t2 = t * t, t3 = t2 * t;
-  const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-  return [f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])];
-};
 
 /** Pose of a clip at normalized time u (0..1). Joints follow Catmull-Rom splines through the keyframes. */
 export function sampleClip(c: Clip, u: number): Pose {

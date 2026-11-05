@@ -56,6 +56,7 @@
 | 39b | `d261c81` | The basketball should actually shoot; a curved shot meter like 2K's; sound effects for all the mini-games | Jump shot that rises with the meter, curved arc meter + GREEN!, procedural sounds for every mini-game (events → sfx) |
 | 39c | `80e8da2` | Wrong garage door was the warp (it's the other one); the ball still isn't going through the hoop; easier push-ups and bench; a tiny red section on the shot meter with a better success sound + the meter on fire; remove the jump rope | Doors swapped, net/rim overlay so the ball drops through, easier tuning, red perfect slice + fire + fanfare, jump rope removed |
 | 39d | `db2c45b` | I want to see the basketball sailing through the air, it still isn't | The flight was timed on the room's clock instead of the mini-game's (it skipped straight to the end); fixed, plus a motion trail and the controls card clears once you start |
+| 39e | `TBD` | Fade away moves too jaggedly, smoother with more frames; is it shrinking the cone? | `shot_fade` resampled (21 keys, eased lean, 24 frames); the cone did shrink (3.5 ft / 26°) but snapped — now it eases to the new size |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

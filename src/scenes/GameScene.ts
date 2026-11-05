@@ -91,6 +91,8 @@ export class GameScene extends Phaser.Scene {
   slidePhase = new Map<string, number>();
   /** drawn view per player (multi-angle), kept for hysteresis */
   yawMem = new Map<string, { yaw: number; flip: boolean; at?: number }>();
+  /** the user's shot cone, eased toward the size for the shot he'd take now */
+  coneL = 5.5; coneHalfNow = 0.7;
   /** defender is mid-shuffle (stance hysteresis, see shuffleState) */
   shuffling = new Map<string, boolean>();
   defFlip = new Map<string, boolean>();
@@ -972,9 +974,12 @@ export class GameScene extends Phaser.Scene {
       if (dbg.cone) {
         const dir = norm(sub(rim, u.p));
         const ptype = sim.preview?.type ?? 'three';
-        const L = contestReach(ptype);
+        // ease the cone toward its new size (it visibly shrinks when you pull back for a Fade Away, ~0.2 s)
+        const k = Math.min(1, (this.game.loop.delta / 1000) * 12);
+        this.coneL += (contestReach(ptype) - this.coneL) * k; this.coneHalfNow += (coneHalf(ptype) - this.coneHalfNow) * k;
+        const L = this.coneL;
         const rot = (a: number) => ({ x: dir.x * Math.cos(a) - dir.y * Math.sin(a), y: dir.x * Math.sin(a) + dir.y * Math.cos(a) });
-        const l = rot(-coneHalf(ptype)), r = rot(coneHalf(ptype));
+        const l = rot(-this.coneHalfNow), r = rot(this.coneHalfNow);
         const c = sim.preview?.contest ?? 0;
         const col = c > 0.35 ? 0xff4040 : c > 0.15 ? 0xffb030 : 0x40ff70;
         g.fillStyle(col, 0.18); g.lineStyle(1, col, 0.6);
