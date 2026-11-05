@@ -329,34 +329,37 @@ function drawHoop(c: C, p: Piece) {
   const bxs = Math.round(AX(boardX)), armY = Math.round(pf - 12.75 * HF);
   R(c, ps, armY - 1, bxs - ps, 6, '#2a2f3e'); R(c, ps, armY, bxs - ps, 4, '#3e4359'); R(c, ps, armY, bxs - ps, 1, '#5a6280');
   for (let k = 0; k <= 30; k++) { const t = k / 30; R(c, Math.round(ps + (bxs - 10 - ps) * t), Math.round(pf - (9.6 + 2.6 * t) * HF), 3, 3, '#3e4359'); }
-  // the glass board, nearly edge-on, turned a little toward us (like the arena's left board)
-  const tilt = 0.8, Y0 = yc - 3, Y1 = yc + 3, Z0 = 9.6, Z1 = 13.1;
-  const pane = (y: number, z: number): [number, number] => [AX(boardX + (tilt * (y - yc)) / 3), AY(y) - z * HF];
-  const fillQuad = (pts: [number, number][], col: string) => {
-    c.fillStyle = col; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (const q of pts.slice(1)) c.lineTo(q[0], q[1]); c.closePath(); c.fill();
-  };
-  const strokeQuad = (pts: [number, number][], col: string, w: number) => {
-    // pixel line around the quad (no anti-aliasing)
-    for (let i = 0; i < pts.length; i++) {
-      const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length], n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)));
-      for (let k = 0; k <= n; k++) R(c, Math.round(x0 + ((x1 - x0) * k) / n) - (w >> 1), Math.round(y0 + ((y1 - y0) * k) / n) - (w >> 1), w, w, col);
+  // the backboard: a normal rectangular board turned toward us a bit (it still faces right, into the room).
+  // Vertical sides; its front edge (nearer the camera) sits a little lower than its back edge.
+  const BW = 62, BH = Math.round(3.5 * HF), SK = 10;                // board width / height / skew (art px)
+  const bcx = Math.round(AX(boardX)) + 18, bTop = Math.round(AY(yc) - 13.3 * HF);
+  const bl = bcx - BW / 2, br = bcx + BW / 2;
+  const rowAt = (x: number) => bTop + Math.round(((br - x) / BW) * SK);   // top edge row at column x (left = front = lower)
+  for (let x = bl; x < br; x++) {
+    const t0 = rowAt(x);
+    for (let y = t0; y < t0 + BH; y++) {
+      const u = (x - bl) / BW, v = (y - t0) / BH;
+      let col = mix('#dceaf6', '#b9cfe2', v);                          // glass, a little darker toward the bottom
+      if (Math.abs((u * 1.4 - v) - 0.15) < 0.06) col = '#eef6fc';     // sheen
+      if (x < bl + 2 || x >= br - 2 || y < t0 + 2 || y >= t0 + BH - 2) col = '#f4f7ff'; // white frame
+      if (x === bl || x === br - 1 || y === t0 || y === t0 + BH - 1) col = '#8a96b8';
+      // shooter's square above the rim
+      const sq = Math.abs(u - 0.5) < 0.17 && v > 0.42 && v < 0.86, edge = Math.abs(Math.abs(u - 0.5) - 0.17) < 0.02 || Math.abs(v - 0.42) < 0.02;
+      if (sq && edge) col = '#ffffff';
+      P(c, x, y, col);
     }
-  };
-  const board: [number, number][] = [pane(Y0, Z1), pane(Y1, Z1), pane(Y1, Z0), pane(Y0, Z0)];
-  fillQuad(board, 'rgba(207,228,255,0.42)');
-  fillQuad([pane(Y0, Z1), pane(Y0 + 1.6, Z1), pane(Y0 + 4.2, Z0), pane(Y0 + 2.6, Z0)], 'rgba(255,255,255,0.22)');
-  strokeQuad(board, '#f4f7ff', 2);
-  strokeQuad([pane(yc - 1, 11.5), pane(yc + 1, 11.5), pane(yc + 1, 10.05), pane(yc - 1, 10.05)], '#ffffff', 1);
-  strokeQuad([pane(Y0, Z0), pane(Y1, Z0)].concat([pane(Y1, Z0 - 0.1), pane(Y0, Z0 - 0.1)]), '#1f2a44', 2);
-  // rim (flat circle seen from above) + bracket, net hanging below
-  const rimX = AX(boardX + 1.15), rimY = AY(yc) - 10 * HF, rw = 0.75 * HF, rh = 0.75 * 10.5 * 0.9;
-  R(c, Math.round(AX(boardX)), Math.round(rimY) - 1, Math.round(rimX - rw - AX(boardX)) + 1, 3, '#8a2e0a');
+    // padded bottom edge
+    R(c, x, t0 + BH - 1, 1, 3, '#1f2a44');
+  }
+  // rim (a flat ring seen from above) sticking out from the board's centre toward the room, net below
+  const rimX = bcx + 10, rimY = rowAt(bcx) + BH - 6, rw = 0.75 * HF, rh = 0.75 * 10.5 * 0.75;
+  R(c, bcx - 2, rimY - 2, 6, 4, '#8a2e0a');
   for (let k = 0; k < 6; k++) {
     // net: strands from the rim down to a narrower bottom, with a diamond weave
-    for (let s = 0; s <= 10; s++) {
-      const a = Math.PI * (s / 10), top = [rimX + Math.cos(a + Math.PI) * rw, rimY + Math.sin(a) * rh * 0.6], bot = [rimX + Math.cos(a + Math.PI) * rw * 0.55, rimY + 1.4 * HF];
+    for (let s2 = 0; s2 <= 10; s2++) {
+      const a = Math.PI * (s2 / 10), top = [rimX + Math.cos(a + Math.PI) * rw, rimY + Math.sin(a) * rh * 0.6], bot = [rimX + Math.cos(a + Math.PI) * rw * 0.55, rimY + 1.4 * HF];
       const t = k / 6, x = top[0] + (bot[0] - top[0]) * t + (k % 2 ? 1.5 : -1.5) * Math.sin(a * 3), y = top[1] + (bot[1] - top[1]) * t;
-      P(c, Math.round(x), Math.round(y), s % 2 ? '#f4f4f4' : '#d8d8d8');
+      P(c, Math.round(x), Math.round(y), s2 % 2 ? '#f4f4f4' : '#d8d8d8');
     }
   }
   for (let k = 0; k <= 40; k++) { const a = (k / 40) * Math.PI * 2; R(c, Math.round(rimX + Math.cos(a) * rw), Math.round(rimY + Math.sin(a) * rh), 2, 2, Math.sin(a) < 0 ? '#b8430e' : '#e05a14'); }

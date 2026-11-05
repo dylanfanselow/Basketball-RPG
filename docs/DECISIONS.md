@@ -170,6 +170,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     bumper), parked along the right wall nose toward us; the **door from the apartment is on the left wall** (the
     back-wall door = outside, coming soon); **posters hang under the lamps** (lamps and duct in front); the gym mat
     sits further back.
+  - **Round 37d:** the garage backboard is drawn as a **normal rectangular board** (white frame, shooter's square,
+    padded bottom) turned a little toward the camera, still facing right; the edge-on slanted pane looked strange.
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**
