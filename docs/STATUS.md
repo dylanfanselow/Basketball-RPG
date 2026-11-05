@@ -113,9 +113,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 ## Apartment (round 36)
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in
   code on the players' pixel grid — kitchen (fridge, counter + sink + dish rack, peninsula joined to it with left-side
-  cabinet doors, cooktop, fume hood + ducts, pole to its end, bonsai + dirty cereal bowl), floor lamp with a warm glow,
-  couch (plump pillow, draped blanket) → coffee table → TV facing the couch (seen from behind), aquarium (animated),
-  armchair, bookshelf standing off the slanted right wall, wardrobe, dining table + chairs, moving box, ball, ceiling
+  cabinet doors, cooktop, fume hood + ducts, pole to its end, bonsai), floor lamp with a warm glow,
+  couch (plump pillow on seat + back, heaped blanket with shaded folds) → coffee table → TV facing the couch (seen from behind), aquarium (animated),
+  armchair facing left, bookshelf standing off the slanted right wall, wardrobe, dining table + chairs, moving box, ball, ceiling
   fan (animated), calendar on the left wall by the fridge, team photo, poster, two windows; neighbour's garage on the
   left, tree + fence on the right. `SPOTS` (calendar, fridge, couch) mark where you'll use things later.
 - Your career player (casual tee + team-colour shorts, warm room tint) walks with multi-angle frames; walls (slanted

@@ -429,12 +429,6 @@ function drawIsland(c: C, p0: Piece) {
   const cy0 = Math.round(AY(p.y + 0.6) - H), cy1 = Math.round(AY(p.y + 2.9) - H);
   R(c, b.x0 + 4, cy0, b.x1 - b.x0 - 8, cy1 - cy0, '#16191b');
   for (const [ox, oy] of [[7, 3], [24, 3], [7, cy1 - cy0 - 10], [24, cy1 - cy0 - 10]]) { R(c, b.x0 + ox, cy0 + oy, 10, 7, '#3a3f43'); R(c, b.x0 + ox + 2, cy0 + oy + 2, 6, 3, '#55595c'); P(c, b.x0 + ox + 4, cy0 + oy + 3, '#7a2e22'); }
-  // dirty cereal bowl (behind the bonsai): milk, soggy bits, a spoon
-  const bx = b.x0 + 5, by = Math.round(AY(p.y + 5.5) - H);
-  R(c, bx - 1, by - 1, 15, 8, '#5a5248'); R(c, bx, by, 13, 6, '#e9e2d2'); R(c, bx + 1, by + 1, 11, 3, '#f7f1df');
-  for (const [ox, oy, col] of [[3, 1, '#d9a24a'], [6, 2, '#c98a3a'], [9, 1, '#e3b65a'], [5, 1, '#f2c443']] as const) P(c, bx + ox, by + oy, col);
-  R(c, bx + 9, by - 4, 1, 6, '#c3cacd'); R(c, bx + 9, by - 5, 3, 2, '#c3cacd');
-  P(c, bx - 2, by + 6, '#efe8d6'); P(c, bx - 4, by + 7, '#d9a24a');
   // bonsai in a shallow pot
   const px = b.x0 + 9, py = Math.round(AY(p.y + 6.4) - H);
   R(c, px - 1, py - 1, 20, 7, '#2a1a12'); R(c, px, py, 18, 5, '#3f5a8a'); R(c, px, py, 18, 1, '#6f8ac0'); R(c, px + 2, py + 5, 2, 2, '#2a1a12'); R(c, px + 14, py + 5, 2, 2, '#2a1a12');
@@ -484,42 +478,60 @@ function drawCouch(c: C, p: Piece) {
   }
   // feet
   for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
-  // rust blanket tossed over the right half: lying crumpled on the seat, hanging over the front in soft folds,
-  // a corner trailing down the side, fringe on the hem
-  const bx0 = Math.round(AX(x0 + p.w * 0.45)), bx1 = Math.round(AX(x1 - 0.7)), seatTop = seat.top + 1, seatFront = seat.faceTop, floorY = seat.yf;
-  for (let x = bx0 - 6; x < bx1 + 3; x++) {
-    const t = (x - bx0) / (bx1 - bx0);
-    if (t < -0.2 || t > 1.05) continue;
-    const fold = 0.5 + 0.5 * Math.sin(t * Math.PI * 6.5);
-    // top edge on the seat (crumpled), hem: scalloped and lower toward the left corner that trails down
-    const top = seatTop + 1 + Math.round(Math.abs(Math.sin(t * 7.3)) * 2) + (t < 0 ? 99 : 0);
-    let hem = seatFront + 9 + Math.round(fold * 4) + Math.round(Math.max(0, 0.3 - t) * 40);
-    if (t < 0) hem = seatFront + 6 + Math.round((t + 0.2) * 90);
-    const start = t < 0 ? seatFront - 1 + Math.round(-t * 20) : top;
-    hem = Math.min(hem, floorY - 3);
-    for (let y = start; y <= hem + 1; y++) {
-      const lying = y < seatFront;
-      let col = lying ? mix('#a5472a', '#cf6c44', 0.5 + 0.5 * Math.sin(x * 0.45 + y * 0.9)) : mix('#62230f', '#c65c34', fold * 0.9);
-      if (!lying && y > hem - 2) col = mix(col, '#e2b35a', 0.55);                         // woven border at the hem
-      if (y === start || (x <= bx0 - 5 + Math.round((y - start) * 0.0)) || x === bx1 + 2) col = '#4a1a0a';
-      if (y === hem + 1) col = x % 2 === 0 ? '#e6c08a' : '';                              // fringe
-      if (col) P(c, x, y, col);
+  // rust blanket: a heap of soft rolled folds piled on the seat and pulled up over the back cushion. Each fold is a
+  // shaded dome (light from the top left, dark rims where folds tuck under each other), so the pile has volume.
+  const bx0 = Math.round(AX(x0 + p.w * 0.42)), bx1 = Math.round(AX(x1 - arm)) + 2, W = bx1 - bx0, top = back.top + 1;
+  const RAMP = ['#33100a', '#4e1a0a', '#6e2814', '#8c3a1d', '#a94b27', '#c25f35', '#d97a4a', '#e8956a'];
+  const folds: [number, number, number, number, number][] = [ // cx, cy (px from top), rx, ry, angle
+    [0.22, 7, 0.26, 7, -0.25], [0.6, 5, 0.3, 6, 0.08], [0.86, 9, 0.17, 7, 0.4],
+    [0.38, 17, 0.34, 9, 0.18], [0.78, 19, 0.24, 9, -0.3],
+    [0.55, 25, 0.2, 6, 0.7],
+    [0.27, 31, 0.3, 9, -0.12], [0.7, 33, 0.32, 9, 0.16],
+  ];
+  const hemRows: number[] = new Array(W).fill(-1);
+  for (const [fx, fy, frx, fry, ang] of folds) {
+    const cx = bx0 + fx * W, cy = top + fy, rx = frx * W, ry = fry, ca = Math.cos(ang), sa = Math.sin(ang), R0 = Math.max(rx, ry) + 2;
+    for (let y = Math.floor(cy - R0); y <= cy + R0; y++) for (let x = Math.floor(cx - R0); x <= cx + R0; x++) {
+      if (x < bx0 || x >= bx1) continue;
+      const dx = x - cx, dy = y - cy, u = (dx * ca + dy * sa) / rx, v = (-dx * sa + dy * ca) / ry, d = u * u + v * v;
+      if (d > 1) continue;
+      const nz = Math.sqrt(1 - d);                                  // dome normal
+      const light = nz * 0.55 - u * 0.25 - v * 0.55;                  // top-left light
+      let k = Math.round(2 + light * 5.5);
+      if (d > 0.86) k = v > 0.2 ? 1 : v < -0.2 ? Math.max(k, 4) : 2;   // tucked-under rim below, soft lit edge on top
+      if (y > seat.faceTop + 2) k -= 1;                               // hanging over the front: in shade
+      if (hn(x, y, 41) < 0.06) k -= 1;                                // weave
+      P(c, x, y, RAMP[Math.max(0, Math.min(RAMP.length - 1, k))]);
+      if (y > hemRows[x - bx0]) hemRows[x - bx0] = y;
     }
   }
-  // plump cream pillow leaning on the back cushion: rounded, shaded, a soft dent
-  const pl = Math.round(AX(x0 + arm + 0.2)), pt = back.faceTop + 2, pw = 28, ph = 21;
+  // fringe on the front folds + a little shadow on the seat front under the pile
+  hemRows.forEach((y, i) => { if (y < seat.faceTop) return; const x = bx0 + i; if (i % 2 === 0) { P(c, x, y + 1, '#e6c08a'); P(c, x, y + 2, '#c9a06a'); } c.fillStyle = 'rgba(40,10,5,0.3)'; c.fillRect(x, y + 3, 1, 2); });
+
+  // plump cream pillow: sitting on the seat cushion and leaning on the back cushion, tilted, with real thickness
+  const pw = 30, ph = 27, pl = Math.round(AX(x0 + arm + 0.15)), pt = back.faceTop + 2, tilt = -0.2;
+  const inside = (x: number, y: number) => {
+    const cx = x - pw / 2 + 0.5, cy = y - ph / 2 + 0.5;
+    const rx = cx * Math.cos(tilt) - cy * Math.sin(tilt), ry = cx * Math.sin(tilt) + cy * Math.cos(tilt);
+    const nx = rx / (pw / 2 - 1), ny = ry / (ph / 2 - 2);
+    const pinch = 1 - 0.22 * (1 - Math.min(1, Math.abs(nx) * 1.2)) * (Math.abs(ny) > 0.62 ? 1 : 0) - 0.22 * (1 - Math.min(1, Math.abs(ny) * 1.2)) * (Math.abs(nx) > 0.62 ? 1 : 0);
+    return { r: Math.abs(nx) ** 2.4 + Math.abs(ny) ** 2.4, pinch, nx, ny };
+  };
+  // thickness: the same outline pushed down/right, dark
+  for (let y = -2; y < ph + 4; y++) for (let x = -2; x < pw + 4; x++) {
+    const a = inside(x - 2, y - 3);
+    if (a.r <= a.pinch) P(c, pl + x, pt + y, a.r > a.pinch - 0.12 ? '#6e5c40' : '#c9b48c');
+  }
   for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
-    const nx = (x - pw / 2 + 0.5) / (pw / 2), ny = (y - ph / 2 + 0.5) / (ph / 2);
-    const r = Math.abs(nx) ** 2.6 + Math.abs(ny) ** 2.6;
-    // pinched corners: the edge bows in a little between them
-    const bow = 1 - 0.18 * (1 - Math.abs(nx)) * (Math.abs(ny) > 0.7 ? 1 : 0) - 0.18 * (1 - Math.abs(ny)) * (Math.abs(nx) > 0.7 ? 1 : 0);
-    if (r > bow) continue;
-    let col = '#efe4c8';
-    const light = -nx * 0.45 - ny * 0.7 - r * 0.6;                       // light from the top left
-    col = light > 0.35 ? '#fffaeb' : light > 0 ? '#f6eedb' : light > -0.45 ? '#e6d9b9' : '#cdbd98';
-    if (Math.abs(nx) < 0.14 && Math.abs(ny) < 0.14) col = '#d8c9a6';     // button dent
-    if (r > bow - 0.16) col = '#8a7656';                                  // outline
-    else if (r > bow - 0.3) col = light > 0 ? '#d9b98a' : '#c4a274';       // piping
+    const a = inside(x, y);
+    if (a.r > a.pinch) continue;
+    // dome shading: brightest up-left of centre, falling off to the edges, a soft dent in the middle
+    const dome = 1 - a.r;
+    const light = dome * 0.9 - a.nx * 0.25 - a.ny * 0.35;
+    let col = light > 0.75 ? '#fffbef' : light > 0.5 ? '#f7efdc' : light > 0.28 ? '#ebdfc2' : light > 0.08 ? '#d9c8a2' : '#c2ad84';
+    if (Math.abs(a.nx) < 0.1 && Math.abs(a.ny) < 0.12) col = '#cdb98f';
+    if (Math.abs(Math.abs(a.nx) - Math.abs(a.ny)) < 0.05 && a.r > 0.35 && a.r < 0.8) col = mix(col, '#a8946c', 0.5); // pinch creases toward the corners
+    if (a.r > a.pinch - 0.1) col = '#7a6646';
     P(c, pl + x, pt + y, col);
   }
 }
@@ -580,13 +592,25 @@ function drawCoffeeTable(c: C, p: Piece) {
 }
 
 function drawArmchair(c: C, p: Piece) {
-  const x0 = p.x, x1 = p.x + p.w, arm = 0.75;
-  const back = block(c, x0 + 0.15, x1 - 0.15, p.y, p.y + 0.9, 3.1, shade(ROSE, 0.9));
-  R(c, back.x0 + 8, back.faceTop + 3, back.x1 - back.x0 - 16, back.H - 10, shade(ROSE, 0.96)); R(c, back.x0 + 9, back.faceTop + 4, back.x1 - back.x0 - 18, 2, tint(ROSE, 0.2));
-  const seat = block(c, x0 + arm, x1 - arm, p.y + 0.9, p.y + p.d, 1.55, shade(ROSE, 0.87), { top: tint(ROSE, 0.08) });
-  void seat;
-  for (const ax of [x0, x1 - arm]) { const a = block(c, ax, ax + arm, p.y + 0.3, p.y + p.d, 2.2, shade(ROSE, 0.9), { top: tint(ROSE, 0.15) }); R(c, a.x0 + 2, a.top + 1, a.x1 - a.x0 - 4, 2, tint(ROSE, 0.35)); }
-  for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
+  // faces left (toward the room): backrest along the right side, an arm at the back and one at the front
+  const x0 = p.x, x1 = p.x + p.w, y0 = p.y, y1 = p.y + p.d, armD = 0.55, backW = 0.85;
+  const backArm = block(c, x0 + 0.1, x1 - 0.1, y0, y0 + armD, 2.25, shade(ROSE, 0.86), { top: tint(ROSE, 0.12) });
+  R(c, backArm.x0 + 2, backArm.top + 1, backArm.x1 - backArm.x0 - 4, 2, tint(ROSE, 0.3));
+  const back = block(c, x1 - backW, x1, y0 + 0.15, y1 - 0.15, 3.2, shade(ROSE, 0.9), { top: tint(ROSE, 0.1) });
+  R(c, back.x0 + 2, back.top + 1, back.x1 - back.x0 - 4, back.yf - back.yb - 2, tint(ROSE, 0.22));
+  const seat = block(c, x0 + 0.1, x1 - backW, y0 + armD, y1 - armD, 1.55, shade(ROSE, 0.88), { top: tint(ROSE, 0.1) });
+  R(c, seat.x0 + 2, seat.top + 2, seat.x1 - seat.x0 - 4, 2, tint(ROSE, 0.25));
+  // the backrest's padded inner face (toward the room), tufted, between the arms
+  for (let y = back.top + 2; y < seat.top + (seat.yf - seat.yb); y++) for (let x = back.x0 - 7; x < back.x0; x++) {
+    const k = (y - back.top) % 14, edge = x === back.x0 - 7;
+    P(c, x, y, edge ? OL(ROSE) : k === 0 ? shade(ROSE, 0.72) : x < back.x0 - 4 ? tint(ROSE, 0.12) : shade(ROSE, 0.92));
+    if (k === 7 && x === back.x0 - 4) P(c, x, y, shade(ROSE, 0.6));
+  }
+  const front = block(c, x0, x1, y1 - armD, y1, 2.2, shade(ROSE, 0.92), { top: tint(ROSE, 0.18) });
+  R(c, front.x0 + 2, front.top + 1, front.x1 - front.x0 - 4, 2, tint(ROSE, 0.35));
+  // the front arm's rolled end faces left: a darker scroll on its front face
+  R(c, front.x0 + 2, front.faceTop + 3, 6, front.H - 7, shade(ROSE, 0.8)); R(c, front.x0 + 3, front.faceTop + 4, 3, 3, tint(ROSE, 0.2));
+  for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(y1)) - 1, 3, 3, '#3a2418');
 }
 
 /** The bookshelf stands along the slanted right wall (a little off it), drawn column by column like the wall: its
@@ -772,71 +796,102 @@ const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
 
 // ---------------------------------------------------------------- the cat
 /**
- * Orange tabby, hand-placed pixels. Eyes follow the house rule for every face: front view `W I · · · · · · I W`
+ * Orange tabby, hand-placed pixels (taller and more angular, round 36c). Eyes follow the house rule for every face:
+ * front view `W I · · · · · · I W`
  * (white outside, iris inside, mirrored, looking straight ahead); profile = iris in front of the white.
- * o outline, O fur, d stripe, l light fur, w white fur, W eye white, I iris, n nose, - closed eye
+ * o outline, O fur, d stripe, l light fur, w white fur, p inner ear, W eye white, I iris, n nose, m mouth, - closed eye
  */
 const CAT_FRAMES: string[][] = [
-  [ // 0: sitting, facing the camera (16 wide + tail)
-    '..o..........o......',
-    '.oOo........oOo.....',
-    '.oOOo......oOOo.....',
-    '.oOOOooooooOOOo.....',
-    'oOOdOOOOOOOOdOOo....',
-    'oOOOOOOOOOOOOOOo....',
-    'oOOWIOOOOOOIWOOo....',
-    'oOOOOOOwwOOOOOOo....',
-    '.oOOOOwwnnwwOOo.....',
-    '..oOOOwwwwwwOo......',
-    '...ooOwwwwwOoo......',
-    '...oOOwwwwwOOo......',
-    '..oOdOwwwwwOdOo.....',
-    '..oOOOOwwwOOOOo..oo.',
-    '.oOdOOOOwOOOOdOoodOo',
-    '.oOOOOOOOOOOOOOooOo.',
-    '.oOOwwOOOOOOwwOOOo..',
-    '.ooowwoooooowwooo...',
+  [ // 0: sitting, facing the camera (tall, sharp ears; tail curls at the side)
+    '..o............o..',
+    '.oOo..........oOo.',
+    '.oOOo........oOOo.',
+    '.oppOo......oOppo.',
+    '.opppOooooooOpppo.',
+    '.oppOOdOddOdOOppo.',
+    'oOOOOOOdOOdOOOOOOo',
+    'oOOOOOOOOOOOOOOOOo',
+    'odOOWIOOOOOOIWOOdo',
+    'oOOOWIOOOOOOIWOOOo',
+    'odOOOOOOnnOOOOOOdo',
+    '.oOOOwwwmmwwwOOOo.',
+    '..oOwwwwwwwwwwOo..',
+    '...ooowwwwwwooo...',
+    '...oOdwwwwwwdOo...',
+    '..oOOOwwwwwwOOOo..',
+    '..odOOwwwwwwOOdo....',
+    '.oOOOOOwwwwOOOOOo...',
+    '.odOOOOwwwwOOOOdo...oo',
+    '.oOOdOOOwwOOOdOOo..oOdo',
+    'oOOOOdOOOOOOdOOOOooOOo',
+    'oOdOOOdOOOOdOOOdOodOo.',
+    'oOOOOOOdoodOOOOOOoOo..',
+    'oOdOOOOwoowOOOOdOoo...',
+    'ooOOOOwwoowwOOOOoo....',
+    '.owwooowoowooowwo.....',
+    '..ooo.oooooo.ooo......',
   ],
   [ // 1: loafing, eyes closed (side view)
-    '....................o.o.',
-    '...................oOoOo',
-    '..................oOOOOo',
-    '..ooooooooooooooooOO-OOo',
-    '.oOOdOOdOOdOOdOOOOOOOnwo',
-    'ooOOOOOOOOOOOOOOOOOwwwo.',
-    'odOOOOOOOOOOOOOOOOwwwo..',
-    'oOOOOOOOOOOOOOOOOOOOo...',
-    '.oolllooooooooowwoo.....',
+    '...............o...o....',
+    '..............oOo.oOo...',
+    '..............opOoOpo...',
+    '.............oOOOOOOOo..',
+    '.......oooooooOdOO-OOOo.',
+    '.....ooOOdOOdOOOOOOOOwno',
+    '....oOOOOOOOOOOOOOOOwwmo',
+    '...oOOdOOOOOdOOOOOOwwwo.',
+    '..oOOOOOOOOOOOOOOOOOwwo.',
+    '..odOOOOOdOOOOOOdOOOOo..',
+    '..oOOOOOOOOOOOOOOOwwwo..',
+    '.oOdoooooooooooooowwwo..',
+    'oOdOOdOOdOOoooooooooo...',
+    '.ooooooooooo............',
   ],
   [ // 2: walking A (side view, facing right)
-    '...................o.o..',
-    '..................oOoOo.',
-    'oo...............oOOOOOo',
-    '.oo..............oOWIOOo',
-    '..oo..ooooooooooooOOOnwo',
-    '...ooOOdOOdOOdOOOOOwwwo.',
-    '....oOOOOOOOOOOOOOOwwo..',
-    '....oOOOOOOOOOOOOOOOo...',
-    '.....oOOOoooooooOOOo....',
-    '.....oOo.o.....oOo.o....',
-    '.....ow..ow....ow..ow...',
+    '...................o...o......',
+    '..................oOo.oOo.....',
+    '..................opOoOpo.....',
+    '.................oOOOOOOOo....',
+    '..oo.............oOdOOWIOOo...',
+    '.oOdo............oOOOOWIOOOo..',
+    '.oOo.............oOOdOOOOOwn..',
+    '..oOo.oooooooooooOOOOOOwwwwo..',
+    '...oOoOOdOOdOOdOOOdOOOwwwmo...',
+    '....oOOOOOOOOOOOOOOOOOOwwo....',
+    '....odOOOOOOOOOOOOOOOOOOo.....',
+    '....oOOOdOOOOOdOOOOOdOOOo.....',
+    '....oOOOOOOOOOOOOOOOOOwwo.....',
+    '.....oOOOOooooooooooOOOo......',
+    '.....oOOo..oOo...oOOo.oOo.....',
+    '.....oOo...oOo...oOo...oOo....',
+    '....oOo.....oOo..oOo....oOo...',
+    '....owwo....owwo.owwo...owwo..',
+    '....oooo....oooo.oooo...oooo..',
   ],
   [ // 3: walking B
-    '...................o.o..',
-    '..................oOoOo.',
-    '.oo..............oOOOOOo',
-    'oo...............oOWIOOo',
-    'o.....ooooooooooooOOOnwo',
-    '.oooooOOdOOdOOdOOOOwwwo.',
-    '....oOOOOOOOOOOOOOOwwo..',
-    '....oOOOOOOOOOOOOOOOo...',
-    '....oOOOoooooooooOOo....',
-    '...oOo...oOo...oOo.oOo..',
-    '...ow....ow.....ow..ow..',
+    '...................o...o......',
+    '..................oOo.oOo.....',
+    '..................opOoOpo.....',
+    '.................oOOOOOOOo....',
+    '..oo.............oOdOOWIOOo...',
+    '.oOdo............oOOOOWIOOOo..',
+    '.oOo.............oOOdOOOOOwn..',
+    '..oOo.oooooooooooOOOOOOwwwwo..',
+    '...oOoOOdOOdOOdOOOdOOOwwwmo...',
+    '....oOOOOOOOOOOOOOOOOOOwwo....',
+    '....odOOOOOOOOOOOOOOOOOOo.....',
+    '....oOOOdOOOOOdOOOOOdOOOo.....',
+    '....oOOOOOOOOOOOOOOOOOwwo.....',
+    '.....oOOOOooooooooooOOOo......',
+    '......oOOooOo.....oOOooOo.....',
+    '......oOo.oOo.....oOo.oOo.....',
+    '......oOo.oOo.....oOo.oOo.....',
+    '.....owwo.owwo...owwo.owwo....',
+    '.....oooo.oooo...oooo.oooo....',
   ],
 ];
-const CAT_COL: Record<string, string> = { o: '#4a2a14', O: '#e08a3c', d: '#b8622a', l: '#f2b066', w: '#f4efe6', W: '#ffffff', I: '#2a2a2a', n: '#e58a8a', '-': '#4a2a14' };
-export const CAT_W = 24, CAT_H = 18;
+const CAT_COL: Record<string, string> = { o: '#3a1f0e', O: '#e08a3c', d: '#a8541f', l: '#f2b066', w: '#f6f1e6', W: '#ffffff', I: '#1e1e1e', n: '#e58a8a', m: '#3a1f0e', p: '#e9a0a0', '-': '#3a1f0e' };
+export const CAT_W = 30, CAT_H = 27;
 
 export function buildCatTexture(tm: Phaser.Textures.TextureManager): string {
   const key = 'room_cat';
