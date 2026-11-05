@@ -253,11 +253,7 @@ function drawWallDecor(c: C) {
   }
   // living-room window with half-drawn blinds
   drawWindow(c, Math.round(AX(24.4)), 120, Math.round(AX(30.4) - AX(24.4)), 82, 0.28);
-  // framed team photo on the back wall (where the calendar used to be)
-  const fx = Math.round(AX(32.0)), fy = 150;
-  P(c, fx + 13, fy - 4, '#4a4a4a');
-  R(c, fx - 1, fy - 1, 28, 24, '#4a2f1c'); R(c, fx, fy, 26, 22, '#7a5232'); R(c, fx + 3, fy + 3, 20, 16, '#d8e6ea');
-  R(c, fx + 3, fy + 13, 20, 6, '#c9874a'); for (let k = 0; k < 5; k++) { R(c, fx + 5 + k * 4, fy + 8, 2, 6, '#5a3a8a'); P(c, fx + 5 + k * 4, fy + 7, '#8a5a3a'); }
+  drawPosters(c);
   // wall calendar on the left wall, next to the fridge (future: upcoming key games + special events)
   const K = CALENDAR;
   onWall(c, 'L', K.y0 - 0.12, K.y1 + 0.12, K.h0 - 0.08, K.h1 + 0.2, (_x, _y, u, v) => (u < 0.03 || u > 0.97 || v < 0.025 || v > 0.94 ? '#6e665a' : null));
@@ -291,6 +287,76 @@ function drawWallDecor(c: C) {
   });
 }
 
+// ---------------------------------------------------------------- tribute posters
+/** 3x5 pixel font (only the letters the posters use). */
+const FONT3: Record<string, string> = {
+  A: '010101111101101', B: '110101110101110', C: '011100100100011', E: '111100110100111', F: '111100110100100',
+  G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101', L: '100100100100111',
+  M: '101111111101101', N: '110101101101101', O: '010101101101010', 0: '111101101101111', 2: '110001010100111',
+  3: '110001010001110', 4: '101101111001001', ' ': '000000000000000',
+};
+function text3(c: C, x: number, y: number, s: string, col: string, shadow?: string) {
+  [...s].forEach((ch, i) => {
+    const g = FONT3[ch] ?? FONT3[' '];
+    for (let k = 0; k < 15; k++) if (g[k] === '1') { if (shadow) P(c, x + i * 4 + (k % 3) + 1, y + Math.floor(k / 3) + 1, shadow); P(c, x + i * 4 + (k % 3), y + Math.floor(k / 3), col); }
+  });
+}
+const textW = (s: string) => s.length * 4 - 1;
+/** A pixel figure (silhouette with a bit of jersey colour): pose = joint offsets from the hip. */
+function figure(c: C, hx: number, hy: number, col: string, jersey: string, pose: { head: [number, number]; hands: [number, number][]; feet: [number, number][] }) {
+  const line = (x0: number, y0: number, x1: number, y1: number, w: number, cl: string) => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+    for (let i = 0; i <= n; i++) R(c, Math.round(x0 + ((x1 - x0) * i) / n) - (w >> 1), Math.round(y0 + ((y1 - y0) * i) / n) - (w >> 1), w, w, cl);
+  };
+  const sh: [number, number] = [hx + Math.round(pose.head[0] * 0.55), hy - 7];
+  for (const f of pose.feet) line(hx, hy, hx + f[0], hy + f[1], 2, col);                   // legs
+  line(hx, hy, sh[0], sh[1], 4, jersey);                                                   // torso (jersey)
+  for (const h of pose.hands) line(sh[0], sh[1], hx + h[0], hy + h[1], 2, col);            // arms
+  R(c, hx + pose.head[0] - 2, hy + pose.head[1] - 2, 5, 5, col);                           // head
+  P(c, hx + pose.head[0] - 2, hy + pose.head[1] - 2, 'rgba(0,0,0,0)');
+}
+function posterFrame(c: C, x: number, y: number, w: number, h: number, bg: (u: number, v: number) => string) {
+  P(c, x + (w >> 1), y - 3, '#4a4a4a'); // pin
+  R(c, x - 1, y - 1, w + 2, h + 2, '#2a201a');
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) P(c, x + xx, y + yy, bg(xx / w, yy / h));
+  R(c, x + w, y + 1, 1, h, 'rgba(40,25,15,0.35)'); R(c, x + 1, y + h + 1, w, 1, 'rgba(40,25,15,0.35)'); // shadow on the wall
+}
+const ball = (c: C, x: number, y: number) => { R(c, x - 1, y, 3, 1, '#e0702e'); R(c, x, y - 1, 1, 3, '#e0702e'); P(c, x, y, '#5a2410'); };
+
+/** Tributes on the back wall (original art, no real logos): Be Like Ike, and nods to Curry, Kobe and LeBron. */
+function drawPosters(c: C) {
+  // BE LIKE IKE: the classic ad look — a soaring dunker on a sunset-orange sky, bold type
+  { const x = 451, y = 103, w = 38, h = 56;
+    posterFrame(c, x, y, w, h, (u, v) => (v > 0.86 ? '#1d1d1d' : mix('#f6a53a', '#e2462c', v / 0.86)));
+    for (let k = 0; k < 9; k++) P(c, x + 4 + Math.round(hn(k, 9) * 30), y + 4 + Math.round(hn(k, 8) * 10), '#ffe7b0');
+    figure(c, x + 18, y + 33, '#1a1010', '#c8102e', { head: [3, -14], hands: [[11, -22], [9, -20]], feet: [[-7, 4], [-3, 8]] });
+    ball(c, x + 29, y + 11);
+    text3(c, x + Math.round((w - textW('BE LIKE')) / 2), y + 3, 'BE LIKE', '#ffffff', '#5a1a10');
+    text3(c, x + Math.round((w - textW('IKE')) / 2), y + 49, 'IKE', '#f6a53a'); }
+  // KING 23: chalk toss — arms flung up in a cloud of white, wine and gold
+  { const x = 492, y = 103, w = 34, h = 56;
+    posterFrame(c, x, y, w, h, (u, v) => mix('#5a1a2e', '#2a0d18', v));
+    for (let k = 0; k < 40; k++) { const a = hn(k, 1) * Math.PI * 2, r = 3 + hn(k, 2) * 10; P(c, x + 17 + Math.round(Math.cos(a) * r), y + 15 + Math.round(Math.sin(a) * r * 0.7), k % 3 ? '#f4f1e8' : '#cfc8b8'); }
+    figure(c, x + 17, y + 38, '#14080c', '#f2b632', { head: [0, -14], hands: [[-9, -24], [9, -24]], feet: [[-4, 9], [4, 9]] });
+    text3(c, x + Math.round((w - textW('KING')) / 2), y + 3, 'KING', '#f2b632');
+    text3(c, x + Math.round((w - textW('23')) / 2), y + 49, '23', '#f4f1e8'); }
+  // MAMBA 24: the fadeaway, purple and gold, scale pattern
+  { const x = 284, y = 101, w = 40, h = 50;
+    posterFrame(c, x, y, w, h, (u, v) => { const sc = ((Math.floor(u * 20) + Math.floor(v * 25)) % 2 === 0) && v > 0.12 && v < 0.84; return sc ? '#3a1f63' : '#4b2a7a'; });
+    figure(c, x + 22, y + 33, '#120a1c', '#f5b521', { head: [-4, -13], hands: [[-2, -21], [0, -22]], feet: [[-6, 9], [2, 7]] });
+    ball(c, x + 20, y + 10);
+    text3(c, x + Math.round((w - textW('MAMBA')) / 2), y + 2, 'MAMBA', '#f5b521');
+    text3(c, x + Math.round((w - textW('24')) / 2), y + 43, '24', '#f4f1e8'); }
+  // CHEF 30: night night — hands pressed together by a tilted head, deep blue and gold, a long-range arc
+  { const x = 641, y = 103, w = 38, h = 56;
+    posterFrame(c, x, y, w, h, (u, v) => mix('#1d428a', '#0f2350', v));
+    for (let k = 0; k < 14; k++) P(c, x + 3 + k * 2, y + 22 - Math.round(Math.sin((k / 13) * Math.PI) * 10), '#ffc72c');
+    for (let k = 0; k < 6; k++) P(c, x + 4 + Math.round(hn(k, 3) * 30), y + 10 + Math.round(hn(k, 4) * 8), '#c9d6f2'); // stars
+    figure(c, x + 19, y + 40, '#0a1430', '#ffc72c', { head: [-2, -14], hands: [[-6, -15], [-5, -14]], feet: [[-4, 9], [4, 9]] });
+    text3(c, x + Math.round((w - textW('CHEF')) / 2), y + 3, 'CHEF', '#ffc72c');
+    text3(c, x + Math.round((w - textW('30')) / 2), y + 49, '30', '#f4f1e8'); }
+}
+
 function drawDoors(c: C) {
   for (const d of DOORS) {
     const side = d.id === 'garage' ? 'L' : 'R';
@@ -321,8 +387,57 @@ function drawDoors(c: C) {
 
 function drawFloorClutter(c: C) {
   // magazines near the coffee table, a phone with its cord by the TV, popcorn by the box
-  const mags: [number, number, string][] = [[29.6, 7.6, '#3f7fb3'], [30.4, 8.0, '#d9d2c2'], [31.0, 7.4, '#c84d3c']];
-  for (const [x, y, col] of mags) { const px = Math.round(AX(x)), py = Math.round(AY(y)); R(c, px - 1, py - 1, 16, 9, OL(col)); R(c, px, py, 14, 7, col); R(c, px + 2, py + 2, 8, 1, tint(col, 0.5)); R(c, px + 2, py + 4, 6, 1, tint(col, 0.5)); }
+  // a mound of mail by the coffee table: envelopes, bills, a catalogue, a package slip, piled up
+  {
+    const mx = Math.round(AX(30.0)), my = Math.round(AY(8.3));
+    const ENV = ['#f4f1e8', '#ebe3cf', '#d9c08a', '#f4f1e8', '#e8eef4', '#f2d9d0', '#f4f1e8', '#cfd8c4'];
+    let n = 0;
+    for (let layer = 0; layer < 5; layer++) {
+      const count = 6 - layer, spread = 30 - layer * 6;
+      for (let k = 0; k < count; k++) {
+        const ex = mx - spread / 2 + Math.round(hn(layer, k, 61) * spread), ey = my - layer * 3 + Math.round(hn(layer, k, 62) * 4) - 2;
+        const col = ENV[(n++ * 3) % ENV.length], w = 10 + Math.round(hn(k, layer, 63) * 3), h = 6;
+        R(c, ex - 1, ey - 1, w + 2, h + 2, '#6e6658');
+        R(c, ex, ey, w, h, col); R(c, ex, ey, w, 1, tint(col, 0.4)); R(c, ex, ey + h - 1, w, 1, shade(col, 0.85));
+        if (hn(layer, k, 64) < 0.5) { P(c, ex + 2, ey + 1, shade(col, 0.75)); P(c, ex + 3, ey + 2, shade(col, 0.75)); P(c, ex + w - 3, ey + 1, shade(col, 0.75)); P(c, ex + w - 4, ey + 2, shade(col, 0.75)); } // flap
+        else { R(c, ex + 2, ey + 2, 5, 1, '#8a8478'); R(c, ex + 2, ey + 4, 3, 1, '#8a8478'); }
+        if (hn(layer, k, 65) < 0.3) R(c, ex + w - 3, ey + 1, 2, 2, '#c8433a'); // stamp
+        if (col === '#e8eef4') for (let q = 0; q < w; q += 2) P(c, ex + q, ey, q % 4 ? '#3f6fb5' : '#c8433a'); // airmail edge
+      }
+    }
+    // a red "FINAL NOTICE" bill and a package slip on top
+    R(c, mx - 6, my - 17, 13, 7, '#5a1d14'); R(c, mx - 5, my - 16, 11, 5, '#e85b4a'); R(c, mx - 4, my - 15, 7, 1, '#ffe2dc');
+    R(c, mx + 4, my - 14, 8, 5, '#6e6658'); R(c, mx + 5, my - 13, 6, 3, '#f2c443');
+  }
+  // shoes by the garage doormat: a nice pair (polished brown leather) and a pair of workout trainers
+  // side-view pixel shoes (facing right). o outline, U upper, H shine, C collar opening, L laces, A accent, S sole
+  const SNEAKER = [
+    '...ooooo.........',
+    '..oCCCCUoo.......',
+    '..oUUUUULLoo.....',
+    '.oUHUUUUULLUoo...',
+    '.oUUAAAAAUUUUUoo.',
+    'oSSSSSSSSSSSSSSSo',
+    '.ooooooooooooooo.',
+  ];
+  const DRESS = [
+    '...oooo..........',
+    '..oCCCCoo........',
+    '..oUUUUUUooooo...',
+    '.oUHHUUUUUUUUUoo.',
+    '.oUUUUUUUUUUUUUUo',
+    '.oSSoooooooooSSSo',
+    '.ooo.........ooo.',
+  ];
+  const shoe = (x: number, y: number, map: string[], pal: Record<string, string>) =>
+    map.forEach((row, ry) => [...row].forEach((ch, rx) => { if (pal[ch]) P(c, x + rx, y + ry - map.length, pal[ch]); }));
+  {
+    const gx = Math.round(AX(8.0)), gy = Math.round(AY(10.1));
+    const dress = { o: '#24140a', U: '#6b3a1f', H: '#b07a4e', C: '#1a0d06', S: '#2a1a10' };
+    shoe(gx, gy, DRESS, dress); shoe(gx + 4, gy + 5, DRESS, dress);
+    const gym = { o: '#1d1d1d', U: '#9be22a', H: '#d4ff8a', C: '#2a2a2a', L: '#ffffff', A: '#1d1d1d', S: '#f4f4f0' };
+    shoe(gx + 6, gy + 14, SNEAKER, gym); shoe(gx + 10, gy + 19, SNEAKER, gym);
+  }
   const ph = { x: Math.round(AX(23.2)), y: Math.round(AY(10.2)) };
   R(c, ph.x - 1, ph.y - 1, 12, 8, '#4a4846'); R(c, ph.x, ph.y, 10, 6, '#e8e4da'); R(c, ph.x + 1, ph.y - 2, 8, 3, '#d6d1c5'); R(c, ph.x + 3, ph.y + 2, 4, 2, '#bdb7aa');
   for (let k = 0; k < 18; k++) P(c, ph.x + 10 + k, ph.y + 3 + Math.round(Math.sin(k * 0.6) * 2), '#3a3836');
@@ -437,6 +552,11 @@ function drawIsland(c: C, p0: Piece) {
   for (let y = 0; y < hBot - hTop; y++) { const t = y / (hBot - hTop), ins = Math.round((1 - t) * ((hoodX1 - hoodX0) / 2 - 7)), cx = Math.round((hoodX0 + hoodX1) / 2), hw = Math.round((hoodX1 - hoodX0) / 2);
     void cx; void hw; R(c, hoodX0 + ins - 1, hTop + y, hoodX1 - hoodX0 - ins * 2 + 2, 1, '#5f676b'); R(c, hoodX0 + ins, hTop + y, hoodX1 - hoodX0 - ins * 2, 1, mix('#b5bcbf', '#8a9296', t)); }
   R(c, hoodX0 - 1, hBot, hoodX1 - hoodX0 + 2, 3, '#4a5155'); R(c, hoodX0 + 3, hBot + 1, hoodX1 - hoodX0 - 6, 1, '#f3e7b5');
+  // duct from the top of the hood up to the ceiling, with joint bands and a collar where it meets the ceiling beam
+  R(c, cen - 7, WALL_TOP, 14, hTop - WALL_TOP + 1, '#4a5155');
+  R(c, cen - 6, WALL_TOP, 12, hTop - WALL_TOP, '#9aa2a6'); R(c, cen - 6, WALL_TOP, 3, hTop - WALL_TOP, '#c0c7ca'); R(c, cen + 3, WALL_TOP, 3, hTop - WALL_TOP, '#757d81');
+  for (let y = WALL_TOP + 16; y < hTop - 4; y += 18) { R(c, cen - 7, y, 14, 2, '#6b7377'); R(c, cen - 6, y, 12, 1, '#b5bcbf'); }
+  R(c, cen - 11, WALL_TOP - 3, 22, 5, '#4a5155'); R(c, cen - 10, WALL_TOP - 3, 20, 3, '#a3abaf'); R(c, cen - 10, WALL_TOP - 3, 20, 1, '#c9cfd2');
 }
 
 function drawLamp(c: C, p: Piece) {

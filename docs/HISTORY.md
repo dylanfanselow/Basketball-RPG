@@ -42,6 +42,7 @@
 | 36c | `10347b3` | Cat more angular and taller (pixel-cat reference); pillow and blanket need volume, pillow on the seat + back cushion, blanket the other way round; armchair by the door faces left; remove the bowl | New cat frames, shaded dome-fold blanket heap + tilted thick pillow, side-view armchair facing left, bowl removed |
 | 36d | `664ce10` | The blanket looks like a sausage, it should be a sheet | Blanket redrawn as one draped sheet (surface-lit, wrinkles from under the cat, border + fringe) |
 | 36e | `6eba32d` | Remove the pole and the shoes by the cabinet; rotate that cabinet 90° counter-clockwise | Pole + top duct removed, slippers removed, wardrobe against the left wall with doors facing right |
+| 36f | `TBD` | Fume duct should reach the ceiling; nice shoes + workout shoes by the doormat; magazines → a mound of mail; famous NBA posters: Be Like Mike as "Be Like Ike", homages to Curry, Kobe, LeBron | Duct + ceiling collar, pixel shoes, mail mound, four tribute posters with a 3x5 pixel font |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

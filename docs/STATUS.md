@@ -116,7 +116,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   cabinet doors, cooktop, fume hood + duct to the ceiling, bonsai), floor lamp with a warm glow,
   couch (plump pillow on seat + back, blanket draped as a sheet over back cushion + seat) → coffee table → TV facing the couch (seen from behind), aquarium (animated),
   armchair facing left, bookshelf standing off the slanted right wall, wardrobe against the left wall (doors facing right), dining table + chairs, moving box, ball, ceiling
-  fan (animated), calendar on the left wall by the fridge, team photo, poster, two windows; neighbour's garage on the
+  fan (animated), calendar on the left wall by the fridge, tribute posters (BE LIKE IKE, KING 23, MAMBA 24, CHEF 30; 3x5 pixel
+  font `text3`), a purple poster on the right wall, two windows, shoes by the garage doormat, a mound of mail; neighbour's garage on the
   left, tree + fence on the right. `SPOTS` (calendar, fridge, couch) mark where you'll use things later.
 - Your career player (casual tee + team-colour shorts, warm room tint) walks with multi-angle frames; walls (slanted
   sides) and furniture are solid (circle vs polygon, slides along edges); depth sorting by front edge (long pieces drop

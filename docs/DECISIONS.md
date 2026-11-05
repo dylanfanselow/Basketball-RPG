@@ -148,6 +148,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     across the seat and over the front edge, both shaded with volume; the **armchair by the front door faces left**; the dirty cereal bowl is gone.
   - **Round 36e:** no pole and no duct along the top (hood + ceiling duct stay); no slippers; the **wardrobe is turned
     90° counter-clockwise**: back against the left wall, doors facing right into the room.
+  - **Round 36f:** the hood's duct runs up to the ceiling (collar at the beam); a pair of nice shoes and a pair of
+    workout shoes by the garage doormat; a mound of mail instead of magazines; **tribute posters** on the back wall
+    (original art, no real logos): **BE LIKE IKE** (riff on the classic ad), **KING 23** (chalk toss), **MAMBA 24**
+    (fadeaway), **CHEF 30** (night night).
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**
