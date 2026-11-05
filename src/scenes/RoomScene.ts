@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
 import { hiRes, FONT } from './ui';
 import { app } from '../state';
-import { TEAMS } from '../sim/data';
-import { xpToNext, nextKeyGame } from '../career/career';
+import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
+import { xpToNext, nextKeyGame, skillXpToNext } from '../career/career';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
@@ -33,7 +33,12 @@ export abstract class RoomScene extends Phaser.Scene {
   debug!: Phaser.GameObjects.Graphics;
   pieces: { art: ArtPiece; img: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite }[] = [];
   prompt!: Phaser.GameObjects.Text;
-  hud!: { g: Phaser.GameObjects.Graphics; texts: Phaser.GameObjects.Text[] };
+  hud!: { g: Phaser.GameObjects.Graphics; objs: Phaser.GameObjects.GameObject[]; sig: string };
+  /** Skill cards' screen boxes (for the level-up flash) and the levels last shown. */
+  skillCards = new Map<CoreStat, { x: number; y: number; w: number; h: number }>();
+  private shownLevels: Partial<Record<CoreStat, number>> = {};
+  private flashes: { stat: CoreStat; at: number; text: Phaser.GameObjects.Text }[] = [];
+  private hudFx: Phaser.GameObjects.Graphics | null = null;
   sheetKey = '';
   artOf = new Map<string, ArtPiece>();
   kit!: Kit;
@@ -93,11 +98,24 @@ export abstract class RoomScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------ HUD (on the roof, styled like the reference's boxes)
+  /** Everything the HUD shows, so it rebuilds only when something changes. */
+  private hudSig(): string {
+    const c = app.career;
+    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo]);
+  }
+
   makeHud() {
+    if (this.hud) for (const o of this.hud.objs) o.destroy();
     const g = this.add.graphics().setDepth(9000);
-    const texts: Phaser.GameObjects.Text[] = [];
-    const T = (x: number, y: number, s: string, size = 18, col = '#ffffff') => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 4 }).setDepth(9001); texts.push(t); return t; };
-    const icon = (x: number, y: number, name: string, s = 3) => this.add.image(x, y, `icon_${name}`).setOrigin(0, 0.5).setScale(s * ART * 0.75).setDepth(9001);
+    const objs: Phaser.GameObjects.GameObject[] = [g];
+    const T = (x: number, y: number, s: string, size = 18, col = '#ffffff', stroke = 4) => {
+      const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: stroke }).setDepth(9001);
+      objs.push(t); return t;
+    };
+    const icon = (x: number, y: number, name: string, s = 3) => {
+      const im = this.add.image(x, y, `icon_${name}`).setOrigin(0, 0.5).setScale(s * ART * 0.75).setDepth(9001);
+      objs.push(im); return im;
+    };
     const c = app.career, L = c.life;
     const panel = (x: number, y: number, w: number, h: number, fill: number, edge: number) => {
       g.fillStyle(0x2a1a10, 1).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 7);
@@ -110,23 +128,92 @@ export abstract class RoomScene extends Phaser.Scene {
       g.fillStyle(col, 1).fillRect(x + 1, y + 1, Math.round((w - 2) * Math.max(0, Math.min(1, v))), 8);
       g.fillStyle(0xffffff, 0.3).fillRect(x + 1, y + 1, Math.round((w - 2) * Math.max(0, Math.min(1, v))), 2);
     };
-    panel(300, 16, 680, 76, 0x7a5a3e, 0xb08a5c);
-    panel(312, 26, 176, 56, 0x6b4c34, 0x9b7a55);
-    icon(320, 42, 'energy', 2); T(338, 33, 'ENERGY', 11, '#ffe9a8'); bar(400, 37, 80, L.energy / 100, 0x6fd24a);
-    icon(320, 66, 'food', 2); T(338, 57, 'FOOD', 11, '#ffe9a8'); bar(400, 61, 80, L.food / 100, 0x6fd24a);
-    panel(500, 26, 136, 56, 0xb02a3c, 0xe0607a);
-    icon(510, 46, 'star', 3); T(540, 30, `LV ${c.level}`, 24);
-    T(512, 62, 'XP', 11, '#ffd6de'); bar(536, 66, 92, c.xp / xpToNext(c.level), 0xff8fa8);
-    panel(648, 26, 176, 56, 0x1f6f9a, 0x58a8d8);
-    const k = nextKeyGame(c);
-    const opp = k ? TEAMS.find((t) => t.id === k.opponent) : null;
-    icon(658, 46, 'ball', 3);
-    T(686, 28, k ? `${k.daysAway} DAY${k.daysAway === 1 ? '' : 'S'}` : 'SEASON DONE', 20);
-    T(686, 56, k && opp ? `${k.why} vs ${opp.id}` : '', 12, '#d8f0ff');
-    panel(836, 26, 132, 56, 0x6b4c34, 0x9b7a55);
-    icon(846, 42, 'coin', 2); T(866, 32, `$${L.money}`, 18, '#bfe86a');
-    T(846, 58, `DAY ${L.day}`, 15, '#ffe9a8');
-    this.hud = { g, texts };
+    /** A rounded pill bar (the reference's style): dark track, light fill, a highlight line along the top. */
+    const pill = (x: number, y: number, w: number, h: number, v: number, track: number, fill: number) => {
+      const r = h / 2, fw = Math.max(0, Math.min(1, v)) * w;
+      g.fillStyle(0x1e1410, 0.9).fillRoundedRect(x - 1, y - 1, w + 2, h + 2, r + 1);
+      g.fillStyle(track, 1).fillRoundedRect(x, y, w, h, r);
+      if (fw >= 1) {
+        const ww = Math.max(h, fw);
+        g.fillStyle(fill, 1).fillRoundedRect(x, y, ww, h, r);
+        g.fillStyle(0xffffff, 0.35).fillRect(x + r * 0.6, y + 1, Math.max(0, ww - r * 1.2), Math.max(1, h * 0.22));
+      }
+    };
+    // the wooden board on the roof (a soft shadow under it)
+    g.fillStyle(0x000000, 0.22).fillRoundedRect(250, 18, 788, 86, 9);
+    panel(246, 12, 788, 86, 0x7a5a3e, 0xb08a5c);
+    // energy / food
+    panel(258, 22, 168, 66, 0x6b4c34, 0x9b7a55);
+    icon(266, 40, 'energy', 2); T(284, 31, 'ENERGY', 11, '#ffe9a8'); bar(346, 35, 72, L.energy / 100, 0x6fd24a);
+    icon(266, 70, 'food', 2); T(284, 61, 'FOOD', 11, '#ffe9a8'); bar(346, 65, 72, L.food / 100, 0x6fd24a);
+    // level block (round 41, the owner's reference): LVL + a long XP bar, then the five skill cards
+    panel(436, 22, 248, 66, 0x5a3f2a, 0x9b7a55);
+    icon(442, 31, 'star', 2);
+    T(458, 23, `LVL ${c.level}`, 14, '#ffffff', 3);
+    pill(526, 27, 150, 8, c.xp / xpToNext(c.level), 0x8a3e1a, 0xe8743a);
+    const SK: Record<CoreStat, { tag: string; base: number; edge: number; dark: number; fill: number; track: number }> = {
+      shooting: { tag: 'SHT', base: 0x5a8a2a, edge: 0xa6d65a, dark: 0x3d6420, fill: 0x9ae04a, track: 0x2c4a16 },
+      finishing: { tag: 'FIN', base: 0x2f5f8f, edge: 0x7ab8ee, dark: 0x22476c, fill: 0x6ab8f0, track: 0x18324e },
+      strength: { tag: 'STR', base: 0x8e1c30, edge: 0xe06a86, dark: 0x6a1424, fill: 0xf05a80, track: 0x4a0e1a },
+      mobility: { tag: 'MOB', base: 0x3aa0c0, edge: 0xa8eaff, dark: 0x2a7a94, fill: 0x9ff2ff, track: 0x1e5a6e },
+      playmaking: { tag: 'PLY', base: 0xb8901c, edge: 0xffe07a, dark: 0x8a6a12, fill: 0xffd84a, track: 0x5e4810 },
+    };
+    // the olive-brown strip the cards sit in (like the gaps between the reference's cards)
+    g.fillStyle(0x1e1410, 1).fillRoundedRect(440, 42, 240, 43, 4);
+    g.fillStyle(0x6e5c3e, 1).fillRoundedRect(441, 43, 238, 41, 4);
+    const cw = 44, ch = 37, gap = 3, top = 24;
+    CORE_STATS.forEach((st, i) => {
+      const k = SK[st], sk = c.skills[st], x = 444 + i * (cw + gap), y = 45;
+      this.skillCards.set(st, { x, y, w: cw, h: ch });
+      g.fillStyle(0x1e1410, 1).fillRoundedRect(x - 1, y - 1, cw + 2, ch + 2, 5);
+      g.fillStyle(k.edge, 1).fillRoundedRect(x, y, cw, ch, 4);
+      g.fillStyle(k.base, 1).fillRoundedRect(x + 1.5, y + 1.5, cw - 3, top - 1.5, { tl: 3, tr: 3, bl: 0, br: 0 });
+      g.fillStyle(0xffffff, 0.14).fillRect(x + 3, y + 2.5, cw - 6, 1.5);
+      g.fillStyle(k.edge, 1).fillRect(x + 1.5, y + top, cw - 3, 1.5); // divider
+      g.fillStyle(k.dark, 1).fillRoundedRect(x + 1.5, y + top + 1.5, cw - 3, ch - top - 3, { tl: 0, tr: 0, bl: 3, br: 3 });
+      icon(x + 3, y + 1.5 + top / 2, `sk_${st}`, 1.45);
+      T(x + cw - 2, y + top / 2 + 1, String(sk.level), 13, '#ffffff', 3).setOrigin(1, 0.5);
+      T(x + 3, y + top + 2.5, k.tag, 7, '#ffffff', 0).setAlpha(0.55);
+      pill(x + 20, y + top + 4, cw - 24, 5, sk.xp / skillXpToNext(sk.level), k.track, k.fill);
+    });
+    // key game
+    panel(694, 22, 168, 66, 0x1f6f9a, 0x58a8d8);
+    const kg = nextKeyGame(c);
+    const opp = kg ? TEAMS.find((t) => t.id === kg.opponent) : null;
+    icon(702, 46, 'ball', 3);
+    T(730, 28, kg ? `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}` : 'SEASON DONE', 20);
+    T(730, 58, kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
+    // money / day
+    panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
+    icon(882, 40, 'coin', 2); T(902, 30, `$${L.money}`, 18, '#bfe86a');
+    T(882, 58, `DAY ${L.day}`, 15, '#ffe9a8');
+    this.hud = { g, objs, sig: this.hudSig() };
+    // a skill that went up since it was last shown flashes and pops a "+n"
+    for (const st of CORE_STATS) {
+      const was = this.shownLevels[st], now = c.skills[st].level;
+      if (was !== undefined && now > was) {
+        const b = this.skillCards.get(st)!;
+        const text = this.add.text(b.x + b.w / 2, b.y + 4, `+${now - was}`, { fontFamily: FONT, fontSize: '16px', color: '#ffffff', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(9003);
+        this.flashes.push({ stat: st, at: this.t, text });
+      }
+      this.shownLevels[st] = now;
+    }
+  }
+
+  /** Rebuild the HUD when career values change (dev tools, rewards), and play the skill level-up flashes. */
+  updateHud() {
+    if (this.hud.sig !== this.hudSig()) this.makeHud();
+    if (!this.hudFx) this.hudFx = this.add.graphics().setDepth(9002);
+    const fx = this.hudFx.clear();
+    this.flashes = this.flashes.filter((f) => {
+      const k = (this.t - f.at) / 1.1;
+      if (k >= 1) { f.text.destroy(); return false; }
+      const b = this.skillCards.get(f.stat)!;
+      fx.fillStyle(0xffffff, 0.75 * (1 - k) * (0.6 + 0.4 * Math.cos(k * 18))).fillRoundedRect(b.x, b.y, b.w, b.h, 4);
+      fx.lineStyle(2, 0xffe27a, 1 - k).strokeRoundedRect(b.x - 2 - k * 4, b.y - 2 - k * 4, b.w + 4 + k * 8, b.h + 4 + k * 8, 6);
+      f.text.setY(b.y + 4 - k * 18).setAlpha(1 - k * k);
+      return true;
+    });
   }
 
   // ------------------------------------------------------------ frame
@@ -134,6 +221,7 @@ export abstract class RoomScene extends Phaser.Scene {
     const dt = Math.min(0.05, dms / 1000);
     this.t += dt;
     this.inp.poll();
+    this.updateHud();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
     if (this.activity) {
       // working out: stay on the equipment and play its mini-game; only L1 (Esc) stops (✕ / ○ are game buttons)

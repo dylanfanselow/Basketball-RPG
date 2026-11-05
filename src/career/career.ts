@@ -1,4 +1,4 @@
-import { CoreStats, CORE_STATS, TEAMS, BACKSTORIES } from '../sim/data';
+import { CoreStat, CoreStats, CORE_STATS, TEAMS, BACKSTORIES } from '../sim/data';
 import { Position, HEIGHTS } from '../sim/attributes';
 import { Player } from '../sim/player';
 import { ModSource } from '../sim/modifiers';
@@ -7,7 +7,7 @@ import { UltState, ULT_MILESTONES } from '../sim/ultimates';
 import type { BoxScore } from '../sim/player';
 import { Appearance, defaultAppearance, withDefaults } from '../render/appearance';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const STAT_POINT_VALUE = 2; // each core-stat point adds this many rating points
 export const STAT_MAX = 99;
 
@@ -28,6 +28,23 @@ export interface CareerState {
   forceStarter: boolean;
   /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
   life: { day: number; money: number; energy: number; food: number };
+  /** Skyrim-style skill levels (round 41): each core skill levels on its own XP. Shown on the room HUD's skill cards;
+   *  separate from the `core` ratings for now (nothing feeds the XP yet). */
+  skills: Record<CoreStat, { level: number; xp: number }>;
+}
+
+export const SKILL_START = 40, SKILL_MAX = 99;
+export const newSkills = () => Object.fromEntries(CORE_STATS.map((s) => [s, { level: SKILL_START, xp: 0 }])) as CareerState['skills'];
+/** XP needed to take a skill from `level` to the next. */
+export const skillXpToNext = (level: number) => 60 + level * 2;
+/** Add skill XP (levels up with carry-over, capped at SKILL_MAX). Returns the levels gained. */
+export function addSkillXp(c: CareerState, stat: CoreStat, n: number): number {
+  const sk = c.skills[stat];
+  let gained = 0;
+  sk.xp += Math.max(0, n);
+  while (sk.level < SKILL_MAX && sk.xp >= skillXpToNext(sk.level)) { sk.xp -= skillXpToNext(sk.level); sk.level++; gained++; }
+  if (sk.level >= SKILL_MAX) { sk.level = SKILL_MAX; sk.xp = 0; }
+  return gained;
 }
 
 export const newLife = () => ({ day: 1, money: 250, energy: 100, food: 100 });
@@ -41,7 +58,7 @@ export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerSt
     core, level: 1, xp: 0, statPoints: 5, perkPoints: 2, nodes: [], traits: [], backstory: null,
     flags: { ult_unlocked: false }, ult: { id: null, level: 0, evoPoints: 0, seenMilestones: [] },
     trust: { team: 20, coach: 20 }, teamId,
-    season: { gameNo: 0, wins: 0, losses: 0, schedule }, forceStarter: false, life: newLife(),
+    season: { gameNo: 0, wins: 0, losses: 0, schedule }, forceStarter: false, life: newLife(), skills: newSkills(),
   };
 }
 
@@ -109,11 +126,12 @@ export function loadCareer(): CareerState | null {
   } catch { return null; }
 }
 
-/** Upgrade older saves in place. v1 -> v2 adds appearance, v2 -> v3 adds the off-court `life` block. */
+/** Upgrade older saves in place. v1 -> v2 adds appearance, v2 -> v3 adds the off-court `life` block, v3 -> v4 the skill levels. */
 export function migrateCareer(c: any): CareerState | null {
   if (!c || typeof c.version !== 'number') return null;
   if (c.version === 1) { c.appearance = { ...defaultAppearance(), skin: c.skin ?? 2 }; c.version = 2; }
   if (c.version === 2) { c.life = newLife(); c.version = 3; }
+  if (c.version === 3) { c.skills = newSkills(); c.version = 4; }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
   return c as CareerState;

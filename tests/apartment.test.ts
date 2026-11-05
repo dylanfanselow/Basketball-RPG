@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
-import { newCareer, migrateCareer, nextKeyGame, isKeyGame } from '../src/career/career';
+import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX } from '../src/career/career';
 
 const polys = solids();
 const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
@@ -125,6 +125,29 @@ describe('apartment draw order', () => {
   });
 });
 
+describe('skill levels (round 41)', () => {
+  it('new careers start every skill at 40 with no XP', () => {
+    const c = newCareer('A', 'SG');
+    expect(Object.keys(c.skills)).toEqual(['shooting', 'finishing', 'strength', 'mobility', 'playmaking']);
+    for (const s of Object.values(c.skills)) expect(s).toEqual({ level: 40, xp: 0 });
+  });
+  it('skill XP levels up with carry-over and stops at the cap', () => {
+    const c = newCareer('A', 'SG');
+    expect(addSkillXp(c, 'strength', skillXpToNext(40) + 5)).toBe(1);
+    expect(c.skills.strength).toEqual({ level: 41, xp: 5 });
+    expect(c.skills.shooting.level).toBe(40);
+    addSkillXp(c, 'mobility', 1e6);
+    expect(c.skills.mobility).toEqual({ level: SKILL_MAX, xp: 0 });
+  });
+  it('v3 saves migrate to v4 with skills', () => {
+    const old: any = { ...newCareer('Old', 'PG'), version: 3 };
+    delete old.skills;
+    const m = migrateCareer(old)!;
+    expect(m.version).toBe(4);
+    expect(m.skills.playmaking).toEqual({ level: 40, xp: 0 });
+  });
+});
+
 describe('career life + key games', () => {
   it('new careers have a life block; v2 saves migrate to v3', () => {
     const c = newCareer('A', 'SG');
@@ -132,7 +155,7 @@ describe('career life + key games', () => {
     const old: any = { ...newCareer('Old', 'PG'), version: 2 };
     delete old.life;
     const m = migrateCareer(old)!;
-    expect(m.version).toBe(3);
+    expect(m.version).toBe(4);
     expect(m.life.energy).toBe(100);
   });
   it('the next key game is the opener first, then a later one after it is played', () => {

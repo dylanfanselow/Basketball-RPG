@@ -153,6 +153,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).
 
 ## Apartment (round 36)
+- Round 41: the roof HUD (`RoomScene.makeHud`, rebuilt by `updateHud` whenever career values change) has energy /
+  food, the **level block** (LVL + XP pill, five skill cards drawn with Graphics + `icon_sk_*` pixel icons from
+  `roomArt.ts` ICONS), key game, money / day; level-up flash + "+n" per card. `CareerState.skills`
+  (`newSkills`, `SKILL_START = 40`, `skillXpToNext`, `addSkillXp`, migration v3 → v4); dev panel → Core stats →
+  "+25 SHO/FIN/STR/MOB/PLA" and "Skills → 40".
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in
   code on the players' pixel grid — kitchen (fridge, counter + sink + dish rack, peninsula joined to it with left-side
   cabinet doors, cooktop, fume hood + duct to the ceiling, bonsai), floor lamp with a warm glow,

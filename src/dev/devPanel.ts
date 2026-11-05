@@ -1,7 +1,7 @@
 import { app } from '../state';
 import { CORE_STATS, TREES, ULTIMATES, PLAYS, NODES } from '../sim/data';
 import { POSITIONS, HEIGHTS } from '../sim/attributes';
-import { newCareer, CareerState } from '../career/career';
+import { newCareer, CareerState, addSkillXp, newSkills } from '../career/career';
 import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
@@ -161,6 +161,12 @@ export function initDevPanel() {
       btn('+5 stat pts', () => { c.statPoints += 5; app.changed(); }),
       btn('+3 perk pts', () => { c.perkPoints += 3; app.changed(); }),
       btn('+1 level', () => { c.level++; c.statPoints += 3; c.perkPoints++; app.changed(); }),
+    ));
+    // skill levels (round 41): the room HUD's skill cards; +25 XP each to test the bars and the level-up flash
+    stats.append(el('div', { class: 'note' }, `Skill levels (HUD cards): ${CORE_STATS.map((st) => `${st.slice(0, 3)} ${c.skills[st].level}`).join(' · ')}`));
+    stats.append(el('div', { class: 'row' },
+      ...CORE_STATS.map((st) => btn(`+25 ${st.slice(0, 3).toUpperCase()}`, () => { addSkillXp(c, st, 25); app.changed(); }, `+25 ${st} skill XP`)),
+      btn('Skills → 40', () => { c.skills = newSkills(); app.changed(); }),
     ));
     root.append(section('Core stats', stats));
 

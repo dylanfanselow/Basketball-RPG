@@ -154,6 +154,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 41: skill cards on the room HUD** (from the owner's reference): the red LV box became a level block — "LVL n"
+  + a long orange XP bar, then five chunky cards left to right: **Shooting** (green, ball on a shooting hand),
+  **Finishing** (blue, ball through the rim + net), **Strength** (red, pink kettlebell with a 5), **Mobility** (light
+  blue, winged sneaker), **Playmaking** (yellow, clipboard play). Each card: icon + level number on top, a darker
+  strip with a pill XP bar (+ a faint 3-letter tag) below; a card flashes and pops "+1" when its level rises.
+  **Each skill has its own level + XP (Skyrim-style), starting at 40** (`CareerState.skills`, save v4). They're
+  separate from the `core` ratings for now and nothing awards skill XP yet (dev panel buttons do).
 - **Round 40: the push-up mat is now a dribbling mat** (from the owner's photo: a low, wide stance facing the camera,
   pounding the ball low beside the feet). **Same mini-game**: press the random button shown (✕ ○ □ △) to fill a falling
   bar, a wrong one = ✗ for a second. Each right button plays a dribble move, drawn facing us: **✕ crossover (and

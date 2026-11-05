@@ -1128,6 +1128,27 @@ const ICONS: Record<string, { rows: string[]; pal: Record<string, string> }> = {
   coin: { rows: ['.yyyy.', 'yyttyy', 'yytyyy', 'yyttyy', 'yyytyy', 'yyttyy', '.yyyy.'], pal: { y: '#f2c443', t: '#b8862a' } },
   ball: { rows: ['.oooo.', 'oaoaao', 'aaaaaa', 'oaoaao', 'oaoaao', '.oooo.'], pal: { o: '#e0702e', a: '#5a2410' } },
   star: { rows: ['...y...', '..yyy..', 'yyyyyyy', '.yyyyy.', '..yyy..', '.yy.yy.', 'y.....y'], pal: { y: '#ffe27a' } },
+  // skill cards (round 41): chunky 12×12 icons with a dark outline, like the owner's reference cards
+  sk_shooting: { rows: [ // a ball resting on an upturned shooting hand (fingertips curl up, white wristband)
+    '....kkkk....', '...kOOdOk...', '..kOOOdOOk..', '..kddddddk..', '..kOOOdOOk..', '.k.kOOdOk.k.',
+    'ksk.kkkk.ksk', 'kssk....kssk', '.kssssssssk.', '..kssssssk..', '...kWWWWk...', '...kWWWWk...'],
+  pal: { k: '#1e1410', O: '#e8762e', d: '#6a2a10', s: '#f2bb88', W: '#ffffff' } },
+  sk_finishing: { rows: [ // a ball dropping through the rim and net
+    '....kkkk....', '.w.kOdOOk...', '...kddddk.w.', '.w.kOdOOk...', '....kkkk....', 'kkkkkkkkkkkk',
+    'kRRRRRRRRRRk', 'kkkkkkkkkkkk', '.kWkWkkWkWk.', '..kW.WW.Wk..', '..kWkWWkWk..', '...kW..Wk...'],
+  pal: { k: '#1e1410', O: '#e8762e', d: '#6a2a10', R: '#ff7a2a', W: '#ffffff', w: '#d6f0ff' } },
+  sk_strength: { rows: [ // a pink kettlebell with a 5 on it (the reference's red card)
+    '...kkkkkk...', '..kPPPPPPk..', '..kPk..kPk..', '..kPk..kPk..', '.kkPkkkkPkk.', 'kHPPPPPPPPPk',
+    'kHPkkkkkPPPk', 'kHPkPPPPPPPk', 'kPPkkkkkPPPk', 'kPPPPPPkPPPk', 'kPPkkkkkPPPk', '.kkkkkkkkkk.'],
+  pal: { k: '#1e1410', P: '#f08aa8', H: '#ffd0dc' } },
+  sk_mobility: { rows: [ // a winged sneaker, toe to the right
+    '............', '.kk.........', 'kwwk...kkk..', 'kwwwk.kWWWk.', '.kwwwkWWLWk.', 'kkwwwkWWWWWk',
+    'kwwwwkWWWWWk', '.kkwkWWWWWWk', '..kWWWWWWWWk', '..kRRRRRRRRk', '...kkkkkkkk.', '............'],
+  pal: { k: '#1e1410', w: '#9ff2ff', W: '#ffffff', L: '#3aa0c0', R: '#2a6f86' } },
+  sk_playmaking: { rows: [ // a clipboard play: X's, a dashed pass arrow, an O
+    '....kkkk....', '.kkkkCCkkkk.', '.kWWWWWWWWk.', '.kWrWrWaaWk.', '.kWWrWWWWak.', '.kWrWrWWWak.',
+    '.kWWWWWWaWk.', '.kWWWWWaWWk.', '.kWWbbbWWWk.', '.kWWbWbWWWk.', '.kWWbbbWWWk.', '.kkkkkkkkkk.'],
+  pal: { k: '#1e1410', C: '#c8ccd0', W: '#fbf6e8', r: '#c8433a', b: '#2a5fa0', a: '#5a5a5a' } },
 };
 export function buildIcons(tm: Phaser.Textures.TextureManager) {
   for (const [name, ic] of Object.entries(ICONS)) {

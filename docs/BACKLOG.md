@@ -25,6 +25,9 @@
    stun/steal/block behavior and pass speed feel good?
 
 ## Not built yet (owner wants eventually)
+- **Skill XP sources + ratings (round 41):** workouts / games should award skill XP (squats + bench → Strength,
+  shooting spot → Shooting, dribbling mat → Playmaking, treadmill → Mobility, …) and skill levels should feed the
+  `core` ratings — the HUD cards already show them.
 - **Garage follow-ups (round 39):** the mini-games score reps but don't train yet — tune difficulty with the owner, stat gains / energy + food cost per rep or
   session, speed bag and dip station, the hoop for shooting practice, maybe fix up the car.
 - **Apartment follow-ups (round 36):** fridge = eat
