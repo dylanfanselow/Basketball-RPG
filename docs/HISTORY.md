@@ -51,7 +51,7 @@
 | 37d | `ce79749` | The garage backboard looks strange, make it normal | Backboard redrawn as a normal rectangle (frame, shooter's square, padded edge) turned slightly toward us, rim + net out front |
 | 37e | `f95594b` | The board should face fully right — only the side view, no perspective | Garage hoop drawn in pure side view: board edge as a thin slab, flat rim straight out to the right, net below |
 | 38 | `87f29f5` | Animations for the player using the squat rack, push-up mat, jump rope, bench press and treadmill | Workout stations (✕ to start/stop), clips squat / pushup / benchPress / jumpRope (+ jog from behind), moving bar + rope props, equipment frames without the bar |
-| 38b | `TBD` | Push-up face clipped; squat arms under the bar; bench head should lie on the bench looking up, feet backwards, round out the stomach; a red square straight out from the hoop with a shooting animation | Fixed poses, rotated lying torso + head turn, red-square shooting station with the ball going in |
+| 38b | `bcbbf29` | Push-up face clipped; squat arms under the bar; bench head should lie on the bench looking up, feet backwards, round out the stomach; a red square straight out from the hoop with a shooting animation | Fixed poses, rotated lying torso + head turn, red-square shooting station with the ball going in |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
