@@ -27,6 +27,8 @@ export abstract class MiniGame {
   takeEvents(): string[] { const e = this.events; this.events = []; return e; }
   /** How high you are off the floor (ft): only the jump shot leaves the ground. */
   jumpFt(): number { return 0; }
+  /** A game that picks its own clip (the dribbling mat) returns it here; others use the station's clip. */
+  clip(): { clip: string; u: number } | null { return null; }
   get missing() { return this.t < this.missUntil; }
   protected miss() { this.missUntil = this.t + 1; this.emit('miss'); }
   update(dt: number, inp: MiniInput) { this.t += dt; this.step(dt, this.missing ? { ...NO_INPUT, stick: inp.stick, aHeld: inp.aHeld } : inp); }
@@ -89,23 +91,49 @@ export class TreadmillGame extends MiniGame {
   animU() { return this.run; }
 }
 
-// ---------------------------------------------------------------- push-ups
-/** Press the button shown (a new random one each time) to push up; a wrong one = ✗ for a second. */
-export class PushupGame extends RepBar {
-  id = 'pushup';
-  controls = ['Press the button shown  (✕ K  ○ L  □ J  △ I)', 'Wrong button = ✗ for a second'];
-  drain = 0.12; descendTime = 0.5;
+// ---------------------------------------------------------------- dribbling mat
+/** The dribble move each button triggers (clip names), and how long each plays (s). */
+export const DRIBBLE_MOVES: Record<FaceBtn, { clip: string; dur: number }> = {
+  a: { clip: 'mat_cross', dur: 0.8 },   // ✕ crossover (and back)
+  b: { clip: 'mat_legs', dur: 0.8 },    // ○ between the legs (and back)
+  x: { clip: 'mat_back', dur: 0.85 },   // □ behind the back
+  y: { clip: 'mat_inout', dur: 0.5 },   // △ in-and-out
+};
+/** The stationary pound dribble between moves, and how long one bounce takes (s). */
+export const POUND = { clip: 'mat_pound', dur: 0.5 };
+/**
+ * Dribbling mat (round 40; same rules as the old push-ups): press the button shown to fill a falling bar — each right
+ * button is a dribble move; a wrong one = ✗ for a second. Between moves you keep a steady pound dribble.
+ */
+export class DribbleGame extends RepBar {
+  id = 'dribble';
+  controls = ['Press the button shown  (✕ K  ○ L  □ J  △ I)', 'Each one is a move · wrong button = ✗'];
+  drain = 0.12; descendTime = 0.01;
   want: FaceBtn = 'a';
+  move: FaceBtn | null = null;
+  moveAt = -9;
   constructor(rand?: () => number) { super(rand); this.want = this.pick(); }
   private pick(): FaceBtn { const all: FaceBtn[] = ['a', 'b', 'x', 'y'].filter((b) => b !== this.want) as FaceBtn[]; return all[Math.floor(this.rand() * all.length) % all.length]; }
   protected step(dt: number, inp: MiniInput) {
     const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
-    if (pressed.length && !this.descending) {
-      if (pressed.length === 1 && pressed[0] === this.want) { this.emit('press'); this.add(0.26); this.want = this.pick(); }
+    if (pressed.length) {
+      if (pressed.length === 1 && pressed[0] === this.want) { this.move = this.want; this.moveAt = this.t; this.emit('press'); this.add(0.26); this.want = this.pick(); }
       else this.miss();
     }
     this.drainStep(dt);
   }
+  /** The move for its length after a right button, otherwise the pound dribble (restarted as each move ends, so the ball
+   *  carries on from the right hand). */
+  clip(): { clip: string; u: number } {
+    let from = 0;
+    if (this.move) {
+      const m = DRIBBLE_MOVES[this.move], k = (this.t - this.moveAt) / m.dur;
+      if (k < 1) return { clip: m.clip, u: k };
+      from = this.moveAt + m.dur;
+    }
+    return { clip: POUND.clip, u: (this.t - from) / POUND.dur };
+  }
+  animU() { return this.clip().u; }
 }
 
 // ---------------------------------------------------------------- shooting
@@ -186,7 +214,7 @@ export function makeMiniGame(stationId: string, rand: () => number = Math.random
   switch (stationId) {
     case 'squat': return new SquatGame(rand);
     case 'treadmill': return new TreadmillGame(rand);
-    case 'pushup': return new PushupGame(rand);
+    case 'dribble': return new DribbleGame(rand);
     case 'shoot': return new ShootGame(rand);
     case 'bench': return new BenchGame(rand);
     default: return null;

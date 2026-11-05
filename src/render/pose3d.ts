@@ -30,7 +30,7 @@ export function lift(p: Pose): Pose3 {
   if (p.ball) {
     // the ball sits on the side of whichever hand is nearer to it
     const dF = Math.hypot(p.hF[0] - p.ball[0], p.hF[1] - p.ball[1]), dB = Math.hypot(p.hB[0] - p.ball[0], p.hB[1] - p.ball[1]);
-    o.ball = [p.ball[0], (dF <= dB ? 1 : -1) * SHOULDER_HALF * 0.9, p.ball[1]];
+    o.ball = [p.ball[0], p.ballLat ?? (dF <= dB ? 1 : -1) * SHOULDER_HALF * 0.9, p.ball[1]];
   } else o.ball = null;
   return o;
 }

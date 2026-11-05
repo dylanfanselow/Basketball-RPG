@@ -154,6 +154,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 40: the push-up mat is now a dribbling mat** (from the owner's photo: a low, wide stance facing the camera,
+  pounding the ball low beside the feet). **Same mini-game**: press the random button shown (✕ ○ □ △) to fill a falling
+  bar, a wrong one = ✗ for a second. Each right button plays a dribble move, drawn facing us: **✕ crossover (and
+  back), ○ between the legs (and back), □ behind the back, △ in-and-out**; between moves you keep a pound dribble.
+  Bounce sounds on every floor hit, a squeak + blip per move. The mat is a dark rubber mat with a white border, a ball
+  logo and worn foot marks (Claude's design). Push-ups are gone.
 - **Round 39e: Fade Away smoother** — the `shot_fade` clip is resampled from the jumper at 21 points with a smoothly
   easing lean and drawn with 24 frames (was 14 with a stepped lean). The fade's smaller cone (3.5 ft, 0.45 rad) was
   already used; the user's cone now **eases to its new size** (~0.2 s) so you can see it shrink when you pull back.
@@ -164,7 +170,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Squat:** alternate L2 / R2 to push up a bar that keeps falling; full = a rep.
   - **Treadmill:** a dot slides back and forth along a line, ○ while it's in the centre square; each hit speeds it
     up, a press outside = ✗ and slower.
-  - **Push-ups:** press the random button shown (✕ ○ □ △) to fill a falling bar; wrong button = ✗ for a second.
+  - **Push-ups** (a dribbling mat since round 40)**:** press the random button shown (✕ ○ □ △) to fill a falling bar; wrong button = ✗ for a second.
   - **Shooting (red square):** a **shot meter** on ✕ (hold to load, release in the green = make, else it clanks off
     the front rim). This is the garage practice spot only — **games still have no shot meter**.
   - **Bench press (Claude's design, "keep it level"):** hold ✕ to press while the bar wobbles; keep the level gauge

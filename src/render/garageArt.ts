@@ -198,17 +198,32 @@ function drawHouseDoor(c: C) {
 }
 
 function drawFloorStuff(c: C) {
-  // orange gym mat with a diamond pattern in the middle
+  // dark rubber dribbling mat (round 40): speckled black rubber, a painted white border, a ball logo off to the left
+  // and two worn foot marks where you stand (wide stance, facing us)
   const mx0 = Math.round(AX(15.6)), mx1 = Math.round(AX(23.2)), my0 = Math.round(AY(8.6)), my1 = Math.round(AY(11.8));
+  const lx = AX(16.9), ly = AY(10.2), lrx = 10, lry = 6;                       // the logo (an ellipse: it lies on the floor)
+  const feet = [AX(18.6), AX(20.2)], fy = AY(10.45);
   for (let y = my0; y < my1; y++) for (let x = mx0; x < mx1; x++) {
-    const u = (x - mx0) / (mx1 - mx0) * 2 - 1, v = (y - my0) / (my1 - my0) * 2 - 1, d = Math.abs(u) + Math.abs(v);
-    let col = '#d9822e';
-    if (x < mx0 + 3 || x > mx1 - 4 || y < my0 + 2 || y > my1 - 3) col = '#a85a1c';
-    else if (Math.abs(d - 0.8) < 0.06 || Math.abs(d - 0.45) < 0.06) col = '#f2c27a';
-    else if (d < 0.45) col = '#e89a4a';
-    if (y === my0 || x === mx0) col = '#7a3e12';
+    let col = hn(x, y, 41) < 0.12 ? '#3a3d42' : hn(x, y, 42) < 0.05 ? '#1a1b1e' : '#2a2c30';
+    const edge = x < mx0 + 2 || x > mx1 - 3 || y < my0 + 2 || y > my1 - 3;
+    const line = !edge && (x === mx0 + 4 || x === mx1 - 5 || y === my0 + 3 || y === my1 - 4);
+    if (edge) col = '#1c1d20';
+    else if (line) col = hn(x, y, 43) < 0.1 ? '#b8bcc0' : '#e8eaec';                     // painted border, a little worn
+    else {
+      const ex = (x - lx) / lrx, ey = (y - ly) / lry, e = ex * ex + ey * ey;
+      if (e < 1) {
+        col = e > 0.72 ? '#7a3412' : '#d9692a';
+        if (Math.abs(ex) < 0.09 || Math.abs(ey) < 0.12) col = '#1d1d1d';                 // seams
+        else if (Math.abs(Math.abs(ex) - 0.55 + ey * ey * 0.25) < 0.09) col = '#1d1d1d';
+        else if (e < 0.72 && ex < -0.2 && ey < -0.2) col = '#f0904e';
+      }
+      for (const f of feet) { const fx = (x - f) / 5, fz = (y - fy) / 3; if (fx * fx + fz * fz < 1 && hn(x, y, 44) < 0.7) col = '#3e4147'; }
+    }
+    if (y === my0) col = '#121315';
     P(c, x, y, col);
   }
+  // the mat's front lip (a little thickness)
+  R(c, mx0, my1, mx1 - mx0, 1, '#121315');
   // the red square you shoot from (tape on the concrete), straight out from the rim
   { const qx = Math.round(AX(SHOT_MARK.x)), qy = Math.round(AY(SHOT_MARK.y)), hw = 11, hh = 7;
     R(c, qx - hw - 1, qy - hh - 1, hw * 2 + 2, hh * 2 + 2, '#7a1a14'); R(c, qx - hw, qy - hh, hw * 2, hh * 2, '#d63a2a'); R(c, qx - hw, qy - hh, hw * 2, 1, '#ef6a52');

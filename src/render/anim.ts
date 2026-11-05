@@ -12,8 +12,8 @@ export type JointName = (typeof JOINTS)[number];
  * lat: optional sideways spread per joint for multi-angle drawing (pose3d.lift): invisible from the side (yaw 0),
  * it shows as soon as the player turns (wide feet, knees out, arms spread). Interpolated between keys.
  */
-export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number };
-type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number };
+export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number; ballLat?: number };
+type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number; ballLat?: number };
 
 export const BASE: Pose = {
   head: [1, 91], neck: [0, 82], sF: [2, 79], sB: [-2, 79], eF: [4, 65], eB: [-3, 65], hF: [5, 52], hB: [-3, 52],
@@ -609,6 +609,81 @@ CLIPS.push({ name: 'squat', frames: 12, loop: true, keys: [
 const PU_UP = arms({ head: [33, 32], neck: [29, 30], sF: [26, 27], sB: [25, 28], eF: [26, 13], eB: [25, 13], hF: [26, 0], hB: [24, 0], hip: [0, 18], kF: [-22, 11], kB: [-23, 12], fF: [-48, 2], fB: [-49, 3], ball: null, lat: {} }, [26, 0], [24, 0]);
 const PU_DOWN = arms({ head: [33, 14], neck: [29, 12], sF: [26, 9], sB: [25, 10], eF: [16, 12], eB: [15, 12], hF: [26, 0], hB: [24, 0], hip: [3, 7], kF: [-21, 5], kB: [-22, 6], fF: [-48, 2], fB: [-49, 3], ball: null, lat: {} }, [26, 0], [24, 0], [-1, -1]);
 CLIPS.push({ name: 'pushup', frames: 10, loop: true, keys: [{ t: 0, pose: PU_UP }, { t: 0.45, pose: PU_DOWN }, { t: 0.55, pose: PU_DOWN }, { t: 1, pose: PU_UP }] });
+// ---------- dribbling mat (round 40) ----------
+// Front-view drills, shown at yaw 90 (facing the camera) like the owner's reference: a low, wide stance, chest over the
+// knees, the ball pounded hard beside the feet. Each joint is [forward, height] + lat (sideways, + = the player's right),
+// so from the front only lat and height show; forward only decides what's in front (the ball goes behind the legs /
+// back with forward < -4). Every move starts and ends with the ball in the right hand, so the pound loop picks up cleanly.
+type B3 = [number, number, number]; // [forward, height, lat]
+const GUARD_R: B3 = [12, 42, 22], GUARD_L: B3 = [12, 42, -22];
+const matPose = (hR: B3, hL: B3, ball: B3, sway = 0, dip = 0): Pose => {
+  const sh = 63 - dip;
+  const elbow = (h: B3, side: number): J => [(6 + h[0]) / 2, (sh + h[1]) / 2 - 2];
+  const eLat = (h: B3, side: number) => (side * 12.5 + h[2]) / 2 + side * 5;
+  return {
+    head: [9, 75 - dip], neck: [7, 66 - dip], sF: [6, sh], sB: [6, sh], hip: [0, 37 - dip],
+    eF: elbow(hR, 1), hF: [hR[0], hR[1]], eB: elbow(hL, -1), hB: [hL[0], hL[1]],
+    kF: [7, 19], fF: [2, 0], kB: [7, 19], fB: [2, 0],
+    ball: [ball[0], ball[1]], ballLat: ball[2],
+    lat: { head: sway * 3, neck: sway * 2.5, hip: sway * 1.5, sF: 12.5 + sway * 2, sB: -12.5 + sway * 2,
+      eF: eLat(hR, 1) + sway, hF: hR[2], eB: eLat(hL, -1) + sway, hB: hL[2], kF: 15, fF: 17, kB: -15, fB: -17 },
+  };
+};
+// the ball in the right / left hand at the top of the dribble, and on the floor beside each foot / in the middle
+const RH = (h: number, lat = 21): [B3, B3] => [[9, h + 6, lat - 1], [10, h, lat]];
+CLIPS.push(
+  { name: 'mat_pound', frames: 8, loop: true, bounce: [0.5], keys: [
+    { t: 0, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) },
+    { t: 0.2, pose: matPose(RH(21)[0], GUARD_L, RH(21)[1], 0, 1) },
+    { t: 0.5, pose: matPose([9, 24, 20], GUARD_L, [10, 4.5, 22], 0, 1.5) },
+    { t: 0.78, pose: matPose(RH(22)[0], GUARD_L, RH(22)[1], 0, 0.5) },
+    { t: 1, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) }] },
+  // ✕ crossover and back: right → bounce in front → left hand, then left → bounce → right
+  { name: 'mat_cross', frames: 16, bounce: [0.25, 0.75], keys: [
+    { t: 0, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) },
+    { t: 0.12, pose: matPose([11, 28, 14], GUARD_L, [12, 22, 12], -0.3, 1) },
+    { t: 0.25, pose: matPose([10, 26, 10], [11, 26, -10], [14, 4.5, 0], -0.6, 2) },
+    { t: 0.38, pose: matPose(GUARD_R, [11, 28, -15], [12, 22, -14], -1, 1) },
+    { t: 0.5, pose: matPose(GUARD_R, [9, 36, -20], [10, 30, -21], -1) },
+    { t: 0.62, pose: matPose(GUARD_R, [11, 28, -14], [12, 22, -12], -0.4, 1) },
+    { t: 0.75, pose: matPose([11, 26, 10], [10, 26, -10], [14, 4.5, 0], 0.4, 2) },
+    { t: 0.88, pose: matPose([11, 28, 15], GUARD_L, [12, 22, 14], 0.8, 1) },
+    { t: 1, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) }] },
+  // ○ between the legs and back: the ball bounces between the feet (behind the knees) to the other hand, twice
+  { name: 'mat_legs', frames: 16, bounce: [0.25, 0.75], keys: [
+    { t: 0, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) },
+    { t: 0.12, pose: matPose([2, 24, 14], GUARD_L, [1, 18, 11], 0, 2) },
+    { t: 0.25, pose: matPose([0, 22, 8], [2, 24, -8], [-6, 4.5, 0], 0, 3) },
+    { t: 0.38, pose: matPose(GUARD_R, [2, 24, -14], [1, 18, -11], -0.5, 2) },
+    { t: 0.5, pose: matPose(GUARD_R, [9, 34, -20], [10, 28, -21], -0.8, 1) },
+    { t: 0.62, pose: matPose(GUARD_R, [2, 24, -14], [1, 18, -11], -0.3, 2) },
+    { t: 0.75, pose: matPose([2, 24, 8], [0, 22, -8], [-6, 4.5, 0], 0, 3) },
+    { t: 0.88, pose: matPose([2, 24, 14], GUARD_L, [1, 18, 11], 0.5, 2) },
+    { t: 1, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) }] },
+  // □ behind the back: the right hand wraps it round the hips, it bounces behind you up into the left hand, then a
+  // crossover in front brings it home
+  { name: 'mat_back', frames: 16, bounce: [0.4, 0.78], keys: [
+    { t: 0, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) },
+    { t: 0.14, pose: matPose([-3, 38, 22], GUARD_L, [-5, 34, 24], 0.4) },
+    { t: 0.27, pose: matPose([-9, 39, 9], GUARD_L, [-11, 36, 4], 0.6, 1) },
+    { t: 0.4, pose: matPose(GUARD_R, [-6, 26, -10], [-10, 4.5, -6], 0, 2) },
+    { t: 0.54, pose: matPose(GUARD_R, [1, 32, -20], [0, 26, -21], -0.8, 1) },
+    { t: 0.64, pose: matPose(GUARD_R, [9, 34, -19], [10, 28, -20], -1) },
+    { t: 0.78, pose: matPose([11, 26, 10], [10, 26, -10], [14, 4.5, 0], 0, 2) },
+    { t: 0.9, pose: matPose([11, 28, 15], GUARD_L, [12, 22, 14], 0.6, 1) },
+    { t: 1, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) }] },
+  // △ in-and-out: the right hand fakes the ball inward (head and shoulders sell it), then snaps it back out and pounds
+  { name: 'mat_inout', frames: 10, bounce: [0.58], keys: [
+    { t: 0, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) },
+    { t: 0.22, pose: matPose([10, 30, 11], GUARD_L, [11, 24, 9], -1, 1) },
+    { t: 0.4, pose: matPose([10, 30, 24], GUARD_L, [11, 24, 25], 0.8, 1) },
+    { t: 0.58, pose: matPose([9, 24, 21], GUARD_L, [10, 4.5, 23], 0.4, 2) },
+    { t: 0.8, pose: matPose(RH(22)[0], GUARD_L, RH(22)[1], 0.1, 1) },
+    { t: 1, pose: matPose(RH(30)[0], GUARD_L, RH(30)[1]) }] },
+);
+/** The dribbling-mat clips (drawn facing the camera). */
+export const MAT_CLIPS = ['mat_pound', 'mat_cross', 'mat_legs', 'mat_back', 'mat_inout'];
+
 // bench press: lying on the back, facing +x = toward the feet (so the shoes point the right way); the head lies at -x
 // with the back of the head on the bench, turned to look up (headTurn); the scene doesn't mirror it
 const BP_BODY = legs({ head: [-27, 33], neck: [-21, 30], sF: [-16, 29], sB: [-16, 30], eF: [-16, 29], eB: [-16, 30], hF: [-16, 29], hB: [-16, 30], hip: [11, 26], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {}, headTurn: -Math.PI / 2 }, [31, 0], [36, 0]);
@@ -801,6 +876,10 @@ export function sampleClip(c: Clip, u: number): Pose {
       lat[j] = cr(v(lp), v(la), v(lb), v(ln), t)[0];
     }
     out.lat = lat;
+  }
+  if (a.pose.ballLat !== undefined && b.pose.ballLat !== undefined) {
+    const v = (q: Key, d: number) => [q.pose.ballLat ?? d, 0] as J;
+    out.ballLat = cr(v(prev, a.pose.ballLat), [a.pose.ballLat, 0], [b.pose.ballLat, 0], v(next, b.pose.ballLat), t)[0];
   }
   return out;
 }

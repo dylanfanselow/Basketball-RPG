@@ -7,7 +7,7 @@ import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
+import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
 import { RoomDef, Station, RS, syOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
@@ -100,7 +100,20 @@ export class GarageScene extends RoomScene {
       plateFace(g, h.x, h.y + off + tilt, 12);
     } else if (st.id === 'shoot') {
       this.drawShot(st);
+    } else if (st.id === 'dribble') {
+      this.drawDribble(st);
     }
+  }
+
+  /** The dribbled ball: in the hand / on the floor as the frame says, in front of you or behind (between the legs, behind the back). */
+  drawDribble(st: Station) {
+    const b = this.playerBall; if (!b) return;
+    const floorY = syOf(st.at.y), r = 7, x = b.x, y = Math.min(b.y, floorY - r + 1);
+    const lift = Math.max(0, floorY - y);
+    this.gearBack.fillStyle(0x000000, 0.28 - Math.min(0.14, lift / 600)).fillEllipse(x, floorY + 2, 15 - Math.min(5, lift / 20), 5);
+    const g = this.ballG.setDepth(b.behind ? this.player.depth - 0.3 : this.player.depth + 0.3);
+    g.fillStyle(0x5a2410, 1).fillCircle(x, y, r + 1); g.fillStyle(0xe0702e, 1).fillCircle(x, y, r); g.fillStyle(0xf09050, 1).fillCircle(x - 2, y - 2, r * 0.45);
+    g.lineStyle(1, 0x3a1a0a, 1).lineBetween(x - r, y, x + r, y).lineBetween(x, y - r, x, y + r);
   }
 
   /**
@@ -209,6 +222,7 @@ export class GarageScene extends RoomScene {
   }
 
   /** Sounds for whatever the mini-game did this frame, plus the timed ones (meter ticks, footfalls, the shot ball). */
+  private lastDrib: { clip: string; u: number } | null = null;
   playSounds() {
     const m = this.mini;
     if (!m) return;
@@ -216,7 +230,7 @@ export class GarageScene extends RoomScene {
     if (evs.length || (m instanceof ShootGame && m.state !== 'idle')) this.played = true;
     for (const e of evs) {
       if (e === 'miss') sfx.blip(false);
-      else if (e === 'press') { if (m instanceof PushupGame) sfx.blip(true); sfx.effort(); }
+      else if (e === 'press') { if (m instanceof DribbleGame) { sfx.blip(true); sfx.squeak(0, 0.7); } else sfx.effort(); }
       else if (e === 'hit') sfx.blip(true);
       else if (e === 'rep') { sfx.ding(); if (m instanceof SquatGame || m instanceof BenchGame) sfx.plates(true); }
       else if (e === 'drop') sfx.barDrop();
@@ -224,6 +238,15 @@ export class GarageScene extends RoomScene {
       else if (e === 'release') sfx.release();
       else if (e === 'green') sfx.greenChime();
       else if (e === 'perfect') sfx.perfect();
+    }
+    if (m instanceof DribbleGame && this.playerClip) {
+      const { clip, u } = this.playerClip, c = CLIP[clip], prev = this.lastDrib;
+      this.lastDrib = { clip, u };
+      if (c.bounce && prev && prev.clip === clip && u !== prev.u) {
+        const wrap = (x: number) => (c.loop ? ((x % 1) + 1) % 1 : Math.max(0, Math.min(1, x)));
+        const a = wrap(prev.u), b = wrap(u);
+        for (const t of c.bounce) if (a <= b ? a < t && t <= b : a < t || t <= b) sfx.dribble(clip === 'mat_pound' ? 0.6 : 0.8, 0);
+      }
     }
     if (m instanceof TreadmillGame) {
       sfx.beltHum(true, m.speed / TreadmillGame.BASE);
@@ -270,7 +293,9 @@ export class GarageScene extends RoomScene {
     const cx = px + W / 2;
     const isShoot = m instanceof ShootGame;
     this.hudTitle.setVisible(true).setPosition(cx, py + 6).setText(isShoot ? `${st.label.toUpperCase()}  ${m.reps}/${(m as ShootGame).attempts}` : `${st.label.toUpperCase()}  ×${m.reps}`);
-    this.hudHint.setVisible(true).setPosition(cx, py + H + 4).setText(`${m.controls[0].replace(/\s+\(.*\)$/, '')}   ·   L1 stop`);
+    // the hint hangs under the panel on the side away from you (centred it ran across the player)
+    const right = px > this.player.x;
+    this.hudHint.setVisible(true).setOrigin(right ? 0 : 1, 0).setPosition(right ? px : px + W, py + H + 4).setText(`${m.controls[0].replace(/\s+\(.*\)$/, '')}   ·   L1 stop`);
     const vbar = (x: number, y: number, h: number, v: number, col: number) => {
       g.fillStyle(0x000000, 1).fillRect(x - 1, y - 1, 16, h + 2); g.fillStyle(0x2a2f3e, 1).fillRect(x, y, 14, h);
       g.fillStyle(col, 1).fillRect(x, y + h * (1 - v), 14, h * v); g.fillStyle(0xffffff, 0.25).fillRect(x, y + h * (1 - v), 4, h * v);
@@ -279,7 +304,7 @@ export class GarageScene extends RoomScene {
     if (m instanceof SquatGame) {
       vbar(cx - 7, y0, 86, m.fill, 0x6fd24a);
       this.hudBig.setVisible(true).setFontSize(20).setPosition(cx + 44, y0 + 43).setText(m.last === 'l2' ? 'R2' : 'L2').setColor('#ffe9a8'); // next one to press
-    } else if (m instanceof PushupGame) {
+    } else if (m instanceof DribbleGame) {
       vbar(px + 22, y0, 86, m.fill, 0x6fd24a);
       const GLYPH: Record<FaceBtn, [string, string]> = { a: ['✕', '#7ab8ff'], b: ['○', '#ff7d7d'], x: ['□', '#ff9ad5'], y: ['△', '#7dffb0'] };
       const [glyph, col] = GLYPH[m.want];

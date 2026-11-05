@@ -42,8 +42,8 @@ export const GARAGE_STATIONS: Station[] = [
   { id: 'squat', label: 'Squat', spot: { x: 20.8, y: 4.4 }, at: { x: 20.8, y: 1.9 }, clip: 'squat', period: 2.6, yaw: 90, flip: false, lift: 0, depthFt: 3.2 },
   // bench press lying along the bench (long axis left→right), head under the uprights at the left end
   { id: 'bench', label: 'Bench press', spot: { x: 14.4, y: 6.2 }, at: { x: 14.3, y: 3.7 }, clip: 'benchPress', period: 2.4, yaw: 0, flip: false, lift: 0, depthFt: 5.3 },
-  // push-ups on the mat, side view
-  { id: 'pushup', label: 'Push-ups', spot: { x: 19.4, y: 10.2 }, at: { x: 18.8, y: 10.4 }, clip: 'pushup', period: 1.5, yaw: 0, flip: false, lift: 0 },
+  // dribbling on the mat: low wide stance facing us (like the owner's reference), the ball pounded beside you
+  { id: 'dribble', label: 'Dribble', spot: { x: 19.4, y: 10.2 }, at: { x: 19.4, y: 10.4 }, clip: 'mat_pound', period: 0.5, yaw: 90, flip: false, lift: 0 },
   // shooting: a red square straight out from the rim; jump shots facing the hoop (to the left)
   { id: 'shoot', label: 'Shoot', spot: { x: 20.6, y: 15.2 }, at: { x: 20.6, y: 15.2 }, clip: 'shot_jumper', period: 2.7, yaw: 0, flip: true, lift: 0, shotDur: 1.1 },
   // treadmill: on the belt, running toward the console (back to us)

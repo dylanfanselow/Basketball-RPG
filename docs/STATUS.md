@@ -132,6 +132,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   ✕ held) and stops only on L1 / Esc; `GarageScene.drawMiniHud` draws the controls card (away from you), the panel
   (bars, level gauge, dot line, glyph, shot meter, rope ring), the red ✗, and the props follow the games (rope angle,
   bench bar tilt, shot make / miss with "BUCKET!" / "MISS").
+- Round 40: dribbling mat (replaces push-ups). `DribbleGame` (same rules as `PushupGame` was) remembers the last
+  move; `MiniGame.clip()` lets a game pick its clip (`DRIBBLE_MOVES` per button, else `POUND`, restarted as a move
+  ends). Front-view clips `mat_pound`, `mat_cross`, `mat_legs`, `mat_back`, `mat_inout` (`matPose`: low wide stance,
+  everything keyed in [forward, height] + lat; new `Pose.ballLat` puts the ball sideways in `pose3d.lift`);
+  `RoomScene` queues their yaw-90 frames when the station starts, holds the last angled frame while one draws, and
+  records `playerBall` / `playerClip`; `GarageScene.drawDribble` draws the ball (+ floor shadow; behind you when the
+  frame says so) and bounce sounds at each clip's `bounce` times. The garage art's orange mat → dark rubber mat.
 - Round 39d: the shot ball is timed on the mini-game's clock (`game.t - game.shotAt`; it used the room's clock, so
   the flight was skipped), a motion trail behind the ball, the controls card goes away once you start playing.
 - Round 39c: doors swapped (back door ↔ apartment), jump rope removed, `ShootGame.PERFECT` + `perfect` event /

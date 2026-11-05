@@ -1,5 +1,6 @@
+import { CLIP, sampleClip } from '../src/render/anim';
 import { describe, it, expect } from 'vitest';
-import { MiniInput, NO_INPUT, SquatGame, TreadmillGame, PushupGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
+import { DRIBBLE_MOVES, POUND, MiniInput, NO_INPUT, SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
 
 const DT = 1 / 60;
 const inp = (p: Partial<MiniInput> = {}): MiniInput => ({ ...NO_INPUT, ...p });
@@ -44,12 +45,12 @@ describe('treadmill', () => {
   });
 });
 
-describe('push-ups', () => {
+describe('dribbling mat', () => {
   it('the right button fills; a wrong one locks for a second; full = a rep', () => {
-    const g = new PushupGame(seeded());
+    const g = new DribbleGame(seeded());
     for (let i = 0; i < 4; i++) { g.update(DT, inp({ [g.want]: true })); }
     expect(g.reps).toBe(1); // easier: four right buttons
-    const h = new PushupGame(seeded(3));
+    const h = new DribbleGame(seeded(3));
     const wrong = (['a', 'b', 'x', 'y'] as const).find((b) => b !== h.want)!;
     h.update(DT, inp({ [wrong]: true }));
     expect(h.missing).toBe(true);
@@ -97,7 +98,7 @@ describe('bench press', () => {
 });
 
 it('every garage station has its mini-game', () => {
-  for (const id of ['squat', 'treadmill', 'pushup', 'shoot', 'bench']) expect(makeMiniGame(id)?.id).toBe(id);
+  for (const id of ['squat', 'treadmill', 'dribble', 'shoot', 'bench']) expect(makeMiniGame(id)?.id).toBe(id);
   expect(makeMiniGame('rope')).toBeNull();
 });
 
@@ -146,5 +147,25 @@ describe('round 39c: perfect release', () => {
     const g = new ShootGame();
     const ev = release(g, 0.82);
     expect(ev).toContain('green'); expect(ev).not.toContain('perfect'); expect(g.made).toBe(true);
+  });
+});
+
+describe('round 40: dribble moves', () => {
+  it('each right button plays its move, then back to the pound dribble', () => {
+    const g = new DribbleGame(seeded(9));
+    expect(g.clip().clip).toBe(POUND.clip);
+    const b = g.want;
+    g.update(DT, inp({ [b]: true }));
+    expect(g.clip().clip).toBe(DRIBBLE_MOVES[b].clip);
+    for (let t = 0; t < DRIBBLE_MOVES[b].dur + 0.05; t += DT) g.update(DT, inp());
+    expect(g.clip()).toEqual({ clip: POUND.clip, u: expect.any(Number) });
+    expect(g.clip().u).toBeLessThan(0.3); // the pound restarts as the move ends
+  });
+  it('every dribble clip exists, faces us from a wide stance and starts / ends with the ball in the right hand', () => {
+    for (const c of [POUND.clip, ...Object.values(DRIBBLE_MOVES).map((m) => m.clip)]) {
+      const cl = CLIP[c]; expect(cl).toBeTruthy();
+      for (const u of [0, 1]) { const p = sampleClip(cl, u); expect(p.ballLat).toBeGreaterThan(15); expect(p.lat!.fF! - p.lat!.fB!).toBeGreaterThan(30); }
+      expect(Math.min(...cl.keys.map((k) => k.pose.ball![1]))).toBeLessThan(6); // it hits the floor
+    }
   });
 });

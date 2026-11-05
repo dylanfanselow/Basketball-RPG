@@ -5,7 +5,7 @@ import { app } from '../state';
 import { TEAMS } from '../sim/data';
 import { xpToNext, nextKeyGame } from '../career/career';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
-import { CLIP, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
+import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildIcons, ArtPiece, AS } from '../render/roomArt';
@@ -194,6 +194,12 @@ export abstract class RoomScene extends Phaser.Scene {
   startActivity(st: Station) {
     this.activity = st; this.actT = 0; this.pos = { ...st.at }; this.vel = { x: 0, y: 0 };
     this.mini = makeMiniGame(st.id);
+    this.lastAngled = null;
+    // the dribbling mat's clips are drawn facing us: queue all their frames now
+    if (st.id === 'dribble') {
+      const c = app.career, cache = angleCache(this, this.sheetKey, c.height, c.appearance, this.kit, ['idle', 'jog']);
+      for (const name of MAT_CLIPS) for (let f = 0; f < CLIP[name].frames; f++) cache.request(`${name}|${f}|${st.yaw}`, true);
+    }
     this.onActivity(st);
   }
   stopActivity() {
@@ -204,8 +210,9 @@ export abstract class RoomScene extends Phaser.Scene {
   /** The clip, frame and pose (as drawn: arms rigged) the player shows right now in a workout. */
   activityFrame(): { clip: string; fi: number; pose: Pose } | null {
     const st = this.activity; if (!st) return null;
-    const cl = CLIP[st.clip], fi = frameAt(cl, this.activityU(st));
-    return { clip: st.clip, fi, pose: rigArms(sampleClip(cl, frameTime(cl, fi)), false) };
+    const own = this.mini?.clip(), name = own?.clip ?? st.clip;
+    const cl = CLIP[name], fi = frameAt(cl, own ? own.u : this.activityU(st));
+    return { clip: name, fi, pose: rigArms(sampleClip(cl, frameTime(cl, fi)), false) };
   }
   /** Screen position of a pose joint for the player as drawn now (side view; mirrored if flipped). */
   jointToScreen(j: J): V {
@@ -215,7 +222,14 @@ export abstract class RoomScene extends Phaser.Scene {
     return { x: this.player.x + (flip ? -j[0] : j[0]) * k, y: this.player.y - j[1] * k };
   }
 
+  /** The ball in the player's hands as drawn this frame (screen px; `behind` = on the far side of the body), or null. */
+  playerBall: { x: number; y: number; behind: boolean } | null = null;
+  /** The clip + spot in it the player shows this frame. */
+  playerClip: { clip: string; u: number } | null = null;
+  private lastAngled: { tex: string; frame: string | number; bo: J | null; behind: boolean } | null = null;
+
   drawPlayer(speed: number) {
+    this.playerBall = null;
     const c = app.career;
     const sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
     const st = this.activity;
@@ -223,25 +237,32 @@ export abstract class RoomScene extends Phaser.Scene {
     const jump = this.mini?.jumpFt() ?? 0;
     const sx = sxOf(this.pos.x), floorY = syOf(this.pos.y) - (st ? st.lift * RS : 0), sy = floorY - jump * RS;
     this.shadow.clear();
-    if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat' || st.clip === 'shot_jumper') this.shadow.fillStyle(0x2a1a0e, 0.32 - jump * 0.06).fillEllipse(sx, floorY, 34 - jump * 5, 10 - jump);
+    if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat' || st.clip === 'shot_jumper' || st.clip === 'mat_pound') this.shadow.fillStyle(0x2a1a0e, 0.32 - jump * 0.06).fillEllipse(sx, floorY, 34 - jump * 5, 10 - jump);
     if (!sheet) return;
     let clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
     let u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
-    if (st) { clip = st.clip; u = this.activityU(st); }
+    if (st) { const own = this.mini?.clip(); clip = own?.clip ?? st.clip; u = own ? own.u : this.activityU(st); }
+    this.playerClip = { clip, u };
     const cl = CLIP[clip], fi = frameAt(cl, u);
     // multi-angle: facing toward the camera = +90 (room y grows toward us, like court y)
     const ang = (Math.atan2(this.face.y, this.face.x) * 180) / Math.PI;
     this.view = st ? { yaw: st.yaw, flip: st.flip } : yawFor(ang, this.view, 10);
     let tex = this.sheetKey, frame: string | number = sheet.index[clip].start + fi;
+    let bo = sheet.ball[sheet.index[clip].start + fi], behind = false;
     if (this.view.yaw !== 0) {
       const cache = angleCache(this, this.sheetKey, c.height, c.appearance, this.kit, ['idle', 'jog']);
       const ck = `${clip}|${fi}|${this.view.yaw}`, slot = cache.get(ck);
-      if (slot) { tex = angPage(this.sheetKey, slot.page); frame = `s${slot.index}`; } else cache.request(ck, true);
+      if (slot) { tex = angPage(this.sheetKey, slot.page); frame = `s${slot.index}`; bo = slot.ball; behind = slot.ballBehind; this.lastAngled = { tex, frame, bo, behind }; }
+      else {
+        cache.request(ck, true);
+        // in a workout, hold the last angled frame while this one draws (never flash the side view)
+        if (st && this.lastAngled) ({ tex, frame, bo, behind } = this.lastAngled);
+      }
     }
     pumpSheet(this, this.sheetKey, 3, true);
     if (this.player.texture.key !== tex) this.player.setTexture(tex, frame); else this.player.setFrame(frame);
     this.player.setVisible(true).setPosition(sx, sy).setFlipX(this.view.flip);
-    void st;
+    if (bo) this.playerBall = { x: sx + (this.view.flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: sy - bo[1] * SPRITE_SCALE, behind };
   }
 
   /** Furniture keeps a fixed depth; walkers are sorted against the pieces their picture overlaps (`actorDepthFt`). */

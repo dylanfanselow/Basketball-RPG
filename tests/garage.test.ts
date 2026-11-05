@@ -72,7 +72,8 @@ describe('garage', () => {
 
   it('every workout has its animation, a free spot you can reach, and ✕ there picks it', () => {
     const ids = GARAGE.stations!.map((s) => s.id);
-    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'treadmill', 'shoot']));
+    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'dribble', 'treadmill', 'shoot']));
+    expect(ids).not.toContain('pushup');
     expect(ids).not.toContain('rope');
     for (const s of GARAGE.stations!) {
       expect(CLIP[s.clip]).toBeDefined();
