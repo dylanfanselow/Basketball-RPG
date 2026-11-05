@@ -47,4 +47,6 @@ npm run build:single # single-file build for the browser link
   machine; JS profiling showed ~98% of frame time in native rendering.
 - `src/state.ts` touches `window`, so anything tests import must not import it (that's why `sim/oneOnOne.ts` exists).
 - Official NBA/roster sites are blocked from the cloud environment; use web search results.
+- Garage mini-games keep their own clock (`MiniGame.t`): compare mini-game times (`shotAt`, `missUntil`) with
+  `mini.t`, never with the scene's `this.t` (round 39d bug: the shot ball skipped its whole flight).
 - Stick space = court space (x along the court, y across it); move directions are relative to the player→rim vector.

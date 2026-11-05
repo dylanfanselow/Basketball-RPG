@@ -33,6 +33,7 @@ export class GarageScene extends RoomScene {
   startedAt = 0;
   greenText!: Phaser.GameObjects.Text;
   netFront!: Phaser.GameObjects.Graphics;
+  private played = false; // the controls card goes away once you start playing
   private lastTick = 0; private lastStep = 0; private lastShotPhase = '';
 
   constructor() { super('Garage'); }
@@ -59,7 +60,7 @@ export class GarageScene extends RoomScene {
 
   onActivity(st: Station | null) {
     sfx.beltHum(st?.id === 'treadmill');
-    this.lastShotPhase = '';
+    this.lastShotPhase = ''; this.played = false;
     (this.piece('squatRack') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'squat' ? 1 : 0);
     (this.piece('bench') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'bench' ? 1 : 0);
     this.gear.clear(); this.gearBack.clear(); this.ballG?.clear(); this.netFront?.clear();
@@ -120,23 +121,30 @@ export class GarageScene extends RoomScene {
     const rim = garageRim(), Rl = ballAt(rel), H0 = ballAt(0), floor = rim.floorY - 8;
     const hoopDepth = syOf(rim.depthFt) - 0.3, front = this.player.depth + 0.3;
     const arc = (a: { x: number; y: number }, b: { x: number; y: number }, s2: number, h: number) => ({ x: a.x + (b.x - a.x) * s2, y: a.y + (b.y - a.y) * s2 - 4 * h * s2 * (1 - s2) });
-    let pos: { x: number; y: number }, depth = front;
-    const T = this.t - game.shotAt;
-    if (game.state !== 'shot') pos = ballAt(game.animU(rel));
-    else if (game.made) {
-      if (T < 0.85) pos = arc(Rl, { x: rim.x, y: rim.y - 8 }, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
-      else if (T < 1.13) { const s2 = (T - 0.85) / 0.28; pos = { x: rim.x, y: rim.y - 8 + 44 * s2 * s2 }; }   // down through the rim and the net
-      else if (T < 1.35) { const s2 = (T - 1.13) / 0.22; pos = { x: rim.x + 6 * s2, y: rim.y + 33 + (floor - rim.y - 33) * s2 * s2 }; }
-      else pos = arc({ x: rim.x + 6, y: floor }, H0, Math.min(1, (T - 1.35) / (ShootGame.FLIGHT - 1.35)), 60);
-    } else {
+    const depth = front;
+    // time since the release, on the mini-game's own clock (shotAt is a mini-game time, not the room's)
+    const T = game.t - game.shotAt;
+    const flight = (T: number): { x: number; y: number } => {
+      if (game.made) {
+        if (T < 0.85) return arc(Rl, { x: rim.x, y: rim.y - 8 }, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
+        if (T < 1.13) { const s2 = (T - 0.85) / 0.28; return { x: rim.x, y: rim.y - 8 + 44 * s2 * s2 }; }   // down through the rim and the net
+        if (T < 1.35) { const s2 = (T - 1.13) / 0.22; return { x: rim.x + 6 * s2, y: rim.y + 33 + (floor - rim.y - 33) * s2 * s2 }; }
+        return arc({ x: rim.x + 6, y: floor }, H0, Math.min(1, (T - 1.35) / (ShootGame.FLIGHT - 1.35)), 60);
+      }
       const front2 = { x: rim.x + 13, y: rim.y - 2 }; // the front of the rim (toward the shooter)
-      if (T < 0.85) pos = arc(Rl, front2, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
-      else if (T < 1.45) pos = arc(front2, { x: rim.x + 110, y: floor }, (T - 0.85) / 0.6, 40);   // clank, kicks out
-      else pos = arc({ x: rim.x + 110, y: floor }, H0, Math.min(1, (T - 1.45) / (ShootGame.FLIGHT - 1.45)), 25);
-    }
+      if (T < 0.85) return arc(Rl, front2, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
+      if (T < 1.45) return arc(front2, { x: rim.x + 110, y: floor }, (T - 0.85) / 0.6, 40);   // clank, kicks out
+      return arc({ x: rim.x + 110, y: floor }, H0, Math.min(1, (T - 1.45) / (ShootGame.FLIGHT - 1.45)), 25);
+    };
+    const pos = game.state !== 'shot' ? ballAt(game.animU(rel)) : flight(T);
     void hoopDepth;
     const b = this.ballG.setDepth(depth), r = 7, { x, y } = pos;
+    // floor shadow under the ball (on the line between you and the hoop)
     b.fillStyle(0x000000, 0.22).fillEllipse(x, syOf(st.at.y) + 1, 14, 5);
+    // a short motion trail while it's in the air
+    if (game.state === 'shot' && T > 0.04 && T < 1.13) for (const [dt2, a] of [[0.05, 0.35], [0.1, 0.18], [0.15, 0.08]] as const) {
+      const q = flight(Math.max(0, T - dt2)); b.fillStyle(0xe0702e, a).fillCircle(q.x, q.y, r * (1 - dt2 * 2));
+    }
     b.fillStyle(0x5a2410, 1).fillCircle(x, y, r + 1); b.fillStyle(0xe0702e, 1).fillCircle(x, y, r); b.fillStyle(0xf09050, 1).fillCircle(x - 2, y - 2, r * 0.45);
     b.lineStyle(1, 0x3a1a0a, 1).lineBetween(x - r, y, x + r, y).lineBetween(x, y - r, x, y + r);
     // the front of the rim and the net go over the ball while it's at the hoop (so it drops *through* them); the net
@@ -165,7 +173,7 @@ export class GarageScene extends RoomScene {
    * curve, with the green window near the top. On release it freezes where you let go — green flashes "GREEN!".
    */
   drawShotMeter(m: ShootGame) {
-    const since = this.t - m.shotAt;
+    const since = m.t - m.shotAt; // mini-game clock
     const show = m.state === 'meter' || (m.state === 'shot' && since < (m.perfect ? 1.0 : 0.9));
     this.greenText.setVisible(false);
     if (!show) return;
@@ -204,7 +212,9 @@ export class GarageScene extends RoomScene {
   playSounds() {
     const m = this.mini;
     if (!m) return;
-    for (const e of m.takeEvents()) {
+    const evs = m.takeEvents();
+    if (evs.length || (m instanceof ShootGame && m.state !== 'idle')) this.played = true;
+    for (const e of evs) {
       if (e === 'miss') sfx.blip(false);
       else if (e === 'press') { if (m instanceof PushupGame) sfx.blip(true); sfx.effort(); }
       else if (e === 'hit') sfx.blip(true);
@@ -223,7 +233,7 @@ export class GarageScene extends RoomScene {
     if (m instanceof ShootGame) {
       if (m.state === 'meter' && this.t - this.lastTick > 0.075) { this.lastTick = this.t; sfx.meterTick(m.meter); }
       // the ball: rim (swish / clank), then the floor, then a bounce on the way back out
-      const T = this.t - m.shotAt, phase = m.state !== 'shot' ? '' : T < 0.85 ? 'fly' : T < (m.made ? 1.35 : 1.45) ? 'rim' : T < 1.75 ? 'floor' : 'back';
+      const T = m.t - m.shotAt, phase = m.state !== 'shot' ? '' : T < 0.85 ? 'fly' : T < (m.made ? 1.35 : 1.45) ? 'rim' : T < 1.75 ? 'floor' : 'back';
       if (phase !== this.lastShotPhase) {
         if (phase === 'rim') { if (m.made) sfx.swish(0, true); else sfx.clank(0); }
         else if (phase === 'floor') sfx.bounce(9);
@@ -241,7 +251,7 @@ export class GarageScene extends RoomScene {
     if (!m || !st) { this.cardText.setVisible(false); this.shotText.setVisible(false); return; }
     // controls card while it starts
     const since = this.t - this.startedAt;
-    if (since < 3.2) {
+    if (since < 3.2 && !this.played) {
       const lines = [st.label.toUpperCase(), '', ...m.controls, '', 'L1  stop'];
       // on the half of the screen away from you, so it never covers the workout
       const top = this.player.y < 430 ? 470 : 135;
@@ -296,7 +306,7 @@ export class GarageScene extends RoomScene {
     }
     // red ✗ after a mistake
     if (m.missing) {
-      const k = 1 - Math.min(1, (m.missUntil - this.t)) * 0.2;
+      const k = 1 - Math.min(1, (m.missUntil - m.t)) * 0.2;
       g.lineStyle(9, 0xe0242a, 1).lineBetween(cx - 34 * k, y0 + 10, cx + 34 * k, y0 + 78).lineBetween(cx + 34 * k, y0 + 10, cx - 34 * k, y0 + 78);
     }
   }

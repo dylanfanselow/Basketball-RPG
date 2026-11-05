@@ -132,6 +132,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   ✕ held) and stops only on L1 / Esc; `GarageScene.drawMiniHud` draws the controls card (away from you), the panel
   (bars, level gauge, dot line, glyph, shot meter, rope ring), the red ✗, and the props follow the games (rope angle,
   bench bar tilt, shot make / miss with "BUCKET!" / "MISS").
+- Round 39d: the shot ball is timed on the mini-game's clock (`game.t - game.shotAt`; it used the room's clock, so
+  the flight was skipped), a motion trail behind the ball, the controls card goes away once you start playing.
 - Round 39c: doors swapped (back door ↔ apartment), jump rope removed, `ShootGame.PERFECT` + `perfect` event /
   `sfx.perfect()` / flaming arc, `GarageScene.netFront` overlay (ball through the net), easier `PushupGame` /
   `BenchGame` tuning.
