@@ -9,7 +9,7 @@ import { CLIP, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../rende
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildIcons, ArtPiece, AS } from '../render/roomArt';
-import { V, Piece, RoomDef, Station, actorDepthFt, pieceDepthFt, PLAYER_R, RS, solids, moveWithCollision, doorNear, stationNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
+import { V, Piece, RoomDef, Station, stationU, actorDepthFt, pieceDepthFt, PLAYER_R, RS, solids, moveWithCollision, doorNear, stationNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
 
 export const WALK = 6.2, JOG = 10.5; // ft/s
 export const ART = 1 / AS;           // scene units per art px (4/3)
@@ -189,7 +189,7 @@ export abstract class RoomScene extends Phaser.Scene {
   /** The clip, frame and pose (as drawn: arms rigged) the player shows right now in a workout. */
   activityFrame(): { clip: string; fi: number; pose: Pose } | null {
     const st = this.activity; if (!st) return null;
-    const cl = CLIP[st.clip], fi = frameAt(cl, this.actT / st.period);
+    const cl = CLIP[st.clip], fi = frameAt(cl, stationU(st, this.actT, !!cl.loop));
     return { clip: st.clip, fi, pose: rigArms(sampleClip(cl, frameTime(cl, fi)), false) };
   }
   /** Screen position of a pose joint for the player as drawn now (side view; mirrored if flipped). */
@@ -210,7 +210,7 @@ export abstract class RoomScene extends Phaser.Scene {
     if (!sheet) return;
     let clip = speed > WALK * 1.15 ? 'sprint' : speed > 0.6 ? 'jog' : 'idle';
     let u = clip === 'sprint' ? this.dist / 9.5 : clip === 'jog' ? this.dist / 7 : this.t * 0.5;
-    if (st) { clip = st.clip; u = this.actT / st.period; }
+    if (st) { clip = st.clip; u = stationU(st, this.actT, !!CLIP[st.clip].loop); }
     const cl = CLIP[clip], fi = frameAt(cl, u);
     // multi-angle: facing toward the camera = +90 (room y grows toward us, like court y)
     const ang = (Math.atan2(this.face.y, this.face.x) * 180) / Math.PI;

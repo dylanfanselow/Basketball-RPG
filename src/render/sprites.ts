@@ -221,6 +221,22 @@ function drawArm(ctx: Ctx, sh: J, el: J, hand: J, a: Appearance, kit: Kit, far: 
  * Fabric shading front-lit, armhole trim, side panel, collar and number.
  */
 function drawTorso(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit, a: Appearance, k: number) {
+  // lying down (push-ups, bench press, dives): draw the upright torso in a frame turned along the body, so the chest /
+  // belly keeps its full rounded volume instead of squashing into a sliver
+  {
+    const t0: J = [(sF[0] + sB[0]) / 2, Math.min(sF[1], sB[1]) - 1.5 * k];
+    const ax = hip[0] - t0[0], ay = hip[1] - t0[1], len = Math.hypot(ax, ay), phi = Math.atan2(-ax, ay);
+    if (len > 1e-3 && Math.abs(phi) > 0.8) {
+      const unrot = (q: J): J => { const dx = q[0] - t0[0], dy = q[1] - t0[1], c = Math.cos(-phi), s = Math.sin(-phi); return [dx * c - dy * s, dx * s + dy * c]; };
+      ctx.save(); ctx.translate(t0[0], t0[1]); ctx.rotate(phi);
+      drawTorsoUpright(ctx, unrot(neck), unrot(hip), unrot(sF), unrot(sB), kit, a, k);
+      ctx.restore();
+      return;
+    }
+  }
+  drawTorsoUpright(ctx, neck, hip, sF, sB, kit, a, k);
+}
+function drawTorsoUpright(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit, a: Appearance, k: number) {
   const top: J = [(sF[0] + sB[0]) / 2, Math.min(sF[1], sB[1]) - 1.5 * k];
   const L = hip[1] - top[1];
   const prof = (t: number): [number, number] => { // [front, back] half-widths
@@ -414,7 +430,8 @@ export function drawPose(ctx: Ctx, ox: number, oy: number, keyed: Pose, H: numbe
   tube(ctx, [(tF[0] + tB[0]) / 2, (tF[1] + tB[1]) / 2], headBase, () => 3.8 * k, S);
   drawTorso(ctx, p.neck, p.hip, tF, tB, kit, a, k);
   drawLeg(ctx, p.hip, p.kF, p.fF, a, kit, false, a.legSleeve !== 'none', a.kneePad, k);
-  drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
+  if (pose.headTurn) { ctx.save(); ctx.translate(p.head[0], p.head[1]); ctx.rotate(pose.headTurn); drawHead(ctx, 0, 0, a, k, !!pose.backView); ctx.restore(); }
+  else drawHead(ctx, p.head[0], p.head[1], a, k, !!pose.backView);
   drawArm(ctx, p.sF, p.eF, p.hF, a, kit, false, sleeveF, k);
   return pose.ball ? [pose.ball[0] * u, pose.ball[1] * u] : null;
 }

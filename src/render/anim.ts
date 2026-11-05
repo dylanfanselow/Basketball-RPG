@@ -12,8 +12,8 @@ export type JointName = (typeof JOINTS)[number];
  * lat: optional sideways spread per joint for multi-angle drawing (pose3d.lift): invisible from the side (yaw 0),
  * it shows as soon as the player turns (wide feet, knees out, arms spread). Interpolated between keys.
  */
-export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>> };
-type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>> };
+export type Pose = Record<JointName, J> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number };
+type PosePatch = Partial<Record<JointName, J>> & { ball?: J | null; backView?: boolean; lat?: Partial<Record<JointName, number>>; headTurn?: number };
 
 export const BASE: Pose = {
   head: [1, 91], neck: [0, 82], sF: [2, 79], sB: [-2, 79], eF: [4, 65], eB: [-3, 65], hF: [5, 52], hB: [-3, 52],
@@ -589,25 +589,23 @@ CLIPS.push({ name: 'dive', frames: 12, keys: [
 // Side-view poses like every clip (+x = facing). The squat is shown from the front (multi-angle yaw 90) and the
 // treadmill reuses `jog` from behind (yaw -90); push-ups, bench press and jump rope are side views. `lat: {}` keeps the
 // keyed arm lengths (rigArms only stretches arms of free clips without lat).
-const kneeUp = (p: Pose, fF: J, fB: J): Pose => {            // legs bending the knee upward (lying on a bench)
-  const a = limb(p.hip, fF, THIGH, SHIN, -1), b = limb(p.hip, fB, THIGH, SHIN, -1);
-  return { ...p, kF: a.mid, fF: a.end, kB: b.mid, fB: b.end };
-};
 const SQ_LAT = { hF: 15, hB: -15, eF: 13, eB: -13, kF: 4, kB: -4, fF: 5, fB: -5 };
-const SQ_UP = arms(legs(P({ head: [1, 91], neck: [0, 82], sF: [1, 79], sB: [-1, 79], hip: [0, 51] }), [3, 0], [-3, 0]), [-2, 82], [-3, 82]);
-const SQ_DOWN = arms(legs(P({ head: [9, 67], neck: [6, 58], sF: [6, 55], sB: [4, 55], hip: [-12, 30] }), [3, 0], [-3, 0]), [3, 58], [2, 58]);
+// hands grip the bar on the shoulders from below: elbows point down under it
+const SQ_UP = { ...legs(P({ head: [1, 91], neck: [0, 82], sF: [1, 79], sB: [-1, 79], hip: [0, 51] }), [3, 0], [-3, 0]), eF: [-3, 67] as J, eB: [-4, 67] as J, hF: [0, 79] as J, hB: [-1, 79] as J };
+const SQ_DOWN = { ...legs(P({ head: [9, 67], neck: [6, 58], sF: [6, 55], sB: [4, 55], hip: [-12, 30] }), [3, 0], [-3, 0]), eF: [3, 43] as J, eB: [2, 43] as J, hF: [6, 55] as J, hB: [5, 55] as J };
 CLIPS.push({ name: 'squat', frames: 12, loop: true, keys: [
   { t: 0, pose: { ...SQ_UP, lat: SQ_LAT } },
   { t: 0.42, pose: { ...SQ_DOWN, lat: { ...SQ_LAT, kF: 9, kB: -9 } } },
   { t: 0.55, pose: { ...SQ_DOWN, lat: { ...SQ_LAT, kF: 9, kB: -9 } } },
   { t: 1, pose: { ...SQ_UP, lat: SQ_LAT } }] });
-const PU_UP = arms({ head: [37, 32], neck: [33, 30], sF: [30, 27], sB: [29, 28], eF: [30, 13], eB: [29, 13], hF: [30, 0], hB: [28, 0], hip: [4, 18], kF: [-18, 11], kB: [-19, 12], fF: [-44, 2], fB: [-45, 3], ball: null, lat: {} }, [30, 0], [28, 0]);
-const PU_DOWN = arms({ head: [37, 14], neck: [33, 12], sF: [30, 9], sB: [29, 10], eF: [20, 12], eB: [19, 12], hF: [30, 0], hB: [28, 0], hip: [7, 7], kF: [-17, 5], kB: [-18, 6], fF: [-44, 2], fB: [-45, 3], ball: null, lat: {} }, [30, 0], [28, 0], [-1, -1]);
+const PU_UP = arms({ head: [33, 32], neck: [29, 30], sF: [26, 27], sB: [25, 28], eF: [26, 13], eB: [25, 13], hF: [26, 0], hB: [24, 0], hip: [0, 18], kF: [-22, 11], kB: [-23, 12], fF: [-48, 2], fB: [-49, 3], ball: null, lat: {} }, [26, 0], [24, 0]);
+const PU_DOWN = arms({ head: [33, 14], neck: [29, 12], sF: [26, 9], sB: [25, 10], eF: [16, 12], eB: [15, 12], hF: [26, 0], hB: [24, 0], hip: [3, 7], kF: [-21, 5], kB: [-22, 6], fF: [-48, 2], fB: [-49, 3], ball: null, lat: {} }, [26, 0], [24, 0], [-1, -1]);
 CLIPS.push({ name: 'pushup', frames: 10, loop: true, keys: [{ t: 0, pose: PU_UP }, { t: 0.45, pose: PU_DOWN }, { t: 0.55, pose: PU_DOWN }, { t: 1, pose: PU_UP }] });
-// bench press: lying on the back, head toward +x (the scene flips it so the head is under the uprights)
-const BP_BODY = kneeUp({ head: [28, 31], neck: [21, 29], sF: [16, 28], sB: [16, 29], eF: [16, 28], eB: [16, 29], hF: [16, 28], hB: [16, 29], hip: [-12, 26], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {} }, [-30, 0], [-35, 0]);
-const BP_UP = arms(BP_BODY, [17, 55], [16, 55]);
-const BP_DOWN = arms(BP_BODY, [14, 37], [13, 37], [1, 1]);
+// bench press: lying on the back, facing +x = toward the feet (so the shoes point the right way); the head lies at -x
+// with the back of the head on the bench, turned to look up (headTurn); the scene doesn't mirror it
+const BP_BODY = legs({ head: [-27, 33], neck: [-21, 30], sF: [-16, 29], sB: [-16, 30], eF: [-16, 29], eB: [-16, 30], hF: [-16, 29], hB: [-16, 30], hip: [11, 26], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {}, headTurn: -Math.PI / 2 }, [31, 0], [36, 0]);
+const BP_UP = arms(BP_BODY, [-15, 56], [-16, 56]);
+const BP_DOWN = arms(BP_BODY, [-12, 38], [-13, 38], [-1, -1]);
 CLIPS.push({ name: 'benchPress', frames: 12, loop: true, keys: [{ t: 0, pose: BP_UP }, { t: 0.45, pose: BP_DOWN }, { t: 0.55, pose: BP_DOWN }, { t: 1, pose: BP_UP }] });
 // jump rope: small hops on the balls of the feet, hands by the hips turning the rope
 const JR_DOWN = arms(legs(P({ head: [2, 90], neck: [1, 81], sF: [2, 78], sB: [-1, 78], hip: [0, 49] }), [3, 0], [-2, 0]), [10, 52], [8, 52]);
@@ -784,6 +782,8 @@ export function sampleClip(c: Clip, u: number): Pose {
   const ba = a.pose.ball, bb = b.pose.ball;
   out.ball = ba && bb ? cr(prev.pose.ball ?? ba, ba, bb, next.pose.ball ?? bb, t) : t < 0.5 ? ba ?? null : bb ?? null;
   out.backView = t < 0.5 ? !!a.pose.backView : !!b.pose.backView;
+  const ht = t < 0.5 ? a.pose.headTurn : b.pose.headTurn;
+  if (ht) out.headTurn = ht;
   if (a.pose.lat || b.pose.lat) {
     // sideways spread blends like the joints (keys without one hold their neighbour's)
     const la = a.pose.lat ?? b.pose.lat!, lb = b.pose.lat ?? la, lp = prev.pose.lat ?? la, ln = next.pose.lat ?? lb;

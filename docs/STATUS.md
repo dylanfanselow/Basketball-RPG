@@ -126,6 +126,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `pushup`, `benchPress`, `jumpRope` (+ `jog` from behind on the treadmill). `GarageScene` swaps the rack / bench to
   their empty-hooks frame, hides the coiled rope, and draws the moving bar (edge-on plates for the squat, face-on for
   the bench) and the turning rope loop. No stat / energy effects yet.
+- Round 38b: `Pose.headTurn` (head drawn rotated: the bench press looks up), lying torsos drawn along the body
+  (`drawTorso` turns the upright torso when it's > ~45° from vertical — push-ups, bench, dives), shooting station
+  (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).
 
 ## Apartment (round 36)
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Piece, ROOM, wallL, wallR, footprint } from '../world/apartment';
-import { GARAGE_FURNITURE, GARAGE_DOORS, CAR } from '../world/garage';
+import { GARAGE_FURNITURE, GARAGE_DOORS, CAR, SHOT_MARK } from '../world/garage';
 import { shade, tint } from './sprites';
 import {
   C, ArtPiece, ART_W, ART_H, AS, HF, AX, AY, yOfRow, BEAM_TOP, WALL_TOP, FLOOR_ROW, POST_L, POST_R,
@@ -209,6 +209,10 @@ function drawFloorStuff(c: C) {
     if (y === my0 || x === mx0) col = '#7a3e12';
     P(c, x, y, col);
   }
+  // the red square you shoot from (tape on the concrete), straight out from the rim
+  { const qx = Math.round(AX(SHOT_MARK.x)), qy = Math.round(AY(SHOT_MARK.y)), hw = 11, hh = 7;
+    R(c, qx - hw - 1, qy - hh - 1, hw * 2 + 2, hh * 2 + 2, '#7a1a14'); R(c, qx - hw, qy - hh, hw * 2, hh * 2, '#d63a2a'); R(c, qx - hw, qy - hh, hw * 2, 1, '#ef6a52');
+    for (let k = 0; k < 10; k++) P(c, qx - hw + Math.round(hn(k, 71) * hw * 2), qy - hh + Math.round(hn(k, 72) * hh * 2), '#b83224'); }
   // a pair of trainers by the boxes, black kettlebell shadows are on the piece
   const SNEAKER = ['...ooooo.........', '..oCCCCUoo.......', '..oUUUUULLoo.....', '.oUHUUUUULLUoo...', '.oUUAAAAAUUUUUoo.', 'oSSSSSSSSSSSSSSSo', '.ooooooooooooooo.'];
   const pal: Record<string, string> = { o: '#1d1d1d', U: '#e8e4da', H: '#ffffff', C: '#2a2a2a', L: '#c8433a', A: '#c8433a', S: '#3a3a3a' };
@@ -308,6 +312,14 @@ function drawTreadmill(c: C, p: Piece) {
   R(c, deck.x0, deck.top, 4, deck.faceTop - deck.top, '#8e969a'); R(c, deck.x1 - 4, deck.top, 4, deck.faceTop - deck.top, '#8e969a');
   for (const hx of [deck.x0 + 1, deck.x1 - 3]) R(c, hx, Math.round(AY(p.y + 1.2) - 3.4 * HF), 2, Math.round(AY(p.y + 3.2) - AY(p.y + 1.2)) + 4, '#c3cacd');
   R(c, deck.x0 + 2, deck.faceTop + 2, 4, 2, '#e85b4a');
+}
+
+/** The rim's centre and the floor right under it, in scene units (for the shooting station's ball). */
+export function garageRim(): { x: number; y: number; floorY: number; depthFt: number } {
+  const p = GARAGE_FURNITURE.find((f) => f.kind === 'hoop')!, yc = p.y + p.d / 2;
+  const boardX = wallL(yc) + 0.2 + 1.2 + 3.1, rw = 0.75 * HF;
+  const ax = Math.round(AX(boardX)) + 4 + rw, ay = Math.round(AY(yc) - 10 * HF);
+  return { x: ax / AS, y: ay / AS, floorY: AY(yc) / AS, depthFt: p.y + p.d };
 }
 
 /** Portable hoop like the arena's: padded base against the left wall, pole, arm, glass board facing right, rim + net. */

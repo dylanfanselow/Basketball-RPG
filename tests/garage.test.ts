@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GARAGE } from '../src/world/garage';
-import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, stationNear, wallL, rightBound } from '../src/world/apartment';
+import { APARTMENT, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, stationNear, stationU, wallL, rightBound } from '../src/world/apartment';
+import { SHOT_MARK } from '../src/world/garage';
 import { CLIP } from '../src/render/anim';
 
 const polys = solids([], GARAGE);
@@ -71,15 +72,26 @@ describe('garage', () => {
 
   it('every workout has its animation, a free spot you can reach, and ✕ there picks it', () => {
     const ids = GARAGE.stations!.map((s) => s.id);
-    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'rope', 'treadmill']));
+    expect(ids).toEqual(expect.arrayContaining(['squat', 'bench', 'pushup', 'rope', 'treadmill', 'shoot']));
     for (const s of GARAGE.stations!) {
       expect(CLIP[s.clip]).toBeDefined();
-      expect(CLIP[s.clip].loop).toBe(true);
+      if (!s.shotDur) expect(CLIP[s.clip].loop).toBe(true);
       expect(isFree(s.spot, PLAYER_R * 0.9, polys)).toBe(true);
       expect(stationNear(s.spot, GARAGE)?.id).toBe(s.id);
     }
     // the squat is shown facing us, the treadmill from behind, the rest side-on
     expect(GARAGE.stations!.find((s) => s.id === 'squat')!.yaw).toBe(90);
     expect(GARAGE.stations!.find((s) => s.id === 'treadmill')!.yaw).toBe(-90);
+  });
+
+  it('the shooting spot: a red square straight out from the hoop, jump shots that hold their finish until the next rep', () => {
+    const hoop = GARAGE.furniture.find((f) => f.kind === 'hoop')!;
+    const shoot = GARAGE.stations!.find((s) => s.id === 'shoot')!;
+    expect(SHOT_MARK.y).toBeCloseTo(hoop.y + hoop.d / 2, 5);          // same depth as the rim: a straight line away from it
+    expect(SHOT_MARK.x).toBeGreaterThan(hoop.x + hoop.w + 6);
+    expect(shoot.flip).toBe(true);                                      // faces the hoop (to the left)
+    expect(stationU(shoot, 0.5, false)).toBeCloseTo(0.5 / shoot.shotDur!, 5);
+    expect(stationU(shoot, shoot.shotDur! + 0.3, false)).toBe(1);        // holds the follow-through
+    expect(stationU(shoot, shoot.period + 0.1, false)).toBeCloseTo(0.1 / shoot.shotDur!, 5); // next rep
   });
 });

@@ -160,6 +160,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   under the uprights (bar into the room, plates face-on, off the uprights), push-ups and jump rope side-on (the rope
   loops around you; the coiled rope leaves the floor), treadmill from behind running toward the console. No stat or
   energy effects yet.
+  - **Round 38b:** push-up face stays in frame; squat hands grip the bar from below (elbows down, bar through the
+    hands); bench press: back of the head on the bench, looking up, feet pointing away, and the torso drawn with its
+    full rounded volume when lying (chest / belly protrudes); **shooting**: a **red square** on the floor straight out
+    from the garage rim — ✕ there loops jump shots at the hoop (ball arcs in, through the net, bounces back).
 - **Round 37: the garage gym + an art rule.**
   - **Rule (owner):** for this and all future drawings, **follow the reference material's orientation** for every
     object — don't draw things facing the camera by default. (Also in CLAUDE.md.)

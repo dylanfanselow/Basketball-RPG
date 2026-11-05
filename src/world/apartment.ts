@@ -119,7 +119,12 @@ export const pieceDepthFt = (p: Piece) => Math.max(...footprint(p).map((q) => q.
  * `clip` (one rep every `period` s), shown at `yaw` (0 = side view, 90 = facing us, -90 = facing away), mirrored if
  * `flip`, raised `lift` ft (standing on a treadmill deck). `depthFt` overrides the draw depth while in use.
  */
-export interface Station { id: string; label: string; spot: V; at: V; clip: string; period: number; yaw: number; flip: boolean; lift: number; depthFt?: number }
+export interface Station { id: string; label: string; spot: V; at: V; clip: string; period: number; yaw: number; flip: boolean; lift: number; depthFt?: number; shotDur?: number }
+/** Where in its clip (0..1) a station's animation is after t seconds: loops play straight through; one-shot clips
+ * (the jump shot) play over `shotDur` s, then hold their last frame until the next rep. */
+export function stationU(st: Station, t: number, loop: boolean): number {
+  return loop ? t / st.period : Math.min(1, (t % st.period) / (st.shotDur ?? st.period));
+}
 
 /**
  * A walkable room: its furniture, doors, default spawn and stations (all rooms share the cutaway frame `ROOM`).
