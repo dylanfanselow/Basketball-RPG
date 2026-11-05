@@ -9,7 +9,7 @@ import { CLIP, frameAt } from '../render/anim';
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildRoomArt, buildCatTexture, buildIcons, buildGlow, ArtPiece, AS, CAT_W, CAT_H, LAMP_ART } from '../render/roomArt';
-import { RS, V, SPAWN, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint, FURNITURE, Cat, newCat, catStep, CAT_R, DOORS } from '../world/apartment';
+import { RS, V, Piece, actorDepthFt, pieceDepthFt, SPAWN, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint, FURNITURE, Cat, newCat, catStep, CAT_R, DOORS } from '../world/apartment';
 
 const WALK = 6.2, JOG = 10.5; // ft/s
 const ART = 1 / AS;           // scene units per art px (4/3)
@@ -39,6 +39,7 @@ export class ApartmentScene extends Phaser.Scene {
   prompt!: Phaser.GameObjects.Text;
   hud!: { g: Phaser.GameObjects.Graphics; texts: Phaser.GameObjects.Text[] };
   sheetKey = '';
+  artOf = new Map<string, ArtPiece>();
   kit!: Kit;
 
   constructor() { super('Apartment'); }
@@ -58,7 +59,8 @@ export class ApartmentScene extends Phaser.Scene {
     this.add.image(0, 0, bg).setOrigin(0, 0).setScale(ART).setDepth(-1000);
     for (const art of pieces) {
       const img = art.frames > 1 ? this.add.sprite(art.x * ART, art.y * ART, art.key, 0) : this.add.image(art.x * ART, art.y * ART, art.key);
-      img.setOrigin(0, 0).setScale(ART).setDepth(syOf(art.depthFt));
+      img.setOrigin(0, 0).setScale(ART).setDepth(syOf(art.piece ? pieceDepthFt(art.piece) : art.depthFt));
+      if (art.piece) this.artOf.set(art.piece.id, art);
       this.pieces.push({ art, img });
       if (art.key === 'room_tank') this.tank = img as Phaser.GameObjects.Sprite;
       if (art.key === 'room_fan') this.fan = img as Phaser.GameObjects.Sprite;
@@ -207,18 +209,19 @@ export class ApartmentScene extends Phaser.Scene {
    * when you stand beside one (inside its depth range), it drops behind you.
    */
   sortDepths() {
-    const pd = syOf(this.pos.y);
-    this.player.setDepth(pd);
+    // the walker's picture (scene units): ~1 ft either side, up to ~7 ft tall for you, ~1.6 ft for the cat
+    const overlapsAt = (pos: V, w: number, h: number) => {
+      const x0 = sxOf(pos.x) - w, x1 = sxOf(pos.x) + w, y1 = syOf(pos.y), y0 = y1 - h;
+      return (p: Piece) => {
+        const a = this.artOf.get(p.id); if (!a) return true;
+        const ax0 = a.x * ART, ay0 = a.y * ART, ax1 = ax0 + a.w * ART, ay1 = ay0 + a.h * ART;
+        return ax0 < x1 && ax1 > x0 && ay0 < y1 && ay1 > y0;
+      };
+    };
+    this.player.setDepth(syOf(actorDepthFt(this.pos, FURNITURE, overlapsAt(this.pos, 24, 155))));
     // on (or hopping off) the couch the cat sits in front of it
     const couch = FURNITURE.find((f) => f.id === 'couch')!;
-    this.catSprite.setDepth(this.cat.perch || this.cat.z > 0.05 ? Math.max(syOf(this.cat.p.y), syOf(couch.y + couch.d) + 0.5) : syOf(this.cat.p.y));
-    for (const { art, img } of this.pieces) {
-      const p = art.piece; if (!p) continue;
-      let d = syOf(art.depthFt);
-      const beside = this.pos.y > p.y - 0.2 && this.pos.y < p.y + p.d && (this.pos.x < p.x || this.pos.x > p.x + p.w);
-      if (beside && p.d > 3.5) d = pd - 1;
-      img.setDepth(d);
-    }
+    this.catSprite.setDepth(this.cat.perch || this.cat.z > 0.05 ? Math.max(syOf(this.cat.p.y), syOf(couch.y + couch.d) + 0.5) : syOf(actorDepthFt(this.cat.p, FURNITURE, overlapsAt(this.cat.p, 22, 40))));
   }
 
   drawDebug() {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
+import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
 import { newCareer, migrateCareer, nextKeyGame, isKeyGame } from '../src/career/career';
 
 const polys = solids();
@@ -92,6 +93,35 @@ describe('apartment collision', () => {
     }
     expect(visited.size).toBeGreaterThan(1);
     expect(perches).toBeGreaterThan(0);
+  });
+});
+
+describe('apartment draw order', () => {
+  const P = (id: string) => FURNITURE.find((f) => f.id === id)!;
+  it('furniture keeps a stable order: back chair under the table, counter under the peninsula', () => {
+    expect(pieceDepthFt(P('chairBack'))).toBeLessThan(pieceDepthFt(P('diningTable')));
+    expect(pieceDepthFt(P('counter'))).toBeLessThan(pieceDepthFt(P('island')));
+  });
+  it('a walker beside a long piece is drawn in front of it; behind a piece, it is drawn behind', () => {
+    // only pieces whose picture could overlap the walker count (the scene checks real sprite rectangles)
+    const near = (pos: { x: number; y: number }) => (p: (typeof FURNITURE)[number]) => p.x < pos.x + 2.5 && p.x + p.w > pos.x - 2.5;
+    const depth = (pos: { x: number; y: number }) => actorDepthFt(pos, FURNITURE, near(pos));
+    // left of the slanted bookshelf
+    const shelf = P('bookshelf');
+    const bySelf = { x: wallR(19) - 1.9 - PLAYER_R - 0.1, y: 19 };
+    expect(isFree(bySelf, PLAYER_R, polys)).toBe(true);
+    expect(depth(bySelf)).toBeGreaterThan(pieceDepthFt(shelf));
+    // beside the peninsula, the dining table
+    expect(depth({ x: 14.3, y: 7 })).toBeGreaterThan(pieceDepthFt(P('island')));
+    const byTable = { x: 16.75, y: 21.05 };
+    expect(isFree(byTable, PLAYER_R, polys)).toBe(true);
+    expect(depth(byTable)).toBeGreaterThan(pieceDepthFt(P('diningTable')));
+    // behind the back chair: under the chair and the table
+    const behind = { x: 20.2, y: 15.0 };
+    expect(isFree(behind, PLAYER_R, polys)).toBe(true);
+    const d = depth(behind);
+    expect(d).toBeLessThan(pieceDepthFt(P('chairBack')));
+    expect(d).toBeLessThan(pieceDepthFt(P('diningTable')));
   });
 });
 

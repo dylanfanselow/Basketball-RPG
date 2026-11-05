@@ -44,6 +44,7 @@
 | 36e | `6eba32d` | Remove the pole and the shoes by the cabinet; rotate that cabinet 90° counter-clockwise | Pole + top duct removed, slippers removed, wardrobe against the left wall with doors facing right |
 | 36f | `74df23c` | Fume duct should reach the ceiling; nice shoes + workout shoes by the doormat; magazines → a mound of mail; famous NBA posters: Be Like Mike as "Be Like Ike", homages to Curry, Kobe, LeBron | Duct + ceiling collar, pixel shoes, mail mound, four tribute posters with a 3x5 pixel font |
 | 36g | `cd70e1b` | A trash can with balled-up paper inside and some outside like missed shots; space the posters out more randomly | Trash can + paper balls, misses on the floor, posters hung at varied spots / heights / tilts |
+| 36h | `TBD` | Weird clipping: player behind the bookshelf, ball over his feet, back chair over the table, counter over the peninsula | Furniture depth fixed (footprint front edge); walker depth from footprints vs overlapping sprites (`actorDepthFt`); ball solid and moved off the shelf |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

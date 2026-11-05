@@ -30,7 +30,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 ## World (`src/world`)
 `apartment.ts` (pure): room feet ↔ screen (`RS`, `RD`, `sxOf`/`syOf`, slanted `wallL`/`wallR`), `FURNITURE`
 footprints (optional `poly`, `alongLeftWall` / `alongRightWall`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
-ends inside a gap narrower than the body), `isFree`, `doorNear`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
+ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pieceDepthFt` / `actorDepthFt`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
 
 ## Career (`src/career`)
 `career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from

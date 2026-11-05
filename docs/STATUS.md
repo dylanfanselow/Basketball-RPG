@@ -121,8 +121,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   it; neighbour's garage on the
   left, tree + fence on the right. `SPOTS` (calendar, fridge, couch) mark where you'll use things later.
 - Your career player (casual tee + team-colour shorts, warm room tint) walks with multi-angle frames; walls (slanted
-  sides) and furniture are solid (circle vs polygon, slides along edges); depth sorting by front edge (long pieces drop
-  behind you when you stand beside them).
+  sides) and furniture are solid (circle vs polygon, slides along edges). Draw order: furniture keeps a fixed depth (front edge of its footprint, `pieceDepthFt`);
+  you and the cat get `actorDepthFt` — in front of every overlapping piece you're behind or beside, behind every piece
+  that starts in front of your feet (footprint polygons, so the slanted shelf / wardrobe work).
 - Doors: ✕ at the garage door = "coming soon" toast; ✕ at the front door or L1 / Esc = back to the menu.
 - Orange tabby cat lives on the couch (sits / loafs on the blanket), hops down now and then, walks to favourite spots
   with grid pathfinding (`findPath`), avoids furniture and you, and hops back up.

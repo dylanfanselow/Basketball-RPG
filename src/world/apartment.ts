@@ -56,7 +56,7 @@ export const FURNITURE: Piece[] = [
   // trash can by the kitchen: paper balls inside, missed shots on the floor around it
   { id: 'trash', kind: 'trash', x: 12.8, y: 14.6, w: 1.4, d: 1.2, solid: true },
   { id: 'box', kind: 'box', x: 37.6, y: 22.4, w: 2.4, d: 1.6, solid: true },
-  { id: 'ball', kind: 'ball', x: 36.4, y: 21.0, w: 1.0, d: 0.8, solid: false },
+  { id: 'ball', kind: 'ball', x: 32.6, y: 15.6, w: 1.0, d: 0.8, solid: true },
 ];
 
 /** Doors: ✕ within reach of `spot` uses them. */
@@ -89,6 +89,25 @@ const rect = (x: number, y: number, w: number, d: number): Poly => [{ x, y }, { 
 
 /** A piece's footprint polygon. */
 export const footprint = (p: Piece): Poly => p.poly ?? rect(p.x, p.y, p.w, p.d);
+
+/**
+ * Draw order for something that walks around (you, the cat): furniture keeps a fixed depth (its footprint's front edge),
+ * and the walker goes in front of every piece it stands behind or beside, and behind every piece that starts in front
+ * of its feet. Only pieces whose picture overlaps the walker's matter (`overlaps`). Returns a depth in feet.
+ */
+export function actorDepthFt(pos: V, pieces: Piece[], overlaps: (p: Piece) => boolean = () => true): number {
+  let lo = pos.y, hi = Infinity;
+  for (const p of pieces) {
+    if (!p.solid || !overlaps(p)) continue;
+    const fp = footprint(p);
+    const minY = Math.min(...fp.map((q) => q.y)), maxY = Math.max(...fp.map((q) => q.y));
+    if (minY >= pos.y - 1e-6) hi = Math.min(hi, maxY);   // starts in front of the feet: draw over the walker
+    else lo = Math.max(lo, maxY + 0.02);                  // behind or beside (can't be inside): the walker goes in front
+  }
+  return lo < hi ? lo : hi - 0.02;
+}
+/** A piece's fixed depth (feet): the front edge of its footprint. */
+export const pieceDepthFt = (p: Piece) => Math.max(...footprint(p).map((q) => q.y));
 
 /** Everything solid: furniture footprints + the four walls (big polygons outside the floor). */
 export function solids(extra: Poly[] = []): Poly[] {
