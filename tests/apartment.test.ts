@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS } from '../src/world/apartment';
+import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { newCareer, migrateCareer, nextKeyGame, isKeyGame } from '../src/career/career';
 
 const polys = solids();
@@ -72,20 +72,26 @@ describe('apartment collision', () => {
     }
     const reach = (p: { x: number; y: number }, r = 1) => [...seen].some((k) => { const [i, j] = k.split(',').map(Number); return Math.hypot(i * step - p.x, j * step - p.y) < r; });
     for (const d of DOORS) { expect(reach(d.spot)).toBe(true); expect(doorNear(d.spot)?.id).toBe(d.id); }
-    for (const s of CAT_SPOTS) expect(isFree(s, CAT_R, polys)).toBe(true);
+    for (const s of [...CAT_SPOTS, CAT_HOP]) expect(isFree(s, CAT_R, polys)).toBe(true);
+    for (const s of Object.values(SPOTS)) { expect(isFree(s, PLAYER_R, polys)).toBe(true); expect(reach(s, 0.5)).toBe(true); }
     expect(doorNear(SPAWN)).toBeNull();
   });
 
-  it('the cat wanders between spots without entering furniture', () => {
+  it('the cat lives on the couch, hops down to wander (never into furniture) and comes back', () => {
     const cat = newCat();
+    expect(cat.perch).toBe(true);
     let r = 1; const rand = () => { r = (r * 16807) % 2147483647; return r / 2147483647; };
     const visited = new Set<string>();
-    for (let t = 0; t < 240; t += 1 / 30) {
+    let perches = 0, wasPerch = true;
+    for (let t = 0; t < 900; t += 1 / 30) {
       catStep(cat, t, 1 / 30, polys, rand);
-      expect(isFree(cat.p, CAT_R * 0.97, polys)).toBe(true);
-      if (cat.state !== 'walk') visited.add(`${cat.p.x.toFixed(0)},${cat.p.y.toFixed(0)}`);
+      if (!cat.perch && !cat.hop) expect(isFree(cat.p, CAT_R * 0.97, polys)).toBe(true);
+      if (!cat.perch && !cat.hop && cat.state !== 'walk') visited.add(`${cat.p.x.toFixed(0)},${cat.p.y.toFixed(0)}`);
+      if (cat.perch && !wasPerch) perches++;
+      wasPerch = cat.perch;
     }
-    expect(visited.size).toBeGreaterThan(2);
+    expect(visited.size).toBeGreaterThan(1);
+    expect(perches).toBeGreaterThan(0);
   });
 });
 

@@ -9,7 +9,7 @@ import { CLIP, frameAt } from '../render/anim';
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
 import { buildRoomArt, buildCatTexture, buildIcons, buildGlow, ArtPiece, AS, CAT_W, CAT_H, LAMP_ART } from '../render/roomArt';
-import { V, SPAWN, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint, FURNITURE, Cat, newCat, catStep, CAT_R, DOORS } from '../world/apartment';
+import { RS, V, SPAWN, PLAYER_R, solids, moveWithCollision, doorNear, sxOf, syOf, Poly, footprint, FURNITURE, Cat, newCat, catStep, CAT_R, DOORS } from '../world/apartment';
 
 const WALK = 6.2, JOG = 10.5; // ft/s
 const ART = 1 / AS;           // scene units per art px (4/3)
@@ -45,7 +45,7 @@ export class ApartmentScene extends Phaser.Scene {
 
   init() {
     this.pos = { ...SPAWN }; this.vel = { x: 0, y: 0 }; this.face = { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.tank = null; this.fan = null;
+    this.dist = 0; this.t = 0; this.pieces = []; this.tank = null; this.fan = null; this.catPolyKey = '';
   }
 
   create() {
@@ -137,7 +137,7 @@ export class ApartmentScene extends Phaser.Scene {
     const want = { x: m.x * (mag > 0 ? sp / mag : 0), y: m.y * (mag > 0 ? sp / mag : 0) };
     this.vel = { x: this.vel.x + (want.x - this.vel.x) * Math.min(1, dt * 14), y: this.vel.y + (want.y - this.vel.y) * Math.min(1, dt * 14) };
     const before = this.pos;
-    this.pos = moveWithCollision(this.pos, { x: this.vel.x * dt, y: this.vel.y * dt }, PLAYER_R, [...this.polys, circlePoly(this.cat.p, CAT_R)]);
+    this.pos = moveWithCollision(this.pos, { x: this.vel.x * dt, y: this.vel.y * dt }, PLAYER_R, this.cat.perch || this.cat.hop ? this.polys : [...this.polys, circlePoly(this.cat.p, CAT_R)]);
     const moved = Math.hypot(this.pos.x - before.x, this.pos.y - before.y);
     if (mag > 0.2) this.face = { x: m.x, y: m.y };
     this.dist += moved;
@@ -186,12 +186,21 @@ export class ApartmentScene extends Phaser.Scene {
   }
 
   updateCat(dt: number) {
-    catStep(this.cat, this.t, dt, [...this.polys, circlePoly(this.pos, PLAYER_R + 0.1)]);
-    const f = this.cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : this.cat.state === 'loaf' ? 1 : 0;
-    this.catSprite.setFrame(f).setFlipX(this.cat.state !== 'sit' && this.cat.face < 0).setPosition(sxOf(this.cat.p.x), syOf(this.cat.p.y) + 2);
-    this.shadow.fillStyle(0x2a1a0e, 0.28).fillEllipse(sxOf(this.cat.p.x), syOf(this.cat.p.y) + 1, CAT_W * ART * 0.8, 6);
-    void CAT_H; void CAT_R;
+    const cat = this.cat;
+    catStep(cat, this.t, dt, this.catPolys(), Math.random);
+    const f = cat.hop ? 2 : cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : cat.state === 'loaf' ? 1 : 0;
+    const x = sxOf(cat.p.x), y = syOf(cat.p.y), lift = cat.z * RS;
+    this.catSprite.setFrame(f).setFlipX(cat.state !== 'sit' && cat.face < 0).setPosition(x, y + 2 - lift);
+    if (!cat.perch) this.shadow.fillStyle(0x2a1a0e, 0.28).fillEllipse(x, y + 1, CAT_W * ART * 0.8 * (1 - Math.min(0.5, cat.z / 4)), 6);
+    void CAT_H;
   }
+  /** What the cat avoids: the room + you (rebuilt only when you move, so its path cache stays warm). */
+  catPolys(): Poly[] {
+    const k = `${this.pos.x.toFixed(1)},${this.pos.y.toFixed(1)}`;
+    if (k !== this.catPolyKey) { this.catPolyKey = k; this.catPolyCache = [...this.polys, circlePoly(this.pos, PLAYER_R + 0.1)]; }
+    return this.catPolyCache;
+  }
+  catPolyKey = ''; catPolyCache: Poly[] = [];
 
   /**
    * Depth = screen y of each thing's front edge. Long pieces (the island, the slanted bookshelf) get special care:
@@ -200,7 +209,9 @@ export class ApartmentScene extends Phaser.Scene {
   sortDepths() {
     const pd = syOf(this.pos.y);
     this.player.setDepth(pd);
-    this.catSprite.setDepth(syOf(this.cat.p.y));
+    // on (or hopping off) the couch the cat sits in front of it
+    const couch = FURNITURE.find((f) => f.id === 'couch')!;
+    this.catSprite.setDepth(this.cat.perch || this.cat.z > 0.05 ? Math.max(syOf(this.cat.p.y), syOf(couch.y + couch.d) + 0.5) : syOf(this.cat.p.y));
     for (const { art, img } of this.pieces) {
       const p = art.piece; if (!p) continue;
       let d = syOf(art.depthFt);

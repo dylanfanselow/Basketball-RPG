@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FURNITURE, Piece, ROOM, RS, RD, wallL, wallR, DOORS, footprint } from '../world/apartment';
+import { FURNITURE, Piece, ROOM, RS, RD, wallL, wallR, DOORS, footprint, CALENDAR } from '../world/apartment';
 import { shade, tint } from './sprites';
 
 /**
@@ -244,31 +244,34 @@ function drawWindow(c: C, x0: number, y0: number, w: number, h: number, blinds: 
 }
 
 function drawWallDecor(c: C) {
-  // kitchen window + range hood with its duct
+  // kitchen window
   drawWindow(c, Math.round(AX(12.6)), 128, 50, 62, 0);
-  const hx = Math.round(AX(16.2)), hw = Math.round(AX(18.7)) - hx;
-  R(c, hx + hw / 2 - 7, WALL_TOP, 14, 52, '#9ba3a7'); R(c, hx + hw / 2 - 7, WALL_TOP, 2, 52, '#b9c0c3'); R(c, hx + hw / 2 + 5, WALL_TOP, 2, 52, '#7d8589');
-  for (let y = 0; y < 26; y++) { const ins = Math.round((26 - y) * 0.45); R(c, hx + ins - 1, WALL_TOP + 52 + y, hw - ins * 2 + 2, 1, y === 25 ? '#5f676b' : '#6b7377'); R(c, hx + ins, WALL_TOP + 52 + y, hw - ins * 2, 1, y > 21 ? '#848c90' : mix('#aab2b6', '#8e969a', y / 26)); }
-  R(c, hx + 4, WALL_TOP + 75, hw - 8, 2, '#3c4245');
   // backsplash tiles behind the counter
   const sx0 = Math.round(AX(12.3)), sx1 = Math.round(AX(18.9)), sTop = Math.round(AY(0) - 3 * HF) - 26;
   for (let y = sTop; y < sTop + 26; y++) for (let x = sx0; x < sx1; x++) {
-    if (y > WALL_TOP + 52 && y < WALL_TOP + 78 && x > hx - 2 && x < hx + hw + 2) continue;
     P(c, x, y, (x - sx0) % 7 === 0 || (y - sTop) % 7 === 0 ? '#b6b2a6' : hn(x, y) < 0.1 ? '#e3e1da' : '#d9d7cf');
   }
   // living-room window with half-drawn blinds
   drawWindow(c, Math.round(AX(24.4)), 120, Math.round(AX(30.4) - AX(24.4)), 82, 0.28);
-  // wall calendar (future: upcoming key games + events)
-  const cx = Math.round(AX(32.0)), cy = 148;
-  P(c, cx + 14, cy - 4, '#4a4a4a');
-  R(c, cx - 1, cy - 1, 30, 40, '#7d7466'); R(c, cx, cy, 28, 38, '#f6f3ea'); R(c, cx, cy, 28, 9, '#c8433a'); R(c, cx, cy + 8, 28, 1, '#9b2f28');
-  for (const k of [6, 21]) R(c, cx + k, cy - 2, 2, 4, '#555');
-  for (let r = 0; r < 4; r++) for (let k = 0; k < 5; k++) {
-    const gx = cx + 2 + k * 5, gy = cy + 12 + r * 6;
-    R(c, gx, gy, 4, 4, '#e2ddd0');
-    if ((r === 1 && k === 3) || (r === 3 && k === 1)) R(c, gx + 1, gy + 1, 2, 2, '#e07a2c'); // key games circled
-    if (r === 0 && k < 2) { P(c, gx + 1, gy + 1, '#8a8478'); P(c, gx + 2, gy + 2, '#8a8478'); P(c, gx + 2, gy + 1, '#8a8478'); P(c, gx + 1, gy + 2, '#8a8478'); }
-  }
+  // framed team photo on the back wall (where the calendar used to be)
+  const fx = Math.round(AX(32.0)), fy = 150;
+  P(c, fx + 13, fy - 4, '#4a4a4a');
+  R(c, fx - 1, fy - 1, 28, 24, '#4a2f1c'); R(c, fx, fy, 26, 22, '#7a5232'); R(c, fx + 3, fy + 3, 20, 16, '#d8e6ea');
+  R(c, fx + 3, fy + 13, 20, 6, '#c9874a'); for (let k = 0; k < 5; k++) { R(c, fx + 5 + k * 4, fy + 8, 2, 6, '#5a3a8a'); P(c, fx + 5 + k * 4, fy + 7, '#8a5a3a'); }
+  // wall calendar on the left wall, next to the fridge (future: upcoming key games + special events)
+  const K = CALENDAR;
+  onWall(c, 'L', K.y0 - 0.12, K.y1 + 0.12, K.h0 - 0.08, K.h1 + 0.2, (_x, _y, u, v) => (u < 0.03 || u > 0.97 || v < 0.025 || v > 0.94 ? '#6e665a' : null));
+  onWall(c, 'L', K.y0, K.y1, K.h0, K.h1, (_x, _y, u, v) => {
+    const a = 1 - u; // 0 at the fridge end ... 1 toward the garage door (reads left to right on screen)
+    if (v > 0.8) return v > 0.97 ? '#9b2f28' : Math.abs(a - 0.25) < 0.05 && v > 0.93 ? '#555555' : Math.abs(a - 0.75) < 0.05 && v > 0.93 ? '#555555' : '#c8433a';
+    if (v > 0.74) return '#f6f3ea';
+    const col = Math.floor(a * 5), row = Math.floor((0.74 - v) / 0.74 * 5);
+    const cu = a * 5 - col, cv = ((0.74 - v) / 0.74) * 5 - row;
+    if (cu < 0.18 || cv < 0.15) return '#f6f3ea';
+    if ((row === 1 && col === 3) || (row === 3 && col === 1)) return cu > 0.35 && cu < 0.85 && cv > 0.3 && cv < 0.85 ? '#e07a2c' : '#e2ddd0';
+    if (row === 0 && col < 2 && Math.abs(cu - cv) < 0.2) return '#8a8478';
+    return '#e2ddd0';
+  });
   // light switch + outlets
   R(c, Math.round(AX(20.2)), 196, 5, 8, '#f1eee6'); P(c, Math.round(AX(20.2)) + 2, 199, '#9a958a'); P(c, Math.round(AX(20.2)) + 2, 200, '#9a958a');
   for (const ox of [21.0, 31.0]) { R(c, Math.round(AX(ox)), FLOOR_ROW - 16, 5, 6, '#f1eee6'); P(c, Math.round(AX(ox)) + 1, FLOOR_ROW - 14, '#8a8478'); P(c, Math.round(AX(ox)) + 3, FLOOR_ROW - 14, '#8a8478'); }
@@ -323,9 +326,9 @@ function drawFloorClutter(c: C) {
     R(c, px - 1, py - 1, 13, 6, '#3e3a36'); R(c, px, py, 11, 4, '#6d675f'); R(c, px + 1, py, 5, 2, '#8b847a');
   }
   // magazines near the coffee table, a phone with its cord by the TV, popcorn by the box
-  const mags: [number, number, string][] = [[30.6, 11.2, '#3f7fb3'], [31.4, 11.6, '#d9d2c2'], [32.0, 11.0, '#c84d3c']];
+  const mags: [number, number, string][] = [[29.6, 7.6, '#3f7fb3'], [30.4, 8.0, '#d9d2c2'], [31.0, 7.4, '#c84d3c']];
   for (const [x, y, col] of mags) { const px = Math.round(AX(x)), py = Math.round(AY(y)); R(c, px - 1, py - 1, 16, 9, OL(col)); R(c, px, py, 14, 7, col); R(c, px + 2, py + 2, 8, 1, tint(col, 0.5)); R(c, px + 2, py + 4, 6, 1, tint(col, 0.5)); }
-  const ph = { x: Math.round(AX(22.3)), y: Math.round(AY(8.6)) };
+  const ph = { x: Math.round(AX(23.2)), y: Math.round(AY(10.2)) };
   R(c, ph.x - 1, ph.y - 1, 12, 8, '#4a4846'); R(c, ph.x, ph.y, 10, 6, '#e8e4da'); R(c, ph.x + 1, ph.y - 2, 8, 3, '#d6d1c5'); R(c, ph.x + 3, ph.y + 2, 4, 2, '#bdb7aa');
   for (let k = 0; k < 18; k++) P(c, ph.x + 10 + k, ph.y + 3 + Math.round(Math.sin(k * 0.6) * 2), '#3a3836');
   for (let k = 0; k < 10; k++) P(c, Math.round(AX(35.6)) + Math.round(hn(k, 1) * 26), Math.round(AY(20.6)) + Math.round(hn(k, 2) * 10), k % 3 ? '#f2e6b8' : '#e9c56e');
@@ -378,9 +381,11 @@ function drawFridge(c: C, p: Piece) {
   }
 }
 
+const TOP = '#2c3134'; // shared counter / peninsula top so they read as one piece
+
 function drawCounter(c: C, p: Piece) {
-  const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 3.0, '#5b6366', { top: '#2f3438' });
-  // dark counter top with a lip, cabinet doors, sink + tap, stove
+  const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 3.0, '#5b6366', { top: TOP });
+  // dark counter top with a lip, cabinet doors, sink + tap, dish rack
   R(c, b.x0 - 1, b.faceTop - 1, b.x1 - b.x0 + 2, 4, '#26292c'); R(c, b.x0 - 1, b.faceTop - 1, b.x1 - b.x0 + 2, 1, '#4c5358');
   const doors = 4, dw = (b.x1 - b.x0) / doors;
   for (let i = 0; i < doors; i++) {
@@ -391,42 +396,68 @@ function drawCounter(c: C, p: Piece) {
   const sx = b.x0 + 8, sy = b.top + 6;
   R(c, sx - 1, sy - 1, 30, 16, '#3c4245'); R(c, sx, sy, 28, 14, '#a8b0b4'); R(c, sx + 2, sy + 2, 24, 10, '#7f888c'); R(c, sx + 2, sy + 2, 24, 2, '#5c6468');
   R(c, sx + 12, sy - 14, 3, 14, '#c3cacd'); R(c, sx + 12, sy - 14, 10, 3, '#c3cacd'); R(c, sx + 20, sy - 14, 2, 5, '#9aa2a6');
-  // bowl
-  R(c, sx + 36, sy + 2, 12, 5, '#6f6152'); R(c, sx + 37, sy + 1, 10, 2, '#e7dcc4');
-  // stove burners
-  const gx = b.x1 - 34;
-  R(c, gx - 1, b.top + 3, 32, b.yf - b.yb + 2, '#1d2023');
-  for (const [ox, oy] of [[4, 4], [18, 4], [4, 14], [18, 14]]) { R(c, gx + ox, b.top + oy, 9, 6, '#3a3f43'); R(c, gx + ox + 2, b.top + oy + 2, 5, 2, '#55595c'); }
+  // dish rack: wire tray, plates standing on edge, a cup upside down
+  const rx = sx + 33, ry = sy + 12;
+  R(c, rx - 1, ry - 1, 26, 4, '#5c6468'); R(c, rx, ry, 24, 2, '#c3cacd');
+  for (let k = 0; k < 5; k++) { const px = rx + 2 + k * 3; R(c, px - 1, ry - 14, 3, 14, '#7d8a90'); R(c, px, ry - 13, 1, 13, k % 2 ? '#f2f0ea' : '#e2ece9'); P(c, px, ry - 13, '#ffffff'); }
+  for (let k = 0; k < 4; k++) R(c, rx + 1 + k * 4, ry - 4, 1, 4, '#9aa2a6');
+  R(c, rx + 18, ry - 8, 6, 8, '#3c4245'); R(c, rx + 19, ry - 7, 4, 7, '#d65a4a'); R(c, rx + 19, ry - 7, 1, 7, '#e8806e');
 }
 
+/** Peninsula joined to the back counter: cabinet doors on its left side, cooktop under a fume hood, a duct up to the
+ * ceiling and along the top, and the pole dropping from that duct to the peninsula's end (like the reference). */
 function drawIsland(c: C, p0: Piece) {
-  const p = { ...p0, w: p0.w - 0.55 }; // the last 0.55 ft of the footprint is the cabinet side face
-  // pole up to an overhead shelf (hung from the ceiling), then the island itself
-  const px = Math.round(AX(p.x + p.w / 2)) - 2, poleTop = WALL_TOP + 40;
-  const sx0 = Math.round(AX(p.x - 0.6)), sx1 = Math.round(AX(p.x + p.w + 0.6)), sTop = WALL_TOP + 26;
-  R(c, sx0 + 10, WALL_TOP, 2, sTop - WALL_TOP, '#55595c'); R(c, sx1 - 12, WALL_TOP, 2, sTop - WALL_TOP, '#55595c');
-  R(c, sx0 - 1, sTop - 1, sx1 - sx0 + 2, 16, '#2b2f32'); R(c, sx0, sTop, sx1 - sx0, 14, '#4a5054'); R(c, sx0, sTop, sx1 - sx0, 2, '#6c7377'); R(c, sx0, sTop + 12, sx1 - sx0, 2, '#3a3f42');
-  // cabinet side facing the middle of the room (the cutaway's perspective shows inner sides)
-  {
-    const x1 = Math.round(AX(p.x + p.w)), yb = Math.round(AY(p.y)), yf = Math.round(AY(p.y + p.d)), H = Math.round(3.1 * HF), sw = 9;
-    R(c, x1 - 1, yb - H, sw + 2, yf - yb + H + 1, '#3c4447');
-    for (let y = yb - H + 1; y < yf; y++) for (let x = x1; x < x1 + sw; x++) {
-      const k = (y - (yb - H)) % 22;
-      P(c, x, y, k === 0 ? '#59636a' : x === x1 + sw - 1 ? '#7a858a' : k < 3 ? '#a3adb1' : '#909a9e');
-    }
+  const sideF = 0.55, p = { ...p0, x: p0.x + sideF, w: p0.w - sideF };
+  const H = Math.round(3.1 * HF);
+  const xs = Math.round(AX(p0.x)), x0 = Math.round(AX(p.x)), x1 = Math.round(AX(p.x + p.w));
+  const yb = Math.round(AY(p.y)), yf = Math.round(AY(p.y + p.d));
+  // left side: a run of cabinet doors facing left (toward the fridge)
+  R(c, xs - 1, yb - H, x0 - xs + 2, yf - yb + H + 1, '#3c4447');
+  const doorH = 26;
+  for (let y = yb - H + 1; y < yf; y++) for (let x = xs; x < x0; x++) {
+    const k = (y - (yb - H + 1)) % doorH;
+    let col = '#8f999d';
+    if (k === 0) col = '#4f585c'; else if (k < 3) col = '#a9b3b7'; else if (x === xs) col = '#a3adb1'; else if (x === x0 - 1) col = '#6f7a7e';
+    if (k > 8 && k < 15 && x === xs + 2) col = '#d4dadc'; // handle
+    P(c, x, y, col);
   }
-  const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 3.1, '#707a7e', { top: '#2a2e31' });
-  R(c, px, poleTop, 4, b.top + 30 - poleTop, '#8a9296'); R(c, px, poleTop, 1, b.top + 30 - poleTop, '#b5bcbf'); R(c, px + 3, poleTop, 1, b.top + 30 - poleTop, '#5c6468');
-  // top-face sheen + overhang lip
-  for (let y = b.top + 2; y < b.faceTop - 2; y += 9) R(c, b.x0 + 3, y, 2, 4, '#3d4246');
-  R(c, b.x0 - 2, b.faceTop - 1, b.x1 - b.x0 + 4, 4, '#222528');
-  R(c, b.x0 + 4, b.faceTop + 7, b.x1 - b.x0 - 8, b.H - 14, '#677074'); R(c, b.x0 + 4, b.faceTop + 7, b.x1 - b.x0 - 8, 1, '#8a9397');
-  // a potted plant and a pepper grinder
-  const ppx = b.x0 + 14, ppy = b.top + 52;
-  R(c, ppx - 1, ppy - 1, 12, 11, '#5a2f1c'); R(c, ppx, ppy, 10, 9, '#b8643a'); R(c, ppx, ppy, 10, 2, '#d07a4c');
-  const leaves: [number, number][] = [[2, -6], [6, -9], [9, -5], [-1, -3], [4, -13], [11, -10], [0, -9], [7, -15]];
-  for (const [lx, ly] of leaves) { R(c, ppx + lx - 1, ppy + ly - 1, 6, 5, '#25541f'); R(c, ppx + lx, ppy + ly, 4, 3, '#4f9a37'); P(c, ppx + lx, ppy + ly, '#7cc05a'); }
-  R(c, b.x0 + 34, b.top + 78, 3, 10, '#2a2a2a'); R(c, b.x0 + 34, b.top + 78, 1, 10, '#555');
+  const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 3.1, '#707a7e', { top: TOP });
+  R(c, b.x0, b.top - 1, b.x1 - b.x0, 2, TOP); // no seam where it meets the back counter
+  R(c, b.x0 - 2, b.faceTop - 1, b.x1 - b.x0 + 4, 4, '#222528');           // overhang lip at the end
+  R(c, b.x0 + 4, b.faceTop + 7, b.x1 - b.x0 - 8, b.H - 14, '#6a7377');      // plain end panel
+  // cooktop on the back part
+  const cy0 = Math.round(AY(p.y + 0.6) - H), cy1 = Math.round(AY(p.y + 2.9) - H);
+  R(c, b.x0 + 4, cy0, b.x1 - b.x0 - 8, cy1 - cy0, '#16191b');
+  for (const [ox, oy] of [[7, 3], [24, 3], [7, cy1 - cy0 - 10], [24, cy1 - cy0 - 10]]) { R(c, b.x0 + ox, cy0 + oy, 10, 7, '#3a3f43'); R(c, b.x0 + ox + 2, cy0 + oy + 2, 6, 3, '#55595c'); P(c, b.x0 + ox + 4, cy0 + oy + 3, '#7a2e22'); }
+  // dirty cereal bowl (behind the bonsai): milk, soggy bits, a spoon
+  const bx = b.x0 + 5, by = Math.round(AY(p.y + 5.5) - H);
+  R(c, bx - 1, by - 1, 15, 8, '#5a5248'); R(c, bx, by, 13, 6, '#e9e2d2'); R(c, bx + 1, by + 1, 11, 3, '#f7f1df');
+  for (const [ox, oy, col] of [[3, 1, '#d9a24a'], [6, 2, '#c98a3a'], [9, 1, '#e3b65a'], [5, 1, '#f2c443']] as const) P(c, bx + ox, by + oy, col);
+  R(c, bx + 9, by - 4, 1, 6, '#c3cacd'); R(c, bx + 9, by - 5, 3, 2, '#c3cacd');
+  P(c, bx - 2, by + 6, '#efe8d6'); P(c, bx - 4, by + 7, '#d9a24a');
+  // bonsai in a shallow pot
+  const px = b.x0 + 9, py = Math.round(AY(p.y + 6.4) - H);
+  R(c, px - 1, py - 1, 20, 7, '#2a1a12'); R(c, px, py, 18, 5, '#3f5a8a'); R(c, px, py, 18, 1, '#6f8ac0'); R(c, px + 2, py + 5, 2, 2, '#2a1a12'); R(c, px + 14, py + 5, 2, 2, '#2a1a12');
+  const trunk: [number, number][] = [[8, -1], [8, -2], [9, -3], [9, -4], [10, -5], [10, -6], [9, -7], [8, -8], [11, -7], [12, -8], [7, -9]];
+  for (const [tx, ty] of trunk) { P(c, px + tx, py + ty, '#6a4428'); P(c, px + tx + 1, py + ty, '#4a2f1c'); }
+  const pads: [number, number, number][] = [[4, -12, 5], [13, -11, 5], [9, -15, 6], [16, -8, 3]];
+  for (const [ox, oy, w] of pads) { R(c, px + ox - 1, py + oy - 1, w * 2 + 2, 6, '#1f4a1a'); R(c, px + ox, py + oy, w * 2, 4, '#3f8a2f'); R(c, px + ox + 1, py + oy, w * 2 - 3, 1, '#6cbf4a'); }
+  // fume hood over the cooktop, a duct up to the ceiling and one along the top to the end, then the pole down
+  const hoodX0 = b.x0 + 2, hoodX1 = b.x1 - 2, cen = Math.round((b.x0 + b.x1) / 2), mid = b.x1 - 9;
+  const hTop = Math.round(AY(p.y + 1.6) - 8.4 * HF), hBot = Math.round(AY(p.y + 1.6) - 6.4 * HF);
+  const ductRow = (y: number) => Math.round(AY(y) - 8.6 * HF);
+  const endY = p.y + p.d - 0.7, ductEnd = ductRow(endY);
+  R(c, cen - 6, WALL_TOP, 12, hTop - WALL_TOP, '#8e969a'); R(c, cen - 6, WALL_TOP, 2, hTop - WALL_TOP, '#b5bcbf'); R(c, cen + 4, WALL_TOP, 2, hTop - WALL_TOP, '#6b7377');
+  const dTop = hBot - 6;
+  R(c, mid - 5, dTop, 10, ductEnd - dTop + 6, '#3f4649'); R(c, mid - 4, dTop, 8, ductEnd - dTop + 5, '#9ba3a7'); R(c, mid - 4, dTop, 2, ductEnd - dTop + 5, '#c0c7ca'); R(c, mid + 2, dTop, 2, ductEnd - dTop + 5, '#7d8589');
+  for (let y = dTop + 14; y < ductEnd; y += 16) R(c, mid - 4, y, 8, 1, '#7d8589');
+  for (let y = 0; y < hBot - hTop; y++) { const t = y / (hBot - hTop), ins = Math.round((1 - t) * ((hoodX1 - hoodX0) / 2 - 7)), cx = Math.round((hoodX0 + hoodX1) / 2), hw = Math.round((hoodX1 - hoodX0) / 2);
+    void cx; void hw; R(c, hoodX0 + ins - 1, hTop + y, hoodX1 - hoodX0 - ins * 2 + 2, 1, '#5f676b'); R(c, hoodX0 + ins, hTop + y, hoodX1 - hoodX0 - ins * 2, 1, mix('#b5bcbf', '#8a9296', t)); }
+  R(c, hoodX0 - 1, hBot, hoodX1 - hoodX0 + 2, 3, '#4a5155'); R(c, hoodX0 + 3, hBot + 1, hoodX1 - hoodX0 - 6, 1, '#f3e7b5');
+  // the pole: from the end of the top duct down into the end of the peninsula
+  const poleTop = ductEnd + 4, poleBot = Math.round(AY(endY) - H) + 2;
+  R(c, mid - 3, poleTop, 6, poleBot - poleTop, '#5c6468'); R(c, mid - 2, poleTop, 4, poleBot - poleTop, '#9aa2a6'); R(c, mid - 2, poleTop, 1, poleBot - poleTop, '#c3cacd');
+  R(c, mid - 5, poleBot - 2, 10, 3, '#3f4649'); R(c, mid - 6, ductEnd + 2, 12, 4, '#6b7377');
 }
 
 function drawLamp(c: C, p: Piece) {
@@ -453,17 +484,44 @@ function drawCouch(c: C, p: Piece) {
   }
   // feet
   for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
-  // rust blanket thrown over the right half, cream pillow on the left
-  const bx0 = Math.round(AX(x0 + p.w * 0.42)), bx1 = Math.round(AX(x1 - 0.6)), by = seat.top - 2;
-  for (let y = 0; y < 30; y++) {
-    const wob = Math.round(Math.sin(y * 0.5) * 2);
-    for (let x = bx0 + wob + (y < 6 ? 6 - y : 0); x < bx1 - (y > 22 ? (y - 22) * 2 : 0); x++) {
-      const stripe = ((x + y) >> 2) % 4 === 0;
-      P(c, x, by + y, y === 0 || x === bx0 + wob ? '#5e2614' : stripe ? '#b9522f' : (x + y) % 7 === 0 ? '#7f3218' : '#9a3f22');
+  // rust blanket tossed over the right half: lying crumpled on the seat, hanging over the front in soft folds,
+  // a corner trailing down the side, fringe on the hem
+  const bx0 = Math.round(AX(x0 + p.w * 0.45)), bx1 = Math.round(AX(x1 - 0.7)), seatTop = seat.top + 1, seatFront = seat.faceTop, floorY = seat.yf;
+  for (let x = bx0 - 6; x < bx1 + 3; x++) {
+    const t = (x - bx0) / (bx1 - bx0);
+    if (t < -0.2 || t > 1.05) continue;
+    const fold = 0.5 + 0.5 * Math.sin(t * Math.PI * 6.5);
+    // top edge on the seat (crumpled), hem: scalloped and lower toward the left corner that trails down
+    const top = seatTop + 1 + Math.round(Math.abs(Math.sin(t * 7.3)) * 2) + (t < 0 ? 99 : 0);
+    let hem = seatFront + 9 + Math.round(fold * 4) + Math.round(Math.max(0, 0.3 - t) * 40);
+    if (t < 0) hem = seatFront + 6 + Math.round((t + 0.2) * 90);
+    const start = t < 0 ? seatFront - 1 + Math.round(-t * 20) : top;
+    hem = Math.min(hem, floorY - 3);
+    for (let y = start; y <= hem + 1; y++) {
+      const lying = y < seatFront;
+      let col = lying ? mix('#a5472a', '#cf6c44', 0.5 + 0.5 * Math.sin(x * 0.45 + y * 0.9)) : mix('#62230f', '#c65c34', fold * 0.9);
+      if (!lying && y > hem - 2) col = mix(col, '#e2b35a', 0.55);                         // woven border at the hem
+      if (y === start || (x <= bx0 - 5 + Math.round((y - start) * 0.0)) || x === bx1 + 2) col = '#4a1a0a';
+      if (y === hem + 1) col = x % 2 === 0 ? '#e6c08a' : '';                              // fringe
+      if (col) P(c, x, y, col);
     }
   }
-  const pl = Math.round(AX(x0 + arm + 0.3)), pt = back.faceTop + 6;
-  R(c, pl - 1, pt - 1, 22, 17, '#8a7f6a'); R(c, pl, pt, 20, 15, '#efe6d0'); R(c, pl + 1, pt + 1, 18, 3, '#fbf6ea'); R(c, pl + 16, pt + 3, 3, 11, '#d6cbb2');
+  // plump cream pillow leaning on the back cushion: rounded, shaded, a soft dent
+  const pl = Math.round(AX(x0 + arm + 0.2)), pt = back.faceTop + 2, pw = 28, ph = 21;
+  for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+    const nx = (x - pw / 2 + 0.5) / (pw / 2), ny = (y - ph / 2 + 0.5) / (ph / 2);
+    const r = Math.abs(nx) ** 2.6 + Math.abs(ny) ** 2.6;
+    // pinched corners: the edge bows in a little between them
+    const bow = 1 - 0.18 * (1 - Math.abs(nx)) * (Math.abs(ny) > 0.7 ? 1 : 0) - 0.18 * (1 - Math.abs(ny)) * (Math.abs(nx) > 0.7 ? 1 : 0);
+    if (r > bow) continue;
+    let col = '#efe4c8';
+    const light = -nx * 0.45 - ny * 0.7 - r * 0.6;                       // light from the top left
+    col = light > 0.35 ? '#fffaeb' : light > 0 ? '#f6eedb' : light > -0.45 ? '#e6d9b9' : '#cdbd98';
+    if (Math.abs(nx) < 0.14 && Math.abs(ny) < 0.14) col = '#d8c9a6';     // button dent
+    if (r > bow - 0.16) col = '#8a7656';                                  // outline
+    else if (r > bow - 0.3) col = light > 0 ? '#d9b98a' : '#c4a274';       // piping
+    P(c, pl + x, pt + y, col);
+  }
 }
 
 function drawTank(c: C, p: Piece, frame: number) {
@@ -492,16 +550,21 @@ function drawTank(c: C, p: Piece, frame: number) {
 
 function drawTvTable(c: C, p: Piece) {
   const t = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 1.9, WOOD_D, { top: '#9a6a42' });
-  R(c, t.x0 + 2, t.faceTop + 4, t.x1 - t.x0 - 4, 10, shade(WOOD_D, 0.8)); R(c, t.x0 + 4, t.faceTop + 6, 14, 6, '#2b2b2e'); R(c, t.x0 + 5, t.faceTop + 7, 3, 1, '#d44');
-  // chunky CRT
-  const tw = 32, tx = Math.round((t.x0 + t.x1) / 2 - tw / 2), ty = t.top + 4;
-  R(c, tx - 1, ty - 27, tw + 2, 30, '#1f2124'); R(c, tx, ty - 26, tw, 28, '#3e4247'); R(c, tx, ty - 26, tw, 2, '#5e646a');
-  R(c, tx + 3, ty - 22, tw - 12, 19, '#18322f'); R(c, tx + 4, ty - 21, 6, 2, '#5c8f88'); R(c, tx + 4, ty - 18, 2, 6, '#2d5651');
-  R(c, tx + tw - 7, ty - 21, 4, 2, '#8a8f94'); R(c, tx + tw - 7, ty - 16, 4, 2, '#8a8f94'); P(c, tx + tw - 5, ty - 10, '#5f5');
-  R(c, tx + 10, ty - 30, 1, 4, '#8a8f94'); R(c, tx + 18, ty - 32, 1, 6, '#8a8f94');
-  // game console + controller on the table edge
-  R(c, t.x0 + 3, t.top + 18, 14, 6, '#2b2d30'); R(c, t.x0 + 4, t.top + 18, 12, 2, '#4a4e52');
-  R(c, t.x1 - 13, t.top + 20, 9, 4, '#2b2d30'); P(c, t.x1 - 11, t.top + 21, '#7aa'); P(c, t.x1 - 7, t.top + 21, '#c77');
+  // we're behind the stand: plain back panel with a cable hole
+  R(c, t.x0 + 3, t.faceTop + 4, t.x1 - t.x0 - 6, t.H - 8, shade(WOOD_D, 0.85)); R(c, t.x0 + 3, t.faceTop + 4, t.x1 - t.x0 - 6, 1, tint(WOOD_D, 0.15));
+  R(c, Math.round((t.x0 + t.x1) / 2) - 3, t.faceTop + 9, 6, 4, '#2a1a10');
+  // chunky CRT from behind: the front bezel (far side) peeks over, the tapered housing with vents faces us
+  const tw = 34, tx = Math.round((t.x0 + t.x1) / 2 - tw / 2), base = t.top + 10;
+  R(c, tx - 1, base - 32, tw + 2, 6, '#1f2124'); R(c, tx, base - 31, tw, 4, '#4a4e53');            // bezel top behind
+  const hx0 = tx + 4, hx1 = tx + tw - 4;
+  for (let y = 0; y < 27; y++) { const ins = Math.round(y < 6 ? 0 : (y - 6) * 0.12); R(c, hx0 + ins - 1, base - 27 + y, hx1 - hx0 - ins * 2 + 2, 1, '#1d1f22'); R(c, hx0 + ins, base - 27 + y, hx1 - hx0 - ins * 2, 1, y < 2 ? '#6a7076' : mix('#53585e', '#3c4045', y / 27)); }
+  for (let k = 0; k < 4; k++) R(c, hx0 + 7, base - 21 + k * 4, hx1 - hx0 - 14, 1, '#2a2d31');           // vents
+  R(c, hx0 + 3, base - 25, 1, 22, '#7a8086');
+  P(c, hx1 - 6, base - 6, '#c8c8c8'); P(c, hx1 - 7, base - 6, '#c8c8c8');                           // label
+  // cables down the back + game console with a controller on the side
+  for (let k = 0; k < 14; k++) P(c, Math.round((t.x0 + t.x1) / 2) + Math.round(Math.sin(k * 0.7) * 1.5), base - 2 + k, '#1a1a1a');
+  R(c, t.x0 + 2, t.top + 3, 10, 6, '#2b2d30'); R(c, t.x0 + 3, t.top + 3, 8, 2, '#4a4e52'); P(c, t.x0 + 4, t.top + 6, '#5f5');
+  R(c, t.x1 - 11, t.top + 4, 9, 4, '#2b2d30'); P(c, t.x1 - 9, t.top + 5, '#7aa'); P(c, t.x1 - 5, t.top + 5, '#c77');
 }
 
 function drawCoffeeTable(c: C, p: Piece) {
@@ -526,40 +589,53 @@ function drawArmchair(c: C, p: Piece) {
   for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
 }
 
-/** The bookshelf stands along the slanted right wall, so it's drawn column by column like the wall itself. */
+/** The bookshelf stands along the slanted right wall (a little off it), drawn column by column like the wall: its
+ * long face into the room, a lit top with real thickness, an end panel toward the camera and a shadow on the wall. */
 function drawBookshelf(c: C, p: Piece) {
-  const y0 = p.y, y1 = p.y + p.d, depth = 1.9, H = 6.6;
-  const front = (y: number) => AX(wallR(y) - depth);
-  const xa = Math.round(front(y0)), xb = Math.round(front(y1));
+  const y0 = p.y, y1 = p.y + p.d, depth = 1.9, gap = 0.3, H = 6.6;
+  const front = (y: number) => AX(wallR(y) - depth), back = (y: number) => AX(wallR(y) - gap);
+  const yAt = (x: number, off: number) => ((x / AS - ROOM.ox) / RS + off - ROOM.backR) / ROOM.slopeR; // depth where that line crosses column x
   const BOOKS = ['#3b6e8f', '#8f3b3b', '#3f7a4a', '#c9a24a', '#5a3f7a', '#2f4f6f', '#a0522d', '#d6d0c0', '#6e2f2f', '#2f6e5e'];
+  const xa = Math.round(front(y0)), xb = Math.round(front(y1));
+  // shadow it throws on the wall above/behind it
+  for (let x = Math.round(back(y0)); x <= Math.round(back(y1)) + 8; x++) {
+    const yb = Math.min(y1, Math.max(y0, yAt(x, gap))), topRow = Math.round(AY(yb) - H * HF);
+    for (let k = 1; k <= 7; k++) { c.fillStyle = `rgba(60, 40, 20, ${0.22 - k * 0.025})`; c.fillRect(x, topRow - k, 1, 1); }
+  }
   // long face (facing into the room)
   for (let x = xa; x <= xb; x++) {
-    const u = (x - front(y0)) / (front(y1) - front(y0)), yf = y0 + (y1 - y0) * u, floor = Math.round(AY(yf)), top = Math.round(floor - H * HF);
+    const yf = Math.min(y1, Math.max(y0, yAt(x, depth))), floor = Math.round(AY(yf)), top = Math.round(floor - H * HF);
     for (let y = top; y < floor; y++) {
-      const h = (floor - y) / HF; // height above the floor (ft)
-      let col = WOOD;
-      const shelfH = [0.35, 1.9, 3.45, 5.0, 6.4];
-      const onShelf = shelfH.some((s) => h >= s && h < s + 0.2);
-      const book = Math.floor((x - xa) / 3 + Math.floor(h / 1.55) * 5);
-      const bookTop = 1.55 - 0.2 - 0.15 - hn(book, 3) * 0.35;
+      const h = (floor - y) / HF;
+      let col: string;
       const level = Math.floor((h - 0.35) / 1.55), within = h - 0.35 - level * 1.55;
-      if (onShelf || x === xa || x === xb || y === top) col = x === xa ? tint(WOOD, 0.2) : y === top ? tint(WOOD, 0.25) : WOOD;
-      else if (h > 0.35 && h < 6.4 && within > 0.2 && within < bookTop && hn(book, 7) > 0.1) {
+      const book = Math.floor((x - xa) / 3 + level * 5), bookTop = 1.55 - 0.35 - hn(book, 3) * 0.35;
+      if (x <= xa + 1) col = x === xa ? OL(WOOD) : tint(WOOD, 0.2);                        // near side panel
+      else if (h < 0.35) col = shade(WOOD, 0.75);                                             // plinth
+      else if (within < 0.2 || h > 6.4) col = within < 0.07 ? tint(WOOD, 0.25) : WOOD;        // shelf boards
+      else if (within < bookTop && hn(book, 7) > 0.1) {
         const bc = BOOKS[Math.floor(hn(book, 5) * BOOKS.length)];
         col = (x - xa) % 3 === 2 ? shade(bc, 0.7) : (x - xa) % 3 === 0 ? tint(bc, 0.15) : bc;
         if (Math.abs(within - bookTop * 0.7) < 0.06) col = '#e8d9a8';
-      } else col = shade(WOOD, 0.55);
-      if (h < 0.35) col = shade(WOOD, 0.8);
+      } else col = shade(WOOD, 0.45);                                                         // inside, in shadow
       P(c, x, y, col);
     }
-    P(c, x, Math.round(AY(yf)) - Math.round(H * HF) - 1, OL(WOOD));
+    P(c, x, floor - 1, OL(WOOD));
   }
-  // front end (facing the camera) and the top
-  const fx0 = Math.round(front(y1)), fx1 = Math.round(AX(wallR(y1))), fb = Math.round(AY(y1)), ft = Math.round(fb - H * HF);
-  R(c, fx0, ft, fx1 - fx0, fb - ft, shade(WOOD, 0.9)); R(c, fx0, ft, 1, fb - ft, OL(WOOD)); R(c, fx0 + 1, ft, fx1 - fx0 - 1, 1, tint(WOOD, 0.3));
-  for (let k = 0; k < 6; k++) R(c, fx0 + 3, ft + 10 + k * 16, fx1 - fx0 - 6, 1, shade(WOOD, 0.75));
+  // top: between the front edge and the back edge, lit
+  for (let x = xa; x <= Math.round(back(y1)); x++) {
+    const yF = Math.min(y1, Math.max(y0, yAt(x, depth))), yB = Math.min(y1, Math.max(y0, yAt(x, gap)));
+    const rF = Math.round(AY(yF) - H * HF), rB = Math.round(AY(yB) - H * HF);
+    for (let y = rB; y <= rF; y++) P(c, x, y, y === rF ? tint(WOOD, 0.45) : y === rB ? OL(WOOD) : hn(x, y, 31) < 0.1 ? tint(WOOD, 0.22) : tint(WOOD, 0.3));
+    P(c, x, rB - 1, OL(WOOD));
+  }
+  // end panel toward the camera (shows the board thickness) and its outline
+  const fx0 = Math.round(front(y1)), fx1 = Math.round(back(y1)), fb = Math.round(AY(y1)), ft = Math.round(fb - H * HF);
+  R(c, fx0 - 1, ft, fx1 - fx0 + 2, fb - ft + 1, OL(WOOD));
+  R(c, fx0, ft + 1, fx1 - fx0, fb - ft - 1, shade(WOOD, 0.88)); R(c, fx0, ft + 1, 2, fb - ft - 1, tint(WOOD, 0.18)); R(c, fx1 - 2, ft + 1, 2, fb - ft - 1, shade(WOOD, 0.7));
+  for (let y = ft + 14; y < fb - 6; y += 22) R(c, fx0 + 3, y, fx1 - fx0 - 6, 1, shade(WOOD, 0.75));
   // a basketball trophy on top
-  const tx = Math.round(front(y0 + 2.5)) + 6, ty = Math.round(AY(y0 + 2.5) - H * HF);
+  const tx = Math.round(front(y0 + 2.5)) + 8, ty = Math.round(AY(y0 + 2.5) - H * HF) - 2;
   R(c, tx, ty - 4, 8, 4, '#6e4a1e'); R(c, tx + 3, ty - 10, 2, 6, '#e2b84a'); R(c, tx + 1, ty - 16, 6, 6, '#f0c44c'); P(c, tx + 2, ty - 15, '#fff2b8');
 }
 

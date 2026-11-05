@@ -36,13 +36,15 @@ export interface Piece { id: string; kind: Kind; x: number; y: number; w: number
 /** Furniture footprints (feet). Arrangement follows the owner's reference room; art is in render/roomArt.ts. */
 export const FURNITURE: Piece[] = [
   { id: 'fridge', kind: 'fridge', x: 9.2, y: 0, w: 3.1, d: 2.6, solid: true },
-  { id: 'counter', kind: 'counter', x: 12.3, y: 0, w: 6.6, d: 2.3, solid: true },
-  { id: 'island', kind: 'island', x: 15.6, y: 4.4, w: 3.55, d: 8.2, solid: true },
+  { id: 'counter', kind: 'counter', x: 12.3, y: 0, w: 6.65, d: 2.3, solid: true },
+  // a peninsula joined to the back counter (cabinet doors on its left side, cooktop + fume hood, pole at the end)
+  { id: 'island', kind: 'island', x: 15.4, y: 2.3, w: 3.55, d: 9.4, solid: true },
   { id: 'lamp', kind: 'lamp', x: 21.0, y: 0.6, w: 1.2, d: 1.0, solid: true },
   { id: 'couch', kind: 'couch', x: 22.6, y: 0.2, w: 8.4, d: 3.1, solid: true },
   { id: 'tank', kind: 'tank', x: 31.4, y: 0.2, w: 3.4, d: 2.7, solid: true },
-  { id: 'tvTable', kind: 'tvTable', x: 23.6, y: 7.0, w: 3.0, d: 2.0, solid: true },
-  { id: 'coffeeTable', kind: 'coffeeTable', x: 28.0, y: 7.4, w: 4.2, d: 2.2, solid: true },
+  // couch -> coffee table -> TV (the TV faces the couch, so we see its back)
+  { id: 'coffeeTable', kind: 'coffeeTable', x: 24.3, y: 4.9, w: 5.0, d: 1.6, solid: true },
+  { id: 'tvTable', kind: 'tvTable', x: 25.3, y: 9.8, w: 3.0, d: 1.5, solid: true },
   { id: 'armchair', kind: 'armchair', x: 33.8, y: 9.6, w: 3.4, d: 3.0, solid: true },
   { id: 'bookshelf', kind: 'bookshelf', x: 37.0, y: 13.8, w: 5.6, d: 8.6, solid: true, poly: alongRightWall(13.8, 22.4, 1.9) },
   { id: 'wardrobe', kind: 'wardrobe', x: 1.6, y: 16.6, w: 3.0, d: 3.2, solid: true },
@@ -57,9 +59,18 @@ export const FURNITURE: Piece[] = [
 /** Doors: ✕ within reach of `spot` uses them. */
 export interface Door { id: 'garage' | 'front'; label: string; spot: V; wallY: [number, number] }
 export const DOORS: Door[] = [
-  { id: 'garage', label: 'Garage', spot: { x: 6.4, y: 9.6 }, wallY: [6.9, 12.3] },
-  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, wallY: [3.7, 8.3] },
+  { id: 'garage', label: 'Garage', spot: { x: 6.4, y: 9.6 }, wallY: [8.1, 11.1] },
+  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, wallY: [4.5, 7.4] },
 ];
+
+/** Things you'll use later (no action yet): where you stand to use them. */
+export const SPOTS = {
+  calendar: { x: 7.9, y: 4.4 },   // on the left wall (the garage-door wall), next to the fridge
+  fridge: { x: 10.7, y: 3.5 },
+  couch: { x: 23.2, y: 4.3 },     // sleep here to end the day
+};
+/** The calendar on the left wall: depth range + height (ft). */
+export const CALENDAR = { y0: 2.9, y1: 5.9, h0: 4.2, h1: 7.0 };
 
 export const PLAYER_R = 0.8;
 export const SPAWN: V = { x: 20.5, y: 9.5 };
@@ -152,29 +163,103 @@ export function doorNear(p: V, reach = 1.6): Door | null {
   return best;
 }
 
-// ---------- the cat ----------
-export interface Cat { p: V; target: V | null; state: 'sit' | 'walk' | 'loaf'; until: number; face: 1 | -1 }
-export const CAT_R = 0.55;
-/** Favourite spots (in front of the couch, by the armchair, under the window, by the fridge). */
-export const CAT_SPOTS: V[] = [{ x: 28.4, y: 4.4 }, { x: 32.2, y: 11.8 }, { x: 21.6, y: 3.0 }, { x: 13.2, y: 3.4 }, { x: 28.5, y: 13.0 }, { x: 11.5, y: 13.0 }];
-export const newCat = (): Cat => ({ p: { ...CAT_SPOTS[0] }, target: null, state: 'loaf', until: 4, face: 1 });
+// ---------- simple grid pathfinding (the cat) ----------
+const GRID = 0.5, GW = 90, GH = 50;
+const FREE = new WeakMap<Poly[], Map<number, Uint8Array>>();
+function freeGrid(polys: Poly[], r: number): Uint8Array {
+  let m = FREE.get(polys); if (!m) { m = new Map(); FREE.set(polys, m); }
+  let g = m.get(r);
+  if (!g) { g = new Uint8Array(GW * GH); for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) g[j * GW + i] = isFree({ x: i * GRID, y: j * GRID }, r, polys) ? 1 : 0; m.set(r, g); }
+  return g;
+}
+/** BFS over a 0.5 ft grid (8-way, no corner cutting); waypoints from `from` to `to`, or null if unreachable. */
+export function findPath(from: V, to: V, r: number, polys: Poly[]): V[] | null {
+  const g = freeGrid(polys, r);
+  const cell = (p: V) => { const i = Math.max(0, Math.min(GW - 1, Math.round(p.x / GRID))), j = Math.max(0, Math.min(GH - 1, Math.round(p.y / GRID))); return j * GW + i; };
+  const nearestFree = (k: number) => { if (g[k]) return k; let best = -1, bd = 1e9; const ci = k % GW, cj = (k / GW) | 0; for (let j = cj - 3; j <= cj + 3; j++) for (let i = ci - 3; i <= ci + 3; i++) { if (i < 0 || j < 0 || i >= GW || j >= GH || !g[j * GW + i]) continue; const d = (i - ci) ** 2 + (j - cj) ** 2; if (d < bd) { bd = d; best = j * GW + i; } } return best; };
+  const a = nearestFree(cell(from)), b = nearestFree(cell(to));
+  if (a < 0 || b < 0) return null;
+  const prev = new Int32Array(GW * GH).fill(-1); prev[a] = a;
+  const q = [a];
+  for (let h = 0; h < q.length && prev[b] < 0; h++) {
+    const k = q[h], i = k % GW, j = (k / GW) | 0;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= GW || nj >= GH) continue;
+      const nk = nj * GW + ni; if (prev[nk] >= 0 || !g[nk]) continue;
+      if (di && dj && (!g[j * GW + ni] || !g[nj * GW + i])) continue;
+      prev[nk] = k; q.push(nk);
+    }
+  }
+  if (prev[b] < 0) return null;
+  const out: V[] = [];
+  for (let k = b; k !== a; k = prev[k]) out.push({ x: (k % GW) * GRID, y: ((k / GW) | 0) * GRID });
+  out.reverse(); out.push({ ...to });
+  // drop waypoints on straight runs
+  return out.filter((p, n) => n === out.length - 1 || n === 0 || (out[n + 1].x - p.x) !== (p.x - out[n - 1].x) || (out[n + 1].y - p.y) !== (p.y - out[n - 1].y));
+}
 
-/** One cat tick: loaf / sit at a spot, then trot to another one (cosmetic randomness only). */
+// ---------- the cat ----------
+/** The cat's home is on the couch, on the blanket; it hops down now and then to wander, then hops back up. */
+export interface Cat {
+  p: V; z: number; target: V | null; path: V[]; state: 'sit' | 'walk' | 'loaf'; until: number; face: 1 | -1;
+  perch: boolean; home: boolean; stops: number;
+  hop: { from: V; to: V; t0: number; up: boolean } | null;
+}
+export const CAT_R = 0.55;
+export const CAT_PERCH: V = { x: 28.7, y: 1.9 };   // on the blanket
+export const CAT_HOP: V = { x: 28.7, y: 4.25 };    // the floor in front of the couch
+export const PERCH_Z = 1.55;                        // seat height (ft)
+export const HOP_TIME = 0.45;
+/** Floor spots it likes (by the lamp, under the kitchen, by the armchair, by the table, by the wardrobe). */
+export const CAT_SPOTS: V[] = [{ x: 21.6, y: 3.0 }, { x: 13.2, y: 3.4 }, { x: 32.2, y: 11.8 }, { x: 28.5, y: 13.0 }, { x: 11.5, y: 13.0 }];
+export const newCat = (): Cat => ({ p: { ...CAT_PERCH }, z: PERCH_Z, target: null, path: [], state: 'sit', until: 18, face: 1, perch: true, home: false, stops: 0, hop: null });
+
+/** One cat tick (cosmetic randomness only). */
 export function catStep(cat: Cat, t: number, dt: number, polys: Poly[], rand: () => number = Math.random) {
+  if (cat.hop) {
+    const u = Math.min(1, (t - cat.hop.t0) / HOP_TIME), h = cat.hop;
+    cat.p = { x: h.from.x + (h.to.x - h.from.x) * u, y: h.from.y + (h.to.y - h.from.y) * u };
+    cat.z = (h.up ? PERCH_Z * u : PERCH_Z * (1 - u)) + Math.sin(u * Math.PI) * 0.9;
+    if (u >= 1) {
+      cat.z = h.up ? PERCH_Z : 0; cat.perch = h.up; cat.hop = null;
+      cat.state = 'sit'; cat.until = t + (h.up ? 20 + rand() * 25 : 1 + rand() * 2);
+    }
+    return;
+  }
+  if (cat.perch) {
+    if (t > cat.until) {
+      if (cat.state === 'sit' && rand() < 0.5) { cat.state = 'loaf'; cat.until = t + 15 + rand() * 20; return; }
+      cat.hop = { from: { ...cat.p }, to: { ...CAT_HOP }, t0: t, up: false }; cat.face = rand() < 0.5 ? 1 : -1;
+    }
+    return;
+  }
   if (cat.state === 'walk' && cat.target) {
-    const dx = cat.target.x - cat.p.x, dy = cat.target.y - cat.p.y, d = Math.hypot(dx, dy);
-    if (d < 0.3 || t > cat.until) { cat.state = rand() < 0.5 ? 'loaf' : 'sit'; cat.until = t + 5 + rand() * 9; cat.target = null; return; }
+    const goal = cat.path[0] ?? cat.target;
+    if (cat.path.length > 1 && Math.hypot(goal.x - cat.p.x, goal.y - cat.p.y) < 0.35) { cat.path.shift(); return; }
+    const dx = goal.x - cat.p.x, dy = goal.y - cat.p.y;
+    const d = Math.hypot(cat.target.x - cat.p.x, cat.target.y - cat.p.y), dg = Math.hypot(dx, dy) || 1;
+    if (d < 0.3 || t > cat.until) {
+      cat.target = null;
+      if (cat.home && d < 0.6) { cat.home = false; cat.stops = 0; cat.hop = { from: { ...cat.p }, to: { ...CAT_PERCH }, t0: t, up: true }; return; }
+      cat.home = false; cat.stops++;
+      cat.state = rand() < 0.5 ? 'loaf' : 'sit'; cat.until = t + 4 + rand() * 7; return;
+    }
     const sp = 3.2 * dt;
     const before = cat.p;
-    cat.p = moveWithCollision(cat.p, { x: (dx / d) * sp, y: (dy / d) * sp }, CAT_R, polys);
+    cat.p = moveWithCollision(cat.p, { x: (dx / dg) * Math.min(sp, dg), y: (dy / dg) * Math.min(sp, dg) }, CAT_R, polys);
     if (Math.abs(dx) > 0.05) cat.face = dx > 0 ? 1 : -1;
     // stuck on furniture: sidestep a little
     if (Math.hypot(cat.p.x - before.x, cat.p.y - before.y) < sp * 0.2) cat.p = moveWithCollision(cat.p, { x: 0, y: (dy >= 0 ? 1 : -1) * sp }, CAT_R, polys);
     return;
   }
   if (t > cat.until) {
-    const options = CAT_SPOTS.filter((s) => Math.hypot(s.x - cat.p.x, s.y - cat.p.y) > 2);
-    cat.target = options[Math.floor(rand() * options.length)] ?? CAT_SPOTS[0];
-    cat.state = 'walk'; cat.until = t + 12;
+    // after a stop or two, head home to the couch
+    if (cat.stops >= 1 && rand() < 0.35 + cat.stops * 0.25) { cat.target = { ...CAT_HOP }; cat.home = true; }
+    else {
+      const options = CAT_SPOTS.filter((s) => Math.hypot(s.x - cat.p.x, s.y - cat.p.y) > 2);
+      cat.target = options[Math.floor(rand() * options.length)] ?? CAT_SPOTS[0];
+    }
+    cat.path = findPath(cat.p, cat.target, CAT_R, polys) ?? [cat.target];
+    cat.state = 'walk'; cat.until = t + 20;
   }
 }

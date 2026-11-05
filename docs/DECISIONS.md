@@ -135,6 +135,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     upcoming key games and special events, a **cute cat you can pet** (the cat is in and wanders; petting later).
   - **Top HUD:** level + XP, days until the next key game, money, plus **energy** and **food** bars (styled like the
     reference's bar panel).
+  - **Round 36b (owner's fixes):** the **cat lives on the couch** (sits on the blanket, hops down to wander, comes
+    back); the **calendar hangs on the left wall** (the garage-door wall) next to the fridge so it can be used later;
+    the **TV faces the couch** (couch → coffee table → TV, we see the TV's back); the kitchen is a **peninsula joined to
+    the back counter**, cabinet doors on its **left side**, a cooktop under a **fume hood** with a duct up to the
+    ceiling and one along the top, the **pole drops from that duct to the peninsula's end**; dish rack by the sink, a
+    **bonsai** with a **dirty cereal bowl** behind it; plump pillow, draped blanket; shorter doors; the bookshelf
+    stands off the wall (top, thickness, shadow).
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**
