@@ -28,7 +28,7 @@ export const wallR = (y: number) => ROOM.backR + ROOM.slopeR * y;
 
 export type Kind =
   | 'fridge' | 'counter' | 'island' | 'lamp' | 'couch' | 'tank' | 'tvTable' | 'coffeeTable' | 'armchair'
-  | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant';
+  | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash';
 
 /** x/y/w/d = bounding footprint; `poly` (optional) = the real footprint when it isn't a rectangle (along a slanted wall). */
 export interface Piece { id: string; kind: Kind; x: number; y: number; w: number; d: number; solid: boolean; poly?: Poly }
@@ -53,6 +53,8 @@ export const FURNITURE: Piece[] = [
   { id: 'chairL', kind: 'chairL', x: 16.0, y: 18.4, w: 1.5, d: 1.8, solid: true },
   { id: 'chairR', kind: 'chairR', x: 24.9, y: 18.4, w: 1.5, d: 1.8, solid: true },
   { id: 'chairBack', kind: 'chairBack', x: 19.4, y: 15.9, w: 1.7, d: 1.6, solid: true },
+  // trash can by the kitchen: paper balls inside, missed shots on the floor around it
+  { id: 'trash', kind: 'trash', x: 12.8, y: 14.6, w: 1.4, d: 1.2, solid: true },
   { id: 'box', kind: 'box', x: 37.6, y: 22.4, w: 2.4, d: 1.6, solid: true },
   { id: 'ball', kind: 'ball', x: 36.4, y: 21.0, w: 1.0, d: 0.8, solid: false },
 ];

@@ -316,45 +316,72 @@ function figure(c: C, hx: number, hy: number, col: string, jersey: string, pose:
   P(c, hx + pose.head[0] - 2, hy + pose.head[1] - 2, 'rgba(0,0,0,0)');
 }
 function posterFrame(c: C, x: number, y: number, w: number, h: number, bg: (u: number, v: number) => string) {
-  P(c, x + (w >> 1), y - 3, '#4a4a4a'); // pin
   R(c, x - 1, y - 1, w + 2, h + 2, '#2a201a');
   for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) P(c, x + xx, y + yy, bg(xx / w, yy / h));
-  R(c, x + w, y + 1, 1, h, 'rgba(40,25,15,0.35)'); R(c, x + 1, y + h + 1, w, 1, 'rgba(40,25,15,0.35)'); // shadow on the wall
+}
+/** Hang a poster painted at (1, 1) of a w x h canvas: at (x, y) on the wall, rotated by `tilt` (nearest pixel), with a
+ * pin and a soft shadow. */
+function hang(c: C, x: number, y: number, w: number, h: number, tilt: number, paint: (pc: C) => void) {
+  const src = canvas(w + 2, h + 2), sc = src.getContext('2d', { willReadFrequently: true })!;
+  paint(sc);
+  const d = sc.getImageData(0, 0, w + 2, h + 2).data, cx = (w + 2) / 2, cy = (h + 2) / 2, ca = Math.cos(tilt), sa = Math.sin(tilt);
+  const m = Math.ceil(Math.abs(sa) * h) + 2;
+  const sample = (dx: number, dy: number) => { // inverse-rotate a destination pixel into the poster
+    const rx = (dx - cx) * ca + (dy - cy) * sa + cx, ry = -(dx - cx) * sa + (dy - cy) * ca + cy;
+    const sx = Math.floor(rx), sy = Math.floor(ry);
+    if (sx < 0 || sy < 0 || sx >= w + 2 || sy >= h + 2) return null;
+    const i = (sy * (w + 2) + sx) * 4; return d[i + 3] ? `rgb(${d[i]},${d[i + 1]},${d[i + 2]})` : null;
+  };
+  for (let dy = -m; dy < h + 2 + m; dy++) for (let dx = -m; dx < w + 2 + m; dx++) if (sample(dx, dy) && !sample(dx - 1, dy - 1)) { c.fillStyle = 'rgba(40,25,15,0.3)'; c.fillRect(x + dx + 1, y + dy + 1, 1, 1); }
+  for (let dy = -m; dy < h + 2 + m; dy++) for (let dx = -m; dx < w + 2 + m; dx++) { const col = sample(dx, dy); if (col) P(c, x + dx, y + dy, col); }
+  const px = x + cx - Math.round(sa * cy), py = y + 1 + Math.round(Math.abs(sa) * cx * 0.0);
+  P(c, px, py, '#d8d2c6'); P(c, px, py + 1, '#4a4a4a');
+}
+/** A crumpled paper ball (radius ~3 art px): lumpy outline, creases, lit from the top left. */
+function paperBall(c: C, x: number, y: number, r = 3, seed = 0) {
+  for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
+    const lump = r + (hn(dx + seed, dy, 71) - 0.5) * 1.2, d = Math.hypot(dx, dy);
+    if (d > lump + 0.4) continue;
+    let col = dx + dy < -1 ? '#ffffff' : dx + dy > 2 ? '#cfc8b8' : '#efebe0';
+    if (hn(dx * 3 + seed, dy * 5, 72) < 0.18) col = '#b9b2a2';            // creases
+    if (d > lump - 0.6) col = '#8a8272';                                 // outline
+    P(c, x + dx, y + dy, col);
+  }
 }
 const ball = (c: C, x: number, y: number) => { R(c, x - 1, y, 3, 1, '#e0702e'); R(c, x, y - 1, 1, 3, '#e0702e'); P(c, x, y, '#5a2410'); };
 
 /** Tributes on the back wall (original art, no real logos): Be Like Ike, and nods to Curry, Kobe and LeBron. */
 function drawPosters(c: C) {
   // BE LIKE IKE: the classic ad look — a soaring dunker on a sunset-orange sky, bold type
-  { const x = 451, y = 103, w = 38, h = 56;
+  hang(c, 458, 117, 38, 56, 0.035, (c) => { const x = 1, y = 1, w = 38, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => (v > 0.86 ? '#1d1d1d' : mix('#f6a53a', '#e2462c', v / 0.86)));
     for (let k = 0; k < 9; k++) P(c, x + 4 + Math.round(hn(k, 9) * 30), y + 4 + Math.round(hn(k, 8) * 10), '#ffe7b0');
     figure(c, x + 18, y + 33, '#1a1010', '#c8102e', { head: [3, -14], hands: [[11, -22], [9, -20]], feet: [[-7, 4], [-3, 8]] });
     ball(c, x + 29, y + 11);
     text3(c, x + Math.round((w - textW('BE LIKE')) / 2), y + 3, 'BE LIKE', '#ffffff', '#5a1a10');
-    text3(c, x + Math.round((w - textW('IKE')) / 2), y + 49, 'IKE', '#f6a53a'); }
+    text3(c, x + Math.round((w - textW('IKE')) / 2), y + 49, 'IKE', '#f6a53a'); });
   // KING 23: chalk toss — arms flung up in a cloud of white, wine and gold
-  { const x = 492, y = 103, w = 34, h = 56;
+  hang(c, 639, 97, 34, 56, 0.07, (c) => { const x = 1, y = 1, w = 34, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => mix('#5a1a2e', '#2a0d18', v));
     for (let k = 0; k < 40; k++) { const a = hn(k, 1) * Math.PI * 2, r = 3 + hn(k, 2) * 10; P(c, x + 17 + Math.round(Math.cos(a) * r), y + 15 + Math.round(Math.sin(a) * r * 0.7), k % 3 ? '#f4f1e8' : '#cfc8b8'); }
     figure(c, x + 17, y + 38, '#14080c', '#f2b632', { head: [0, -14], hands: [[-9, -24], [9, -24]], feet: [[-4, 9], [4, 9]] });
     text3(c, x + Math.round((w - textW('KING')) / 2), y + 3, 'KING', '#f2b632');
-    text3(c, x + Math.round((w - textW('23')) / 2), y + 49, '23', '#f4f1e8'); }
+    text3(c, x + Math.round((w - textW('23')) / 2), y + 49, '23', '#f4f1e8'); });
   // MAMBA 24: the fadeaway, purple and gold, scale pattern
-  { const x = 284, y = 101, w = 40, h = 50;
+  hang(c, 287, 104, 40, 50, -0.045, (c) => { const x = 1, y = 1, w = 40, h = 50;
     posterFrame(c, x, y, w, h, (u, v) => { const sc = ((Math.floor(u * 20) + Math.floor(v * 25)) % 2 === 0) && v > 0.12 && v < 0.84; return sc ? '#3a1f63' : '#4b2a7a'; });
     figure(c, x + 22, y + 33, '#120a1c', '#f5b521', { head: [-4, -13], hands: [[-2, -21], [0, -22]], feet: [[-6, 9], [2, 7]] });
     ball(c, x + 20, y + 10);
     text3(c, x + Math.round((w - textW('MAMBA')) / 2), y + 2, 'MAMBA', '#f5b521');
-    text3(c, x + Math.round((w - textW('24')) / 2), y + 43, '24', '#f4f1e8'); }
+    text3(c, x + Math.round((w - textW('24')) / 2), y + 43, '24', '#f4f1e8'); });
   // CHEF 30: night night — hands pressed together by a tilted head, deep blue and gold, a long-range arc
-  { const x = 641, y = 103, w = 38, h = 56;
+  hang(c, 648, 162, 38, 56, -0.025, (c) => { const x = 1, y = 1, w = 38, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => mix('#1d428a', '#0f2350', v));
     for (let k = 0; k < 14; k++) P(c, x + 3 + k * 2, y + 22 - Math.round(Math.sin((k / 13) * Math.PI) * 10), '#ffc72c');
     for (let k = 0; k < 6; k++) P(c, x + 4 + Math.round(hn(k, 3) * 30), y + 10 + Math.round(hn(k, 4) * 8), '#c9d6f2'); // stars
     figure(c, x + 19, y + 40, '#0a1430', '#ffc72c', { head: [-2, -14], hands: [[-6, -15], [-5, -14]], feet: [[-4, 9], [4, 9]] });
     text3(c, x + Math.round((w - textW('CHEF')) / 2), y + 3, 'CHEF', '#ffc72c');
-    text3(c, x + Math.round((w - textW('30')) / 2), y + 49, '30', '#f4f1e8'); }
+    text3(c, x + Math.round((w - textW('30')) / 2), y + 49, '30', '#f4f1e8'); });
 }
 
 function drawDoors(c: C) {
@@ -408,6 +435,12 @@ function drawFloorClutter(c: C) {
     // a red "FINAL NOTICE" bill and a package slip on top
     R(c, mx - 6, my - 17, 13, 7, '#5a1d14'); R(c, mx - 5, my - 16, 11, 5, '#e85b4a'); R(c, mx - 4, my - 15, 7, 1, '#ffe2dc');
     R(c, mx + 4, my - 14, 8, 5, '#6e6658'); R(c, mx + 5, my - 13, 6, 3, '#f2c443');
+  }
+  // missed shots around the trash can (thrown from the table / couch side, so most landed right and in front)
+  for (const [bx, by, r, sd] of [[14.9, 16.4, 3, 1], [15.6, 15.3, 3, 2], [11.9, 16.6, 3, 3], [14.3, 17.3, 2, 4], [16.4, 14.2, 3, 5], [12.2, 13.9, 2, 6], [13.3, 16.9, 3, 7]] as const) {
+    const px = Math.round(AX(bx)), py = Math.round(AY(by)) - r;
+    c.fillStyle = 'rgba(40,25,15,0.25)'; c.fillRect(px - r, py + r, r * 2 + 1, 2);
+    paperBall(c, px, py, r, sd);
   }
   // shoes by the garage doormat: a nice pair (polished brown leather) and a pair of workout trainers
   // side-view pixel shoes (facing right). o outline, U upper, H shine, C collar opening, L laces, A accent, S sole
@@ -858,6 +891,31 @@ function drawChair(c: C, p: Piece, facing: 'L' | 'R' | 'F') {
   R(c, b.x0, b.faceTop + 10, b.x1 - b.x0, 2, shade(col, 0.7));
 }
 
+/** Round metal trash can, open top, stuffed with paper balls (a couple balanced on the rim). */
+function drawTrash(c: C, p: Piece) {
+  const x0 = Math.round(AX(p.x)), x1 = Math.round(AX(p.x + p.w)), cx = (x0 + x1) / 2, rw = (x1 - x0) / 2;
+  const yb = AY(p.y), yf = AY(p.y + p.d), cyTop = Math.round((yb + yf) / 2 - 2.0 * HF), cyBot = Math.round((yb + yf) / 2), rh = Math.round((yf - yb) / 2);
+  const BODY = ['#4c5458', '#6f797e', '#8e989c', '#a8b1b4', '#959fa3', '#7c868a', '#626b6f', '#4c5458'];
+  // body: columns shaded like a cylinder (light from the left), ribs, a bottom ellipse
+  for (let x = x0; x < x1; x++) {
+    const u = (x - cx) / rw, k = Math.min(BODY.length - 1, Math.max(0, Math.round((u + 1) / 2 * (BODY.length - 1))));
+    const bot = cyBot + Math.round(Math.sqrt(Math.max(0, 1 - u * u)) * rh), top = cyTop + Math.round(Math.sqrt(Math.max(0, 1 - u * u)) * rh);
+    for (let y = top; y <= bot; y++) P(c, x, y, (y - top) % 9 === 4 ? shade(BODY[k], 0.82) : BODY[k]);
+    P(c, x, bot + 1, '#2a2f31');
+  }
+  R(c, x0 - 1, cyTop, 1, cyBot - cyTop + 1, '#2a2f31'); R(c, x1, cyTop, 1, cyBot - cyTop + 1, '#2a2f31');
+  // rim + dark inside
+  for (let y = -rh - 1; y <= rh + 1; y++) for (let x = x0 - 1; x <= x1; x++) {
+    const e = ((x - cx) / (rw + 0.5)) ** 2 + (y / (rh + 1)) ** 2;
+    if (e > 1) continue;
+    P(c, x, cyTop + y, e > 0.62 ? (y < 0 ? '#c9d0d3' : '#7c868a') : '#1e2224');
+  }
+  // paper balls heaped inside, poking over the rim
+  const balls: [number, number, number][] = [[-5, -1, 3], [1, -3, 3], [6, -1, 3], [-2, -5, 3], [4, -6, 2], [-6, -4, 2]];
+  balls.forEach(([dx, dy, r], i) => paperBall(c, Math.round(cx + dx), cyTop + dy, r, 20 + i));
+  paperBall(c, x1 - 1, cyTop - 1, 2, 31); // one balanced on the rim
+}
+
 function drawBox(c: C, p: Piece) {
   const b = block(c, p.x, p.x + p.w, p.y, p.y + p.d, 1.7, '#bb8b55', { top: '#d2a56b' });
   R(c, b.x0, b.top + Math.round((b.yf - b.yb) / 2) - 1, b.x1 - b.x0, 3, '#c9b48a');
@@ -925,7 +983,7 @@ const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
   fridge: drawFridge, counter: drawCounter, island: drawIsland, lamp: drawLamp, couch: drawCouch, tank: drawTank,
   tvTable: drawTvTable, coffeeTable: drawCoffeeTable, armchair: drawArmchair, bookshelf: drawBookshelf, wardrobe: drawWardrobe,
   diningTable: drawDiningTable, chairL: (c, p) => drawChair(c, p, 'R'), chairR: (c, p) => drawChair(c, p, 'L'), chairBack: (c, p) => drawChair(c, p, 'F'),
-  box: drawBox, ball: drawBall,
+  box: drawBox, ball: drawBall, trash: drawTrash,
 };
 const FRAMES: Record<string, number> = { tank: 2 };
 

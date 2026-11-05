@@ -152,6 +152,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     workout shoes by the garage doormat; a mound of mail instead of magazines; **tribute posters** on the back wall
     (original art, no real logos): **BE LIKE IKE** (riff on the classic ad), **KING 23** (chalk toss), **MAMBA 24**
     (fadeaway), **CHEF 30** (night night).
+  - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
+    kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 35: bringing it up.** Defenders pick up around half court (sag gap 4–12 ft in the backcourt) unless
   **pressing**: situational (Q4/OT, last 25% of the quarter, trailing 3–15; after made baskets 3–18% by team perimeter
   D; dev "Force full-court press"), on-ball tight full court + a trap near the sideline / half court. **8-second rule**
