@@ -7,7 +7,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 ## Controls & HUD
 - Tap/hold ✕ (fake/shoot), hold-○ drag moves with chains, jab tap, R2 burst sprint with cooldown pill,
   flick-cross during Side Drive, ○ box-out during shots, △ pass with target dot / call / steal, □ ultimate.
-- Controller diamond with player-action icon badges (context labels; press-in effect; □ charge ring or padlock).
+- Controller diamond with player-action icon badges (context labels; press-in effect; □ ring follows rhythm, grey once the ult is used, or padlock).
 - Movement stick widget: basket-relative move arcs while ○ held (white base, gold chains, cyan flick window),
   flash on the move just done.
 - Live shot-equation bar, score/clock/shot clock, trust bars (top left), play call line ("for YOU"), event feed,
@@ -120,6 +120,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   foul) `pickUpChance` = (0.12 + 0.3 × perimD/99) / handle security (×0.7 mid-move, cap 0.5) × front → `deadDribble`
   (event `pickup`); `liveDribble`; CPU grant `grantPickUp` (roster.ts: perimD ≥ 74, or ≥ 71 with Quick Hands); AI
   on-ball swipes ×1.6 vs a live dribble with it.
+  Round 51 rhythm: `sim/rhythm.ts` (`methodKey`, `scoreGain` POINT_GAIN 2.6 × 0.6^repeats, `RHYTHM_GAIN` / `RHYTHM_LOSS`,
+  `gainScale` = REF_Q 300 / quarterLen, `notchOf`, `rhythmBoost`); `Player.rhythm` / `methods` / `boost` (recompute
+  rates core + boost); `GameSim.addRhythm` / `rhythmGain` / `rhythmLoss` / `setRhythm` (replaced `gainUlt` /
+  `ULT_GAINS`, `ultCharge` removed); `ultOf` (career ult, CPU stars `cpuUltFor`), `ultsUsed` (one a game), AI
+  triggers (offense deep step-back / takeoff, defense chase-down); HUD `GameScene.drawRhythm` / `rhythmPop`;
+  `settings.debug.equation`. Calibrated: ~2 players a game max out (median 88% of the game), ~0.8 ults a game in Q4.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

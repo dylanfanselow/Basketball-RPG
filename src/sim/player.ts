@@ -40,7 +40,14 @@ export class Player {
   receivedAt = -99; dribbledSinceCatch = false; catchReadFor = -99; lastScreenAt = -99; screenCdUntil = 0;
   pumpFakeAt = -99; openShotUntil = -99; openShotMult = 1;
   staggerUntil = 0; screenedUntil = -9; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
-  ultCharge = 0;
+  /** Round 51: rhythm 0-100 (notches at 25 / 50 / 75; 100 powers the ultimate). */
+  rhythm = 0;
+  /** A CPU Deep Step-Back: shoot at this time (0 = none). */
+  ultShotAt = 0;
+  /** How many times each scoring method has been used tonight (`mid|stepback` …). */
+  methods = new Map<string, number>();
+  /** The rhythm notch boost on top of the core stats (ratings only; core itself is untouched). */
+  boost: Partial<CoreStats> = {};
   box: BoxScore = emptyBox();
   /** AI scratch */
   target: Vec = v(); guarding: string | null = null; aiNextThink = 0; callForBallUntil = 0;
@@ -112,7 +119,9 @@ export class Player {
   /** Call after core stats or nodes change. */
   recompute() {
     this.mods.setNodes(this.nodes, this.extra);
-    this.sub = computeSubRatings(this.core, this.mods.subAdds);
+    const c = this.core, b = this.boost;
+    const eff = b && Object.keys(b).length ? (Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v + ((b as any)[k] ?? 0)])) as CoreStats) : c;
+    this.sub = computeSubRatings(eff, this.mods.subAdds);
   }
 
   hasMove(id: string) { return !!MOVES[id]?.default || this.mods.moves.has(id); }

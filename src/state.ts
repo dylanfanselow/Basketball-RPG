@@ -8,7 +8,8 @@ export const app = {
   settings: {
     quarterLen: 180,
     practice: { defenders: 1, teammates: 0, runPlays: false },
-    debug: { cone: true, lanes: false, paths: true, hitboxes: false, aiTargets: false, post: false, room: false },
+    // equation: the full shot-chance equation on the top bar (round 51: a dev toggle; the rhythm meter lives there now)
+    debug: { cone: true, lanes: false, paths: true, hitboxes: false, aiTargets: false, post: false, room: false, equation: false },
     timeScale: 1,
     benchSpeed: 6,
     /** dev: treat the next game as a big game (playoffs) — home crowd in team colors */

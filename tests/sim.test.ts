@@ -214,7 +214,7 @@ describe('chase-down ultimate', () => {
     for (const p of g.players) p.p = hc(side, 70, p.team === 0 ? -20 : 20);
     h.p = hc(side, 22, 0); u.p = hc(side, 27, 0);
     h.aiMode = 'drive'; h.aiModeUntil = 99;
-    u.ultCharge = 100;
+    u.rhythm = 100; // round 51: ultimates run on a full rhythm meter
     const idle = { move: { x: 0, y: 0 }, sprint: true, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     g.update(1 / 60, { ...idle, x: useUlt });
     for (let i = 0; i < 150; i++) g.update(1 / 60, idle);

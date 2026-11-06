@@ -80,6 +80,9 @@ export class GameScene extends Phaser.Scene {
   ballG!: Phaser.GameObjects.Graphics;
   hud!: Phaser.GameObjects.Graphics;
   eqText!: Phaser.GameObjects.Text;
+  /** Round 51: the rhythm meter's label, and its gain / loss pops and notch flash. */
+  rhythmText!: Phaser.GameObjects.Text;
+  rhythmFlash = { at: -9, color: 0xffffff };
   iqText!: Phaser.GameObjects.Text;
   scoreText!: Phaser.GameObjects.Text;
   playText!: Phaser.GameObjects.Text;
@@ -304,6 +307,7 @@ export class GameScene extends Phaser.Scene {
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
     this.hud = fixed(this.add.graphics().setDepth(9000));
     this.eqText = fixed(this.add.text(12, 8, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', wordWrap: { width: VIEW_W - 24 }, lineSpacing: 2 }).setDepth(9001));
+    this.rhythmText = fixed(this.add.text(VIEW_W / 2, 9, '', { fontFamily: FONT, fontSize: '13px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5, 0).setDepth(9002));
     this.iqText = fixed(this.add.text(VIEW_W / 2, 92, '', { fontFamily: FONT, fontSize: '16px', color: '#ff9f9f', fontStyle: 'bold', stroke: '#000', strokeThickness: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
     this.scoreText = fixed(this.add.text(12, 66, '', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setDepth(9001));
     this.playText = fixed(this.add.text(VIEW_W / 2, VIEW_H - 30, '', { fontFamily: FONT, fontSize: '16px', color: '#ffe680', align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
@@ -465,6 +469,8 @@ export class GameScene extends Phaser.Scene {
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
       if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
     }
+    if (e.kind === 'rhythmDelta' && e.pid === this.sim.user?.id) this.rhythmPop(e.data?.amount ?? 0, e.data?.why ?? '');
+    if (e.kind === 'rhythm' && e.pid === this.sim.user?.id) this.rhythmFlash = { at: this.time.now, color: 0xffe680 };
     this.playSound(e);
     if (e.quiet) return;
     const mine = !!e.pid && (e.pid === this.sim.user?.id || e.pid === this.sim.user2?.id);
@@ -1149,6 +1155,46 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** Round 51: the rhythm meter (styled like the garage skill cards): three notch ticks, gold pulse when full. */
+  drawRhythm(u: Player) {
+    const h = this.hud, sim = this.sim, r = u.rhythm / 100;
+    const x0 = VIEW_W / 2 - 200, y0 = 6, w = 400, ht = 48;
+    const used = (sim.ultsUsed[u.id] ?? 0) >= 1, hasUlt = !!sim.ultOf(u);
+    const ready = r >= 1 && hasUlt && !used;
+    const flash = Math.max(0, 1 - (this.time.now - this.rhythmFlash.at) / 500);
+    // card: dark outline, coloured edge, warm body, a highlight strip along the top
+    h.fillStyle(0x1e1410, 1).fillRoundedRect(x0 - 2, y0 - 2, w + 4, ht + 4, 8);
+    h.fillStyle(ready ? 0xffd84a : 0xc8843a, 1).fillRoundedRect(x0, y0, w, ht, 7);
+    h.fillStyle(0x4a2c16, 1).fillRoundedRect(x0 + 2, y0 + 2, w - 4, ht - 4, 6);
+    h.fillStyle(0xffffff, 0.12).fillRect(x0 + 6, y0 + 4, w - 12, 2);
+    if (flash > 0) h.fillStyle(this.rhythmFlash.color, 0.45 * flash).fillRoundedRect(x0 + 2, y0 + 2, w - 4, ht - 4, 6);
+    // pill bar: dark track, warm fill (orange → gold as it fills), a highlight line; pulses when full
+    const bx = x0 + 14, by = y0 + 27, bw = w - 28, bh = 13;
+    h.fillStyle(0x1e1410, 0.95).fillRoundedRect(bx - 1, by - 1, bw + 2, bh + 2, bh / 2 + 1);
+    h.fillStyle(0x2c1a0c, 1).fillRoundedRect(bx, by, bw, bh, bh / 2);
+    if (r > 0.005) {
+      const col = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(0xe8743a), Phaser.Display.Color.ValueToColor(0xffd84a), 100, Math.round(r * 100));
+      const fill = Phaser.Display.Color.GetColor(col.r, col.g, col.b);
+      const pulse = ready ? 0.75 + 0.25 * Math.sin(this.time.now / 140) : 1;
+      h.fillStyle(fill, pulse).fillRoundedRect(bx, by, Math.max(bh, bw * r), bh, bh / 2);
+      h.fillStyle(0xffffff, 0.35 * pulse).fillRect(bx + 5, by + 2, Math.max(0, bw * r - 10), 2);
+    }
+    // notch ticks at 25 / 50 / 75 (gold once passed)
+    [0.25, 0.5, 0.75].forEach((n) => { h.fillStyle(r >= n ? 0xffe9a8 : 0x8a6a4a, 1).fillRect(bx + bw * n - 1, by - 4, 2, bh + 8); });
+    const notch = [0.25, 0.5, 0.75].filter((n) => r >= n).length;
+    this.rhythmText.setPosition(VIEW_W / 2, y0 + 7).setText(`RHYTHM  ${'◆'.repeat(notch)}${'◇'.repeat(3 - notch)}   ${ready ? 'ULT READY · □' : used ? 'ultimate used' : `${Math.floor(u.rhythm)}%`}`)
+      .setColor(ready ? '#ffe680' : '#ffe9a8');
+  }
+  /** A rhythm change for you: a pop near the meter ("+8 mid · step-back", "−6 turnover"). */
+  rhythmPop(amount: number, why: string) {
+    const u = this.sim.user; if (!u || app.settings.debug.equation || Math.abs(amount) < 0.5) return;
+    const x = VIEW_W / 2 - 186 + 372 * (u.rhythm / 100), good = amount > 0;
+    const label = `${good ? '+' : '−'}${Math.abs(amount).toFixed(0)}${why ? ` ${why}` : ''}`;
+    const t = this.add.text(x, 58, label, { fontFamily: FONT, fontSize: '13px', color: good ? '#bff58a' : '#ff8a7a', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9003);
+    this.tweens.add({ targets: t, y: 74, alpha: { from: 1, to: 0 }, duration: 1300, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
+    if (!good) this.rhythmFlash = { at: this.time.now, color: 0xff4a3a };
+  }
+
   drawHud() {
     const sim = this.sim, h = this.hud;
     h.clear();
@@ -1156,13 +1202,16 @@ export class GameScene extends Phaser.Scene {
     // equation: live preview while you have the ball, else the last shot
     const prev = sim.preview;
     const ls = sim.lastShot;
+    const showEq = !!app.settings.debug.equation;
     let eq = '';
-    if (prev) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
-    else if (ls && sim.time - ls.at < 4) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
+    if (prev && showEq) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
+    else if (ls && sim.time - ls.at < 4 && showEq) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
     else if (sim.cfg.oneOnOne) eq = 'MAKE IT, TAKE IT — score and you keep it; stops and defensive boards check it back up top.  Pump fake = tap ✕';
     else if (sim.cfg.halfCourt && !sim.live) eq = 'HALF COURT 3v3 — after every score, stop or dead ball the team with the ball checks it up top.';
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
-    this.eqText.setText(eq);
+    // round 51: without the dev equation the top bar is the rhythm meter, with the short hints on the left
+    this.eqText.setWordWrapWidth(showEq || !sim.user ? VIEW_W - 24 : VIEW_W / 2 - 236).setFontSize(showEq || !sim.user ? 15 : 12).setText(eq);
+    if (!showEq && sim.user) this.drawRhythm(sim.user); else this.rhythmText.setText('');
     // High IQ (Perimeter D): on defense, read their set and who it's for
     const iq = this.highIQ();
     this.iqText.setText(iq ? `HIGH IQ · ${iq.play}${iq.target ? `  →  for ${iq.target.name}` : ''}` : '');
@@ -1203,7 +1252,8 @@ export class GameScene extends Phaser.Scene {
     // ultimate name (the charge ring lives on the □ button)
     const st = sim.ult.state;
     const uu = sim.user;
-    this.ultText.setText(st.unlocked && st.id && uu ? `${ULTIMATES[st.id].name} · ${ultLevelName(st)}${uu.ultCharge >= 100 ? '  READY!' : ''}` : '').setColor(uu && uu.ultCharge >= 100 ? '#ffdd33' : '#ffffff');
+    const ultUsed = !!uu && (sim.ultsUsed[uu.id] ?? 0) >= 1, ultReady = !!uu && !ultUsed && uu.rhythm >= 100;
+    this.ultText.setText(st.unlocked && st.id && uu ? `${ULTIMATES[st.id].name} · ${ultLevelName(st)}${ultUsed ? '  (used)' : ultReady ? '  READY!' : ''}` : '').setColor(ultReady ? '#ffdd33' : ultUsed ? '#9aa0b0' : '#ffffff');
     this.ctrl.update(sim, this.input2, sim.user ? (this.sheets.get(sim.user.id) ?? null) : null);
 
     // feed

@@ -2,6 +2,7 @@ import type { GameSim } from '../game';
 import { Player } from '../player';
 import { POST } from '../post';
 import { scorerStyle, ATT } from '../attention';
+import { tryActivateUlt } from '../ultimates';
 import { RESTRICTED_R, inFrontcourt } from '../court';
 import { add, dist, norm, scale, sub, lerpV, clamp, dot, len } from '../math';
 
@@ -34,6 +35,11 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       sim.steer(d, add(h.p, scale(norm(sub({ x: 47, y: 25 }, h.p)), 2.6)), true); // cut off the escape toward half court
       return;
     }
+  }
+  // round 51: a CPU star in full rhythm with Chase-Down runs down a break from behind (once a game)
+  if (h && h.team !== d.team && d.rhythm >= 100 && !sim.ultsUsed[d.id] && sim.isAI(d) && sim.inTransition(h.team)) {
+    const u = sim.ultOf(d), hr = dist(h.p, rim);
+    if (u?.id === 'chaseDown' && hr < 30 && dist(d.p, rim) > hr + 2 && tryActivateUlt(sim, d)) return;
   }
   // round 47: double / triple team on a hot scorer (helpers come after a short read; the rest rotate)
   const load = sim.isAI(d) && ATT.load ? sim.loadFor() : null;

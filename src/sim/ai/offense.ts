@@ -5,6 +5,7 @@ import { Vec, dist, norm, sub, add, scale, segDist, clamp01, clamp, dot, len, v 
 import { evaluateShot, selectShotType, ShotEval } from '../shooting';
 import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
+import { tryActivateUlt } from '../ultimates';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
 
@@ -195,6 +196,14 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   } else p.doubledSince = -1;
 
+  // round 51: the Deep Step-Back ult was used — let the three fly out of it
+  if (p.ultShotAt > 0 && sim.time >= p.ultShotAt) { p.ultShotAt = 0; sim.startShot(p, selectShotType(p, side, v(), sim.time)); return; }
+  // round 51: a CPU star in full rhythm uses his ultimate when the moment fits (once a game)
+  const ult = p.rhythm >= 100 && !sim.ultsUsed[p.id] ? sim.ultOf(p) : null;
+  if (ult && !p.deadDribble && inFrontcourt(side, p.p)) {
+    if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && sim.rng.chance(0.12) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.36; return; }
+    if (ult.id === 'ftTakeoff' && d >= 9 && d <= 19 && dot(p.vel, norm(sub(rim, p.p))) > 5 && tryActivateUlt(sim, p)) return;
+  }
   // round 48: open floor on the run (transition / coming up the floor, moving toward the rim) — nobody in front of him
   // or alongside his path to the rim: keep going and finish (no pass back to the point guard). Re-checked every tick: the moment a defender gets in the way, the normal reads take over.
   const running = dot(p.vel, norm(sub(rim, p.p))) > 4 && (sim.inTransition(p.team) || d > 30);
@@ -253,6 +262,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   if (!iso && catchRead(sim, p, sinceCatch)) return;
   if (sim.time < p.aiNextThink) return;
   p.aiNextThink = sim.time + 0.18 + sim.rng.next() * 0.14;
+
   const urgency = clamp01(1 - sim.shotClock / 14);
   const phase = sim.runner.cur;
   const resetting = sim.runner.resetting(sim.time);

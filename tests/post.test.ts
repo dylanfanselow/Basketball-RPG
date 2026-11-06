@@ -207,7 +207,8 @@ describe('post up (L2)', () => {
 
   it('round 44: in real games the defense doubles mismatched posts and the AI kicks it out', () => {
     let doubles = 0, kicks = 0, posts = 0;
-    for (const seed of [3, 5, 8, 11]) {
+    // round 51: rhythm notch boosts lift the lower stats most, so big strength gaps (and post doubles) are rarer: sample more games
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
       const g = makeGame({ seed, quarterLen: 120 });
       const orig = g.emit.bind(g);
       g.emit = (e) => { if (e.kind === 'post' && /DOUBLE TEAM/.test(e.text)) doubles++; if (e.kind === 'post' && /^POST UP/.test(e.text)) posts++; orig(e); };
@@ -219,5 +220,5 @@ describe('post up (L2)', () => {
     console.log(`posts ${posts}, doubles ${doubles}, kick-outs ${kicks}`);
     expect(doubles).toBeGreaterThan(0);
     expect(kicks).toBeGreaterThan(0);
-  }, 60000);
+  }, 180000);
 });

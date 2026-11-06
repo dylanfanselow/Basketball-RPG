@@ -7,8 +7,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   private single-file artifact.
 - **Scope:** vertical slice first, gameplay most important, but built with skill trees/abilities in mind.
 - **Control:** you control **only your career player**; AI teammates; you must earn the ball (see VISION).
-- **No shot meter.** Instead a **cone** points from the shooter to the rim; defenders inside it reduce accuracy; the
-  **full shot equation** (base × rating × (1−contest) × fatigue × perks…) is shown at the top of the screen.
+- **No shot meter.** Instead a **cone** points from the shooter to the rim; defenders inside it reduce accuracy. The
+  **full shot equation** (base × rating × (1−contest) × fatigue × perks…) used to be on the top bar; since round 51 it
+  is a **dev toggle** (dev panel → Attention → "Shot chance equation") and the top bar is the rhythm meter.
 - **Dev tools are high priority:** quick grant/remove of moves, abilities, stats, ultimates (dev panel, F1 / `).
 - Random events / story: not now, just don't block them.
 
@@ -154,6 +155,14 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 51: rhythm.**
+  - **What it is:** a meter on the top bar (styled like the garage skill cards). Every player builds it with points and assists, plus smaller amounts from steals, blocks, charges, forced pick-ups and stops.
+  - **Variety:** each scoring method (shot type × how it was made: catch, step-back, off the dribble, drive, post, transition, lob) gives ×0.6 less each time it's repeated in a game.
+  - **Losses:** missed assignments, getting posterized, turnovers, leaving your man, ankles, bad shots and blocks.
+  - **Notches:** three, at 25 / 50 / 75, each boosting every stat (bigger for lower stats; the career stats are untouched).
+  - **Ultimate:** a full meter powers it, **once a game**, then the meter drops to the 3rd notch. Your ult comes from the career; CPU stars get a fitting one and use it when the moment fits. Tuned so the ult lands around the 4th quarter and only the best nights max out.
+  - **Rules:** no fade over time; gains scale with quarter length.
+  - **Replaces** the old ult charge.
 - **Round 50: Pick-Up Pressure.** A high-level Perimeter Defense ability (top of the tree, needs Floor Burn, 2
   points): when a swipe misses (and isn't a foul), a separate roll makes the dribbler pick up his dribble. Elite CPU
   perimeter defenders (top ~10%) have it and reach more against a live dribble.

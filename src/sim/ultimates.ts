@@ -2,6 +2,7 @@ import { ULTIMATES, UltLevel } from './data';
 import type { GameSim } from './game';
 import { Player } from './player';
 import { dist, norm, sub, scale, v, add } from './math';
+import { AFTER_ULT } from './rhythm';
 
 /** Career-side ultimate state. Locked until the story flag sets unlocked=true (dev tools can force it). */
 export interface UltState { unlocked: boolean; id: string | null; level: number }
@@ -10,8 +11,16 @@ export interface UltRuntime {
   active: { id: string; pid: string; until: number; level: UltLevel; targetId?: string; shotOverride?: { base?: number; label?: string; contestMult?: number } } | null;
 }
 
-/** In-game ult meter gains (meter is 0-100). */
-export const ULT_GAINS = { score: 10, assist: 10, rebound: 5, stop: 7, steal: 12, block: 12, charge: 16, playExec: 6, screen: 4, ankles: 8 };
+/**
+ * Round 51: a CPU star's ultimate, fitted to his game: bigs (and long shot-blocking wings) chase down, shooters step
+ * back deep, slashers take off from the free-throw line. Level 2 for the very best.
+ */
+export function cpuUltFor(p: Player): UltState {
+  const s = p.sub;
+  const id = p.pos === 'C' || p.pos === 'PF' || (s.block >= 72 && p.height >= 6.7) ? 'chaseDown'
+    : Math.max(s.three, s.mid) >= Math.max(s.dunk, s.layup) ? 'deepStepback' : 'ftTakeoff';
+  return { unlocked: true, id, level: p.overall >= 82 ? 1 : 0 };
+}
 
 /** Career milestone -> evolution points. */
 export const ULT_MILESTONES: Record<string, { name: string; points: number }> = {
@@ -20,10 +29,18 @@ export const ULT_MILESTONES: Record<string, { name: string; points: number }> = 
   gameWinner: { name: 'Game-winner', points: 2 },
 };
 
-export function tryActivateUlt(sim: GameSim, p: Player) {
-  const st = sim.ult.state;
-  if (!st.unlocked || !st.id) { sim.emit({ kind: 'ult', text: 'Ultimate: ??? (locked)', pid: p.id }); return; }
-  if (p.ultCharge < 100) { sim.emit({ kind: 'ult', text: `Ultimate charging… ${p.ultCharge.toFixed(0)}%`, pid: p.id }); return; }
+/**
+ * Use the ultimate (round 51: it runs on rhythm — a full meter, once a game; using it drops the meter to the 3rd notch).
+ * Returns true when it fired. CPU stars call this from the AI when the moment fits.
+ */
+export function tryActivateUlt(sim: GameSim, p: Player): boolean {
+  const st = sim.ultOf(p);
+  const human = sim.isHuman(p);
+  const say = (text: string) => { if (human) sim.emit({ kind: 'ult', text, pid: p.id }); };
+  if (!st || !st.id) { say('Ultimate: ??? (locked)'); return false; }
+  if ((sim.ultsUsed[p.id] ?? 0) >= 1) { say('Ultimate used this game'); return false; }
+  if (p.rhythm < 100) { say(`Rhythm ${p.rhythm.toFixed(0)}% — fill it to ult`); return false; }
+  if (sim.ult.active) { say('Not now — another ultimate is in play'); return false; }
   const def = ULTIMATES[st.id];
   const level = def.levels[Math.min(st.level, def.levels.length - 1)];
   const rim = sim.rim(p.team);
@@ -60,11 +77,11 @@ export function tryActivateUlt(sim: GameSim, p: Player) {
   }
 
   if (ok) {
-    p.ultCharge = 0;
-    sim.emit({ kind: 'ult', text: `ULTIMATE: ${level.name}!`, pid: p.id, big: true, good: true });
-  } else {
-    sim.emit({ kind: 'ult', text: `${def.name}: not available from here`, pid: p.id });
-  }
+    p.rhythm = AFTER_ULT; // keep the three notches; only the last stretch rebuilds (and there's no second ult tonight)
+    sim.ultsUsed[p.id] = (sim.ultsUsed[p.id] ?? 0) + 1;
+    sim.emit({ kind: 'ult', text: human ? `ULTIMATE: ${level.name}!` : `${p.name} — ULTIMATE: ${level.name}!`, pid: p.id, team: p.team, big: true, good: human });
+  } else say(`${def.name}: not available from here`);
+  return ok;
 }
 
 export function tickUlt(sim: GameSim, _dt: number) {

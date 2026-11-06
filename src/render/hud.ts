@@ -142,12 +142,12 @@ export class ControllerHud {
       b.icon.setTint(held ? 0xb8bccb : 0xffffff);
       if (flash > 0) { b.disc.fillStyle(0xffffff, 0.35 * flash); b.disc.fillCircle(0, 0, R - 2); }
     }
-    // ultimate charge ring around □
+    // ultimate ring around □ (round 51: it follows your rhythm; grey once the game's one ultimate is used)
     this.ultRing.clear();
     const ub = this.btns.find((b) => b.key === 'x')!;
     if (onCourt && ult.unlocked && u) {
-      const c = u.ultCharge / 100;
-      this.ultRing.lineStyle(4, c >= 1 ? 0xffdd33 : 0xff8a00, 1);
+      const used = (sim.ultsUsed[u.id] ?? 0) >= 1, c = used ? 1 : u.rhythm / 100;
+      this.ultRing.lineStyle(4, used ? 0x5a6070 : c >= 1 ? 0xffdd33 : 0xff8a00, 1);
       this.ultRing.beginPath(); this.ultRing.arc(ub.c.x, ub.c.y, R + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.001, c)); this.ultRing.strokePath();
     }
     // R2 sprint pill above the diamond

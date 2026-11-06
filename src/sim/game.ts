@@ -8,12 +8,13 @@ import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isSt
 import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
+import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, notchOf, rhythmBoost, methodKey, scoreGain, methodLabel } from './rhythm';
 import { chooseCall } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
-import { UltState, UltRuntime, tryActivateUlt, tickUlt, ULT_GAINS } from './ultimates';
+import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
@@ -790,6 +791,7 @@ export class GameSim {
           const h = st.holder; h.box.tov++;
           this.emit({ kind: 'violation', text: '8-second violation', team: off });
           if (h === this.user) applyTrust(this.trust, 'turnover');
+          this.rhythmLoss(h, 'turnover');
           this.crossed = true;
           this.deadBall((1 - off) as 0 | 1);
           return true;
@@ -934,6 +936,7 @@ export class GameSim {
       hd.box.tov++; hd.deadDribble = false;
       this.emit({ kind: 'violation', text: '5-second violation (held the ball)', team: this.possession });
       if (hd === this.user) applyTrust(this.trust, 'turnover');
+      this.rhythmLoss(hd, 'turnover');
       this.deadBall((1 - this.possession) as 0 | 1);
       return;
     }
@@ -941,6 +944,7 @@ export class GameSim {
       const h = this.holder(); if (h) h.box.tov++;
       this.emit({ kind: 'violation', text: 'Shot clock violation', team: this.possession });
       if (h === this.user) applyTrust(this.trust, 'turnover');
+      this.rhythmLoss(h, 'turnover');
       this.deadBall((1 - this.possession) as 0 | 1);
     }
     if (this.cfg.mode === 'game' && this.clock <= 0 && this.ball.st.kind !== 'shot') this.endPeriod();
@@ -1012,11 +1016,11 @@ export class GameSim {
     if (ok) {
       this.grade.good++; this.grade.points += 1;
       applyTrust(this.trust, 'playExec');
-      this.gainUlt(u, ULT_GAINS.playExec);
       this.emit({ kind: 'grade', text: `✓ Ran your ${a.act} (${this.runner.play?.name})`, good: true, pid: u.id });
     } else {
       this.grade.bad++; this.grade.points -= 1;
       applyTrust(this.trust, 'playMiss');
+      this.rhythmLoss(u, 'playMiss');
       this.emit({ kind: 'grade', text: `✗ Missed your ${a.act} assignment`, good: false, pid: u.id });
     }
   }
@@ -1341,7 +1345,7 @@ export class GameSim {
         if (ev.pts === 3) p.box.tpa++;
         this.lastShot = { ev, made: false, name: p.name, user: p === this.user, blocked: true, at: this.time };
         this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
-        this.gainUlt(d, ULT_GAINS.block);
+        this.rhythmGain(d, 'block'); this.rhythmLoss(p, 'blocked');
         if (d === this.user) applyTrust(this.trust, 'stop');
         if (chase && this.ult.active!.level.keepPossession) {
           this.giveBall(d); this.changePossessionLive(d.team);
@@ -1386,7 +1390,7 @@ export class GameSim {
     this.lastShot = { ev, made, name: p.name, user: p === this.user, at: this.time };
     p.box.usage++;
     if (p === this.user && !this.cfg.oneOnOne) {
-      if (ev.pct < 0.28 && ev.contest > 0.3 && this.shotClock > 4) { applyTrust(this.trust, 'badShot'); this.emit({ kind: 'grade', text: '✗ Forced a bad shot', good: false, pid: p.id }); }
+      if (ev.pct < 0.28 && ev.contest > 0.3 && this.shotClock > 4) { applyTrust(this.trust, 'badShot'); this.rhythmLoss(p, 'badShot'); this.emit({ kind: 'grade', text: '✗ Forced a bad shot', good: false, pid: p.id }); }
       else if (ev.pct >= 0.45 || ev.conds.has('open')) applyTrust(this.trust, 'goodShot');
     }
   }
@@ -1451,7 +1455,6 @@ export class GameSim {
       if (from === this.user && from.isUser) {
         this.grade.good++; this.grade.points += 1;
         applyTrust(this.trust, 'playExec');
-        this.gainUlt(from, ULT_GAINS.playExec);
         this.emit({ kind: 'grade', text: `✓ Threw the lob (${this.runner.play?.name})`, good: true, pid: from.id });
       }
     }
@@ -1592,7 +1595,7 @@ export class GameSim {
       } else if (this.rng.chance(chance)) {
         this.knockDown(def, 1.3, 'ankles');
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });
-        this.gainUlt(p, ULT_GAINS.ankles);
+        this.rhythmLoss(def, 'ankles');
       } else {
         def.staggerUntil = this.time + m.stagger * clamp(ratio, 0.5, 1.8) * prox * read;
       }
@@ -1681,7 +1684,7 @@ export class GameSim {
     if (this.rng.chance(chance)) {
       p.box.stl++; h.box.tov++;
       this.emit({ kind: 'steal', text: `STEAL by ${p.name}!`, team: p.team, pid: p.id, big: true });
-      this.gainUlt(p, ULT_GAINS.steal * p.mods.pMult('hustleBonus'));
+      this.rhythmGain(p, 'steal', p.mods.pMult('hustleBonus')); this.rhythmLoss(h, 'turnover');
       if (p === this.user) applyTrust(this.trust, 'stop', p.mods.pMult('hustleBonus'));
       if (h === this.user) applyTrust(this.trust, 'turnover');
       // stripped: the ball pops out past the stealer; the ball handler is left spinning
@@ -1699,6 +1702,7 @@ export class GameSim {
       h.flickDir = 0;
       this.emit({ kind: 'pickup', text: `${p.name} kills the dribble — ${h.name} has to pick it up`, team: p.team, pid: p.id, big: p === this.user || h === this.user, good: p.team === this.user?.team });
       if (p === this.user) applyTrust(this.trust, 'stop', 0.5);
+      this.rhythmGain(p, 'pickup');
     }
   }
 
@@ -1724,10 +1728,46 @@ export class GameSim {
   /** Audio/animation-only event. */
   quiet(kind: string, data: Record<string, any> = {}, pid?: string) { this.emit({ kind, text: '', quiet: true, data, pid }); }
 
-  gainUlt(p: Player, amount: number) {
-    if (p !== this.user || !this.ult.state.unlocked) return;
-    p.ultCharge = Math.min(100, p.ultCharge + amount);
+  /**
+   * Round 51: rhythm for any player (gains scale with the game length so a strong night fills it around the 4th
+   * quarter; losses too). Crossing a notch re-applies the stat boost; your changes pop on the HUD meter.
+   */
+  addRhythm(p: Player | null | undefined, amount: number, why = '') {
+    if (!p || !amount) return;
+    const before = notchOf(p.rhythm);
+    p.rhythm = Math.max(0, Math.min(100, p.rhythm + amount * gainScale(this.cfg.quarterLen)));
+    const after = notchOf(p.rhythm);
+    if (after !== before) {
+      p.boost = rhythmBoost(p.core, after); p.recompute();
+      if (after > before) this.emit({ kind: 'rhythm', text: `RHYTHM ${after} — ${p.name} ${['', 'is warming up', 'is heating up', 'is on fire'][after]}`, pid: p.id, team: p.team, quiet: !this.isHuman(p), data: { notch: after } });
+    }
+    if (p.rhythm >= 100 && amount > 0 && !this.ultsUsed[p.id] && this.ultOf(p) && !this.rhythmReadySaid[p.id]) {
+      this.rhythmReadySaid[p.id] = true;
+      this.emit({ kind: 'rhythm', text: this.isHuman(p) ? 'RHYTHM MAXED — ultimate ready (□)' : `${p.name} is in full rhythm`, pid: p.id, team: p.team, big: this.isHuman(p), data: { ready: true } });
+    }
+    if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: amount * gainScale(this.cfg.quarterLen), why }, p.id);
   }
+  /** Set rhythm directly (dev tools / ultimates), re-applying the notch boost. */
+  setRhythm(p: Player, v: number) {
+    const before = notchOf(p.rhythm);
+    p.rhythm = Math.max(0, Math.min(100, v));
+    if (notchOf(p.rhythm) !== before) { p.boost = rhythmBoost(p.core, notchOf(p.rhythm)); p.recompute(); }
+  }
+  rhythmGain(p: Player | null | undefined, k: RhythmGain, mult = 1) { this.addRhythm(p, RHYTHM_GAIN[k] * mult, k); }
+  rhythmLoss(p: Player | null | undefined, k: RhythmLoss) { this.addRhythm(p, -RHYTHM_LOSS[k], k); }
+  /** CPU stars' ultimates (round 51), by player id. */
+  cpuUlts: Record<string, UltState> = {};
+  /** A player's ultimate: yours from the career (when unlocked), a CPU star's fitted one, else none. */
+  ultOf(p: Player): UltState | null {
+    if (this.cfg.oneOnOne) return null; // 1v1: no ultimates (rhythm still builds and boosts)
+    if (p === this.user) return this.ult.state.unlocked && this.ult.state.id ? this.ult.state : null;
+    if (this.isHuman(p)) return null;
+    if (!p.star || this.cfg.mode === 'practice') return null;
+    return (this.cpuUlts[p.id] ??= cpuUltFor(p));
+  }
+  /** Ultimates used this game per player (one each). */
+  ultsUsed: Record<string, number> = {};
+  private rhythmReadySaid: Record<string, boolean> = {};
 
   // ---------- physics ----------
   private physics(dt: number) {
@@ -1851,7 +1891,7 @@ export class GameSim {
     this.quiet('screenHit', { stun }, scr.id);
     if (!scr.screenHit) {
       scr.screenHit = true;
-      if (scr === this.user) { applyTrust(this.trust, 'screen'); this.gainUlt(scr, ULT_GAINS.screen); this.emit({ kind: 'screen', text: `Screen! ${def.name} is stuck`, good: true, pid: scr.id }); }
+      if (scr === this.user) { applyTrust(this.trust, 'screen'); this.emit({ kind: 'screen', text: `Screen! ${def.name} is stuck`, good: true, pid: scr.id }); }
       if (scr.mods.pMult('screenStun') > 1.3 && this.rng.chance(0.2)) { this.knockDown(def, 1.0, 'screen'); this.emit({ kind: 'screen', text: `${def.name} flattened by the screen`, big: true }); }
     }
     if (this.switchAll || sc?.kind === 'switch') {
@@ -1887,7 +1927,7 @@ export class GameSim {
     if (this.time - def.chargeSetAt >= setTime && rimD > RESTRICTED_R && this.rng.chance(0.5 + def.sub.charge / 99 * 0.4)) {
       h.box.tov++;
       this.emit({ kind: 'charge', text: `CHARGE! ${def.name} takes it`, team: def.team, pid: def.id, big: true });
-      this.gainUlt(def, ULT_GAINS.charge * def.mods.pMult('hustleBonus'));
+      this.rhythmGain(def, 'charge', def.mods.pMult('hustleBonus')); this.rhythmLoss(h, 'turnover');
       if (def === this.user) applyTrust(this.trust, 'stop', 1.5 * def.mods.pMult('hustleBonus'));
       if (h === this.user) applyTrust(this.trust, 'turnover');
       this.deadBall(def.team);
@@ -1976,7 +2016,7 @@ export class GameSim {
             if (this.rng.chance(chance)) {
               d.box.stl++; st.from.box.tov++;
               this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true });
-              this.gainUlt(d, ULT_GAINS.steal);
+              this.rhythmGain(d, 'steal'); this.rhythmLoss(st.from, 'turnover');
               if (d === this.user) applyTrust(this.trust, 'stop');
               if (st.from === this.user) applyTrust(this.trust, 'turnover');
               if (this.rng.chance(0.55)) { this.giveBall(d); this.changePossessionLive(d.team); }
@@ -2102,14 +2142,14 @@ export class GameSim {
     this.wasShotRebound = false;
     if (wasShot) {
       g.box.reb++;
-      this.gainUlt(g, ULT_GAINS.rebound);
       if (g === this.user) this.quiet('rebound', { off: g.team === this.possession }, g.id);
       if (g === this.user && g.team === this.possession) applyTrust(this.trust, 'offReb');
     }
     this.giveBall(g);
     if (g.state === 'dive') { g.deadDribble = true; g.deadDribbleAt = this.time + DIVE_S; g.deadWarned = false; } // secured on the floor: pass it (or shoot)
     if (g.team !== this.possession) {
-      if (wasShot && this.user && this.userOnCourt && this.user.team === g.team) { this.gainUlt(this.user, ULT_GAINS.stop); }
+      // a stop: the man guarding the shooter who missed gets a little rhythm
+      if (wasShot) { const sh = this.players.find((q) => q.name === this.lastShot?.name); if (sh && sh.team !== g.team) this.rhythmGain(this.defenderOf(sh), 'stop'); }
       this.changePossessionLive(g.team);
     } else if (wasShot) {
       this.shotClock = Math.max(this.shotClock, 14);
@@ -2149,16 +2189,19 @@ export class GameSim {
       const after = t.score - this.teams[1 - team].score;
       if (before <= 0 && after > 0) this.lastGoAhead = { pid: s.id, clock: this.clock, quarter: this.quarter };
       const ast = this.assistCand && this.assistCand.receiver === s && this.time - this.assistCand.at < 5 ? this.assistCand.passer : null;
-      if (ast) { ast.box.ast++; this.gainUlt(ast, ULT_GAINS.assist); if (ast === this.user) applyTrust(this.trust, 'assist'); }
+      if (ast) { ast.box.ast++; this.rhythmGain(ast, 'assist'); if (ast === this.user) applyTrust(this.trust, 'assist'); }
       const dk = st.ev.dunk ? DUNK[st.ev.dunk] : null;
-      this.gainUlt(s, ULT_GAINS.score + (st.pts === 3 ? 4 : 0) + (dk?.ult ?? 0)); // flashy dunks charge the ultimate more
+      // rhythm: points × 4, less each time you score the same way tonight (round 51)
+      const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
+      const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
+      this.addRhythm(s, scoreGain(val, used) * (dk && dk.kind === 'flash' ? 1.15 : 1), methodLabel(mk));
       if (s === this.user) applyTrust(this.trust, 'madeShot');
       const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
       this.lastMadeAt = this.time;
       this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
-        if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
+        if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.rhythmLoss(nd, 'posterized'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
       }
       this.checkLeftMan(s);
       this.assistCand = null;
@@ -2208,7 +2251,7 @@ export class GameSim {
     const u = this.user;
     if (this.cfg.oneOnOne) return; // no team trust in 1v1
     if (!u || !this.userOnCourt || u.team === scorer.team || u.guarding !== scorer.id) return;
-    if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored — you left him', good: false, pid: u.id }); }
+    if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.rhythmLoss(u, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored — you left him', good: false, pid: u.id }); }
   }
 
   // ---------- HUD support ----------

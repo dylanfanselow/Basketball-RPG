@@ -11,7 +11,7 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
   const pairs = [['LAL', 'NYK'], ['DAL', 'OKC'], ['DEN', 'MIL'], ['BOS', 'PHI']];
   const lines: string[] = [];
   let stars = { pts: 0, fga: 0, fgm: 0, n: 0 }, rest = { pts: 0, fga: 0, fgm: 0 }, ast = 0;
-  const tiers = [0, 0, 0, 0]; let traps = 0, teamPts = 0, share = 0; const ab = { smart: 0, random: 0, wins: 0, n: 0 }; const hg = { pts: 0, fga: 0, fgm: 0, share: 0, n: 0, tiers: [0, 0, 0, 0] }; const con: Record<string, any> = {};
+  const tiers = [0, 0, 0, 0]; let traps = 0, teamPts = 0, share = 0; const maxAt: number[] = [], ultAt: number[] = [], notchEnd = [0, 0, 0, 0]; let topMax = 0; const ab = { smart: 0, random: 0, wins: 0, n: 0 }; const hg = { pts: 0, fga: 0, fgm: 0, share: 0, n: 0, tiers: [0, 0, 0, 0] }; const con: Record<string, any> = {};
   for (const [a, b] of pairs) for (let seed = 1; seed <= Number(process.env.SEEDS ?? 3); seed++) {
     const ta = TEAMS.find((t) => t.id === a)!, tb = TEAMS.find((t) => t.id === b)!;
     const g = new GameSim({ mode: 'game', quarterLen: 300, seed, teams: [ta, tb], rosters: [generateRoster(ta, 0), generateRoster(tb, 1)], userId: null, trust: { team: 50, coach: 50 }, ult: { unlocked: false, id: null, level: 0 } });
@@ -32,8 +32,11 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
     g.attentionOff = mode === 'off'; g.tiersOff = mode === 'matchups'; g.assignMatchups();
     const inp = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     let seen: any = null, lastMove = -9;
+    const hit = new Set<string>(), ulted = new Set<string>();
+    const frac = () => ((g.quarter - 1) + (g.cfg.quarterLen - g.clock) / g.cfg.quarterLen) / 4;
     for (let tt = 0; tt < 5000 && !g.over; tt += 1 / 30) {
       g.update(1 / 30, inp);
+      for (const p of g.players) { if (p.rhythm >= 100 && !hit.has(p.id)) { hit.add(p.id); maxAt.push(frac()); } if (g.ultsUsed[p.id] && !ulted.has(p.id)) { ulted.add(p.id); ultAt.push(frac()); } }
       // DRIVER=1: the hog attacks with a crossover every ~1.2 s when he has it in the frontcourt (like a player spamming moves)
       if (hog && process.env.DRIVER && g.holder() === hog && hog.state === 'idle' && g.time - lastMove > 1.2 && Math.abs(hog.p.x - 47) > 3) {
         lastMove = g.time; g.dribbleMove(hog, { x: 0, y: (Math.floor(g.time) % 2 ? 1 : -1) });
@@ -64,6 +67,8 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
     for (const t of [0, 1] as const) {
       const ps = [...new Set(g.teams[t].roster)].sort((x, y) => y.box.pts - x.box.pts);
       const top = hog && t === 0 ? hog : ps[0];
+      if (hit.has(top.id)) topMax++;
+      for (const p of g.teams[t].onCourt) notchEnd[[25, 50, 75].filter((n) => p.rhythm >= n).length]++;
       const tf = ps.reduce((n, p) => n + p.box.fga, 0);
       share += top.box.fga / Math.max(1, tf);
       teamPts += g.teams[t].score; stars.pts += top.box.pts; stars.fga += top.box.fga; stars.fgm += top.box.fgm; stars.n++;
@@ -75,6 +80,8 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
     }
   }
   { const sd = OPEN_COURT.startD; const b = [0, 20, 40, 60, 80].map((lo) => sd.filter((x) => x >= lo && x < lo + 20).length); console.log(`OPEN [${mode}] runs/g ${(OPEN_COURT.runs / 12).toFixed(1)} halfcourt ${(OPEN_COURT.half / 12).toFixed(1)} shots/g ${(OPEN_COURT.shots / 12).toFixed(1)} start-dist buckets 0-20/20-40/40-60/60-80: ${b.join('/')}`); OPEN_COURT.runs = 0; OPEN_COURT.shots = 0; OPEN_COURT.startD = []; OPEN_COURT.half = 0; }
+  const q = (xs: number[]) => xs.length ? [0.25, 0.5, 0.75].map((f) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length * f)].toFixed(2)).join('/') : '-';
+  console.log(`RHYTHM [${mode}] players maxing per game ${(maxAt.length / (stars.n / 2)).toFixed(1)} (when, game fraction q25/q50/q75: ${q(maxAt)}); top scorers maxing ${topMax}/${stars.n}; ults per game ${(ultAt.length / (stars.n / 2)).toFixed(1)} at ${q(ultAt)}; starters ending at notch 0/1/2/3: ${notchEnd.join('/')}`);
   if (ab.n) console.log(`COACH A/B [${mode}] smart ${(ab.smart / ab.n).toFixed(1)} ppg vs random ${(ab.random / ab.n).toFixed(1)} ppg, smart won ${ab.wins}/${ab.n}`);
   if (hg.n) console.log(`HOGLINE [${mode}] ${(hg.pts / hg.n).toFixed(1)} pts on ${(hg.fga / hg.n).toFixed(1)} FGA (${(100 * hg.share / hg.n).toFixed(0)}% of team shots), FG ${(100 * hg.fgm / hg.fga).toFixed(1)}%, ended at tier 0/1/2/3: ${hg.tiers.join('/')}`);
   for (const [k, v] of Object.entries(con)) console.log(`  [${mode}] tier ${k}: ${v.n} shots, avg contest ${(100 * v.c / v.n).toFixed(0)}%, open ${(100 * v.open / v.n).toFixed(0)}%, FG ${(100 * v.m / v.n).toFixed(0)}% ${JSON.stringify(v.when ?? {})}`);

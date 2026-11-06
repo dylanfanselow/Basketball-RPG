@@ -98,7 +98,7 @@ export function initDevPanel() {
     if (!s || !p) { liveBox.textContent = 'No game running.'; return; }
     const top = ['three', 'mid', 'layup', 'dunk', 'floater', 'speed', 'ballSpeed', 'ankleBreak', 'perimD', 'steal', 'block', 'rebound', 'screen', 'driveStability', 'passSpeed'];
     liveBox.textContent = [
-      `state ${p.state}  stamina ${(p.stamina * 100).toFixed(0)}%  ult ${p.ultCharge.toFixed(0)}  on court: ${s.userOnCourt}`,
+      `state ${p.state}  stamina ${(p.stamina * 100).toFixed(0)}%  rhythm ${p.rhythm.toFixed(0)}  on court: ${s.userOnCourt}`,
       `walk ${p.walkSpeed.toFixed(1)} ft/s  sprint ${p.sprintSpeed.toFixed(1)}  jump ${p.jumpVel.toFixed(1)}  pass ${p.passSpeed.toFixed(0)} ft/s  safe pass ${p.safePassDist.toFixed(0)} ft`,
       top.map((k) => `${k} ${p.sub[k].toFixed(0)}`).join(' · '),
       `moves: ${[...p.mods.moves].join(', ') || '(basic only)'}   shots: ${[...p.mods.shotTypes].join(', ') || '-'}`,
@@ -217,7 +217,9 @@ export function initDevPanel() {
         el('option', { value: '' }, '(none)'), ...Object.entries(ULTIMATES).map(([id, u]) => el('option', { value: id, selected: c.ult.id === id }, u.name)))));
     ult.append(slider('evolution lvl', 0, 2, 1, c.ult.level, (v) => { c.ult.level = v; syncLive(); }));
     ult.append(el('div', { class: 'row' },
-      btn('Fill meter', () => { const p = livePlayer(); if (p) p.ultCharge = 100; }),
+      btn('Fill rhythm', () => { const p = livePlayer(); if (p && app.sim) app.sim.addRhythm(p, 999, 'dev'); }),
+      btn('Rhythm −25', () => { const p = livePlayer(); if (p && app.sim) app.sim.setRhythm(p, p.rhythm - 25); }),
+      btn('Reset my ult', () => { const p = livePlayer(); if (p && app.sim) delete app.sim.ultsUsed[p.id]; }),
       btn('+3 evo points', () => { c.ult.evoPoints += 3; app.changed(); }),
     ));
     root.append(section('Ultimate', ult));
@@ -317,6 +319,7 @@ export function initDevPanel() {
     }
     for (const k of Object.keys(ATT) as (keyof typeof ATT)[]) at.append(check(`behaviour: ${k}`, ATT[k], (v) => { ATT[k] = v; }));
     at.append(el('div', { class: 'note' }, `Tiers start at heat ${HEAT_AT.slice(1).join(' / ')} (≈ % of the team's shots, mostly). They never cool, and only go up while he beats the current coverage (≥3 shots at ≥1 pt/shot or ≥50%).`));
+    at.append(check('Shot chance equation (top bar; replaces the rhythm meter)', !!app.settings.debug.equation, (v) => { app.settings.debug.equation = v; }));
     at.append(el('pre', { class: 'live', id: 'attRead' }, ''));
     root.append(section('Attention (doubles / triples)', at));
     // one shared timer: the live heat + matchup readout
@@ -331,7 +334,9 @@ export function initDevPanel() {
       const eff = `effort: ${g.teams[0].def.id} ${g.effort[0] ? 'ON' : 'off'} · ${g.teams[1].def.id} ${g.effort[1] ? 'ON' : 'off'}`;
       const calls = [0, 1].map((t) => `${g.teams[t].def.id} calls: ${Object.entries(g.playLog[t]).map(([k, l]) => `${k} ${l.pts}/${l.runs}`).join(', ') || '-'}`);
       const reads = g.user ? `your moves: ${[...new Set((g.moveLog[g.user.id] ?? []).map((m) => m.id))].map((id) => `${id} ${(g.moveRead(g.user!, id) * 100).toFixed(0)}%`).join(', ') || '-'}  fav side ${g.favoriteSide(g.user).toFixed(1)}` : '';
-      e.textContent = [...rows, tr, sc, eff, reads, ...calls].join('\n');
+      const rh = g.user ? `rhythm: you ${g.user.rhythm.toFixed(0)} (methods: ${[...g.user.methods].map(([k, n]) => `${k}×${n}`).join(', ') || '-'})` : '';
+      const top = g.players.filter((p) => p !== g.user).sort((a, b) => b.rhythm - a.rhythm).slice(0, 3).map((p) => `${p.name} ${p.rhythm.toFixed(0)}${g.ultsUsed[p.id] ? ' (ult used)' : ''}`).join(', ');
+      e.textContent = [...rows, tr, sc, eff, reads, rh, `rhythm leaders: ${top}`, ...calls].join('\n');
     }, 500);
 
     // multi-angle players
