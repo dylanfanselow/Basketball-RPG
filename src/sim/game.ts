@@ -14,7 +14,7 @@ import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
-import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor } from './ultimates';
+import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
@@ -1194,7 +1194,10 @@ export class GameSim {
       return;
     }
 
-    if (inp.x) tryActivateUlt(this, u);
+    // round 55: □ = the ult; while it's active, □ again = its fake (step-back fake / hang-time stall), △ = pass out (Lv3)
+    const myUlt = this.ult.active && this.ult.active.pid === u.id ? this.ult.active : null;
+    if (inp.x) { if (myUlt) ultAction(this, u, 'fake'); else tryActivateUlt(this, u); }
+    if (inp.y && myUlt?.level.passOut && ultAction(this, u, 'pass', passTarget)) { ux.yPending = false; ux.aPending = false; return; }
     const shotUp = this.ball.st.kind === 'shot';
     u.boxOutHeld = shotUp && inp.bHeld; // ○ held while a shot is in the air = box out (either side)
     u.boxingOut = u.boxOutHeld && u.z === 0;
@@ -1384,7 +1387,7 @@ export class GameSim {
       if (ps.type === 'dunk') chance *= [0.6, 0.6, 0.8, 1][Math.min(3, crowdAt('dunk', ev.contestBy))]; // a dunk into a crowd gets blocked like any finish (round 48)
       if (ps.windmill) chance *= WINDMILL_BLOCK; // the ball swung away from him
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
-      if (chase && along < 0.4) chance = Math.max(chance, this.ult.active!.level.blockChance);
+      if (chase) chance = Math.max(chance, this.ult.active!.level.blockChance); // round 55: from any angle, almost no matter what
       if (this.rng.chance(chance)) {
         d.box.blk++; p.box.fga++; this.heatAfterShot(p, false, ev);
         if (ev.pts === 3) p.box.tpa++;
@@ -1393,7 +1396,15 @@ export class GameSim {
         this.rhythmGain(d, 'block'); this.rhythmLoss(p, 'blocked');
         if (d === this.user) applyTrust(this.trust, 'stop');
         if (chase && this.ult.active!.level.keepPossession) {
+          const go = !!this.ult.active!.level.swatAndGo;
           this.giveBall(d); this.changePossessionLive(d.team);
+          if (go) {
+            // Swat & Go: grab it and run — the break is on, and his next finish is boosted
+            this.transitionUntil = Math.max(this.transitionUntil, this.time + 5);
+            d.mods.removeHooks('swatGo');
+            d.mods.addHook('shot', 'swatGo', (c) => (['layup', 'dunk', 'euro', 'floater', 'alleyOop', 'alleyOopLayup', 'push'].includes(c.type) ? { label: 'ULT Swat & Go', mult: 1.2 } : null), this.time + 6);
+            this.emit({ kind: 'move', text: 'SWAT & GO!', pid: d.id, big: true });
+          } else this.emit({ kind: 'move', text: 'Pinned to the glass!', pid: d.id });
         } else {
           // swatted: the ball sails away hard and high, nobody can touch it for a moment, the shooter is rocked
           const away = norm(add(norm(sub(p.p, d.p)), v(this.rng.range(-0.6, 0.6), this.rng.range(-0.6, 0.6))));
@@ -1543,8 +1554,8 @@ export class GameSim {
     b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 4), vz: -2, lastTeam: st.from.team };
   }
 
-  pass(from: Player, to: Player) {
-    if (this.holder() !== from || from.busy) return;
+  pass(from: Player, to: Player, force = false) {
+    if (this.holder() !== from || (from.busy && !force)) return; // force: an ult kick-out (mid-air)
     const ps = this.passSafety(from, to);
     const { lead, d, safe, overhead } = ps;
     const driving = len(from.vel) > 9 || from.state === 'dribbleMove';
@@ -2254,6 +2265,12 @@ export class GameSim {
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
         if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.rhythmLoss(nd, 'posterized'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
+      }
+      // round 55: the Free-Throw-Line Dunk posterizes everyone in front of him
+      const lane = posterLane(this, s);
+      if (lane.length) {
+        for (const nd of lane) { this.knockDown(nd, 1.2, 'poster'); this.rhythmLoss(nd, 'posterized'); }
+        this.emit({ kind: 'poster', text: `POSTERIZED ${lane.length > 1 ? `${lane.length} OF THEM` : lane[0].name}!`, big: true });
       }
       this.checkLeftMan(s, st.ev.contest);
       this.assistCand = null;

@@ -1,30 +1,39 @@
 {
-  "_doc": "Ultimates are a separate system unlocked by story flag ult_unlocked. Each has evolution levels bought with milestone points (50-pt game, game winner, triple-double...).",
+  "_doc": "Ultimates are a separate system unlocked by story flag ult_unlocked. Each has evolution levels bought with milestone points (50-pt game, game winner, triple-double...). Round 55: the owner's set — Double Step-Back (PG/SG), Free-Throw-Line Dunk (SG/SF/PF), Chase-Down Block (PF/C). While your ult is active, the ult button (square) again = its fake, triangle = pass out (top levels).",
   "deepStepback": {
-    "name": "Deep Step-Back", "positions": ["PG", "SG", "SF"], "context": "ball",
-    "desc": "From around the 3PT line, an explosive step-back into deep-3 range. The next shot ignores most of the contest.",
+    "name": "Double Step-Back", "positions": ["PG", "SG"], "context": "ball",
+    "desc": "Around the 3PT line: two explosive step-backs into deep range; the three out of it ignores most of the contest.",
     "levels": [
-      { "name": "Deep Step-Back",        "cost": 0, "stepFt": 5.5, "contestMult": 0.25, "shotBonus": 1.25, "window": 1.4 },
-      { "name": "Double Step-Back",      "cost": 2, "stepFt": 7.5, "contestMult": 0.18, "shotBonus": 1.35, "window": 1.6 },
-      { "name": "Step-Back Step-Through","cost": 3, "stepFt": 7.5, "contestMult": 0.10, "shotBonus": 1.45, "window": 1.8, "stepThroughFollow": true }
+      { "name": "Double Step-Back",        "cost": 0, "stepFt": 5.5, "contestMult": 0.2, "shotBonus": 1.3, "window": 2.0,
+        "info": "Two step-backs; the deep three out of it is barely contested." },
+      { "name": "Step-Back Step-Through",  "cost": 2, "stepFt": 5.5, "contestMult": 0.2, "shotBonus": 1.3, "window": 2.4, "fake": true, "finishMult": 1.25, "finishContest": 0.3,
+        "info": "□ again = a fake everyone bites on, then stick to the rim + ✕ = Step-Through (boosted finish)." },
+      { "name": "Step-Back Playmaker",     "cost": 3, "stepFt": 5.5, "contestMult": 0.2, "shotBonus": 1.3, "window": 2.6, "fake": true, "finishMult": 1.25, "finishContest": 0.3, "passOut": true,
+        "info": "△ passes out of it (even in the air); the kick-out shot is wide open." }
     ]
   },
   "ftTakeoff": {
-    "name": "Free-Throw-Line Takeoff", "positions": ["PG", "SG", "SF", "PF"], "context": "ball",
-    "desc": "Driving within ~19 ft, take off from the free-throw line and fly in for a dunk that nearly can't be stopped.",
+    "name": "Free-Throw-Line Dunk", "positions": ["SG", "SF", "PF"], "context": "ball",
+    "desc": "Driving within ~20 ft: take off from the free-throw line and posterize everyone in front of you.",
     "levels": [
-      { "name": "Takeoff",            "cost": 0, "range": 19, "makePct": 0.88, "contestMult": 0.30 },
-      { "name": "Posterizer Takeoff", "cost": 2, "range": 20, "makePct": 0.92, "contestMult": 0.18, "stunDefenders": true },
-      { "name": "Skywalker",          "cost": 3, "range": 22, "makePct": 0.95, "contestMult": 0.10, "stunDefenders": true }
+      { "name": "Free-Throw-Line Poster", "cost": 0, "range": 20, "makePct": 0.9, "contestMult": 0.25,
+        "info": "Flies in from the line; on the make every defender in front of you gets posterized." },
+      { "name": "Hang Time",              "cost": 2, "range": 20, "makePct": 0.92, "contestMult": 0.2, "stall": true,
+        "info": "□ in the air = a stall fake: you hang, the jumpers come down, nobody can contest." },
+      { "name": "Kick-Out",               "cost": 3, "range": 21, "makePct": 0.94, "contestMult": 0.15, "stall": true, "passOut": true,
+        "info": "△ in the air passes out right before the slam; the defense collapsed, so he's wide open." }
     ]
   },
   "chaseDown": {
-    "name": "Chase-Down Block", "positions": ["SF", "PF", "C"], "context": "defense",
-    "desc": "Lock onto the ball handler. You get a burst of speed, and blocking from behind becomes possible (normally very hard).",
+    "name": "Chase-Down Block", "positions": ["PF", "C"], "context": "defense",
+    "desc": "Lock onto the ball: you run super fast and go up to block it almost no matter what.",
     "levels": [
-      { "name": "Chase-Down",         "cost": 0, "speedMult": 1.45, "duration": 2.4, "blockChance": 0.70 },
-      { "name": "Freight Train",      "cost": 2, "speedMult": 1.65, "duration": 2.8, "blockChance": 0.80 },
-      { "name": "Pinned to the Glass","cost": 3, "speedMult": 1.85, "duration": 3.2, "blockChance": 0.90, "keepPossession": true }
+      { "name": "Chase-Down",           "cost": 0, "speedMult": 1.9, "duration": 3.0, "blockChance": 0.93,
+        "info": "Locks onto the ball, super speed, blocks it ~93% of the time." },
+      { "name": "Pinned to the Glass",  "cost": 2, "speedMult": 1.95, "duration": 3.2, "blockChance": 0.95, "keepPossession": true,
+        "info": "Pins it on the glass: your team keeps the ball." },
+      { "name": "Swat & Go",            "cost": 3, "speedMult": 2.0, "duration": 3.4, "blockChance": 0.96, "keepPossession": true, "swatAndGo": true,
+        "info": "Grab it and go: your teammates leak out on the break and your next finish is boosted." }
     ]
   }
 }

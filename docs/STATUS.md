@@ -137,6 +137,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`DK_GATHER1/2`, `DK_LOAD1/2`), all dunk clips re-keyed, `oopClip` × 5 (`shot_oop`, `_oneHand`, `_tomahawk`,
   `_reverse`, `_windmill`; sheet now 1007 frames); coach `endgame` / `topScorer` (closing-time isos);
   `rhythmDelta.data` `base` / `times` / `decay` → two-line `rhythmPop` with `popEnds` stacking.
+  Round 55 ultimates: `ultimates.json` (Double Step-Back / Free-Throw-Line Dunk / Chase-Down, `info` per level);
+  `ultimates.ts` `UltActive` (`at`, `nextAt` second step-back, `stalled`, `from`, `cinematic`), `ultAction(fake|pass)`,
+  `posterLane`, `AURA_COLOR`, `CINE_MAX` / `CINE_SPEED`, `cpuUltFor` by position; `game.ts` □ / △ routing in
+  `handleUser`, `pass(…, force)`, chase-down any angle + Swat & Go; anim `shot_dunk_clutch`; `render/aura.ts` `UltFx`
+  (16 tinted sprite copies in two rings + 22 pooled `aura_wisp` flames, shade at depth 4000, lifted sprites 4100,
+  banner); `sfx.duck`; `ControllerHud` ULT Fake / Hang Time / Kick Out labels.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

@@ -98,7 +98,7 @@ class Sfx {
     src.start(t, Math.random() * 1.5, (o.a ?? 0.004) + o.d + 0.05);
   }
 
-  private tone(o: { type?: OscillatorType; f: number; f2?: number; peak: number; a?: number; d: number; pan?: number; at?: number; vib?: { rate: number; depth: number }; lp?: number }) {
+  private tone(o: { type?: OscillatorType; f: number; f2?: number; peak: number; a?: number; d: number; pan?: number; at?: number; vib?: { rate: number; depth: number }; lp?: number; dest?: AudioNode }) {
     const ctx = this.ctx!;
     const t = ctx.currentTime + (o.at ?? 0);
     const osc = ctx.createOscillator();
@@ -114,11 +114,28 @@ class Sfx {
     this.env(g, t, o.peak, o.a ?? 0.004, o.d);
     let node: AudioNode = osc;
     if (o.lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; node.connect(f); node = f; }
-    node.connect(g).connect(this.out(o.pan ?? 0));
+    node.connect(g).connect(o.dest ?? this.out(o.pan ?? 0));
     osc.start(t); osc.stop(t + (o.a ?? 0.004) + o.d + 0.05);
   }
 
   private ok() { return !!this.ctx && this.ctx.state === 'running' && !this.settings.muted; }
+
+  /**
+   * Round 55: ultimate cinematic — everything goes quiet (sfx + crowd buses ducked) and a deep whoosh plays on the
+   * master (so it isn't ducked with them); off brings the arena back.
+   */
+  duck(on: boolean) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, s = this.settings;
+    for (const [bus, base] of [[this.sfxBus, s.sfx], [this.crowdBus, s.crowd]] as [GainNode, number][]) {
+      bus.gain.cancelScheduledValues(t);
+      bus.gain.setTargetAtTime(on ? base * 0.12 : base, t, on ? 0.05 : 0.18);
+    }
+    if (on && this.ok()) {
+      this.tone({ f: 70, f2: 38, peak: 0.55, a: 0.04, d: 0.9, dest: this.master });
+      this.noiseHit({ type: 'lowpass', f: 1800, f2: 160, q: 2, peak: 0.35, a: 0.05, d: 0.8, dest: this.master });
+    }
+  }
 
   // ---------- sounds ----------
   /** Ball hitting hardwood. hard 0..1 scales loudness. */

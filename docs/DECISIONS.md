@@ -158,6 +158,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 55: ultimates (owner's design).**
+  - **Cinematic:** slow-mo (0.38×, game clock too; ≤ 1.7 sim s, 2.2 for the chase-down), screen darkened around the ult
+    player (+ ball, chase target), sound ducked with a deep whoosh. For **your ult and any ult against your team**; a
+    CPU teammate's ult gets aura + banner only. Every ult gets a banner. Only stars have ults.
+  - **Aura by position:** PG blue, SG purple, SF yellow, PF green, C red — a thick pixel outline glow with flame wisps
+    rising (owner's reference image).
+  - **Double Step-Back** (PG, SG): Lv2 fake (□ again) into Step-Through, Lv3 pass out (△). **Free-Throw-Line Dunk**
+    (SG, SF, PF): posterizes everyone in its lane; Lv2 Hang Time stall (□ in the air), Lv3 Kick-Out (△ in the air).
+    **Chase-Down** (PF, C): lock-on, speed ×1.9, ~93% block from any angle; Lv2 Pinned to the Glass, Lv3 Swat & Go.
+  - Owner: the fake uses the ult button (□); passing out is △.
 - **Round 54: lobs, oop dunks, dunk variety, closing time, rhythm pop.**
   - **Lobs a little less automatic:** alley-oop base 84% / 76% (0 / 5 ft, was 90 / 82), oop layup 68 / 56 (was 78 / 66),
     contestW 0.6, oop windup 0.2 s (was 0.16, so the slam reads), timing term 0.65–1. Sims: ~61% made (was 74%).

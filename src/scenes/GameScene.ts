@@ -29,6 +29,8 @@ import { ultLevelName } from '../sim/ultimates';
 import { topStats } from '../sim/boxScore';
 import { partsVersion } from '../render/faceParts';
 import { buildIcons } from '../render/roomArt';
+import { UltFx, LIFT_DEPTH } from '../render/aura';
+import { CINE_SPEED } from '../sim/ultimates';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -87,6 +89,9 @@ export class GameScene extends Phaser.Scene {
   rhythmNum!: Phaser.GameObjects.Text;
   rhythmTag!: Phaser.GameObjects.Text;
   rhythmIcon!: Phaser.GameObjects.Image;
+  /** Round 55: ult flame auras, cinematic shade and banner. */
+  ultFx!: UltFx;
+  private cineWas = false;
   /** Round 53: the short shot chance, top right. */
   shotText!: Phaser.GameObjects.Text;
   /** Round 53: your assignment just switched (circle flash + label). */
@@ -143,7 +148,7 @@ export class GameScene extends Phaser.Scene {
   init(data: GameInit) {
     this.initData = data;
     this.mode = data.mode ?? 'practice';
-    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.three = data.three; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = []; this.popEnds = [];
+    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.three = data.three; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = []; this.popEnds = []; this.cineWas = false; sfx.duck(false);
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
     this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear(); this.shuffling.clear();
   }
@@ -169,7 +174,7 @@ export class GameScene extends Phaser.Scene {
     this.buildSprites();
     this.cameras.main.setBackgroundColor('#0d0f1a');
     this.makeHud();
-    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); });
+    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); });
     sfx.setArena(true); // crowd murmur only while a game is on
     app.listeners.add(this.onAppChanged);
     this.events.once('shutdown', () => app.listeners.delete(this.onAppChanged));
@@ -328,6 +333,7 @@ export class GameScene extends Phaser.Scene {
     this.ultText = fixed(this.add.text(VIEW_W - 16, VIEW_H - 252, '', { fontFamily: FONT, fontSize: '13px', color: '#ffffff', align: 'right' }).setOrigin(1, 0).setDepth(9001));
     this.trustText = fixed(this.add.text(8, 97, '', { fontFamily: FONT, fontSize: '12px', color: '#cfe8ff', lineSpacing: 2 }).setDepth(9001));
     this.ctrl = new ControllerHud(this, VIEW_W, VIEW_H);
+    this.ultFx = new UltFx(this, VIEW_W, VIEW_H);
     this.feedText = fixed(this.add.text(VIEW_W - 16, 100, '', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'right', lineSpacing: 3 }).setOrigin(1, 0).setDepth(9001));
     this.benchText = fixed(this.add.text(VIEW_W / 2, 260, '', { fontFamily: FONT, fontSize: '22px', color: '#ffffff', align: 'center', backgroundColor: '#000000aa', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(9002));
     this.bigText = fixed(this.add.text(VIEW_W / 2, 200, '', { fontFamily: FONT, fontSize: '40px', color: '#ffdd33', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(9003).setAlpha(0));
@@ -355,7 +361,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sim = this.sim;
-    const speed = app.settings.timeScale * (sim.userOnCourt || sim.cfg.mode === 'practice' ? 1 : app.settings.benchSpeed);
+    // round 55: an ult's cinematic slows the whole game (clock included)
+    const speed = app.settings.timeScale * (sim.userOnCourt || sim.cfg.mode === 'practice' ? 1 : app.settings.benchSpeed) * UltFx.speed(sim, CINE_SPEED);
     const step = 1 / 60;
     this.acc += Math.min(0.1, deltaMs / 1000) * speed;
     // button presses are latched until a sim step consumes them (in slow motion a frame can pass without a step)
@@ -445,7 +452,14 @@ export class GameScene extends Phaser.Scene {
       case 'steal': sfx.steal(pan); if (home) sfx.cheer(0.55); else sfx.groan(); break;
       case 'ankles': sfx.squeak(pan, 1.2); sfx.cheer(1); break;
       case 'poster': sfx.cheer(1); break;
-      case 'ult': if (e.big) sfx.cheer(0.9); break;
+      case 'ult':
+        if (e.big && d.id) {
+          // round 55: every ult gets a banner; yours (and ones against you) go cinematic: slow, dark, quiet
+          const who = this.sim.players.find((q) => q.id === e.pid);
+          this.ultFx.showBanner(d.name ?? 'Ultimate', who ? `${who.name}${who === this.sim.user ? ' (you)' : ''}` : '', d.pos ?? 'PG', FONT);
+          if (d.cinematic) sfx.duck(true); else sfx.cheer(0.9);
+        }
+        break;
       case 'foul': case 'oob': sfx.whistle(false); break;
       case 'charge': sfx.whistle(true); if (home) sfx.cheer(0.6); break;
       case 'violation': sfx.buzzer(); break;
@@ -493,7 +507,7 @@ export class GameScene extends Phaser.Scene {
     if (e.kind === 'move' && !mine) return;
     this.feed.unshift({ text: e.text, t: this.time.now, color });
     this.feed = this.feed.slice(0, 7);
-    if (e.big) {
+    if (e.big && !(e.kind === 'ult' && e.data?.id)) {
       this.bigText.setText(e.text).setAlpha(1).setScale(0.6);
       this.tweens.add({ targets: this.bigText, scale: 1, duration: 180, ease: 'Back.Out' });
       this.tweens.add({ targets: this.bigText, alpha: 0, delay: 900, duration: 500 });
@@ -700,11 +714,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.pumpAngles();
+    // round 55: ult aura + cinematic shade (lifts the ult player above it); the sound comes back when it ends
+    this.ultFx.update(sim, this.sprites, this.time.now);
+    if (this.cineWas && !this.ultFx.cineOn) sfx.duck(false);
+    this.cineWas = this.ultFx.cineOn;
 
     // ball (behind the holder when an angled frame has it on the far side of the body)
     const b = sim.ball;
     const inHand = !!this.heldBall && (b.st.kind === 'held' || (b.st.kind === 'dead' && !!sim.inb?.hasBall));
     this.ballG.clear().setDepth(inHand && this.heldBall!.behind !== undefined ? this.heldBall!.behind : sy(b.p.y) + 1);
+    if (this.ultFx.lifted.length) this.ballG.setDepth(LIFT_DEPTH + 3); // the ball stays lit in an ult cinematic
     const bx = inHand ? this.heldBall!.x : sx(b.p.x), by = inHand ? this.heldBall!.y : sy(b.p.y, b.z);
     this.shadows.fillStyle(0x000000, 0.3); this.shadows.fillEllipse(sx(b.p.x), sy(b.p.y), 16, 5);
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);

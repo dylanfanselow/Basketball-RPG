@@ -201,7 +201,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // round 51: a CPU star in full rhythm uses his ultimate when the moment fits (once a game)
   const ult = p.rhythm >= 100 && !sim.ultsUsed[p.id] ? sim.ultOf(p) : null;
   if (ult && !p.deadDribble && inFrontcourt(side, p.p)) {
-    if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && sim.rng.chance(0.12) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.36; return; }
+    if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && sim.rng.chance(0.12) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.75; return; } // round 55: after both step-backs
     if (ult.id === 'ftTakeoff' && d >= 9 && d <= 19 && dot(p.vel, norm(sub(rim, p.p))) > 5 && tryActivateUlt(sim, p)) return;
   }
   // round 48: open floor on the run (transition / coming up the floor, moving toward the rim) — nobody in front of him

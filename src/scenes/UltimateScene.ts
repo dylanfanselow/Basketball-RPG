@@ -52,7 +52,7 @@ export class UltimateScene extends Phaser.Scene {
       const eq = c.ult.id === id;
       lines.push(`${i === this.idx ? '▶' : ' '} ${d.name}${eq ? '   [EQUIPPED]' : ''}   (${d.positions.join('/')})`);
       lines.push(`    ${d.desc}`);
-      d.levels.forEach((lv, li) => lines.push(`    ${eq && li <= c.ult.level ? '★' : '☆'} Lv${li + 1} ${lv.name}${lv.cost ? `  (${lv.cost} pts)` : ''}`));
+      d.levels.forEach((lv, li) => lines.push(`    ${eq && li <= c.ult.level ? '★' : '☆'} Lv${li + 1} ${lv.name}${lv.cost ? `  (${lv.cost} pts)` : ''}${lv.info ? ` — ${lv.info}` : ''}`));
       lines.push('');
     });
     this.body.setText(lines.join('\n'));

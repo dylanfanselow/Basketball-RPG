@@ -815,6 +815,12 @@ CLIPS.push(
     { t: 1, pose: DK_LAND }] },
 );
 
+// Round 55: Hang Time (Free-Throw-Line Dunk Lv2): the ball comes down to the hip in the air (the stall), he hangs
+// tucked, then brings it back up and throws it down. Release 0.7 like the other dunks.
+CLIPS.push(dunkClip('shot_dunk_clutch', [[0, dkx('tuck', [9, 104], [7, 103], [1, 3])], [0.2, dkx('tuck', [8, 62], [10, 70], [1, -1], { lean: 6 })],
+  [0.38, dkx('tuck', [7, 60], [11, 72], [1, -1], { lean: 8 })], [0.55, dkx('tuck', [4, 98], [9, 92], [0, 3], { lean: 4 })],
+  [0.7, dkx('swing', [15, 101], [8, 90], [1, 2], { lean: -8 })], [0.85, dkx('swing', [12, 106], [10, 105], null)], [1, DK_LAND]]));
+
 // Round 54: alley-oop slams (oop dunk styles, dunks.ts OOP_DUNKS). Caught in the air with the hands up, then a clear
 // load, a hard finish through the rim and a hang. Release 0.5, 11 frames.
 const oopClip = (name: string, keys: [number, Pose][]): Clip => ({ name, frames: 11, release: 0.5, post: 0.6, keys: [...keys, [1, DK_LAND] as [number, Pose]].map(([t, pose]) => ({ t, pose })) });

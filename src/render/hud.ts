@@ -121,6 +121,13 @@ export class ControllerHud {
       : sim.diveable() ? { a: 'Dive', y: onO ? 'Call' : 'Steal', b: onO ? 'Screen' : 'Charge', x: 'Ultimate' }
       : onO ? { a: 'Rebound', y: 'Call', b: 'Screen', x: 'Ultimate' }
       : { a: 'Block', y: 'Steal', b: 'Charge', x: 'Ultimate' };
+    // round 55: while your ult is live, □ = its fake (Lv2+) and △ = pass out of it (Lv3)
+    const live = onCourt && sim.ult.active && sim.ult.active.pid === u!.id ? sim.ult.active : null;
+    if (live) {
+      if (live.id === 'deepStepback' && live.level.fake) actions.x = 'ULT Fake';
+      if (live.id === 'ftTakeoff' && live.level.stall && !live.stalled) actions.x = 'Hang Time';
+      if (live.level.passOut && hasBall) actions.y = 'Kick Out';
+    }
     this.l2Text.setVisible(hasBall && sim.mates(u!).length > 0).setColor(inp.held('icon') ? '#ffe14d' : '#cfe8ff');
     this.postText.setVisible(hasBall).setColor(inp.held('post') ? '#ffe14d' : '#cfe8ff');
     for (const b of this.btns) {

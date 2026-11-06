@@ -24,7 +24,7 @@ npm run dev
 | **✕** (bottom) | Shoot. Close shots follow the stick: **away** = floater (or **Fade Away** anywhere, if unlocked), **toward** = layup / push shot, **sideways** = hook (Euro Step instead on a drive, if unlocked). Tap = pump fake | — | Block / contest |
 | **△** (top) | Tap: pass to the teammate under the yellow **dot** (aim with the stick). **Hold: lob** (an alley-oop when the dot says LOB) | Call for the ball (a *request*: trust decides) | Swipe steal / deflect passes |
 | **○** (right) | Dribble move. Dribbling up/down the screen, push the stick the **other way** = Crossover; toward the hoop = hesi/spin; away = step-back; same way = in-and-out | Set a screen | Take a charge |
-| **□** (left) | Ultimate | Ultimate | Ultimate |
+| **□** (left) | Ultimate (while it's live: its fake / Hang Time) | Ultimate | Ultimate |
 | Left stick / R2 | Move / tap for a sprint burst (then a cooldown) | | |
 | **L2** (hold) | **Post up**: back your man down (stick toward / away from the rim only) | | |
 | **R1** (hold) | Icon pass: teammates wear ✕ ○ □ △ | | |
@@ -50,6 +50,11 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - **Losing it:** getting posterized, turnovers, leaving your man (only if nobody contested his shot, and not right after a switch), getting your ankles broken, forced bad shots and getting blocked. A missed play assignment no longer costs rhythm (team and coach trust still drop).
   - **Notches:** three of them (◆), each boosting all your stats, the lower ones more.
   - **Ultimate:** a full meter powers it (□), **once a game**, and then the meter drops back to the 3rd notch. Every player has rhythm, and CPU stars use their own ultimates too.
+- **Ultimates (round 55)** — when yours fires (or one is used against your team) the game slows down (clock too), the screen goes dark around the player and the arena goes quiet. Every ult gets a banner and a **flame aura** in the player's position colour: PG blue, SG purple, SF yellow, PF green, C red. A CPU teammate's ult gets the aura and banner only.
+  - **Double Step-Back** (PG, SG; around the 3PT line): two step-backs, the deep three out of it is barely contested. Lv2 *Step-Back Step-Through*: **□ again** = a fake everyone near bites on, then stick to the rim + ✕ = a boosted Step-Through. Lv3 *Step-Back Playmaker*: **△** passes out of it (even in the air) and the kick-out shot is wide open.
+  - **Free-Throw-Line Dunk** (SG, SF, PF; driving within ~20 ft): takes off from the line and posterizes **everyone** in front of you. Lv2 *Hang Time*: **□ in the air** = a stall (you hang, the jumpers come down, no contest). Lv3 *Kick-Out*: **△ in the air** passes out right before the slam.
+  - **Chase-Down Block** (PF, C; on defense): locks onto the ball, super speed, blocks it ~93% of the time from any angle. Lv2 *Pinned to the Glass*: your team keeps it. Lv3 *Swat & Go*: you grab it, the team runs, your next finish is boosted.
+  - Upgrades cost evolution points on the Ultimate screen (dev panel: *evolution lvl* slider, *Fill rhythm*, *Reset my ult*).
   - **Shot chance (round 53):** a short version sits in the top-right corner while you have the ball, e.g. `3PT 37 ×.85 ×.67 = 21%` (base, then your rating, contest, fatigue and perk multipliers).
   - **Switches:** on a fast break, defenders cross-match to the nearest man, you included. Your red circle and cone move to your new man, and it flashes "SWITCH → name".
   - **Dev panel → Attention:** "Shot chance equation" brings the full equation back to the top bar. Under My player: Fill rhythm, Rhythm −25, Reset my ult.
