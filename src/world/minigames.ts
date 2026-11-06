@@ -11,6 +11,20 @@ export interface MiniInput {
   aHeld: boolean;
 }
 export type FaceBtn = 'a' | 'b' | 'x' | 'y';
+import type { CoreStat } from '../sim/data';
+
+/**
+ * Workout orbs (round 42): finishing a set amount of a workout ('orb' event) sends these XP orbs from you to the skill
+ * cards on the HUD (each one costs energy). One full bar on the squat / bench / dribbling mat, every ORB_HITS hits on
+ * the treadmill, every made shot at the hoop.
+ */
+export const ORBS: Record<string, CoreStat[]> = {
+  treadmill: ['mobility', 'mobility'],
+  squat: ['strength', 'mobility'],
+  shoot: ['shooting', 'finishing'],
+  bench: ['strength', 'finishing'],
+  dribble: ['playmaking', 'shooting'],
+};
 export const NO_INPUT: MiniInput = { stick: { x: 0, y: 0 }, a: false, b: false, x: false, y: false, l2: false, r2: false, aHeld: false };
 
 export abstract class MiniGame {
@@ -45,7 +59,7 @@ abstract class RepBar extends MiniGame {
   abstract descendTime: number;
   protected add(v: number) {
     this.fill = Math.min(1, this.fill + v);
-    if (this.fill >= 1) { this.reps++; this.fill = 0; this.descendUntil = this.t + this.descendTime; this.emit('rep'); }
+    if (this.fill >= 1) { this.reps++; this.fill = 0; this.descendUntil = this.t + this.descendTime; this.emit('rep'); this.emit('orb'); }
   }
   get descending() { return this.t < this.descendUntil; }
   protected drainStep(dt: number) { if (!this.descending) this.fill = Math.max(0, this.fill - this.drain * dt); }
@@ -75,6 +89,8 @@ export class TreadmillGame extends MiniGame {
   id = 'treadmill';
   controls = ['○ when the dot is inside the square  (L)', 'Every hit speeds it up'];
   static BASE = 2.2; static HALF = 0.17;
+  /** hits per orb */
+  static ORB_HITS = 5;
   phase = 0; speed = TreadmillGame.BASE; run = 0;
   private hitThisPass = false;
   get dot() { return Math.sin(this.phase); }
@@ -84,7 +100,10 @@ export class TreadmillGame extends MiniGame {
     const inSquare = Math.abs(this.dot) < TreadmillGame.HALF;
     if (!inSquare) this.hitThisPass = false;
     if (inp.b) {
-      if (inSquare && !this.hitThisPass) { this.hitThisPass = true; this.reps++; this.speed *= 1.1; this.emit('hit'); }
+      if (inSquare && !this.hitThisPass) {
+        this.hitThisPass = true; this.reps++; this.speed *= 1.1; this.emit('hit');
+        if (this.reps % TreadmillGame.ORB_HITS === 0) this.emit('orb');
+      }
       else if (!inSquare) { this.miss(); this.speed = Math.max(TreadmillGame.BASE, this.speed * 0.75); }
     }
   }
@@ -164,6 +183,7 @@ export class ShootGame extends MiniGame {
         this.state = 'shot'; this.shotAt = this.t; this.jumpAtRelease = this.jumpFt0(this.meter);
         this.perfect = this.meter >= ShootGame.PERFECT[0] && this.meter <= ShootGame.PERFECT[1];
         this.emit('release'); if (this.perfect) this.emit('perfect'); else if (this.made) this.emit('green');
+        if (this.made) this.emit('orb');
       }
     }
   }

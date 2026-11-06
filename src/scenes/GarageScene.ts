@@ -7,7 +7,7 @@ import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, FaceBtn } from '../world/minigames';
+import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, FaceBtn, ORBS } from '../world/minigames';
 import { RoomDef, Station, RS, syOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
@@ -59,6 +59,8 @@ export class GarageScene extends RoomScene {
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
 
   onActivity(st: Station | null) {
+    // stopped while a made shot was still in the air: its orbs still go
+    if (this.shotOrbPending) { this.shotOrbPending = false; const rim = garageRim(); this.sendOrbs(ORBS.shoot, { x: rim.x, y: rim.y + 20 }); }
     sfx.beltHum(st?.id === 'treadmill');
     this.lastShotPhase = ''; this.played = false;
     (this.piece('squatRack') as Phaser.GameObjects.Sprite | undefined)?.setFrame(st?.id === 'squat' ? 1 : 0);
@@ -223,6 +225,7 @@ export class GarageScene extends RoomScene {
 
   /** Sounds for whatever the mini-game did this frame, plus the timed ones (meter ticks, footfalls, the shot ball). */
   private lastDrib: { clip: string; u: number } | null = null;
+  private shotOrbPending = false;
   playSounds() {
     const m = this.mini;
     if (!m) return;
@@ -238,6 +241,11 @@ export class GarageScene extends RoomScene {
       else if (e === 'release') sfx.release();
       else if (e === 'green') sfx.greenChime();
       else if (e === 'perfect') sfx.perfect();
+      else if (e === 'orb') {
+        // a made shot sends its orbs once the ball is through the net (out of the rim); the rest from your chest
+        if (m instanceof ShootGame) this.shotOrbPending = true;
+        else if (this.activity) this.sendOrbs(ORBS[this.activity.id] ?? [], { x: this.player.x, y: this.player.y - 100 });
+      }
     }
     if (m instanceof DribbleGame && this.playerClip) {
       const { clip, u } = this.playerClip, c = CLIP[clip], prev = this.lastDrib;
@@ -258,7 +266,10 @@ export class GarageScene extends RoomScene {
       // the ball: rim (swish / clank), then the floor, then a bounce on the way back out
       const T = m.t - m.shotAt, phase = m.state !== 'shot' ? '' : T < 0.85 ? 'fly' : T < (m.made ? 1.35 : 1.45) ? 'rim' : T < 1.75 ? 'floor' : 'back';
       if (phase !== this.lastShotPhase) {
-        if (phase === 'rim') { if (m.made) sfx.swish(0, true); else sfx.clank(0); }
+        if (phase === 'rim') {
+          if (m.made) sfx.swish(0, true); else sfx.clank(0);
+          if (this.shotOrbPending && this.activity) { this.shotOrbPending = false; const rim = garageRim(); this.sendOrbs(ORBS[this.activity.id] ?? [], { x: rim.x, y: rim.y + 20 }); }
+        }
         else if (phase === 'floor') sfx.bounce(9);
         else if (phase === 'back') sfx.bounce(5);
         this.lastShotPhase = phase;

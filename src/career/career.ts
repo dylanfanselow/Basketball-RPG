@@ -28,15 +28,34 @@ export interface CareerState {
   forceStarter: boolean;
   /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
   life: { day: number; money: number; energy: number; food: number };
-  /** Skyrim-style skill levels (round 41): each core skill levels on its own XP. Shown on the room HUD's skill cards;
-   *  separate from the `core` ratings for now (nothing feeds the XP yet). */
+  /** Skyrim-style skill levels (round 41): each core skill levels on its own XP. Shown on the room HUD's skill cards.
+   *  Since round 42 a skill's level IS its `core` rating (kept equal by addSkillXp / setStat / spendStatPoint). */
   skills: Record<CoreStat, { level: number; xp: number }>;
 }
 
 export const SKILL_START = 40, SKILL_MAX = 99;
 export const newSkills = () => Object.fromEntries(CORE_STATS.map((s) => [s, { level: SKILL_START, xp: 0 }])) as CareerState['skills'];
-/** XP needed to take a skill from `level` to the next. */
-export const skillXpToNext = (level: number) => 60 + level * 2;
+/** XP needed to take a skill from `level` to the next: the higher the level, the more it takes (40 → 6 orbs, 60 → 12,
+ *  80 → 18). */
+export const skillXpToNext = (level: number) => Math.max(60, (level - 20) * 6);
+/** Workout orbs (round 42): each one carries this much skill XP and costs this much energy to send. */
+export const ORB_XP = 20, ORB_ENERGY = 2;
+/** Pay the energy for one orb; false (and nothing paid) when you're too tired. */
+export function takeOrbEnergy(c: CareerState): boolean {
+  if (c.life.energy < ORB_ENERGY) return false;
+  c.life.energy = Math.max(0, c.life.energy - ORB_ENERGY);
+  return true;
+}
+/** Set a stat: the rating and the skill level move together (the HUD card shows the real rating). */
+export function setStat(c: CareerState, stat: CoreStat, v: number) {
+  const lv = Math.max(1, Math.min(SKILL_MAX, Math.round(v)));
+  c.core[stat] = lv; c.skills[stat].level = lv;
+  if (lv >= SKILL_MAX) c.skills[stat].xp = 0;
+}
+/** Make every skill level equal its rating (old saves, ratings changed elsewhere). */
+export function syncSkillsToCore(c: CareerState) {
+  for (const st of CORE_STATS) setStat(c, st, c.core[st]);
+}
 /** Add skill XP (levels up with carry-over, capped at SKILL_MAX). Returns the levels gained. */
 export function addSkillXp(c: CareerState, stat: CoreStat, n: number): number {
   const sk = c.skills[stat];
@@ -44,13 +63,14 @@ export function addSkillXp(c: CareerState, stat: CoreStat, n: number): number {
   sk.xp += Math.max(0, n);
   while (sk.level < SKILL_MAX && sk.xp >= skillXpToNext(sk.level)) { sk.xp -= skillXpToNext(sk.level); sk.level++; gained++; }
   if (sk.level >= SKILL_MAX) { sk.level = SKILL_MAX; sk.xp = 0; }
+  c.core[stat] = sk.level; // the skill level is the rating
   return gained;
 }
 
 export const newLife = () => ({ day: 1, money: 250, energy: 100, food: 100 });
 
 export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerState {
-  const core = Object.fromEntries(CORE_STATS.map((s) => [s, 50])) as CoreStats;
+  const core = Object.fromEntries(CORE_STATS.map((s) => [s, SKILL_START])) as CoreStats;
   const others = TEAMS.filter((t) => t.id !== teamId).map((t) => t.id);
   const schedule = Array.from({ length: 10 }, (_, i) => others[(i * 7) % others.length]);
   return {
@@ -87,7 +107,7 @@ export function careerUlt(c: CareerState): UltState {
 
 export function spendStatPoint(c: CareerState, stat: keyof CoreStats): boolean {
   if (c.statPoints <= 0 || c.core[stat] >= STAT_MAX) return false;
-  c.statPoints--; c.core[stat] = Math.min(STAT_MAX, c.core[stat] + STAT_POINT_VALUE);
+  c.statPoints--; setStat(c, stat, Math.min(STAT_MAX, c.core[stat] + STAT_POINT_VALUE));
   return true;
 }
 
@@ -134,6 +154,7 @@ export function migrateCareer(c: any): CareerState | null {
   if (c.version === 3) { c.skills = newSkills(); c.version = 4; }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
+  syncSkillsToCore(c as CareerState); // the cards show the real ratings
   return c as CareerState;
 }
 

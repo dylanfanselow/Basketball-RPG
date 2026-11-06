@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
-import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX } from '../src/career/career';
+import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX, takeOrbEnergy, ORB_ENERGY, ORB_XP, spendStatPoint } from '../src/career/career';
 
 const polys = solids();
 const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
@@ -139,12 +139,28 @@ describe('skill levels (round 41)', () => {
     addSkillXp(c, 'mobility', 1e6);
     expect(c.skills.mobility).toEqual({ level: SKILL_MAX, xp: 0 });
   });
+  it('round 42: skill levels are the real ratings, and higher levels need more orbs', () => {
+    const c = newCareer('A', 'SG');
+    expect(c.core.strength).toBe(40);
+    addSkillXp(c, 'strength', skillXpToNext(40));
+    expect(c.core.strength).toBe(41);
+    spendStatPoint(c, 'shooting');
+    expect(c.skills.shooting.level).toBe(c.core.shooting);
+    const orbs = (lv: number) => Math.ceil(skillXpToNext(lv) / ORB_XP);
+    expect(orbs(40)).toBeLessThan(orbs(60)); expect(orbs(60)).toBeLessThan(orbs(90));
+  });
+  it('round 42: each orb costs energy; none when too tired', () => {
+    const c = newCareer('A', 'SG');
+    c.life.energy = ORB_ENERGY + 1;
+    expect(takeOrbEnergy(c)).toBe(true); expect(c.life.energy).toBe(1);
+    expect(takeOrbEnergy(c)).toBe(false); expect(c.life.energy).toBe(1);
+  });
   it('v3 saves migrate to v4 with skills', () => {
     const old: any = { ...newCareer('Old', 'PG'), version: 3 };
     delete old.skills;
     const m = migrateCareer(old)!;
     expect(m.version).toBe(4);
-    expect(m.skills.playmaking).toEqual({ level: 40, xp: 0 });
+    expect(m.skills.playmaking).toEqual({ level: m.core.playmaking, xp: 0 }); // the cards show the save's ratings
   });
 });
 

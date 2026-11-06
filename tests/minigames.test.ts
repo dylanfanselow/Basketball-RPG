@@ -1,6 +1,6 @@
 import { CLIP, sampleClip } from '../src/render/anim';
 import { describe, it, expect } from 'vitest';
-import { DRIBBLE_MOVES, POUND, MiniInput, NO_INPUT, SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
+import { ORBS, DRIBBLE_MOVES, POUND, MiniInput, NO_INPUT, SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, makeMiniGame } from '../src/world/minigames';
 
 const DT = 1 / 60;
 const inp = (p: Partial<MiniInput> = {}): MiniInput => ({ ...NO_INPUT, ...p });
@@ -167,5 +167,28 @@ describe('round 40: dribble moves', () => {
       for (const u of [0, 1]) { const p = sampleClip(cl, u); expect(p.ballLat).toBeGreaterThan(15); expect(p.lat!.fF! - p.lat!.fB!).toBeGreaterThan(30); }
       expect(Math.min(...cl.keys.map((k) => k.pose.ball![1]))).toBeLessThan(6); // it hits the floor
     }
+  });
+});
+
+describe('round 42: workout orbs', () => {
+  it('each station sends the owner\'s orbs', () => {
+    expect(ORBS).toEqual({
+      treadmill: ['mobility', 'mobility'], squat: ['strength', 'mobility'], shoot: ['shooting', 'finishing'],
+      bench: ['strength', 'finishing'], dribble: ['playmaking', 'shooting'],
+    });
+  });
+  it('a full bar sends an orb (squat), the treadmill every 5 hits', () => {
+    const sq = new SquatGame(seeded(1));
+    let orbs = 0;
+    for (let i = 0; i < 200 && sq.reps < 1; i++) { sq.update(DT, inp(i % 2 ? { l2: true } : { r2: true })); orbs += sq.takeEvents().filter((e) => e === 'orb').length; }
+    expect(sq.reps).toBe(1); expect(orbs).toBe(1);
+    const tm = new TreadmillGame(seeded(2));
+    orbs = 0;
+    for (let i = 0; i < 20000 && tm.reps < 10; i++) {
+      const press = Math.abs(tm.dot) < 0.05;
+      tm.update(DT, inp(press ? { b: true } : {}));
+      orbs += tm.takeEvents().filter((e) => e === 'orb').length;
+    }
+    expect(tm.reps).toBe(10); expect(orbs).toBe(2);
   });
 });

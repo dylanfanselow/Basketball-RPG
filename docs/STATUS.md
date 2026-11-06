@@ -153,6 +153,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).
 
 ## Apartment (round 36)
+- Round 42: workout orbs. Mini-games emit `'orb'` (RepBar per rep, treadmill every `ORB_HITS` = 5 hits, a made
+  shot); `ORBS` (minigames.ts) maps station → stats; `GarageScene.playSounds` calls `RoomScene.sendOrbs(stats, from)`
+  (shot orbs wait for the rim phase). `sendOrbs` pays `takeOrbEnergy` (ORB_ENERGY 2) per orb, `updateOrbs` flies them
+  on a Bezier arc to `skillCards`, `landOrb` → `addSkillXp` (ORB_XP 20; `skillXpToNext = (level - 20) × 6`) + pop ring
+  + `sfx.orbPop` / `greenChime`; leftovers land on scene shutdown (`flushOrbs`). Skill level = `core` rating
+  (`setStat`, `syncSkillsToCore` on load, `spendStatPoint`, dev sliders); new careers start at 40. Dev: Energy 100 / 0.
 - Round 41: the roof HUD (`RoomScene.makeHud`, rebuilt by `updateHud` whenever career values change) has energy /
   food, the **level block** (LVL + XP pill, five skill cards drawn with Graphics + `icon_sk_*` pixel icons from
   `roomArt.ts` ICONS), key game, money / day; level-up flash + "+n" per card. `CareerState.skills`

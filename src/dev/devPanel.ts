@@ -1,7 +1,7 @@
 import { app } from '../state';
 import { CORE_STATS, TREES, ULTIMATES, PLAYS, NODES } from '../sim/data';
 import { POSITIONS, HEIGHTS } from '../sim/attributes';
-import { newCareer, CareerState, addSkillXp, newSkills } from '../career/career';
+import { newCareer, CareerState, addSkillXp, newSkills, setStat } from '../career/career';
 import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
@@ -150,12 +150,12 @@ export function initDevPanel() {
 
     // core stats
     const stats = el('div');
-    for (const st of CORE_STATS) stats.append(slider(st, 25, 99, 1, c.core[st], (v) => { c.core[st] = v; syncLive(); }));
+    for (const st of CORE_STATS) stats.append(slider(st, 25, 99, 1, c.core[st], (v) => { setStat(c, st, v); syncLive(); }));
     stats.append(el('div', { class: 'row' },
-      btn('All 40', () => { for (const st of CORE_STATS) c.core[st] = 40; syncLive(); }),
-      btn('All 60', () => { for (const st of CORE_STATS) c.core[st] = 60; syncLive(); }),
-      btn('All 85', () => { for (const st of CORE_STATS) c.core[st] = 85; syncLive(); }),
-      btn('All 99', () => { for (const st of CORE_STATS) c.core[st] = 99; syncLive(); }),
+      btn('All 40', () => { for (const st of CORE_STATS) setStat(c, st, 40); syncLive(); }),
+      btn('All 60', () => { for (const st of CORE_STATS) setStat(c, st, 60); syncLive(); }),
+      btn('All 85', () => { for (const st of CORE_STATS) setStat(c, st, 85); syncLive(); }),
+      btn('All 99', () => { for (const st of CORE_STATS) setStat(c, st, 99); syncLive(); }),
     ));
     stats.append(el('div', { class: 'row' },
       btn('+5 stat pts', () => { c.statPoints += 5; app.changed(); }),
@@ -166,7 +166,9 @@ export function initDevPanel() {
     stats.append(el('div', { class: 'note' }, `Skill levels (HUD cards): ${CORE_STATS.map((st) => `${st.slice(0, 3)} ${c.skills[st].level}`).join(' · ')}`));
     stats.append(el('div', { class: 'row' },
       ...CORE_STATS.map((st) => btn(`+25 ${st.slice(0, 3).toUpperCase()}`, () => { addSkillXp(c, st, 25); app.changed(); }, `+25 ${st} skill XP`)),
-      btn('Skills → 40', () => { c.skills = newSkills(); app.changed(); }),
+      btn('Skills → 40', () => { c.skills = newSkills(); for (const st of CORE_STATS) setStat(c, st, 40); syncLive(); }),
+      btn('Energy 100', () => { c.life.energy = 100; app.changed(); }, 'Refill energy (workout orbs cost energy)'),
+      btn('Energy 0', () => { c.life.energy = 0; app.changed(); }, 'Empty energy (test "TOO TIRED")'),
     ));
     root.append(section('Core stats', stats));
 

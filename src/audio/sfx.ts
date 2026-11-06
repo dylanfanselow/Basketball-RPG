@@ -382,6 +382,18 @@ class Sfx {
     this.tone({ f: 98, f2: 196, peak: 0.25, a: 0.02, d: 0.4 });
   }
   /** A perfect (green) release. */
+  /** Workout XP orbs leaving you (round 42): a soft rising sparkle. */
+  orbSend() {
+    if (!this.ok()) return;
+    this.tone({ type: 'sine', f: 520, f2: 1240, peak: 0.07, a: 0.01, d: 0.22 });
+    this.tone({ type: 'triangle', f: 1560, f2: 2480, peak: 0.025, a: 0.005, d: 0.16, at: 0.04 });
+  }
+  /** An orb landing in its skill card: a bright little pling. */
+  orbPop() {
+    if (!this.ok()) return;
+    this.tone({ f: 1318.5, peak: 0.09, a: 0.002, d: 0.18 });
+    this.tone({ type: 'triangle', f: 2637, peak: 0.03, a: 0.002, d: 0.1, at: 0.02 });
+  }
   greenChime() {
     if (!this.ok()) return;
     for (const [at, f] of [[0, 1046.5], [0.06, 1568], [0.12, 2093]] as const) { this.tone({ f, peak: 0.13, a: 0.003, d: 0.35, at }); this.tone({ type: 'triangle', f: f * 2, peak: 0.04, a: 0.002, d: 0.2, at }); }

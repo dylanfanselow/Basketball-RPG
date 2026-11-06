@@ -138,7 +138,8 @@ describe('career', () => {
   it('stat points and perk unlock rules', () => {
     const c = newCareer('Test', 'SG');
     expect(spendStatPoint(c, 'shooting')).toBe(true);
-    expect(c.core.shooting).toBe(52);
+    expect(c.core.shooting).toBe(42); // new careers start at 40 (round 42)
+    expect(c.skills.shooting.level).toBe(42); // the skill card follows the rating
     expect(canUnlock(c, 'dr_btb').ok).toBe(false); // needs crossover
     expect(unlock(c, 'dr_handle')).toBe(true);
     expect(unlock(c, 'dr_cross')).toBe(true);

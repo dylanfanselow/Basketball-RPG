@@ -3,7 +3,8 @@ import { InputMapper } from '../input/input';
 import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
-import { xpToNext, nextKeyGame, skillXpToNext } from '../career/career';
+import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP } from '../career/career';
+import { sfx } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
@@ -39,6 +40,12 @@ export abstract class RoomScene extends Phaser.Scene {
   private shownLevels: Partial<Record<CoreStat, number>> = {};
   private flashes: { stat: CoreStat; at: number; text: Phaser.GameObjects.Text }[] = [];
   private hudFx: Phaser.GameObjects.Graphics | null = null;
+  /** Workout XP orbs in flight (round 42): from where you trained to a skill card; the XP lands when the orb does. */
+  private orbs: { stat: CoreStat; from: V; at: number; side: number }[] = [];
+  private orbG: Phaser.GameObjects.Graphics | null = null;
+  private pops: { stat: CoreStat; at: number }[] = [];
+  private tiredAt = -9;
+  private tiredText: Phaser.GameObjects.Text | null = null;
   sheetKey = '';
   artOf = new Map<string, ArtPiece>();
   kit!: Kit;
@@ -73,6 +80,9 @@ export abstract class RoomScene extends Phaser.Scene {
   create() {
     hiRes(this);
     this.cameras.main.setBackgroundColor('#1a120c');
+    // orbs still flying land when you leave; their graphics go with the scene
+    this.orbs = []; this.pops = []; this.orbG = null; this.hudFx = null; this.tiredText = null; this.flashes = [];
+    this.events.once('shutdown', () => this.flushOrbs());
     this.inp = new InputMapper(this);
     this.polys = solids([], this.room());
     const tm = this.textures;
@@ -200,6 +210,79 @@ export abstract class RoomScene extends Phaser.Scene {
     }
   }
 
+  // ------------------------------------------------------------ workout orbs (round 42)
+  static ORB_FLIGHT = 0.75;
+  /**
+   * Send one XP orb per stat from `from` (screen) to its skill card. Each orb costs energy when it's sent; out of
+   * energy, nothing is sent and "TOO TIRED" pops over you.
+   */
+  sendOrbs(stats: CoreStat[], from: V) {
+    let sent = 0;
+    for (const stat of stats) {
+      if (!takeOrbEnergy(app.career)) { this.showTired(from); break; }
+      this.orbs.push({ stat, from: { ...from }, at: this.t + sent * 0.16, side: sent % 2 ? 1 : -1 });
+      sent++;
+    }
+    if (sent) { app.changed(); sfx.orbSend(); }
+  }
+  private showTired(from: V) {
+    if (this.t - this.tiredAt < 1.5) return;
+    this.tiredAt = this.t;
+    if (!this.tiredText) this.tiredText = this.add.text(0, 0, 'TOO TIRED · REST TO TRAIN', { fontFamily: FONT, fontSize: '15px', color: '#ff9a7a', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(9401);
+    this.tiredText.setPosition(from.x, from.y - 20);
+    sfx.blip(false);
+  }
+  /** Where an orb is k (0..1) along its flight: a lazy arc up off you, then it speeds into the card. */
+  private orbAt(o: { stat: CoreStat; from: V; side: number }, k: number): V | null {
+    const b = this.skillCards.get(o.stat); if (!b) return null;
+    const to = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    const c = { x: o.from.x + o.side * 70, y: Math.min(o.from.y, to.y) + (o.from.y - to.y) * 0.15 - 40 };
+    const e = k * k * (1.6 - 0.6 * k); // slow start, fast finish
+    const u = 1 - e;
+    return { x: u * u * o.from.x + 2 * u * e * c.x + e * e * to.x, y: u * u * o.from.y + 2 * u * e * c.y + e * e * to.y };
+  }
+  private updateOrbs() {
+    if (!this.orbG) this.orbG = this.add.graphics().setDepth(9400);
+    const g = this.orbG.clear();
+    const R = 6.5;
+    const ball = (p: V, a = 1, r = R) => {
+      g.fillStyle(0x7ed321, 0.22 * a).fillCircle(p.x, p.y, r * 1.9);          // glow
+      g.fillStyle(0x245a10, a).fillCircle(p.x, p.y, r + 1.2);                 // dark rim
+      g.fillStyle(0x6cc81e, a).fillCircle(p.x, p.y, r);
+      g.fillStyle(0x9be63a, a).fillCircle(p.x - r * 0.18, p.y - r * 0.18, r * 0.72);
+      g.fillStyle(0xd8ff9a, a).fillCircle(p.x - r * 0.38, p.y - r * 0.4, r * 0.28); // shine
+    };
+    this.orbs = this.orbs.filter((o) => {
+      const k = (this.t - o.at) / RoomScene.ORB_FLIGHT;
+      if (k < 0) return true;
+      if (k >= 1) { this.landOrb(o.stat); return false; }
+      for (const [dk, a] of [[0.09, 0.45], [0.05, 0.7]] as const) { const q = this.orbAt(o, Math.max(0, k - dk)); if (q) ball(q, a * (1 - k * 0.3), R * (1 - dk * 3)); }
+      const p = this.orbAt(o, k); if (p) ball(p, Math.min(1, k * 8), R * (k < 0.12 ? 0.4 + k * 5 : 1));
+      return true;
+    });
+    // the card takes the orb: a green ring pops out of it
+    this.pops = this.pops.filter((p) => {
+      const k = (this.t - p.at) / 0.4; if (k >= 1) return false;
+      const b = this.skillCards.get(p.stat); if (!b) return false;
+      g.lineStyle(3 * (1 - k), 0x9be63a, 1 - k).strokeRoundedRect(b.x - k * 6, b.y - k * 6, b.w + k * 12, b.h + k * 12, 5 + k * 3);
+      g.fillStyle(0xd8ff9a, 0.35 * (1 - k)).fillRoundedRect(b.x, b.y, b.w, b.h, 4);
+      return true;
+    });
+    if (this.tiredText) { const k = (this.t - this.tiredAt) / 1.4; this.tiredText.setVisible(k < 1).setAlpha(1 - k * k).setY(this.tiredText.y - 0.4); }
+  }
+  private landOrb(stat: CoreStat) {
+    const up = addSkillXp(app.career, stat, ORB_XP);
+    this.pops.push({ stat, at: this.t });
+    if (up) sfx.greenChime(); else sfx.orbPop();
+    app.changed();
+  }
+  /** Orbs still flying when the room closes land at once (their XP is never lost). */
+  flushOrbs() {
+    for (const o of this.orbs) addSkillXp(app.career, o.stat, ORB_XP);
+    if (this.orbs.length) app.changed();
+    this.orbs = []; this.pops = []; this.orbG = null; this.hudFx = null; this.tiredText = null; this.flashes = [];
+  }
+
   /** Rebuild the HUD when career values change (dev tools, rewards), and play the skill level-up flashes. */
   updateHud() {
     if (this.hud.sig !== this.hudSig()) this.makeHud();
@@ -222,6 +305,7 @@ export abstract class RoomScene extends Phaser.Scene {
     this.t += dt;
     this.inp.poll();
     this.updateHud();
+    this.updateOrbs();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
     if (this.activity) {
       // working out: stay on the equipment and play its mini-game; only L1 (Esc) stops (✕ / ○ are game buttons)

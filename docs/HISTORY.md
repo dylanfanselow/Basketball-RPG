@@ -59,6 +59,7 @@
 | 39e | `60f47cd` | Fade away moves too jaggedly, smoother with more frames; is it shrinking the cone? | `shot_fade` resampled (21 keys, eased lean, 24 frames); the cone did shrink (3.5 ft / 26°) but snapped — now it eases to the new size |
 | 40 | `a9743db` | Turn the push-up mat into a dribbling mat like the photo (low wide stance facing us), same mini-game | `DribbleGame` + `MiniGame.clip()`: each right button = a front-view move (✕ crossover, ○ between the legs, □ behind the back, △ in-and-out), pound dribble between; ball drawn in the hand / on the floor / behind you, bounce + squeak sounds; dark rubber dribble mat |
 | 41 | `6f95a54` | Replace the HUD's level box with a reference-style block: LVL + XP bar and skill cards (shooting green with a ball on a shooting hand, finishing blue, strength red kettlebell, mobility light blue, playmaking yellow); skills start at 40 | Level block + five skill cards with pixel icons, per-skill level + XP (save v4), level-up flash, dev buttons |
+| 42 | (pending) | Exercises send little green orbs to the HUD stats (fill the bar, more XP needed at higher levels, each orb drains energy); treadmill 2 MOB, squat STR+MOB, shooting SHT+FIN, bench STR+FIN, dribbling PLY+SHT; the numbers are the actual stats | `'orb'` events + `ORBS` map, flying orbs with energy cost / TOO TIRED, XP on arrival, skill level = core rating (start 40) |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
