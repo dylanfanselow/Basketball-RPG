@@ -337,7 +337,7 @@ export abstract class RoomScene extends Phaser.Scene {
     this.updateHud();
     this.updateOrbs();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
-    if (this.busy) { this.prompt.setVisible(false); this.onUpdate(dt); this.sortDepths(); this.drawDebug(); return; }
+    if (this.busy) { this.prompt.setVisible(false); if (this.activity) { this.actT += dt; this.drawPlayer(0); } this.onUpdate(dt); this.sortDepths(); this.drawDebug(); return; }
     if (this.activity) {
       // working out: stay on the equipment and play its mini-game; only L1 (Esc) stops (✕ / ○ are game buttons)
       this.actT += dt;

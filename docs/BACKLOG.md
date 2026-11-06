@@ -6,7 +6,7 @@
    and ms per new frame), and how the angles look in-game. Headless numbers here (~4 ms/frame) are pessimistic.
 2. **Known multi-angle follow-ups**: jersey numbers read mirrored on left-facing players (draw left views natively
    instead of flipping); three-quarter faces are a first pass; shoes switch profile↔front at ~60° instead of turning;
-   shots/moves/passes/box-outs are still side view only; celebs and bench have no angles.
+   jump shots are angled (round 45) but layups/dunks, moves, passes and box-outs are still side view only; celebs and bench have no angles.
 3. Polish carried over: faces are small at game zoom, celebs/bench have no walking frames, 1v1 shows both full
    benches, P2 in two-player 1v1 has no on-screen controller HUD or own cone.
 4. **Face parts round-trip:** when the owner pushes `src/art/parts` / rosters.json changes, clean up the pictures

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN, shuffleState } from '../src/render/anim';
+import { CLIPS, CLIP, SHOT_CLIP, sampleClip, frameAt, shotU, JOINTS, rigArms, ARM_DROP, UPPER_ARM, FOREARM, HOLD_NEAR, limb, ARM_U, ARM_F, THIGH, SHIN, shuffleState, frameTime } from '../src/render/anim';
 import { randomAppearance } from '../src/render/appearance';
 import { migrateCareer, newCareer } from '../src/career/career';
 import { SHOT_TYPES, MOVES } from '../src/sim/data';
 import { Rng } from '../src/sim/math';
 import { Player } from '../src/sim/player';
 import { makeGame, simToEnd } from './helpers';
+import { shotView } from '../src/render/frameCache';
 
 describe('arm rig', () => {
   const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -293,6 +294,28 @@ describe('pump fake + step-through animation', () => {
     for (const u of [0.26, 0.37]) {
       const p = sampleClip(c, u);
       expect(Math.min(p.fF[1], p.fB[1])).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
+describe('round 45: angled jump shots + sleeping on the couch', () => {
+  it('a jump shot is drawn at the shooter\'s angle to the basket', () => {
+    expect(shotView(20, 0)).toEqual({ yaw: 0, flip: false });       // straight down the court: side view
+    expect(shotView(-20, 0)).toEqual({ yaw: 0, flip: true });       // the other way: mirrored side view
+    expect(shotView(1, -20).yaw).toBe(-90);                          // from the near baseline: his back
+    expect(shotView(1, 20).yaw).toBe(90);                            // from the far side: his front
+    expect(Math.abs(shotView(14, -14).yaw)).toBe(45);                // the wings: three-quarter
+  });
+  it('the sleep clip lies flat at seat height and fits the frame', () => {
+    const c = CLIP.sleep;
+    expect(c.loop).toBe(true);
+    for (let i = 0; i < c.frames; i++) {
+      const p = sampleClip(c, frameTime(c, i));
+      for (const j of ['head', 'neck', 'hip', 'kF', 'fF', 'kB', 'fB'] as const) {
+        expect(p[j][1]).toBeGreaterThan(15);        // nothing touches the floor: he's on the seat
+        expect(Math.abs(p[j][0])).toBeLessThan(47); // inside the 96-px frame
+      }
+      expect(Math.abs(p.head[1] - p.fF[1])).toBeLessThan(30); // lying, not standing
     }
   });
 });

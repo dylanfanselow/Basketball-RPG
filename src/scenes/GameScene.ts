@@ -14,8 +14,8 @@ import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, 
 export const celebTexKey = (i: number) => `celebcast_${i}`;
 import type { Appearance } from '../render/appearance';
 import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildCoachSheet, buildAnnouncerSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
-import { FrameCache, yawFor } from '../render/frameCache';
-import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState } from '../render/anim';
+import { FrameCache, yawFor, shotView } from '../render/frameCache';
+import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState, J } from '../render/anim';
 import { sfx } from '../audio/sfx';
 import { rimPos } from '../sim/court';
 import { coneHalf, contestReach, computeContest, selectShotType } from '../sim/shooting';
@@ -41,6 +41,12 @@ const POST_CLIPS = ['postUp', 'postBump', 'postBumpedBack', 'postDefend', 'postB
  * Multi-angle players: clips that turn with the player (locomotion, stances, dribbles). Everything else (shots,
  * moves, passes, box-outs...) stays in side view toward the rim so ball offsets and timing match the sim.
  */
+/**
+ * Jump shots drawn at the shooter's angle to the basket (round 45): from the near baseline you see his back, from the far
+ * side his front, three-quarter from the wings. Rim-contact finishes (layups, dunks, oops, jelly) stay side-on so the
+ * hand still meets the rim on screen.
+ */
+export const ANGLED_SHOTS = new Set(['shot_jumper', 'shot_fade', 'shot_push', 'shot_floater', 'shot_hook', 'shot_stepThroughJumper']);
 const ANGLED = new Set(['idle', 'jog', 'sprint', 'burst', 'defend', 'slide', 'dribble', 'dribbleRun', 'dribbleBurst', 'hold', ...POST_CLIPS]);
 /** Angled frames: per-frame draw budget + prewarm (the caches themselves live in render/playerBank.ts). */
 const ANG_BUDGET = 4, ANG_PREWARM = 2;
@@ -223,6 +229,28 @@ export class GameScene extends Phaser.Scene {
     app.settings.angles.readout = `cached frames ${slots}  ·  ~${this.angMs.toFixed(2)} ms per new frame`;
   }
   angMs = 0;
+
+  /** Per shooter: the view his current shot is locked to (by the shot's start time) and his last drawn shot frame. */
+  shotViews = new Map<string, { start: number; v: { yaw: number; flip: boolean } }>();
+  lastShotFrame = new Map<string, { clip: string; yaw: number; texKey: string; frame: string | number; bo: J | null; behind: boolean }>();
+  /**
+   * A jump shot's view: from his angle to the basket at the start of the shot, held for the whole shot (no flips
+   * mid-shot). On a new shot, all of the user's frames for that view are queued at once so they're ready by the release.
+   */
+  shotViewFor(p: Player, clip: string): { yaw: number; flip: boolean } {
+    const force = app.settings.angles.force;
+    if (force !== null) return { yaw: force, flip: app.settings.angles.flip };
+    const start = p.anim?.start ?? 0, mem = this.shotViews.get(p.id);
+    if (mem && mem.start === start) return mem.v;
+    const rim = this.sim.rim(p.team);
+    const v = shotView(rim.x - p.p.x, rim.y - p.p.y);
+    this.shotViews.set(p.id, { start, v });
+    if (v.yaw !== 0) {
+      const sh = this.sheets.get(p.id);
+      if (sh) { const cache = this.angleCache(sh.key, p.height, p.appearance, this.kitFor(p)); for (let f = 0; f < CLIP[clip].frames; f++) cache.request(`${clip}|${f}|${v.yaw}`, p === this.sim.user); }
+    }
+    return v;
+  }
 
   /** Which drawn view (yaw + mirror) a player in an angled clip shows. Defenders face their man, turned a bit to us. */
   viewFor(p: Player, clip: string): { yaw: number; flip: boolean } {
@@ -614,14 +642,22 @@ export class GameScene extends Phaser.Scene {
       // multi-angle: turning clips use a cached angled frame when it's drawn, the side view (same mirror) until then
       let texKey = sh.key, frame: string | number = idx, bo = sh.sheet.ball[idx], behind = false;
       let flip = flipTo ?? p.face.x < 0;
-      if (ANGLED.has(clip)) {
-        const v = this.viewFor(p, clip);
+      const shotClip = ANGLED_SHOTS.has(clip);
+      if (ANGLED.has(clip) || shotClip) {
+        const v = shotClip ? this.shotViewFor(p, clip) : this.viewFor(p, clip);
         flip = v.flip;
         if (v.yaw !== 0) {
           const cache = this.angleCache(sh.key, p.height, p.appearance, this.kitFor(p));
           const ck = `${clip}|${fi}|${v.yaw}`, slot = cache.get(ck);
-          if (slot) { texKey = angPage(sh.key, slot.page); frame = `s${slot.index}`; bo = slot.ball; behind = slot.ballBehind; }
-          else cache.request(ck, p === sim.user);
+          if (slot) {
+            texKey = angPage(sh.key, slot.page); frame = `s${slot.index}`; bo = slot.ball; behind = slot.ballBehind;
+            if (shotClip) this.lastShotFrame.set(p.id, { clip, yaw: v.yaw, texKey, frame, bo, behind });
+          } else {
+            cache.request(ck, p === sim.user);
+            // a shot frame that isn't drawn yet: hold his last drawn frame of this shot instead of flashing the side view
+            const last = shotClip ? this.lastShotFrame.get(p.id) : undefined;
+            if (last && last.clip === clip && last.yaw === v.yaw) ({ texKey, frame, bo, behind } = last);
+          }
         }
       }
       if (s.texture.key !== texKey) s.setTexture(texKey, frame); else s.setFrame(frame);

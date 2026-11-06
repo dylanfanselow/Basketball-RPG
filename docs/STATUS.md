@@ -18,6 +18,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 - **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
+- Round 45: `sleep` clip (anim.ts) + `ApartmentScene.sleep()` uses a pseudo station (`SLEEP_AT`, `depthFt`), the
+  busy branch draws the player, `drawBlanket()`; `GameScene.ANGLED_SHOTS` + `shotViewFor` (view from the rim direction
+  at the shot's start, locked per `p.anim.start`, queues the shooter's frames; holds the last drawn shot frame while one
+  is missing), `frameCache.shotView(dx, dy)`; sprites `COLS = 24`.
 - Round 44 post rework: `POST.COMMIT / REPOST_CD / FIRST_BUMP / SEAL_PUSH / STEAL_MULT / HELP_*`, `helpChance(gap)`;
   `PostState` + `bumps`, `pushT`, `helpId`, `helpAt`, `helpCalled`, `helpArrivedAt`; `Player.postCdUntil`; helper AI
   in `ai/defense.ts` (steer beside the post, swipe after `HELP_REACT`); `GameSim.swipe` post multiplier;

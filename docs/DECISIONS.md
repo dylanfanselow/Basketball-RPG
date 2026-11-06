@@ -154,6 +154,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 45: you lie on the couch to sleep; jump shots face the basket.** Sleeping shows the player on his back on
+  the couch (`sleep` clip, head propped on the pillow, the couch blanket pulled over his legs, the cat stays on top),
+  under a lighter night tint with Zzz off his head. **Jump shots (jumper, fade, push, floater, hook, step-through
+  jumper) are drawn at the shooter's angle to the basket**: back view from the near baseline, front from the far side,
+  three-quarter on the wings, side-on from the top; the view is locked for the whole shot. **Layups, dunks, oops and the
+  jelly stay side-on** so the hand still meets the rim on screen. (Owner clarified: animation only, not percentages.)
+  Also: player sheets are now 24 frames wide (they'd grown past 8192 px tall, which some GPUs draw black).
 - **Round 44: posting is a commitment, doubles + kick-outs.** Mashing L2 was overpowered (each press re-started the
   post with an instant bump and a free window). Now: a post lasts at least `COMMIT` 0.9 s (letting go early doesn't end
   it), the first bump comes `FIRST_BUMP` 0.55 s in, the window only opens if a bump landed (stronger) or you leaned

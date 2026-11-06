@@ -699,6 +699,12 @@ const BP_BODY = legs({ head: [-27, 33], neck: [-21, 30], sF: [-16, 29], sB: [-16
 const BP_UP = arms(BP_BODY, [-15, 56], [-16, 56]);
 const BP_DOWN = arms(BP_BODY, [-12, 38], [-13, 38], [-1, -1]);
 CLIPS.push({ name: 'benchPress', frames: 12, loop: true, keys: [{ t: 0, pose: BP_UP }, { t: 0.45, pose: BP_DOWN }, { t: 0.55, pose: BP_DOWN }, { t: 1, pose: BP_UP }] });
+// sleeping on the couch (round 45): on his back along the seat (side view, head at -x on the pillow, looking up like the
+// bench press), one hand on his belly, the other hanging off the cushion, legs out with soft knees; the chest rises.
+// Everything fits inside the frame (±46 units): head propped up on the pillow at -42, feet at +44.
+const SL_BODY = (breath: number) => legs({ head: [-42, 46 + breath * 0.5], neck: [-37, 40 + breath], sF: [-32, 37 + breath], sB: [-32, 38 + breath], eF: [-32, 37], eB: [-32, 38], hF: [-32, 37], hB: [-32, 38], hip: [-6, 25], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {}, headTurn: -Math.PI / 2 }, [44, 24], [43, 22]);
+const SL = (breath: number) => arms(SL_BODY(breath), [-17, 34 + breath], [-26, 14], [-1, 1]);
+CLIPS.push({ name: 'sleep', frames: 8, loop: true, keys: [{ t: 0, pose: SL(0) }, { t: 0.5, pose: SL(1.4) }, { t: 1, pose: SL(0) }] });
 // jump rope: small hops on the balls of the feet, hands by the hips turning the rope
 const JR_DOWN = arms(legs(P({ head: [2, 90], neck: [1, 81], sF: [2, 78], sB: [-1, 78], hip: [0, 49] }), [3, 0], [-2, 0]), [10, 52], [8, 52]);
 const JR_UP = arms(legs(P({ head: [2, 96], neck: [1, 87], sF: [2, 84], sB: [-1, 84], hip: [0, 56] }), [4, 6], [-1, 5]), [10, 58], [8, 58]);

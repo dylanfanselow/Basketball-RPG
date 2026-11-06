@@ -1,0 +1,15 @@
+
+  VITE v6.4.5  ready in 183 ms
+
+  ➜  Local:   http://localhost:5199/
+  ➜  Network: use --host to expose
+1:05:03 AM [vite] (client) page reload src/render/sprites.ts
+1:05:03 AM [vite] (client) page reload src/render/anim.ts
+1:05:24 AM [vite] (client) page reload src/render/anim.ts
+1:06:04 AM [vite] (client) page reload src/scenes/ApartmentScene.ts
+1:07:14 AM [vite] (client) page reload src/render/anim.ts
+1:08:07 AM [vite] (client) page reload src/scenes/ApartmentScene.ts
+1:08:35 AM [vite] (client) page reload src/scenes/GameScene.ts
+1:08:35 AM [vite] (client) page reload src/render/frameCache.ts
+1:08:38 AM [vite] (client) page reload src/scenes/GameScene.ts
+1:08:44 AM [vite] (client) page reload src/scenes/GameScene.ts

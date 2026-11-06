@@ -21,7 +21,9 @@ export const FOOT_Y = 159;   // floor line in a frame
 export const PIXEL = 2;      // device pixels per art pixel (with the 1.5x camera)
 /** Sprite scale in world units (the camera zoom supplies the rest). */
 export const SPRITE_SCALE = PIXEL / ART;
-export const COLS = 20;
+/** Sheet columns. Keep the sheet under 8192 px tall (a common GPU max texture size): 24 cols × 168 px rows leaves room
+ *  for ~1170 frames (round 45: at 20 cols the 961-frame sheet was 8232 px tall and drew black on such GPUs). */
+export const COLS = 24;
 
 /** number < 0 hides the number; pants = full-length trousers (coaches) */
 export interface Kit { jersey: string; jerseyShade: string; trim: string; shorts: string; number: number; pants?: boolean }

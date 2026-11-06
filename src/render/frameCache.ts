@@ -79,6 +79,14 @@ export class FrameCache {
 
 /** Snap a facing angle (deg, 0 = screen-right, +90 = toward the camera) to a drawn yaw + mirror, with hysteresis. */
 export const YAWS = [-90, -45, 0, 45, 90];
+/**
+ * The view a jump shot is drawn in from the shooter's offset to the rim (dx, dy in court feet; +y = toward the camera):
+ * straight along the court = side view, the near baseline = his back (-90), the far side = his front (+90), wings = ±45.
+ */
+export function shotView(dx: number, dy: number): { yaw: number; flip: boolean } {
+  return yawFor((Math.atan2(dy, dx) * 180) / Math.PI);
+}
+
 export function yawFor(angleDeg: number, prev?: { yaw: number; flip: boolean }, hold = 10): { yaw: number; flip: boolean } {
   let a = ((angleDeg + 540) % 360) - 180; // (-180, 180]
   const flip = Math.abs(a) > 90;
