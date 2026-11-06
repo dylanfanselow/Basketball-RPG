@@ -24,11 +24,54 @@ const GRASS = ['#5f8f3a', '#6c9c42', '#557f33', '#78a84a', '#4c7430'];
 function blobTree(c: C, blobs: [number, number, number][], x0 = 0, x1 = ART_W) {
   for (const [bx, by, r] of blobs) for (let y = Math.max(0, by - r); y < by + r; y++) for (let x = Math.max(x0, bx - r); x < Math.min(x1, bx + r); x++) {
     const d = Math.hypot(x - bx, (y - by) * 1.1) / r;
-    if (d > 1 - hn(x >> 1, y >> 1, 9) * 0.22) continue;
+    if (d > 1 - hn(x >> 1, y >> 1, 9) * 0.34 + (hn(x >> 3, y >> 3, 13) < 0.15 ? 0.1 : 0)) continue; // shaggy, untrimmed outline
     const e = (x - bx) + (y - by) + (hn(x >> 2, y >> 2, 12) - 0.5) * r * 0.6; // ragged light / shadow edges (leaf clumps)
     const lit = e < -r * 0.3, dark = e > r * 0.45, n = hn(x >> 2, y >> 2, 11);
     P(c, x, y, dark ? '#3a6524' : lit ? (n < 0.4 ? '#7fbd4c' : '#6aa83e') : n < 0.25 ? '#6aa83e' : '#4f8a2f');
   }
+}
+
+/** A tree with a real trunk: tapered, bark-shaded, a couple of branches up into the canopy, roots at the base. */
+function tree(c: C, tx: number, base: number, top: number, halfW: number, blobs: [number, number, number][]) {
+  for (let y = top; y < base; y++) {
+    const w = Math.round(halfW * (0.7 + 0.3 * (y - top) / (base - top)) + (y > base - 8 ? (y - (base - 8)) * 0.8 : 0));
+    const lean = Math.round(Math.sin((y - top) / 40) * 2);
+    for (let x = -w; x <= w; x++) {
+      const k = (x + w) / (2 * w + 1);
+      let col = k < 0.3 ? '#7a5838' : k > 0.7 ? '#3e2a1a' : '#5a3e26';
+      if (hn(x + tx, y >> 1, 101) < 0.18) col = shade(col, 0.8);                   // bark grooves
+      P(c, tx + x + lean, y, col);
+    }
+  }
+  // branches out into the canopy
+  for (const [dx, len, dir] of [[0, 40, -1], [0, 46, 1], [0, 30, 1]] as [number, number, number][]) {
+    const sy = top + 20 + len * 0.3;
+    for (let i = 0; i < len; i++) { const x = tx + dx + dir * i, y = Math.round(sy - i * 0.7); R(c, x, y, 1, Math.max(2, 5 - Math.floor(i / 10)), i < 6 ? '#5a3e26' : '#4a321e'); }
+  }
+  blobTree(c, blobs);
+  // scrub and suckers grown up around the base of the trunk
+  blobTree(c, [[tx - 16, base - 10, 16], [tx + 14, base - 8, 14], [tx, base - 4, 12]]);
+  // a few dead twigs poking out of the canopy (it hasn't been trimmed in years)
+  for (const [bx, by, r] of blobs) for (let i = 0; i < 3; i++) {
+    const a = hn(bx, i, 102) * Math.PI * 2, x0 = bx + Math.cos(a) * r * 0.9, y0 = by + Math.sin(a) * r * 0.9;
+    for (let k = 0; k < 9; k++) P(c, Math.round(x0 + Math.cos(a) * k), Math.round(y0 + Math.sin(a) * k), '#4a321e');
+  }
+}
+
+/** A trailer further back (smaller, hazier, half hidden by weeds). */
+function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body: string, band: string, seed: number) {
+  const bandY = top + Math.round((bot - top) * 0.58), r = Math.round((bot - top) * 0.32);
+  for (let y = top; y < bot; y++) for (let x = x0; x < Math.min(x1, ART_W); x++) {
+    if (x < x0 + r && y < top + r && Math.hypot(x - (x0 + r), y - (top + r)) > r) continue;
+    if (x > x1 - r && y < top + r && Math.hypot(x - (x1 - r), y - (top + r)) > r) continue;
+    let col = y < bandY ? body : band;
+    if ((y - top) % 3 === 2) col = shade(col, 0.88);
+    if (hn(x >> 2, y >> 2, seed) < 0.05) col = mix(col, '#9a5a32', 0.5);
+    P(c, x, y, mix(col, '#b9cfd8', 0.28));                                          // haze: it's further away
+  }
+  for (let x = x0 + 10; x < x1 - 10; x += 26) { R(c, x, top + 8, 14, 10, mix('#5a6a70', '#b9cfd8', 0.25)); R(c, x + 1, top + 9, 4, 8, mix('#93a8ae', '#b9cfd8', 0.25)); }
+  R(c, x0 + Math.round((x1 - x0) * 0.62), top + 8, 9, bot - top - 12, mix('#cfc7b0', '#b9cfd8', 0.25));
+  for (let x = x0; x < x1; x += 3) R(c, x, bot - 4 - Math.round(hn(x, seed, 103) * 9), 2, 12, hn(x, 1, 104) < 0.5 ? '#557f33' : '#6c9c42'); // weeds
 }
 
 function drawBackground(): HTMLCanvasElement {
@@ -55,20 +98,8 @@ function drawBackground(): HTMLCanvasElement {
   for (let x = 560; x < ART_W; x++) P(c, x, Math.round((x - 560) * 0.24 + Math.sin((x - 560) / 120) * 4), '#2a2d30');
   const mx = 742;
   for (let y = 150; y < 268; y++) { P(c, mx, y, '#6a6f74'); P(c, mx + 8 - Math.round((y - 150) / 60), y, '#6a6f74'); if (y % 6 === 0) for (let k = 0; k < 8; k++) P(c, mx + k, y + (k >> 1), '#7f8489'); }
-  // trees: left, behind the trailer, and the big dense one on the right
-  blobTree(c, [[40, 70, 70], [110, 40, 50], [10, 150, 46], [150, 120, 40]]);
+  // far trees behind the trailer (their trunks are hidden by it)
   blobTree(c, [[380, 120, 50], [450, 90, 56], [520, 115, 46], [600, 140, 40], [330, 150, 34]]);
-  blobTree(c, [[840, 90, 90], [930, 160, 80], [780, 200, 60], [900, 280, 70], [960, 60, 60]]);
-  // the neighbour's house on the left: white siding, a shingle roof with a loose edge, a window with a green awning
-  for (let y = 186; y < 300; y++) for (let x = 0; x < 150; x++) {
-    let col = (y - 186) % 5 === 4 ? '#b9bcb6' : hn(x >> 3, y, 3) < 0.08 ? '#d4d6d0' : '#e3e5df';
-    if (x > 140) col = shade(col, 0.85);
-    P(c, x, y, col);
-  }
-  for (let y = 168; y < 190; y++) for (let x = 0; x < 160 - (y - 168) * 0.2; x++) P(c, x, y, (y + (x >> 2)) % 4 === 0 ? '#5a4636' : hn(x >> 2, y, 4) < 0.2 ? '#7a6250' : '#6c5444');
-  R(c, 120, 166, 30, 3, '#8a7058'); // the curled-up shingles
-  R(c, 14, 214, 60, 46, '#3d5a58'); R(c, 16, 216, 56, 42, '#6f8d8a'); for (let k = 0; k < 42; k += 4) R(c, 16, 216 + k, 56, 1, '#8aa6a2');
-  for (let x = 10; x < 80; x++) R(c, x, 206 + ((x - 10) % 8 < 4 ? 0 : 1), 1, 9, (x >> 2) % 2 ? '#2f7a56' : '#3f9a6a'); // awning
   // yard: tall grass everywhere, a dirt path with ruts from the front toward the back right
   for (let y = HZ; y < ART_H; y++) for (let x = 0; x < ART_W; x++) {
     const n = hn(x, y, 5);
@@ -86,6 +117,23 @@ function drawBackground(): HTMLCanvasElement {
     }
     P(c, x, y, col);
   }
+  // more trailers further back on the right (the lot keeps going), then trees with real trunks, the neighbour's house
+  farTrailer(c, 736, 884, 210, 262, '#e4e4dc', '#7fa6c8', 41);
+  farTrailer(c, 872, 1000, 222, 268, '#d8ccb0', '#b88a5a', 42);
+  farTrailer(c, 600, 700, 236, 270, '#dfe2d8', '#9ab89a', 43);
+  tree(c, 128, 272, 96, 7, [[40, 70, 70], [110, 40, 50], [10, 150, 46], [160, 112, 40], [80, 120, 44]]);
+  tree(c, 716, 300, 150, 5, [[716, 128, 46], [676, 154, 32], [756, 146, 36], [730, 96, 34]]);
+  tree(c, 902, 320, 140, 9, [[862, 72, 78], [944, 130, 64], [806, 112, 52], [958, 34, 56], [900, 30, 50]]);
+  // the neighbour's house on the left: white siding, a shingle roof with a loose edge, a window with a green awning
+  for (let y = 186; y < 300; y++) for (let x = 0; x < 150; x++) {
+    let col = (y - 186) % 5 === 4 ? '#b9bcb6' : hn(x >> 3, y, 3) < 0.08 ? '#d4d6d0' : '#e3e5df';
+    if (x > 140) col = shade(col, 0.85);
+    P(c, x, y, col);
+  }
+  for (let y = 168; y < 190; y++) for (let x = 0; x < 160 - (y - 168) * 0.2; x++) P(c, x, y, (y + (x >> 2)) % 4 === 0 ? '#5a4636' : hn(x >> 2, y, 4) < 0.2 ? '#7a6250' : '#6c5444');
+  R(c, 120, 166, 30, 3, '#8a7058'); // the curled-up shingles
+  R(c, 14, 214, 60, 46, '#3d5a58'); R(c, 16, 216, 56, 42, '#6f8d8a'); for (let k = 0; k < 42; k += 4) R(c, 16, 216 + k, 56, 1, '#8aa6a2');
+  for (let x = 10; x < 80; x++) R(c, x, 206 + ((x - 10) % 8 < 4 ? 0 : 1), 1, 9, (x >> 2) % 2 ? '#2f7a56' : '#3f9a6a'); // awning
   // left chain-link fence in front of the neighbour's house, sagging
   for (const fx of [24, 102, 176]) { R(c, fx, 232, 3, 76, '#7d8288'); R(c, fx, 232, 1, 76, '#b5bbc0'); }
   R(c, 0, 234, 180, 2, '#8d9298');
@@ -94,6 +142,13 @@ function drawBackground(): HTMLCanvasElement {
   // right chain-link fence, seen down its length on the right edge
   for (let y = 210; y < 470; y++) for (let x = 930; x < ART_W; x++) if ((x + y) % 6 === 0 || (x - y + 600) % 6 === 0) P(c, x, y, '#8a9096');
   R(c, 928, 205, 4, 270, '#6a7076');
+  // wild scrub along the left fence, an old mattress dumped against it
+  for (let y = 252; y < 300; y++) for (let x = 58; x < 112; x++) { const k = (x - 58 + (y - 252) * 0.3) % 9; P(c, x - Math.round((y - 252) * 0.3), y, k < 1 ? '#bfb8a0' : hn(x >> 2, y >> 2, 110) < 0.15 ? '#a89c7a' : '#d8d2bc'); }
+  for (let x = 58; x < 112; x += 3) P(c, x - 14, 300, '#8a8268');
+  blobTree(c, [[20, 300, 26], [-4, 292, 22], [150, 306, 18], [190, 302, 14]]);
+  // vines and weeds climbing both fences
+  for (let i = 0; i < 90; i++) { const x = Math.round(hn(i, 1, 91) * 200), y = 236 + Math.round(hn(i, 2, 92) * 70); R(c, x, y, 2, 2, hn(i, 3, 93) < 0.5 ? '#4f8a2f' : '#6aa83e'); }
+  for (let i = 0; i < 110; i++) { const x = 928 + Math.round(hn(i, 4, 94) * 32), y = 214 + Math.round(hn(i, 5, 95) * 250); R(c, x, y, 2, 3, hn(i, 6, 96) < 0.5 ? '#3a6524' : '#5f9a3a'); }
   drawTrailer(c);
   drawWeeds(c);
   drawSteps(c);
@@ -179,8 +234,18 @@ function drawWeeds(c: C) {
       for (let k = 0; k < bh; k++) P(c, bx + Math.round(lean * k), y - k, k > bh - 3 ? '#9cc860' : k < 3 ? '#3f6828' : GRASS[(i + k) % GRASS.length]);
     }
   };
-  for (let x = T_X0 - 40; x < T_X1 + 10; x += 6) if (x < Xa(STEPS.x0) - 4 || x > Xa(STEPS.x1) + 4) tuft(x, FACE + 4 + Math.round(hn(x, 1, 84) * 6), 22 + Math.round(hn(x, 2, 85) * 22), x);
-  for (let i = 0; i < 70; i++) { const x = Math.round(hn(i, 3, 86) * ART_W), y = 310 + Math.round(hn(i, 4, 87) * 225); if (Math.abs(x - (610 - (y - 300) / 240 * 150)) > 60) tuft(x, y, 10 + Math.round(hn(i, 5, 88) * 10), i + 99); }
+  for (let x = T_X0 - 50; x < T_X1 + 30; x += 4) if (x < Xa(STEPS.x0) - 4 || x > Xa(STEPS.x1) + 4) tuft(x, FACE + 4 + Math.round(hn(x, 1, 84) * 8), 26 + Math.round(hn(x, 2, 85) * 30), x);
+  for (let i = 0; i < 190; i++) { const x = Math.round(hn(i, 3, 86) * ART_W), y = 300 + Math.round(hn(i, 4, 87) * 235); if (Math.abs(x - (610 - (y - 300) / 240 * 150)) > 50) tuft(x, y, 12 + Math.round(hn(i, 5, 88) * 22), i + 99); }
+  // a strip of weeds right down the middle of the path, tall grass along its edges
+  for (let y = 310; y < ART_H; y += 9) { const k = (y - 300) / 240, pc = 610 - k * 150, pw = 22 + k * 110; tuft(Math.round(pc), y, 8 + Math.round(hn(y, 1, 97) * 6), y); tuft(Math.round(pc - pw - 4), y, 16, y + 7); tuft(Math.round(pc + pw + 4), y, 16, y + 11); }
+  // gone-to-seed stalks (foxtail / dock) and purple thistles poking out of the grass
+  for (let i = 0; i < 60; i++) {
+    const x = Math.round(hn(i, 8, 98) * ART_W), y = 300 + Math.round(hn(i, 9, 99) * 230), h = 18 + Math.round(hn(i, 10, 100) * 24);
+    if (Math.abs(x - (610 - (y - 300) / 240 * 150)) < 40) continue;
+    R(c, x, y - h, 1, h, '#6a7a3a');
+    if (i % 3) { R(c, x - 1, y - h - 6, 3, 7, '#b8a060'); P(c, x, y - h - 7, '#d8c080'); }
+    else { R(c, x - 2, y - h - 3, 5, 3, '#4f7a2a'); R(c, x - 1, y - h - 6, 3, 3, '#a05ac0'); }
+  }
   for (let i = 0; i < 26; i++) { const x = Math.round(hn(i, 6, 89) * ART_W), y = 300 + Math.round(hn(i, 7, 90) * 230); R(c, x, y - 7, 1, 7, '#4f8a2f'); R(c, x - 1, y - 9, 3, 2, i % 3 ? '#f4e46a' : '#ffffff'); }
 }
 
@@ -193,7 +258,24 @@ function drawJunk(c: C) {
   // deflated ball, a bucket, bottles in the grass
   for (let y = -10; y <= 10; y++) for (let x = -14; x <= 14; x++) { const d = Math.hypot(x / 14, y / 10); if (d < 1) P(c, Xa(-3.2) + x, Gy(12.6) + y - 8, d > 0.85 ? '#9aa0a4' : x + y < -6 ? '#ffffff' : '#dfe3e6'); }
   R(c, Xa(4.5), Gy(14) - 16, 14, 16, '#c9cdd0'); R(c, Xa(4.5), Gy(14) - 16, 14, 2, '#eef0f2'); R(c, Xa(4.5) + 12, Gy(14) - 15, 2, 15, '#9da2a6');
-  for (const [bx, by] of [[Xa(12.5), Gy(15.5)], [Xa(26), Gy(9)], [Xa(31.5), Gy(13)]]) { R(c, bx, by - 3, 9, 3, '#3a7a4a'); R(c, bx + 9, by - 2, 3, 1, '#3a7a4a'); P(c, bx + 2, by - 3, '#8ac89a'); }
+  for (const [bx, by] of [[Xa(12.5), Gy(15.5)], [Xa(26), Gy(9)], [Xa(31.5), Gy(13)], [Xa(1), Gy(7)], [Xa(9.5), Gy(19)], [Xa(38), Gy(11)]]) { R(c, bx, by - 3, 9, 3, '#3a7a4a'); R(c, bx + 9, by - 2, 3, 1, '#3a7a4a'); P(c, bx + 2, by - 3, '#8ac89a'); }
+  // round 57b: the yard is a dump — tyres, trash bags, soggy boxes, cans, paper, a broken lawn chair, a bike frame
+  const tyre = (x: number, y: number, rx: number, ry: number) => { for (let a = 0; a < 64; a++) for (let t = 0; t < 4; t++) { const ang = a / 64 * Math.PI * 2, rr = 1 - t * 0.12; P(c, Math.round(x + Math.cos(ang) * rx * rr), Math.round(y + Math.sin(ang) * ry * rr), t === 0 ? '#3a3a3a' : '#161616'); } };
+  tyre(Xa(-1.8), Gy(4.6) - 4, 16, 6); tyre(Xa(-1.6), Gy(4.6) - 10, 16, 6); tyre(Xa(6.5), Gy(6.2) - 12, 7, 13);
+  const bag = (x: number, y: number, col: string) => { for (let yy = -12; yy <= 0; yy++) for (let xx = -10; xx <= 10; xx++) { const d = Math.hypot(xx / 10, (yy + 6) / 7); if (d < 1 - hn(xx, yy, 105) * 0.1) P(c, x + xx, y + yy, xx + yy < -8 ? tint(col, 0.35) : d > 0.8 ? shade(col, 0.6) : col); } R(c, x - 2, y - 15, 4, 4, shade(col, 0.7)); };
+  bag(Xa(33.4), Gy(6.4), '#2a2a30'); bag(Xa(35.0), Gy(6.8), '#e6e6e0'); bag(Xa(2.5), Gy(9.5), '#2a2a30');
+  for (const [bx, by, w, h] of [[Xa(-5.2), Gy(8.5), 22, 16], [Xa(-3.6), Gy(9.2), 16, 11]] as [number, number, number, number][]) { R(c, bx, by - h, w, h, '#a8865a'); R(c, bx, by - h, w, 3, '#c4a274'); R(c, bx + w / 2 - 1, by - h, 2, h, '#8a6a44'); R(c, bx + 2, by - 4, w - 4, 3, '#7a5a38'); }
+  for (let i = 0; i < 54; i++) { const x = Math.round(hn(i, 20, 106) * ART_W), y = 305 + Math.round(hn(i, 21, 107) * 225); if (i % 2) { R(c, x, y - 3, 5, 3, ['#c0c4c8', '#b03030', '#3070b0'][i % 3]); P(c, x, y - 3, '#ffffff'); } else { R(c, x, y - 2, 6, 3, '#f2f0e6'); P(c, x + 2, y - 2, '#cfcdc2'); } }
+  // a scrap heap between the barrel and the hitch: boards at angles, a sheet of corrugated tin, a paint bucket
+  const sh = { x: Xa(7.6), y: Gy(2.6) };
+  for (const [dx, dy, len, sl, col] of [[0, 0, 44, -0.2, '#7a5a3a'], [6, -4, 38, 0.15, '#93714c'], [-4, -8, 30, -0.35, '#6a4a2e'], [14, -10, 26, 0.3, '#8a6a48']] as [number, number, number, number, string][]) for (let i = 0; i < len; i++) R(c, sh.x + dx + i, sh.y + dy + Math.round(i * sl), 1, 4, i === 0 || i === len - 1 ? '#4a321e' : col);
+  for (let i = 0; i < 40; i++) R(c, sh.x + 4 + i, sh.y - 18 + Math.round(i * 0.12), 1, 9, i % 4 < 2 ? '#9aa0a4' : '#6a7074');
+  R(c, sh.x + 40, sh.y - 12, 10, 12, '#c9cdd0'); R(c, sh.x + 40, sh.y - 12, 10, 2, '#e6e8ea'); R(c, sh.x + 42, sh.y - 8, 6, 5, '#3070b0');
+  // a broken white plastic lawn chair on its side, and a rusty bike frame in the weeds
+  const ch = { x: Xa(3), y: Gy(16) }; R(c, ch.x, ch.y - 14, 20, 4, '#e8e8e2'); R(c, ch.x + 16, ch.y - 26, 4, 16, '#e8e8e2'); R(c, ch.x + 2, ch.y - 10, 2, 10, '#d0d0ca'); R(c, ch.x + 12, ch.y - 10, 2, 8, '#d0d0ca');
+  const bk = { x: Xa(36.5), y: Gy(14) };
+  for (const wx of [0, 26]) for (let a = 0; a < 32; a++) P(c, bk.x + wx + Math.round(Math.cos(a / 32 * Math.PI * 2) * 9), bk.y - 6 + Math.round(Math.sin(a / 32 * Math.PI * 2) * 4), '#5a2c18');
+  for (let i = 0; i < 26; i++) P(c, bk.x + i, bk.y - 6 - Math.round(Math.sin(i / 26 * Math.PI) * 6), '#8a3a22');
 }
 
 // ---------------------------------------------------------------- pieces
@@ -277,8 +359,14 @@ function drawCooler(c: C, p: Piece) {
 
 function drawBush(c: C, p: Piece) {
   const cx = Xa(p.x + p.w / 2), base = Gy(p.y + p.d);
-  const blobs: [number, number, number][] = [[cx, base - 60, 60], [cx - 50, base - 30, 40], [cx + 40, base - 100, 52], [cx + 10, base - 150, 44], [cx - 30, base - 110, 40]];
-  blobTree(c, blobs, Xa(p.x) - 60, ART_W);
+  const blobs: [number, number, number][] = [[cx, base - 40, 46], [cx - 50, base - 24, 34], [cx + 40, base - 60, 40], [cx + 12, base - 80, 30], [cx - 34, base - 56, 28], [cx + 70, base - 30, 30]];
+  blobTree(c, blobs, Xa(p.x) - 70, ART_W);
+  // overgrown: stray shoots and long grass sticking out of it
+  for (let i = 0; i < 40; i++) {
+    const a = -Math.PI * (0.1 + hn(i, 1, 108) * 0.8), [bx, by, r] = blobs[i % blobs.length];
+    const x0 = bx + Math.cos(a) * r * 0.8, y0 = by + Math.sin(a) * r * 0.8, len = 6 + Math.round(hn(i, 2, 109) * 14);
+    for (let k = 0; k < len; k++) P(c, Math.round(x0 + Math.cos(a) * k), Math.round(y0 + Math.sin(a) * k), k > len - 3 ? '#8ac850' : '#4f8a2f');
+  }
 }
 
 const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {

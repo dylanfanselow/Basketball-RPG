@@ -165,7 +165,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   up and over to the trailer, a chest cooler front right, bushes + chain-link fence right, the neighbour's house left.
   You walk up the steps (you rise a step at a time). **✕ at the door opens it and ends the day** (night, "DAY n",
   morning on the top step, energy refilled); the owner will add a story element there (`TRAILER_DOOR_STORY`). The
-  inside isn't drawn yet.
+  inside isn't drawn yet. Round 57b (owner): more trailers in the background, trash strewn around, unkept wild
+  foliage, trees with trunks.
 - **Round 56: the school court venue** (owner's sketch + photo), a real game venue for story events.
   - Side-on like the arena: asphalt court, a chain-link fence along the back of the court (posts, top rail, knuckled
     top), then the school: tan portable classrooms long side to us with white wall AC units, barred windows, a ramp
