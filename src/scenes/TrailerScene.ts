@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { buildTrailerArt } from '../render/trailerArt';
+import { buildGlow } from '../render/roomArt';
 import { RoomDef, Poly, V, sxOf, syOf } from '../world/apartment';
-import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, liftAt } from '../world/trailer';
-import { RoomScene } from './RoomScene';
+import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, PATH_END, DOOR_X, TRAILER, liftAt } from '../world/trailer';
+import { RoomScene, ART } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
@@ -21,8 +22,11 @@ export const TRAILER_DOOR_STORY: ((at: 'trailerDoor') => void)[] = [];
  */
 export class TrailerScene extends RoomScene {
   constructor() { super('Trailer'); }
+  /** Round 57c: the night version (Menu → Trailer (night); story events can ask for it). */
+  night = false;
+  init(data?: { at?: string; night?: boolean }) { super.init(data); this.night = !!data?.night; }
   room(): RoomDef { return TRAILER_YARD; }
-  buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm); }
+  buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm, this.night); }
   extraObstacles(): Poly[] { return [TRAILER_SOLID]; }
   /** Wood on the steps, grass and dirt everywhere else. */
   footSurface(): boolean | 'grass' { return liftAt(this.pos) > 0 ? false : 'grass'; }
@@ -30,12 +34,26 @@ export class TrailerScene extends RoomScene {
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img as Phaser.GameObjects.Sprite | undefined; }
 
   onCreate() {
-    this.cameras.main.setBackgroundColor('#4f97e2');
+    this.cameras.main.setBackgroundColor(this.night ? '#0b1020' : '#4f97e2');
     this.events.once('shutdown', () => sfx.genHum(0));
+    if (this.night) {
+      // moonlit: you're cooler and darker; warm light pools from the porch bulb and the lit windows
+      this.player.setTint(0x8a96c8);
+      const key = buildGlow(this.textures);
+      const face = syOf(TRAILER.front);
+      const add = (x: number, y: number, s: number, a: number) => this.add.image(x, y, key).setScale(ART * s).setBlendMode(Phaser.BlendModes.ADD).setDepth(4990).setAlpha(a);
+      add(sxOf(DOOR_X[0]) - 8, face - TRAILER.topFt * 22 + 30, 1.6, 0.55);          // the porch bulb
+      for (const x of [4.4, 7.9, 14.9]) add(sxOf(x), face - 5.9 * 22, 1.3, 0.3); // the curtained windows
+      add(sxOf(DOOR_X[0] + 1.4), face + 30, 2.6, 0.22);                               // light spilling on the steps
+    }
   }
 
   actions() {
-    return [{ label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => this.goInside() }];
+    return [
+      { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => this.goInside() },
+      // round 57c: the end of the path (by the mailbox) leaves
+      { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Menu'); } },
+    ];
   }
 
   onUpdate() {

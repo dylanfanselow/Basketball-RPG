@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TRAILER_FURNITURE, TRAILER, DOOR_X, STEPS } from '../world/trailer';
+import { TRAILER_FURNITURE, TRAILER, DOOR_X, STEPS, PATH_END } from '../world/trailer';
 import { Piece } from '../world/apartment';
 import { C, R, P, hn, mix, canvas, bake, ArtPiece, AX, AY, HF, ART_W, ART_H, box } from './roomArt';
 import { shade, tint } from './sprites';
@@ -19,6 +19,34 @@ const T_TOP = FACE - up(TRAILER.topFt), T_BOT = FACE - up(TRAILER.bodyBottomFt);
 const T_X0 = Xa(TRAILER.x0), T_X1 = Xa(TRAILER.x1);
 
 const GRASS = ['#5f8f3a', '#6c9c42', '#557f33', '#78a84a', '#4c7430'];
+
+// ---------------------------------------------------------------- night (round 57c)
+/** Drawing the night version? Things that glow at night register a rect here; they're repainted after the grade. */
+let NIGHT = false;
+let EMIT: { x: number; y: number; w: number; h: number; col: string; folds?: boolean }[] = [];
+const glow = (x: number, y: number, w: number, h: number, col: string, folds = false) => { if (NIGHT) EMIT.push({ x, y, w, h, col, folds }); };
+/** Darken + cool everything (moonlight), then repaint the lights: lamp-lit windows (curtain folds), the porch light. */
+function gradeNight(c: C, w: number, h: number, sky = false) {
+  const img = c.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2], lum = 0.3 * r + 0.59 * g + 0.11 * b;
+    d[i] = Math.round(r * 0.2 + lum * 0.05); d[i + 1] = Math.round(g * 0.24 + lum * 0.06); d[i + 2] = Math.round(b * 0.36 + lum * 0.12 + 14);
+  }
+  c.putImageData(img, 0, 0);
+  if (sky) {
+    // stars and the moon, only where it's sky (bluish and dark after the grade)
+    const isSky = (x: number, y: number) => { const p = c.getImageData(x, y, 1, 1).data; return p[2] > p[0] + 18 && p[2] > p[1] + 8 && p[0] + p[1] + p[2] < 200; };
+    for (let i = 0; i < 260; i++) { const x = Math.round(hn(i, 1, 120) * w), y = Math.round(hn(i, 2, 121) * 230); if (isSky(x, y)) P(c, x, y, hn(i, 3, 122) < 0.2 ? '#ffffff' : '#9fb0d8'); }
+    const mx = 300, my = 56, mr = 15;
+    for (let y = -mr; y <= mr; y++) for (let x = -mr; x <= mr; x++) if (x * x + y * y <= mr * mr && isSky(mx + x, my + y)) P(c, mx + x, my + y, hn(x + 40, y + 40, 123) < 0.12 ? '#cfcab4' : x + y < -8 ? '#fffbe8' : '#ece6cc');
+  }
+  for (const e of EMIT) for (let y = e.y; y < e.y + e.h; y++) for (let x = e.x; x < e.x + e.w; x++) {
+    const k = e.folds ? ((x - e.x) % 5 === 0 ? 0.78 : (x - e.x) % 5 === 1 ? 1.08 : 0.95) : 1;
+    P(c, x, y, k === 1 ? e.col : k > 1 ? tint(e.col, 0.25) : shade(e.col, k));
+  }
+  EMIT = [];
+}
 
 // ---------------------------------------------------------------- background
 function blobTree(c: C, blobs: [number, number, number][], x0 = 0, x1 = ART_W) {
@@ -59,7 +87,7 @@ function tree(c: C, tx: number, base: number, top: number, halfW: number, blobs:
 }
 
 /** A trailer further back (smaller, hazier, half hidden by weeds). */
-function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body: string, band: string, seed: number) {
+function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body: string, band: string, seed: number, lights = true) {
   const bandY = top + Math.round((bot - top) * 0.58), r = Math.round((bot - top) * 0.32);
   for (let y = top; y < bot; y++) for (let x = x0; x < Math.min(x1, ART_W); x++) {
     if (x < x0 + r && y < top + r && Math.hypot(x - (x0 + r), y - (top + r)) > r) continue;
@@ -69,12 +97,13 @@ function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body
     if (hn(x >> 2, y >> 2, seed) < 0.05) col = mix(col, '#9a5a32', 0.5);
     P(c, x, y, mix(col, '#b9cfd8', 0.28));                                          // haze: it's further away
   }
-  for (let x = x0 + 10; x < x1 - 10; x += 26) { R(c, x, top + 8, 14, 10, mix('#5a6a70', '#b9cfd8', 0.25)); R(c, x + 1, top + 9, 4, 8, mix('#93a8ae', '#b9cfd8', 0.25)); }
+  for (let x = x0 + 10; x < x1 - 10; x += 26) { R(c, x, top + 8, 14, 10, mix('#5a6a70', '#b9cfd8', 0.25)); R(c, x + 1, top + 9, 4, 8, mix('#93a8ae', '#b9cfd8', 0.25)); if (lights && hn(x, seed, 124) < 0.5) glow(x, top + 8, 14, 10, '#e8b45a', true); }
   R(c, x0 + Math.round((x1 - x0) * 0.62), top + 8, 9, bot - top - 12, mix('#cfc7b0', '#b9cfd8', 0.25));
   for (let x = x0; x < x1; x += 3) R(c, x, bot - 4 - Math.round(hn(x, seed, 103) * 9), 2, 12, hn(x, 1, 104) < 0.5 ? '#557f33' : '#6c9c42'); // weeds
 }
 
-function drawBackground(): HTMLCanvasElement {
+function drawBackground(night: boolean): HTMLCanvasElement {
+  NIGHT = night; EMIT = [];
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   // sky + clouds
   const HZ = 262;
@@ -120,7 +149,7 @@ function drawBackground(): HTMLCanvasElement {
   // more trailers further back on the right (the lot keeps going), then trees with real trunks, the neighbour's house
   farTrailer(c, 736, 884, 210, 262, '#e4e4dc', '#7fa6c8', 41);
   farTrailer(c, 872, 1000, 222, 268, '#d8ccb0', '#b88a5a', 42);
-  farTrailer(c, 600, 700, 236, 270, '#dfe2d8', '#9ab89a', 43);
+  farTrailer(c, 600, 700, 236, 270, '#dfe2d8', '#9ab89a', 43, false); // mostly behind ours: its windows would glow through
   tree(c, 128, 272, 96, 7, [[40, 70, 70], [110, 40, 50], [10, 150, 46], [160, 112, 40], [80, 120, 44]]);
   tree(c, 716, 300, 150, 5, [[716, 128, 46], [676, 154, 32], [756, 146, 36], [730, 96, 34]]);
   tree(c, 902, 320, 140, 9, [[862, 72, 78], [944, 130, 64], [806, 112, 52], [958, 34, 56], [900, 30, 50]]);
@@ -132,6 +161,7 @@ function drawBackground(): HTMLCanvasElement {
   }
   for (let y = 168; y < 190; y++) for (let x = 0; x < 160 - (y - 168) * 0.2; x++) P(c, x, y, (y + (x >> 2)) % 4 === 0 ? '#5a4636' : hn(x >> 2, y, 4) < 0.2 ? '#7a6250' : '#6c5444');
   R(c, 120, 166, 30, 3, '#8a7058'); // the curled-up shingles
+  glow(16, 216, 56, 42, '#5a78c0', true); // a TV on next door
   R(c, 14, 214, 60, 46, '#3d5a58'); R(c, 16, 216, 56, 42, '#6f8d8a'); for (let k = 0; k < 42; k += 4) R(c, 16, 216 + k, 56, 1, '#8aa6a2');
   for (let x = 10; x < 80; x++) R(c, x, 206 + ((x - 10) % 8 < 4 ? 0 : 1), 1, 9, (x >> 2) % 2 ? '#2f7a56' : '#3f9a6a'); // awning
   // left chain-link fence in front of the neighbour's house, sagging
@@ -153,6 +183,8 @@ function drawBackground(): HTMLCanvasElement {
   drawWeeds(c);
   drawSteps(c);
   drawJunk(c);
+  if (night) gradeNight(c, ART_W, ART_H, true);
+  NIGHT = false;
   return cv;
 }
 
@@ -203,6 +235,8 @@ function drawTrailer(c: C) {
       P(c, x, y, col);
     }
     R(c, x0, y0 + Math.round((y1 - y0) * 0.5), x1 - x0, 1, '#b5b1a0');
+    if (kind === 'curtain') glow(x0, y0, x1 - x0, y1 - y0, '#f6c46a', true);   // the generator keeps the lamps on
+    else if (kind === 'plain') glow(x0, y0, x1 - x0, y1 - y0, '#d89a48');
   };
   const wy0 = T_TOP + 34, wy1 = T_TOP + 74;
   win(T_X0 + 14, T_X0 + 64, wy0, wy1, 'curtain'); win(T_X0 + 68, T_X0 + 128, wy0, wy1, 'curtain');
@@ -211,6 +245,8 @@ function drawTrailer(c: C) {
   win(Xa(28.2), Xa(31.4), wy0 + 4, wy1 - 6, 'plain');
   win(Xa(32.8), Xa(33.6), wy0 + 6, wy1 - 10, 'plain');
   // orange marker light, the power inlet the generator cord plugs into, little rust patches
+  const pl = { x: Xa(DOOR_X[0]) - 9, y: FACE - up(8.0) };
+  R(c, pl.x, pl.y, 6, 4, '#6a6e72'); R(c, pl.x + 1, pl.y + 4, 4, 4, '#e8e4d0'); glow(pl.x + 1, pl.y + 4, 4, 4, '#fff6c8');
   R(c, Xa(17.4), bandY + 8, 5, 6, '#7a3a10'); R(c, Xa(17.4) + 1, bandY + 9, 3, 4, '#f08a2a'); P(c, Xa(17.4) + 1, bandY + 9, '#ffd09a');
   R(c, Xa(29.6), bandY + 6, 6, 7, '#9a9d98'); R(c, Xa(29.6) + 1, bandY + 7, 4, 5, '#4a4d4a');
 }
@@ -271,6 +307,12 @@ function drawJunk(c: C) {
   for (const [dx, dy, len, sl, col] of [[0, 0, 44, -0.2, '#7a5a3a'], [6, -4, 38, 0.15, '#93714c'], [-4, -8, 30, -0.35, '#6a4a2e'], [14, -10, 26, 0.3, '#8a6a48']] as [number, number, number, number, string][]) for (let i = 0; i < len; i++) R(c, sh.x + dx + i, sh.y + dy + Math.round(i * sl), 1, 4, i === 0 || i === len - 1 ? '#4a321e' : col);
   for (let i = 0; i < 40; i++) R(c, sh.x + 4 + i, sh.y - 18 + Math.round(i * 0.12), 1, 9, i % 4 < 2 ? '#9aa0a4' : '#6a7074');
   R(c, sh.x + 40, sh.y - 12, 10, 12, '#c9cdd0'); R(c, sh.x + 40, sh.y - 12, 10, 2, '#e6e8ea'); R(c, sh.x + 42, sh.y - 8, 6, 5, '#3070b0');
+  // round 57c: a dented mailbox on a leaning post at the end of the path (where you leave)
+  const mb = { x: Xa(PATH_END.x) - 70, y: Gy(PATH_END.y) };
+  for (let i = 0; i < 44; i++) R(c, mb.x + Math.round(i * 0.12), mb.y - i, 4, 1, i % 7 === 0 ? '#5a3e26' : '#7a5838');
+  R(c, mb.x - 4, mb.y - 58, 22, 13, '#4a4e52'); R(c, mb.x - 4, mb.y - 58, 22, 3, '#6a7074'); R(c, mb.x - 5, mb.y - 52, 1, 6, '#2a2c2e');
+  R(c, mb.x + 4, mb.y - 50, 6, 2, '#2a2c2e'); R(c, mb.x + 19, mb.y - 66, 2, 12, '#b03030'); R(c, mb.x + 19, mb.y - 66, 6, 4, '#b03030'); // the flag's up
+  for (let x = mb.x - 4; x < mb.x + 18; x++) if (hn(x, 1, 125) < 0.4) P(c, x, mb.y - 46, '#9a5a32');
   // a broken white plastic lawn chair on its side, and a rusty bike frame in the weeds
   const ch = { x: Xa(3), y: Gy(16) }; R(c, ch.x, ch.y - 14, 20, 4, '#e8e8e2'); R(c, ch.x + 16, ch.y - 26, 4, 16, '#e8e8e2'); R(c, ch.x + 2, ch.y - 10, 2, 10, '#d0d0ca'); R(c, ch.x + 12, ch.y - 10, 2, 8, '#d0d0ca');
   const bk = { x: Xa(36.5), y: Gy(14) };
@@ -286,6 +328,7 @@ function drawDoor(c: C, _p: Piece, f: number) {
   if (f === 0) {
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) P(c, x, y, hn(x >> 1, y >> 2, 51) < 0.06 ? '#c9b99a' : x === x0 ? '#f4efdc' : x >= x1 - 2 ? '#bdb59e' : '#e6dfc8');
     R(c, x0 + 4, y0 + 6, x1 - x0 - 8, 32, '#6f6252'); R(c, x0 + 5, y0 + 7, x1 - x0 - 10, 30, '#4e5a5c'); R(c, x0 + 6, y0 + 8, 6, 20, '#7f9296'); // the little window
+    glow(x0 + 5, y0 + 7, x1 - x0 - 10, 30, '#e8b058', true);
     R(c, x0 + 4, y0 + 50, x1 - x0 - 8, 1, '#c8bfa6'); R(c, x0 + 4, y0 + 74, x1 - x0 - 8, 1, '#c8bfa6');
     R(c, x1 - 8, y0 + 56, 4, 6, '#9da1a3'); R(c, x1 - 8, y0 + 56, 4, 1, '#e2e6e8');               // handle
     for (let x = x0; x < x1; x++) if (hn(x, 0, 52) < 0.5) R(c, x, y1 - 5 - Math.round(hn(x, 1, 53) * 6), 1, 6, '#a5683e'); // rusty bottom
@@ -295,6 +338,7 @@ function drawDoor(c: C, _p: Piece, f: number) {
       const k = Math.max(0, 1 - Math.hypot((x - (x0 + x1) / 2) / 26, (y - (y1 - 30)) / 50));
       P(c, x, y, mix('#15110d', '#6a4a26', k * 0.75));
     }
+    glow(x0 + 2, y1 - 44, x1 - x0 - 4, 44, '#a86a30');                                           // lamplight inside
     R(c, x0 + 3, y1 - 26, 10, 8, '#2a2018'); R(c, x0 + 3, y1 - 26, 10, 1, '#4a3a2a');            // a counter inside
     R(c, x1, y0 - 1, 8, y1 - y0 + 1, '#bdb59e'); R(c, x1, y0 - 1, 2, y1 - y0 + 1, '#e6dfc8'); R(c, x1 + 2, y0 + 8, 5, 24, '#4e5a5c');
   }
@@ -326,18 +370,44 @@ function drawBarrel(c: C, p: Piece) {
  * grey power cord zig-zagging up from it and drooping across to the trailer's inlet. Frame 1: shaken a pixel, run light on. */
 function drawGenerator(c: C, p: Piece, f: number) {
   const x0 = Xa(p.x), x1 = Xa(p.x + p.w), yb = Gy(p.y), yf = Gy(p.y + p.d), H = up(2.5), j = f;
-  // tube frame + wheels
-  const b = box(c, x0, x1, yb - j, yf - j, H, '#1e1f22', { top: '#3a3c40' });
-  R(c, x0 - 3, yf - H - 4 - j, 3, H + 4, '#6a6e72'); R(c, x1, yf - H - 4 - j, 3, H + 4, '#6a6e72'); R(c, x0 - 3, yf - H - 6 - j, x1 - x0 + 6, 3, '#8a8e92');
-  for (const wx of [x0 + 6, x1 - 12]) { for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 25) P(c, wx + x + 3, yf + y - 3, x * x + y * y > 12 ? '#111' : '#555'); }
-  // the logo: a yellow triangle (point down) with a lightning bolt, like the sketch
-  const lx = Math.round((x0 + x1) / 2), ly = b.faceTop + 8 - j;
-  for (let y = 0; y < 18; y++) { const hw = Math.round(11 - y * 0.62); for (let x = -hw; x <= hw; x++) { const edge = Math.abs(x) >= hw - 1 || y < 2; if (edge) P(c, lx + x, ly + y, '#ffe24a'); } }
+  // round 57c: run down — an oil stain under it, a bent rusty frame, a flat mismatched wheel, rust and dents,
+  // the side panel gone (engine showing), duct tape, a peeling logo, a red fuel can beside it
+  for (let y = -5; y <= 5; y++) for (let x = -26; x <= 26; x++) if ((x / 26) ** 2 + (y / 5) ** 2 < 1 - hn(x, y, 126) * 0.2) P(c, Math.round((x0 + x1) / 2) + x, yf + 2 + y, (x + y) % 5 === 0 ? '#2a2a2e' : '#1a1a1e');
+  const b = box(c, x0, x1, yb - j, yf - j, H, '#1e1f22', { top: '#34363a' });
+  for (let y = b.faceTop; y < b.yf; y++) for (let x = b.x0; x < b.x1; x++) {
+    const n = hn(x >> 1, y >> 1, 127);
+    if (n < 0.07) P(c, x, y - j, n < 0.03 ? '#7a3a1a' : '#5a2a14');                      // rust blooms
+    else if (hn(x, y, 128) < 0.02) P(c, x, y - j, '#4a4c50');                             // scratches
+  }
+  R(c, x0 + 2, b.faceTop + 2 - j, 9, 1, '#0c0c0e'); R(c, x0 + 3, b.faceTop + 3 - j, 6, 2, '#2a2b2e'); // a dent in the corner
+  // the missing side panel on the left: the engine block and a red spark-plug boot inside
+  R(c, x0 + 1, b.faceTop + 22 - j, 14, b.yf - b.faceTop - 26, '#0e0e10');
+  R(c, x0 + 3, b.faceTop + 25 - j, 10, 9, '#6a6e72'); R(c, x0 + 3, b.faceTop + 25 - j, 10, 2, '#8a8e92'); R(c, x0 + 11, b.faceTop + 22 - j, 3, 4, '#c03030');
+  for (let k = 0; k < 4; k++) R(c, x0 + 4 + k * 2, b.faceTop + 36 - j, 1, 4, '#4a4c50');
+  // duct tape patching a crack (an X), soot from the exhaust on the right
+  for (let k = 0; k < 12; k++) { R(c, x1 - 26 + k, b.faceTop + 22 + Math.round(k * 0.6) - j, 2, 2, '#b8bcc0'); R(c, x1 - 26 + k, b.faceTop + 29 - Math.round(k * 0.6) - j, 2, 2, '#a4a8ac'); }
+  for (let y = 0; y < 18; y++) for (let x = 0; x < 6; x++) if (hn(x, y, 129) < 0.6 - y * 0.03) P(c, x1 - 4 + x, b.faceTop - 14 + y - j, '#0a0a0a');
+  R(c, x1 - 3, b.faceTop - 2 - j, 4, 4, '#3a3c40'); R(c, x1 - 2, b.faceTop - 3 - j, 2, 2, '#1a1a1a');                  // exhaust stub
+  // bent, rusty tube frame
+  R(c, x0 - 3, yf - H - 4 - j, 3, H + 4, '#7a5040'); R(c, x1, yf - H - 2 - j, 3, H + 2, '#6a6e72'); R(c, x0 - 3, yf - H - 6 - j, x1 - x0 + 6, 3, '#8a7060');
+  for (let x = x0 - 3; x < x1 + 3; x++) if (hn(x, 2, 130) < 0.35) P(c, x, yf - H - 6 - j, '#9a5a32');
+  // wheels: one fine, one flat (a different tyre)
+  for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 25) P(c, x0 + 9 + x, yf + y - 3, x * x + y * y > 12 ? '#111' : '#555');
+  for (let y = -3; y <= 3; y++) for (let x = -6; x <= 6; x++) if ((x / 6) ** 2 + (y / 3) ** 2 <= 1) P(c, x1 - 9 + x, yf + y - 1, (x / 6) ** 2 + (y / 3) ** 2 > 0.5 ? '#1a1a1a' : '#6a5a4a');
+  // the logo: a yellow triangle (point down) with a lightning bolt, like the sketch — faded and peeling
+  const lx = Math.round((x0 + x1) / 2) + 4, ly = b.faceTop + 8 - j, LOGO = '#e8cc48';
+  for (let y = 0; y < 18; y++) { const hw = Math.round(11 - y * 0.62); for (let x = -hw; x <= hw; x++) { const edge = Math.abs(x) >= hw - 1 || y < 2; if (edge && hn(x, y, 131) > 0.12 && !(x > 4 && y < 5)) P(c, lx + x, ly + y, LOGO); } }
   const bolt: [number, number][] = [[2, 3], [1, 4], [0, 5], [-1, 6], [0, 7], [1, 7], [2, 7], [1, 8], [0, 9], [-1, 10], [-2, 11]];
-  for (const [bx, by] of bolt) { P(c, lx + bx, ly + by, '#ffe24a'); P(c, lx + bx + 1, ly + by, '#ffe24a'); }
+  for (const [bx, by] of bolt) { P(c, lx + bx, ly + by, LOGO); if (hn(bx, by, 132) > 0.2) P(c, lx + bx + 1, ly + by, LOGO); }
+  R(c, lx + 6, ly - 1, 5, 3, '#c8b040'); P(c, lx + 9, ly + 2, '#c8b040');                              // the peeled corner curling off
+  // a red jerry can leaning on its right side
+  const jx = x1 + 6, jy = yf - j;
+  R(c, jx - 1, jy - 19, 13, 19, '#5a1010'); R(c, jx, jy - 18, 11, 18, '#b02020'); R(c, jx + 1, jy - 17, 3, 15, '#d04040');
+  R(c, jx + 3, jy - 23, 5, 5, '#5a1010'); R(c, jx + 4, jy - 22, 3, 3, '#e8c040'); R(c, jx, jy - 9, 11, 1, '#7a1818');
   // control panel: outlets + a run light (on in frame 1)
   R(c, x1 - 14, b.faceTop + 6 - j, 10, 12, '#2c2e32'); R(c, x1 - 12, b.faceTop + 8 - j, 2, 3, '#d8d8d8'); R(c, x1 - 8, b.faceTop + 8 - j, 2, 3, '#d8d8d8');
   P(c, x1 - 11, b.faceTop + 14 - j, f ? '#6aff6a' : '#2a5a2a'); P(c, x1 - 10, b.faceTop + 14 - j, f ? '#6aff6a' : '#2a5a2a');
+  if (f) glow(x1 - 11, b.faceTop + 14 - j, 2, 1, '#6aff6a');
   // the cord: out of the top, zig-zag up, then a droop over to the trailer's inlet
   const cx = x1 - 6, top = b.top - j;
   const pts: [number, number][] = [[cx, top], [cx, top - 6], [cx - 8, top - 14], [cx + 4, top - 22], [cx - 6, top - 32], [cx + 2, top - 40]];
@@ -376,14 +446,21 @@ const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
 const FRAMES: Record<string, number> = { trailerDoor: 2, generator: 2 };
 const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
 
-export function buildTrailerArt(tm: Phaser.Textures.TextureManager): { bg: string; pieces: ArtPiece[] } {
-  const bg = 'trailer_bg';
-  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground());
+/** Round 57c: `night` = the night version (darkened, moon and stars, the trailer's lamps lit by the generator). */
+export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false): { bg: string; pieces: ArtPiece[] } {
+  const sfx = night ? '_n' : '';
+  const bg = `trailer_bg${sfx}_v2`;
+  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night));
   const pieces: ArtPiece[] = [];
   for (const p of TRAILER_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
-    const key = `trailer_${p.id}`;
-    const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => draw(c, p, f));
+    const key = `trailer_${p.id}${sfx}_v2`;
+    const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => {
+      NIGHT = night; EMIT = [];
+      draw(c, p, f);
+      if (night) gradeNight(c, ART_W, ART_H);
+      NIGHT = false;
+    });
     CACHE.set(key, art);
     pieces.push({ ...art, depthFt: p.y + p.d, piece: p });
   }

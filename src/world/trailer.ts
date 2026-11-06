@@ -20,7 +20,8 @@ export const TRAILER_FURNITURE: Piece[] = [
   { id: 'door', kind: 'trailerDoor', x: DOOR_X[0], y: 0, w: DOOR_X[1] - DOOR_X[0], d: TRAILER.front, solid: false },
   { id: 'hitch', kind: 'hitch', x: -4.6, y: 0.2, w: 6.6, d: 1.6, solid: true },
   { id: 'barrel', kind: 'barrel', x: 13.2, y: 0.9, w: 2.6, d: 1.4, solid: true },
-  { id: 'generator', kind: 'generator', x: 27.6, y: 2.8, w: 4.2, d: 2.4, solid: true },
+  // round 57c: further right and back, by the trailer's right end
+  { id: 'generator', kind: 'generator', x: 31.0, y: 1.3, w: 4.0, d: 2.2, solid: true },
   { id: 'cooler', kind: 'cooler', x: 36.2, y: 17.2, w: 5.0, d: 3.2, solid: true },
   { id: 'bush', kind: 'bush', x: 40.5, y: 0.2, w: 7.0, d: 8.0, solid: true },
 ];
@@ -33,6 +34,8 @@ export function liftAt(p: V): number {
 }
 
 export const TRAILER_SPAWN: V = { x: 24.0, y: 18.0 };
+/** Round 57c: the end of the path (front edge of the yard): ✕ here leaves. A mailbox marks it. */
+export const PATH_END: V = { x: 20.6, y: 22.3 };
 export const TRAILER_YARD: RoomDef = {
   id: 'trailer', furniture: TRAILER_FURNITURE, doors: [], spawn: TRAILER_SPAWN, leftX: -6.2, rightX: 47.5, liftAt,
 };
