@@ -62,11 +62,13 @@ export const threatWeight = (rep: number, heatScore = 0) => ((rep + heatScore * 
  * Who guards whom: tries every pairing (5! = 120, 3! = 6) and keeps the one that maximises
  * Σ weight(o) × fit(d, o) − mismatch(d, o). Returns defender id → offensive player id.
  */
-export function assignGuards(defs: Player[], offs: Player[], weight: (o: Player) => number): Map<string, string> {
+/** `distW` > 0 (round 48, live changes of possession): weigh how far each defender is from each man (per ft) — in
+ *  transition you pick up the nearest man, the scouting matchups come back at the next dead ball. */
+export function assignGuards(defs: Player[], offs: Player[], weight: (o: Player) => number, distW = 0): Map<string, string> {
   const n = Math.min(defs.length, offs.length), out = new Map<string, string>();
   if (!n) return out;
   const w = offs.map(weight);
-  const val = defs.map((d) => offs.map((o, j) => w[j] * guardFit(d, o) - mismatch(d, o)));
+  const val = defs.map((d) => offs.map((o, j) => w[j] * guardFit(d, o) - mismatch(d, o) - distW * Math.hypot(d.p.x - o.p.x, d.p.y - o.p.y)));
   let best = -Infinity, bestPerm: number[] = [];
   const perm: number[] = [], used = new Array(offs.length).fill(false);
   const rec = (i: number, acc: number) => {
@@ -100,8 +102,37 @@ export interface Heat {
   since: { fga: number; fgm: number; pts: number };
   /** last few shots, newest last (true = made) */
   recent: boolean[];
+  /** round 48: where his points come from this game (decides how the defense helps) */
+  buckets: { rim: number; jumper: number; post: number };
 }
-export const newHeat = (): Heat => ({ score: 0, tier: 0, since: { fga: 0, fgm: 0, pts: 0 }, recent: [] });
+export const newHeat = (): Heat => ({ score: 0, tier: 0, since: { fga: 0, fgm: 0, pts: 0 }, recent: [], buckets: { rim: 0, jumper: 0, post: 0 } });
+
+// ---------------------------------------------------------------- coverage (round 48)
+/** How the defense helps on him: protect the rim, pack a shooter, dig on the post, or a mix. */
+export type Coverage = 'wall' | 'chase' | 'post' | 'mixed';
+export const COVERAGE_NAME: Record<Coverage, string> = { wall: 'protecting the rim', chase: 'packing the shooter', post: 'digging on the post', mixed: 'mixing it up' };
+const RIM_SHOTS = new Set(['layup', 'dunk', 'euro', 'alleyOop', 'alleyOopLayup', 'stepThrough', 'jelly', 'push']);
+/** Which bucket a made shot goes in. */
+export function bucketOf(type: string, post: boolean): keyof Heat['buckets'] {
+  if (post || type === 'hook') return 'post';
+  return RIM_SHOTS.has(type) ? 'rim' : 'jumper';
+}
+/**
+ * The scheme, from how he's actually scoring this game, with a small prior from his style so the early game leans on
+ * reputation: ≥ 40% of his points in the post → dig on the post; 55%+ at the rim → wall off the drive; 55%+ from
+ * jumpers → pack the shooter (strictly more than 55% either way); otherwise a mix (one high, one deep).
+ */
+export function coverage(p: Player, h: Heat | undefined): Coverage {
+  const st = scorerStyle(p), b = { ...(h?.buckets ?? { rim: 0, jumper: 0, post: 0 }) };
+  if (st === 'post') b.post += 4;
+  else if (st === 'catch') b.jumper += 4;
+  else { b.rim += 2; b.jumper += 2; }
+  const tot = b.rim + b.jumper + b.post;
+  if (b.post / tot >= 0.4) return 'post';
+  if (b.rim / tot > 0.55) return 'wall';
+  if (b.jumper / tot > 0.55) return 'chase';
+  return 'mixed';
+}
 
 /**
  * The heat score from this game so far (before the never-cools max): mostly his share of the team's shots (70%) and
@@ -127,8 +158,9 @@ export function beatingCoverage(h: Heat, box: { fga: number; fgm: number; pts: n
  * After one of his shots: update the heat (it never goes down) and maybe raise the tier by one. `cap` = the highest
  * tier this game allows (3 in 5v5, 2 in 3v3, 0 in 1v1). Returns the new tier if it went up, else null.
  */
-export function afterShot(h: Heat, rep: number, box: { fga: number; fgm: number; pts: number }, team: { fga: number; pts: number }, made: boolean, cap: number): Tier | null {
+export function afterShot(h: Heat, rep: number, box: { fga: number; fgm: number; pts: number }, team: { fga: number; pts: number }, made: boolean, cap: number, shot?: { type: string; post: boolean; pts: number }): Tier | null {
   h.recent.push(made); if (h.recent.length > 6) h.recent.shift();
+  if (made && shot) h.buckets[bucketOf(shot.type, shot.post)] += shot.pts;
   h.score = Math.max(h.score, heatScore(rep, box, team, h.recent));
   const next = (h.tier + 1) as Tier;
   if (next > cap || h.score < HEAT_AT[next] || !beatingCoverage(h, box)) return null;

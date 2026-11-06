@@ -44,13 +44,13 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x };
     const hi = trap.helpers.indexOf(d.id);
     if (hi >= 0) {
-      // the first helper comes from the side he's on, the second takes the other side: with the on-ball man in front
-      // they make a wall between him and the rim (inside his shot cone, so every one of them contests)
+      // round 48: help by how he scores (not a blob that mirrors him — one move would beat them all)
       const first = sim.players.find((q) => q.id === trap.helpers[0]);
       const s0 = first && dot(sub(first.p, h.p), pr) >= 0 ? 1 : -1;
       const sideSign = hi === 0 ? s0 : -s0;
-      sim.steer(d, add(h.p, add(scale(pr, 1.7 * sideSign), scale(toRim, 2.1))), true);
-      if (sim.time - trap.start > 0.4 && dist(d.p, h.p) < 3.8 && sim.rng.chance(dt * 0.7 * (d.sub.steal / 70))) sim.swipe(d);
+      const spot = helpSpot(trap.scheme, hi, h, rim, sideSign);
+      sim.steer(d, spot.at, true);
+      if (spot.tight && sim.time - trap.start > 0.4 && dist(d.p, h.p) < 3.8 && sim.rng.chance(dt * 0.7 * (d.sub.steal / 70))) sim.swipe(d);
       return;
     }
     const rot = trap.rotate.get(d.id);
@@ -75,7 +75,9 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     const gap = clamp(4 + 0.35 * Math.abs(man.p.x - 47), 4, 12);
     target = add(man.p, scale(norm(sub(rim, man.p)), gap));
   } else if (man === h) {
-    const gap = 3.4 - (d.sub.perimD / 99) * 0.9;
+    // round 48: a shooter the defense is packing gets crowded (no air space for the catch-and-fire)
+    const packed = sim.tierOf(man) >= 2 && sim.coverageOf(man) === 'chase';
+    const gap = 3.4 - (d.sub.perimD / 99) * 0.9 - (packed ? 1.1 : 0);
     target = add(man.p, scale(norm(sub(rim, man.p)), gap));
     urgent = true;
   } else {
@@ -98,8 +100,12 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       target = add(man.p, scale(lane, low ? 1.3 : 1.8));
       urgent = true;
     } else if (load && load.helpers.includes(d.id) && load.hot !== man) {
-      // loaded up: this defender is one of the hot scorer's doublers — sit in the gap toward him, ready to jump the catch
-      target = lerpV(target, load.hot.p, 0.25);
+      // loaded up: this defender is one of the hot scorer's doublers — sit where the scheme wants him before the catch:
+      // under a shooter (between him and the rim), in the drive lane of a rim scorer, or in the gap otherwise
+      const hr = norm(sub(rim, load.hot.p)), hd = dist(load.hot.p, rim);
+      if (load.scheme === 'chase' && load.helpers[0] === d.id) target = add(load.hot.p, scale(hr, Math.min(5, hd * 0.4)));
+      else if (load.scheme === 'wall') target = add(load.hot.p, scale(hr, hd * (load.helpers[0] === d.id ? 0.5 : 0.75)));
+      else target = lerpV(target, load.hot.p, 0.25);
     } else if (ATT.shade) {
       // help shading: sag toward a hot scorer near you (not your man) so you're in his cone on the drive
       for (const o of sim.offense()) {
@@ -137,4 +143,29 @@ function isClosestHelper(sim: GameSim, d: Player, h: Player, onBall: Player | nu
     if (dd < bd) { bd = dd; best = o; }
   }
   return best === d;
+}
+
+/**
+ * Round 48: where a double / triple helper stands, by coverage scheme (hi = 0 first helper, 1 second):
+ *  - wall (rim scorer): on his line to the rim, deep — about halfway (at least 7 ft in front) and at the edge of the
+ *    restricted area. A crossover or burst beats his own man, not the wall.
+ *  - chase (shooter): one "over" — tight on his high side (cutting off where his burst is heading) — and one "under",
+ *    ~5 ft between him and the rim.
+ *  - post: the round 44 dig from the top, and one at the rim on the baseline side.
+ *  - mixed: one high and tight, one deep at the restricted area.
+ */
+export function helpSpot(scheme: string, hi: number, h: Player, rim: { x: number; y: number }, sideSign: number): { at: { x: number; y: number }; tight: boolean } {
+  const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x }, D = dist(h.p, rim);
+  // deep spots along his line to the rim (measured from him)
+  const deep = (fromHim: number, lat: number) => add(h.p, add(scale(toRim, clamp(fromHim, 1.5, Math.max(1.5, D - 2.5))), scale(pr, lat)));
+  // tight spots cut off a dribble move: aim ahead of where the burst is going, not where he is
+  const lead = h.state === 'dribbleMove' && h.move ? add(h.p, scale(h.move.dir, 3.5)) : h.p;
+  const over = () => add(lead, add(scale(pr, 1.9 * sideSign), scale(toRim, 1.2)));
+  const rimEdge = D - 4.5;
+  switch (scheme) {
+    case 'wall': return { at: hi === 0 ? deep(Math.max(7, D * 0.45), 1.5 * sideSign) : deep(rimEdge, -1.5 * sideSign), tight: false };
+    case 'chase': return hi === 0 ? { at: over(), tight: true } : { at: deep(5, 0), tight: false };
+    case 'post': return hi === 0 ? { at: add(h.p, add(scale(pr, 2.4 * sideSign), scale(toRim, 0.6))), tight: true } : { at: deep(D - 3, -1.2 * sideSign), tight: false };
+    default: return hi === 0 ? { at: over(), tight: true } : { at: deep(rimEdge, 0), tight: false };
+  }
 }

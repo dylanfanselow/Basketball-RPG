@@ -10,7 +10,7 @@ import { withDefaults } from '../render/appearance';
 import { openPixelEditor } from './pixelEditor';
 import { partVariants, PartType } from '../render/faceParts';
 import { unlockedDunks, nextDunk } from '../sim/dunks';
-import { ATT, scorerRep, scorerStyle, TIER_NAME, HEAT_AT, Tier } from '../sim/attention';
+import { ATT, scorerRep, scorerStyle, TIER_NAME, HEAT_AT, Tier, newHeat } from '../sim/attention';
 
 /**
  * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
@@ -306,6 +306,8 @@ export function initDevPanel() {
       const u = s.user;
       at.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'force on me:'),
         ...([0, 1, 2, 3] as Tier[]).map((t) => btn(t === 0 ? 'normal' : TIER_NAME[t].toLowerCase(), () => s.forceTier(u, t), `Make the defense treat you as tier ${t}`))));
+      at.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'my buckets:'),
+        ...(['rim', 'jumper', 'post'] as const).map((k) => btn(`+10 ${k}`, () => { const h = (s.heat[u.id] ??= newHeat()); h.buckets[k] += 10; }, `Pretend you scored 10 more ${k} points (the coverage follows how you score)`))));
     }
     if (s) {
       at.append(check('Attention off (role matchups, no doubles)', s.attentionOff, (v) => { s.attentionOff = v; s.assignMatchups(); }));
@@ -320,9 +322,9 @@ export function initDevPanel() {
       const e = document.getElementById('attRead'), g = app.sim; if (!e || !g) return;
       const rows = [0, 1].flatMap((t) => g.teams[t as 0 | 1].onCourt.map((p) => {
         const h = g.heat[p.id], man = g.players.find((q) => q.id === p.guarding);
-        return `${p.name.padEnd(18).slice(0, 18)} rep ${scorerRep(p).toFixed(0)} ${scorerStyle(p).padEnd(7)} heat ${(h?.score ?? 0).toFixed(0).padStart(3)} T${g.tierOf(p)}  guards ${man?.name ?? '-'}`;
+        return `${p.name.padEnd(18).slice(0, 18)} rep ${scorerRep(p).toFixed(0)} ${scorerStyle(p).padEnd(7)} heat ${(h?.score ?? 0).toFixed(0).padStart(3)} T${g.tierOf(p)}${g.tierOf(p) >= 2 ? ` ${g.coverageOf(p)}` : ''}  guards ${man?.name ?? '-'}`;
       }));
-      const tr = g.trap ? `TRAP on ${g.players.find((p) => p.id === g.trap!.holderId)?.name}: ${g.trap.helpers.length} helper(s)` : 'no trap';
+      const tr = g.trap ? `TRAP (${g.trap.scheme}) on ${g.players.find((p) => p.id === g.trap!.holderId)?.name}: ${g.trap.helpers.length} helper(s)` : 'no trap';
       e.textContent = [...rows, tr].join('\n');
     }, 500);
 

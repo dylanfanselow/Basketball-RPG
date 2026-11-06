@@ -195,6 +195,18 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   } else p.doubledSince = -1;
 
+  // round 48: open floor on the run (transition / coming up the floor, moving toward the rim) — nobody in front of him
+  // or alongside his path to the rim: keep going and finish (no pass back to the point guard). Re-checked every tick: the moment a defender gets in the way, the normal reads take over.
+  const running = dot(p.vel, norm(sub(rim, p.p))) > 4 && (sim.inTransition(p.team) || d > 30);
+  if (OPEN_COURT.on && !p.deadDribble && d > 7.5 && d < 70 && (running || p.aiMode === 'drive') && clearPath(sim, p)) {
+    if (p.aiMode !== 'drive') { OPEN_COURT.runs++; OPEN_COURT.startD.push(Math.round(d)); if (inFrontcourt(side, p.p) && !sim.inTransition(p.team)) OPEN_COURT.half++; }
+    sim.steer(p, rim, true);
+    if (len(p.vel) > 6) sim.startBurst(p);
+    p.aiMode = 'drive'; p.aiModeUntil = sim.time + 0.6;
+    return;
+  }
+  if (p.aiMode === 'drive' && d <= 7.5 && clearPath(sim, p)) { OPEN_COURT.shots++; sim.startShot(p, selectShotType(p, side, norm(sub(rim, p.p)), sim.time)); p.aiMode = 'none'; return; }
+
   // ---- transition: read the break before walking it up ----
   if (sim.inTransition(p.team) && p.aiMode !== 'drive') {
     const sinceCatchT = sim.time - p.receivedAt;
@@ -495,4 +507,20 @@ function bringUp(sim: GameSim, p: Player) {
   }
   // otherwise get it up the floor (a screen is on its way after 1.2 s of pressure)
   sim.steer(p, dest, sim.shotClock < 20 || sim.backcourtT > 3 || pressured);
+}
+
+/**
+ * Round 48: is the way to the rim open? No defender ahead of him on his line to the rim or alongside it (within ~9 ft
+ * sideways) — the ones trailing behind don't count.
+ */
+/** Dev / stats switch for the round 48 open-court finish. */
+export const OPEN_COURT = { on: true, runs: 0, shots: 0, startD: [] as number[], half: 0 };
+export function clearPath(sim: GameSim, p: Player): boolean {
+  const rim = sim.rim(p.team), toRim = norm(sub(rim, p.p)), d = dist(p.p, rim);
+  for (const o of sim.opp(p.team)) {
+    if (o.state === 'fallen') continue;
+    const rel = sub(o.p, p.p), along = dot(rel, toRim), lat = Math.abs(rel.x * toRim.y - rel.y * toRim.x);
+    if (along > -1.5 && along < d + 3 && lat < 9) return false;
+  }
+  return true;
 }

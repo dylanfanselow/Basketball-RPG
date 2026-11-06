@@ -154,6 +154,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 48: help by how he scores, crowded rims, finish the run.** The double / triple follows the scorer's buckets
+  this game (prior from his style): rim scorer → **wall off the drive** (helpers deep on his line to the rim, so a
+  move only beats his own man); shooter → **pack him** (tight on-ball, one over, one under); post → dig; mixed → one
+  high, one deep. Finishing into 2+ contesters shows `crowd at the rim (n)` and, on dunks, `poster over n` on the
+  equation. A runner with nobody ahead (or alongside) finishes instead of passing back. In transition defenders pick up
+  the nearest man; scouting matchups return at the next dead ball.
 - **Round 47: defenses react to outliers, not normal stars.** Contests keep stacking as 1 − Π(1 − cᵢ) (owner: keep it,
   get help into the cone). **Who guards whom** is computed (3v3 + 5v5): best-fitting defender on the biggest threat,
   the weakest defender hidden (Knicks–Lakers: Brunson doesn't guard Luka). **Heat** is mostly the share of the

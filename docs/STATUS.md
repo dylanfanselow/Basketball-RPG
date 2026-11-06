@@ -99,6 +99,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `GameSim.trapFor` (helpers from `pickHelpers`, rim protector stays home far out, starts while the pass is on its
   way, on inside 28 ft / held to 31 ft) as a wall in his shot cone + rotation (`trap.rotate`), `loadFor` (helpers sit
   in the gap while he's off the ball), `scrambleOnCatch`. Offense: AI handlers pass out of doubles (`doubledSince`).
+  Round 48: `Heat.buckets` (rim / jumper / post points from his makes) → `coverage()` wall / chase / post / mixed (style
+  prior +4, strict 55% / 40% for post); `helpSpot` (defense.ts): wall = deep spots on his line to the rim (≥ 7 ft /
+  restricted-area edge), chase = tight "over" ahead of his burst + "under" 5 ft toward the rim + on-ball gap −1.1 ft,
+  post = dig + rim; mixed = over + deep; load-up spots by scheme. Live changes of possession match up by distance
+  (`assignMatchups(true)`, `assignGuards` distW), scouting matchups at dead balls. Shooting: `crowdAt` →
+  `crowd at the rim (n)` ×0.88^(n−1), `poster over n` ×0.85^(n−1); dunk block discount 0.6 → 0.8 → 1 with the crowd.
+  Offense: `clearPath` + open-court finish (running toward the rim in transition / > 30 ft), `OPEN_COURT` switch.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

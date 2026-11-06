@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Player } from '../src/sim/player';
-import { assignGuards, scorerRep, scorerStyle, threatWeight, guardFit, newHeat, afterShot, HEAT_AT, tierCap } from '../src/sim/attention';
+import { assignGuards, scorerRep, scorerStyle, threatWeight, guardFit, newHeat, afterShot, HEAT_AT, tierCap, coverage } from '../src/sim/attention';
+import { makeGame } from './helpers';
+import { emptyInput } from '../src/sim/game';
+import { norm, sub, dist, dot, cross } from '../src/sim/math';
 import { TEAMS } from '../src/sim/data';
 import { GameSim } from '../src/sim/game';
 import { generateRoster } from '../src/career/roster';
@@ -83,5 +86,50 @@ describe('round 47: heat (the outliers who take most of the shots)', () => {
   it('3v3 stops at doubles; 1v1 never escalates', () => {
     expect(tierCap(5)).toBe(3); expect(tierCap(3)).toBe(2); expect(tierCap(1)).toBe(0);
     expect(run(0.9, () => true, 95, 40, 2).tier).toBe(2);
+  });
+});
+
+describe('round 48: coverage by how he scores', () => {
+  const guard = mk('g', 0, 'SG', 6.4, '2', { three: 80, mid: 80, layup: 80, ballSpeed: 80 }, { playmaking: 80 });
+  it('the scheme follows his buckets (the style prior decides the early game)', () => {
+    const h = newHeat();
+    expect(coverage(guard, h)).toBe('mixed');           // creator, no buckets yet
+    h.buckets.rim = 20; expect(coverage(guard, h)).toBe('wall');
+    h.buckets = { rim: 4, jumper: 21, post: 0 }; expect(coverage(guard, h)).toBe('chase');
+    h.buckets = { rim: 4, jumper: 4, post: 10 }; expect(coverage(guard, h)).toBe('post');
+    const big = mk('b', 0, 'C', 7.0, '5', { post: 80, hook: 78, three: 40, mid: 45, layup: 70, dunk: 70 });
+    expect(coverage(big, newHeat())).toBe('post');
+  });
+  it('made shots land in the right bucket', () => {
+    const h = newHeat(), box = { fga: 1, fgm: 1, pts: 2 };
+    afterShot(h, 80, box, { fga: 30, pts: 30 }, true, 3, { type: 'dunk', post: false, pts: 2 });
+    afterShot(h, 80, box, { fga: 30, pts: 30 }, true, 3, { type: 'three', post: false, pts: 3 });
+    afterShot(h, 80, box, { fga: 30, pts: 30 }, true, 3, { type: 'hook', post: false, pts: 2 });
+    afterShot(h, 80, box, { fga: 30, pts: 30 }, false, 3, { type: 'layup', post: false, pts: 2 });
+    expect(h.buckets).toEqual({ rim: 2, jumper: 3, post: 2 });
+  });
+  it('a wall triple on a driver: a crossover beats his own man, not the wall', () => {
+    const user = mk('U', 0, 'PG', 6.3, '1', { layup: 90, dunk: 85, ballSpeed: 92, three: 60, mid: 60, ankleBreak: 90 }, { playmaking: 85, mobility: 90 });
+    const g = makeGame({ seed: 3 }, user);
+    const inp = emptyInput();
+    for (let t = 0; t < 30 && !(g.live && g.holder()); t += 1 / 30) g.update(1 / 30, inp);
+    g.forceTier(user, 3);
+    g.heat[user.id].buckets.rim = 30;
+    expect(g.coverageOf(user)).toBe('wall');
+    // ball to him on the wing, 24 ft out, his team on offense in the half court
+    const rim = g.rim(user.team);
+    g.possession = user.team; g.transitionUntil = 0; g.live = true; g.shotClock = 24;
+    user.p = { x: rim.x - Math.sign(rim.x - 47) * 20, y: 25 + 13 }; user.vel = { x: 0, y: 0 };
+    g.giveBall(user); g.assignMatchups();
+    for (const d of g.opp(user.team)) d.sub.steal = 0; // he stands still for a while: this test is about positions
+    for (let t = 0; t < 2.5; t += 1 / 30) g.update(1 / 30, inp);
+    const inFront = () => {
+      const toRim = norm(sub(rim, user.p)), D = dist(user.p, rim);
+      return g.opp(user.team).filter((d) => { const rel = sub(d.p, user.p); const a = dot(rel, toRim); return a > 0.5 && a < D + 1 && Math.abs(cross(toRim, rel)) < 5; }).length;
+    };
+    expect(inFront()).toBeGreaterThanOrEqual(3);
+    g.dribbleMove(user, { x: 0, y: -1 }); // crossover / lateral burst
+    for (let t = 0; t < 0.7; t += 1 / 30) g.update(1 / 30, inp);
+    expect(inFront()).toBeGreaterThanOrEqual(2);
   });
 });

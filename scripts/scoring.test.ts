@@ -4,6 +4,7 @@ import { GameSim } from '../src/sim/game';
 import { generateRoster } from '../src/career/roster';
 import { simToEnd } from '../tests/helpers';
 import { ATT } from '../src/sim/attention';
+import { OPEN_COURT } from '../src/sim/ai/offense';
 
 /** Round 47: how the top scorers do over several full sim games (real rosters), and how often defenses key in. */
 for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`scoring ${mode}`, () => {
@@ -23,11 +24,16 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
       const orig = g.pass.bind(g);
       (g as any).pass = (from: any, to: any) => { if (from === hog) return; return orig(from, from.team === hog.team && hog.team === g.possession && g.teams[0].onCourt.includes(hog) ? hog : to); };
     }
+    OPEN_COURT.on = !process.env.NO_OPEN;
     g.attentionOff = mode === 'off'; g.tiersOff = mode === 'matchups'; g.assignMatchups();
     const inp = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
-    let seen: any = null;
+    let seen: any = null, lastMove = -9;
     for (let tt = 0; tt < 5000 && !g.over; tt += 1 / 30) {
       g.update(1 / 30, inp);
+      // DRIVER=1: the hog attacks with a crossover every ~1.2 s when he has it in the frontcourt (like a player spamming moves)
+      if (hog && process.env.DRIVER && g.holder() === hog && hog.state === 'idle' && g.time - lastMove > 1.2 && Math.abs(hog.p.x - 47) > 3) {
+        lastMove = g.time; g.dribbleMove(hog, { x: 0, y: (Math.floor(g.time) % 2 ? 1 : -1) });
+      }
       const ls = g.lastShot;
       if (ls && ls !== seen) {
         seen = ls;
@@ -63,6 +69,7 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
       lines.push(`${a}-${b} s${seed} ${g.teams[t].def.id} ${g.teams[t].score}: top ${top.name} ${top.box.pts}pts ${top.box.fgm}/${top.box.fga}${heat ? ` tier ${heat.tier}` : ''}`);
     }
   }
+  { const sd = OPEN_COURT.startD; const b = [0, 20, 40, 60, 80].map((lo) => sd.filter((x) => x >= lo && x < lo + 20).length); console.log(`OPEN [${mode}] runs/g ${(OPEN_COURT.runs / 12).toFixed(1)} halfcourt ${(OPEN_COURT.half / 12).toFixed(1)} shots/g ${(OPEN_COURT.shots / 12).toFixed(1)} start-dist buckets 0-20/20-40/40-60/60-80: ${b.join('/')}`); OPEN_COURT.runs = 0; OPEN_COURT.shots = 0; OPEN_COURT.startD = []; OPEN_COURT.half = 0; }
   if (hg.n) console.log(`HOGLINE [${mode}] ${(hg.pts / hg.n).toFixed(1)} pts on ${(hg.fga / hg.n).toFixed(1)} FGA (${(100 * hg.share / hg.n).toFixed(0)}% of team shots), FG ${(100 * hg.fgm / hg.fga).toFixed(1)}%, ended at tier 0/1/2/3: ${hg.tiers.join('/')}`);
   for (const [k, v] of Object.entries(con)) console.log(`  [${mode}] tier ${k}: ${v.n} shots, avg contest ${(100 * v.c / v.n).toFixed(0)}%, open ${(100 * v.open / v.n).toFixed(0)}%, FG ${(100 * v.m / v.n).toFixed(0)}% ${JSON.stringify(v.when ?? {})}`);
   if (process.env.LINES) console.log(lines.join('\n'));

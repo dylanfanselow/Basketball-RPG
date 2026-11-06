@@ -137,6 +137,16 @@ export function windmillGather(p: Player, type: string, speedToRim: number): boo
   return p.mods.pAdd('windmill') > 0 && (type === 'layup' || type === 'euro' || type === 'dunk') && speedToRim > 6;
 }
 
+/** Round 48: per extra contester at the rim (finishes), and again on a dunk over them (a poster attempt). */
+export const CROWD_MULT = 0.88, POSTER_MULT = 0.85;
+/** A defender counts toward the crowd when his own contest is at least this much. */
+export const CROWD_MIN_C = 0.08;
+/** How many real contesters a close finish goes through (0 for jumpers). */
+export function crowdAt(type: string, by: { c: number }[]): number {
+  const close = SHOT_TYPES[type].contact || type === 'floater' || type === 'hook' || type === 'push' || type === 'jelly';
+  return close ? by.filter((b) => b.c >= CROWD_MIN_C).length : 0;
+}
+
 /** Compute the contest from all defenders using the cone that points from shooter to rim. */
 export function computeContest(shooter: Player, defenders: Player[], side: Side, type: string, now: number) {
   const rim = rimPos(side);
@@ -226,6 +236,14 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const cinLabel = cin.length ? ` (${cin.map((t) => t.label).join(', ')})` : '';
   const noteLabel = con.notes.length ? ` (${con.notes.join(', ')})` : '';
   terms.push({ label: top ? `contest ${(contest * 100).toFixed(0)}%: ${top.name} ${top.dist.toFixed(1)}ft${cinLabel}${noteLabel}` : con.notes.length ? `contest 0%: ${con.notes.join(', ')}` : 'open', value: 1 - contest, kind: 'contest' });
+
+  // round 48: finishing through a crowd — every real contester past the first makes it harder (and a dunk over a
+  // crowd is a poster attempt, harder still). On screen like every other term.
+  const crowd = crowdAt(type, con.by);
+  if (crowd >= 2) {
+    terms.push({ label: `crowd at the rim (${crowd})`, value: CROWD_MULT ** (crowd - 1), kind: 'contest' });
+    if (type === 'dunk') terms.push({ label: `poster over ${crowd}`, value: POSTER_MULT ** (crowd - 1), kind: 'contest' });
+  }
 
   if (contest > 0.25) {
     const contactKey = def.contact ? 'contactFinish' : 'contactShot';

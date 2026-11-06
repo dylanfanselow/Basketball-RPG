@@ -19,7 +19,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `plays/runner.ts` | `PlayRunner`: phases, reset timer, role swap, focus player. |
 | `ai/offense.ts` | Off-ball targets (play, freelance, transition lanes), handler AI (shoot/pass/drive/moves, transition reads, open-man bonuses, dead dribble). |
 | `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges; round 47 attention: shading, deny, doubles / triples, rotation, load-up. |
-| `attention.ts` | Round 47: who guards whom (`assignGuards`, `guardFit`, `scorerRep`, `scorerStyle`), heat tiers (`afterShot`, `HEAT_AT`, `tierCap`), `ATT` switches. |
+| `attention.ts` | Round 47: who guards whom (`assignGuards`, `guardFit`, `scorerRep`, `scorerStyle`), heat tiers (`afterShot`, `HEAT_AT`, `tierCap`), `ATT` switches; round 48 buckets + `coverage()` schemes. |
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |

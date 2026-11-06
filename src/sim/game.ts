@@ -1,10 +1,10 @@
-import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCap, TIER_NAME, Tier, HEAT_AT, ATT } from './attention';
+import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCap, TIER_NAME, Tier, HEAT_AT, ATT, coverage, Coverage, COVERAGE_NAME } from './attention';
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt } from './shooting';
 import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -279,11 +279,11 @@ export class GameSim {
    * Who guards whom (round 47): the best-fitting defender on the biggest threat (reputation + heat), the weakest
    * defender hidden on the least dangerous man (attention.ts `assignGuards`). Role matching when attention is off.
    */
-  assignMatchups() {
+  assignMatchups(live = false) {
     for (const t of [0, 1] as const) {
       const opps = this.opp(t), defs = this.teams[t].onCourt;
       if (!this.attentionOff && defs.length >= 2 && opps.length >= 2) {
-        const pick = assignGuards(defs, opps, (o) => threatWeight(scorerRep(o), this.heat[o.id]?.score ?? 0));
+        const pick = assignGuards(defs, opps, (o) => threatWeight(scorerRep(o), this.heat[o.id]?.score ?? 0), live ? 4 : 0);
         for (const d of defs) d.guarding = pick.get(d.id) ?? null;
         continue;
       }
@@ -299,14 +299,16 @@ export class GameSim {
   /** The highest tier this game allows (triples in 5v5, doubles in 3v3, none in 1v1 / small practice). */
   get tierCap(): Tier { return this.cfg.oneOnOne || this.tiersOff ? 0 : tierCap(Math.min(this.teams[0].onCourt.length, this.teams[1].onCourt.length)); }
   /** After a field-goal attempt: heat up the shooter; a higher tier is announced. */
-  private heatAfterShot(s: Player, made: boolean) {
+  private heatAfterShot(s: Player, made: boolean, ev?: ShotEval) {
     if (this.attentionOff || this.tierCap === 0) return;
     const h = (this.heat[s.id] ??= newHeat());
     const teamFga = [...new Set(this.teams[s.team].roster)].reduce((n, p) => n + p.box.fga, 0);
-    const up = afterShot(h, scorerRep(s), s.box, { fga: teamFga, pts: this.teams[s.team].score }, made, this.tierCap);
+    const shot = ev ? { type: ev.type, post: ev.conds.has('post'), pts: ev.pts } : undefined;
+    const up = afterShot(h, scorerRep(s), s.box, { fga: teamFga, pts: this.teams[s.team].score }, made, this.tierCap, shot);
     if (up) {
       // the new matchups (his weight went up) take over at the next inbound / change of possession
-      this.emit({ kind: 'attention', text: `${TIER_NAME[up]} on ${s.name}`, team: s.team, pid: s.id, big: up >= 2, data: { tier: up } });
+      const how = up >= 2 ? ` — ${COVERAGE_NAME[coverage(s, h)]}` : '';
+      this.emit({ kind: 'attention', text: `${TIER_NAME[up]} on ${s.name}${how}`, team: s.team, pid: s.id, big: up >= 2, data: { tier: up } });
     }
   }
   /**
@@ -314,7 +316,9 @@ export class GameSim {
    * matter least, nearest first) and leave after a short read; the rest rotate: each abandoned man gets a defender
    * splitting the difference between him and his own man. Null when nobody is trapping.
    */
-  trap: { holderId: string; key: string; helpers: string[]; start: number; rotate: Map<string, string> } | null = null;
+  trap: { holderId: string; key: string; helpers: string[]; start: number; rotate: Map<string, string>; scheme: Coverage } | null = null;
+  /** How the defense helps on this player now (round 48: from how he's scoring). */
+  coverageOf(p: Player): Coverage { return coverage(p, this.heat[p.id]); }
   /** How much the man this defender guards matters (reputation + heat). */
   manWeight(d: Player): number {
     const m = this.players.find((q) => q.id === d.guarding);
@@ -337,7 +341,7 @@ export class GameSim {
    * would-be helpers already sit in the gap toward him, so the double lands on the catch. Picked once per possession.
    */
   load: { key: string; hotId: string; helpers: string[] } | null = null;
-  loadFor(): { hot: Player; helpers: string[] } | null {
+  loadFor(): { hot: Player; helpers: string[]; scheme: Coverage } | null {
     if (!this.live || this.tierCap < 2 || this.trap) { this.load = null; return null; }
     const off = this.offense(), side = this.side(this.possession);
     const hot = off.filter((p) => this.tierOf(p) >= 2 && inFrontcourt(side, p.p)).sort((a, b) => this.tierOf(b) - this.tierOf(a) || (this.heat[b.id]?.score ?? 0) - (this.heat[a.id]?.score ?? 0))[0];
@@ -348,7 +352,7 @@ export class GameSim {
       const pool = this.opp(hot.team).filter((d) => d !== own && this.isAI(d) && d.state !== 'fallen' && d !== this.defenderOf(this.holder() ?? hot));
       this.load = { key, hotId: hot.id, helpers: this.pickHelpers(hot, this.tierOf(hot) - 1, pool).map((d) => d.id) };
     }
-    return { hot, helpers: this.load.helpers };
+    return { hot, helpers: this.load.helpers, scheme: this.coverageOf(hot) };
   }
   /** Who a trap would be on: the ball handler, or a hot scorer the ball is being passed to (doubles come on the catch). */
   trapTarget(): Player | null {
@@ -379,7 +383,7 @@ export class GameSim {
       if (c) rotate.set(c.id, m.id);
     }
     const start = this.time + (this.ball.st.kind === 'pass' ? this.rng.range(0.05, 0.25) : this.rng.range(0.3, 0.6));
-    this.trap = { holderId: h!.id, key, helpers: helpers.map((d) => d.id), start, rotate };
+    this.trap = { holderId: h!.id, key, helpers: helpers.map((d) => d.id), start, rotate, scheme: this.coverageOf(h!) };
     this.trapCount[tier]++;
     return this.trap;
   }
@@ -716,7 +720,8 @@ export class GameSim {
     this.possession = newTeam;
     this.shotClock = 24;
     this.runner.reset();
-    this.assignMatchups();
+    // live turnover / board in a full-court game: pick up the nearest man (the scouting matchups return at a dead ball)
+    this.assignMatchups(!(this.cfg.oneOnOne || this.cfg.halfCourt || this.cfg.mode === 'practice'));
     if (this.cfg.oneOnOne || this.cfg.halfCourt) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
     else if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
     else { this.transitionUntil = this.time + 5; this.newPossession(false); } // live turnover / defensive board: read the break
@@ -1222,12 +1227,12 @@ export class GameSim {
       let posF = along > 0.4 ? 1 : along > -0.2 ? 0.55 : 0.1;
       const close = !['mid', 'three', 'deep3', 'fade'].includes(ps.type);
       let chance = (0.04 + 0.2 * d.sub.block / 99) * posF * d.mods.pMult('blockMult') * (close ? 1 : 0.4) * clamp(0.8 + (d.height - p.height) * 0.4, 0.5, 1.4);
-      if (ps.type === 'dunk') chance *= 0.6;
+      if (ps.type === 'dunk') chance *= [0.6, 0.6, 0.8, 1][Math.min(3, crowdAt('dunk', ev.contestBy))]; // a dunk into a crowd gets blocked like any finish (round 48)
       if (ps.windmill) chance *= WINDMILL_BLOCK; // the ball swung away from him
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
       if (chase && along < 0.4) chance = Math.max(chance, this.ult.active!.level.blockChance);
       if (this.rng.chance(chance)) {
-        d.box.blk++; p.box.fga++; this.heatAfterShot(p, false);
+        d.box.blk++; p.box.fga++; this.heatAfterShot(p, false, ev);
         if (ev.pts === 3) p.box.tpa++;
         this.lastShot = { ev, made: false, name: p.name, user: p === this.user, blocked: true, at: this.time };
         this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
@@ -2037,7 +2042,7 @@ export class GameSim {
       this.wasShotRebound = true;
       this.assistCand = null;
     }
-    if (!st.foul || st.made) this.heatAfterShot(s, st.made);
+    if (!st.foul || st.made) this.heatAfterShot(s, st.made, st.ev);
   }
 
   private freeThrows(p: Player, n: number): boolean {
