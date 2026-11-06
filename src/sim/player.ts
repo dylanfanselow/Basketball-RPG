@@ -6,7 +6,13 @@ import { Appearance, defaultAppearance } from '../render/appearance';
 
 /** Post-up battle: mode from the strength gap (post vs postD). */
 export type PostMode = 'stronger' | 'even' | 'weaker';
-export interface PostState { defId: string | null; mode: PostMode; gap: number; nextBumpAt: number; since: number; pushing: boolean }
+export interface PostState {
+  defId: string | null; mode: PostMode; gap: number; nextBumpAt: number; since: number; pushing: boolean;
+  /** bumps landed / seconds spent leaning in (the scoring window must be earned) */
+  bumps: number; pushT: number;
+  /** a second defender sent to double (stronger posts), when he leaves his man, and whether he's arrived */
+  helpId: string | null; helpAt: number; helpCalled: boolean; helpArrivedAt: number;
+}
 
 export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe' | 'dive';
 
@@ -72,6 +78,8 @@ export class Player {
   postedBy: string | null = null;
   /** attacker: post scoring window after letting go (post shots, the defender stays locked) */
   postWindowUntil = -9;
+  /** no re-posting before this (round 44: a post is a commitment) */
+  postCdUntil = -9; postCdMsgAt = -9;
   /** attacker: the last bump (drives the bump / bumped-back animations) */
   postBumpAt = -9; postBumpedBackAt = -9;
   /** bringing it up: when the full-court pressure on him started (AI screen call) */

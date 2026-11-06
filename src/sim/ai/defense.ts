@@ -1,5 +1,6 @@
 import type { GameSim } from '../game';
 import { Player } from '../player';
+import { POST } from '../post';
 import { RESTRICTED_R, inFrontcourt } from '../court';
 import { add, dist, norm, scale, sub, lerpV, clamp, dot, len } from '../math';
 
@@ -32,6 +33,14 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       sim.steer(d, add(h.p, scale(norm(sub({ x: 47, y: 25 }, h.p)), 2.6)), true); // cut off the escape toward half court
       return;
     }
+  }
+  // post double team (round 44): the rotated helper leaves his man, comes to the ball side of the post and digs at it
+  if (h?.post && h.post.helpId === d.id && sim.time >= h.post.helpAt && sim.isAI(d)) {
+    const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x };
+    const sideSign = dot(sub(d.p, h.p), pr) >= 0 ? 1 : -1;
+    sim.steer(d, add(h.p, add(scale(pr, 2.4 * sideSign), scale(toRim, 0.6))), true);
+    if (h.post.helpCalled && sim.time - h.post.helpArrivedAt > POST.HELP_REACT && dist(d.p, h.p) < 3.6 && sim.rng.chance(dt * 0.7 * (d.sub.steal / 70))) sim.swipe(d);
+    return;
   }
   if (man === h && hBack && !pressing) {
     // no press: give ground in the backcourt and pick him up around half court

@@ -484,6 +484,8 @@ export class GameScene extends Phaser.Scene {
     { const bsl = sim.ball.st; if (p.z > 0.3 && bsl.kind === 'pass' && bsl.oop && bsl.to === p) return { clip: 'oopReach', u: now * 2 }; } // up for the lob
     if (p.z > 0.3) return { clip: 'block', u: p.vz > 0 ? 0.4 * (1 - p.vz / p.jumpVel) : 0.4 + 0.6 * Math.min(1, -p.vz / p.jumpVel) };
     if (now < p.swipingUntil) return { clip: 'swipe', u: 1 - (p.swipingUntil - now) / 0.3 };
+    // kicked out of the post: overhead outlet (picks up from the wind-up, the ball is already on its way)
+    if (sim.lastPasser === p && sim.lastPostPassAt === sim.lastPassAt && now - sim.lastPassAt < 0.42) return { clip: 'postPass', u: 0.25 + 0.75 * (now - sim.lastPassAt) / 0.42 };
     if (sim.lastPasser === p && sim.lastLobAt === sim.lastPassAt && now - sim.lastPassAt < 0.4) return { clip: 'passLob', u: (now - sim.lastPassAt) / 0.4 }; // lob
     if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: 'pass', u: (now - sim.lastPassAt) / 0.3 };
     if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };

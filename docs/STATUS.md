@@ -18,6 +18,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 - **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
+- Round 44 post rework: `POST.COMMIT / REPOST_CD / FIRST_BUMP / SEAL_PUSH / STEAL_MULT / HELP_*`, `helpChance(gap)`;
+  `PostState` + `bumps`, `pushT`, `helpId`, `helpAt`, `helpCalled`, `helpArrivedAt`; `Player.postCdUntil`; helper AI
+  in `ai/defense.ts` (steer beside the post, swipe after `HELP_REACT`); `GameSim.swipe` post multiplier;
+  `GameSim.lastPostPassAt` → `GameScene.clipFor` plays `postPass` (anim.ts).
 - **L2 (hold) post up** (keyboard E, round 27): `src/sim/post.ts` (stronger = bumps + stun-lock, even = slow push +
   half contest, weaker = bumped back + 1 s stun; release window with locked/sealed defender; `postShotType`), AI bigs
   (`ai/offense.ts` `wantsPost`/`postAI`), clips `postUp`/`postBump`/`postBumpedBack`/`postDefend`/`postBumped`

@@ -36,7 +36,25 @@ export const POST = {
   WINDOW: 0.6,
   /** weaker: the defender tries to bump you back this often; you go back BACK_STEP ft and are stunned BACK_STUN s */
   BACK_EVERY: 1.1, BACK_STEP: 1.5, BACK_DUR: 0.25, BACK_STUN: 1.0,
+  // ---- commitment (round 44: mashing L2 was overpowered) ----
+  /** once you post up you're in it for at least this long (letting go early doesn't end it) */
+  COMMIT: 0.9,
+  /** after a post ends you can't start another for this long */
+  REPOST_CD: 1.4,
+  /** the first bump comes this long after you engage (no instant bump on every press) */
+  FIRST_BUMP: 0.55,
+  /** even battles: you must have leaned in this long for the window to seal him */
+  SEAL_PUSH: 0.35,
+  /** backing down exposes the ball: swipes on a posting player are this much likelier */
+  STEAL_MULT: 1.6,
+  /** once the double arrives, the helper digs at the ball only after this long (your moment to kick it out) */
+  HELP_REACT: 0.55,
+  /** a strength edge of HELP_GAP+ may draw a second defender: chance HELP_MIN there, rising with the gap to HELP_MAX;
+   *  the rotation takes HELP_DELAY s */
+  HELP_GAP: 4, HELP_MIN: 0.15, HELP_MAX: 0.85, HELP_DELAY: [0.5, 1.0] as [number, number],
 };
+/** Chance the defense doubles a post with this strength gap (only when the attacker has a strength edge). */
+export const helpChance = (gap: number) => gap < POST.HELP_GAP ? 0 : Math.min(POST.HELP_MAX, POST.HELP_MIN + (gap - POST.HELP_GAP) / 18);
 
 /** The strength gap: positive = the attacker is stronger. */
 export const postGap = (atk: Player, def: Player) => atk.sub.post - def.sub.postD;
@@ -74,10 +92,20 @@ function engage(sim: GameSim, p: Player) {
 }
 
 function startPost(sim: GameSim, p: Player) {
-  p.post = { defId: null, mode: 'even', gap: 0, nextBumpAt: sim.time + 0.25, since: sim.time, pushing: false };
+  p.post = { defId: null, mode: 'even', gap: 0, nextBumpAt: sim.time + POST.FIRST_BUMP, since: sim.time, pushing: false, bumps: 0, pushT: 0, helpId: null, helpAt: 0, helpCalled: false, helpArrivedAt: 0 };
   p.postDefId = null;
   engage(sim, p);
   const d = byId(sim, p.post.defId);
+  // a mismatch: the defense may rotate a second defender over (he leaves his man, so someone's open for the kick-out)
+  const hc = d ? helpChance(p.post.gap) : 0;
+  if (d && hc > 0 && sim.rng.chance(hc)) {
+    let best: Player | null = null, bd = 1e9;
+    for (const o of sim.opp(p.team)) {
+      if (o === d || !sim.isAI(o) || o.state === 'fallen') continue;
+      const r = dist(o.p, p.p); if (r < bd && r < 22) { bd = r; best = o; }
+    }
+    if (best) { p.post.helpId = best.id; p.post.helpAt = sim.time + sim.rng.range(POST.HELP_DELAY[0], POST.HELP_DELAY[1]); }
+  }
   const label = p.post.mode === 'stronger' ? 'STRONGER: bump him' : p.post.mode === 'weaker' ? 'WEAKER: he can bump you back' : 'EVEN: lean on him';
   sim.emit({ kind: 'post', text: d ? `POST UP · ${label} (${p.sub.post.toFixed(0)} vs ${d.sub.postD.toFixed(0)})` : 'POST UP', pid: p.id, quiet: !sim.isHuman(p) });
 }
@@ -91,8 +119,11 @@ export function endPost(sim: GameSim, p: Player, seal: boolean) {
   if (!post) return;
   const d = byId(sim, post.defId);
   p.post = null;
+  p.postCdUntil = sim.time + POST.REPOST_CD; // no instant re-post
   if (d && d.postedBy === p.id) d.postedBy = null;
   if (!seal || !d || post.mode === 'weaker' || sim.time < p.stunnedUntil) return;
+  // the window has to be earned: a bump landed (stronger) or a real lean (even); a quick tap gives nothing
+  if (post.mode === 'stronger' ? post.bumps < 1 : post.pushT < POST.SEAL_PUSH) return;
   const until = sim.time + POST.WINDOW;
   p.postWindowUntil = until;
   p.postBumpAt = sim.time; // the final seal bump
@@ -141,9 +172,14 @@ export function updatePost(sim: GameSim, dt: number) {
   h.postHeldIn = false; h.postStickIn = v();
   const stunned = sim.time < h.stunnedUntil;
   if (!h.post) {
-    if (held && !stunned && canPost(sim, h)) startPost(sim, h);
-    else return;
-  } else if (!held && !stunned) { endPost(sim, h, true); return; }
+    if (held && !stunned && canPost(sim, h)) {
+      if (sim.time < h.postCdUntil) {
+        if (sim.isHuman(h) && sim.time - h.postCdMsgAt > 0.8) { h.postCdMsgAt = sim.time; sim.emit({ kind: 'post', text: `Post up recovering… ${(h.postCdUntil - sim.time).toFixed(1)}s`, pid: h.id }); }
+        return;
+      }
+      startPost(sim, h);
+    } else return;
+  } else if (!held && !stunned && sim.time - h.post.since >= POST.COMMIT) { endPost(sim, h, true); return; }
   const post = h.post!;
   const rim = sim.rim(h.team);
   const toRim = norm(sub(rim, h.p));
@@ -165,7 +201,7 @@ export function updatePost(sim: GameSim, dt: number) {
       if (!d) move = POST.FREE_SPEED * dt;
       else if (post.mode === 'stronger') {
         if (sim.time >= post.nextBumpAt) {
-          h.postBumpAt = sim.time; post.nextBumpAt = sim.time + POST.BUMP_PERIOD;
+          h.postBumpAt = sim.time; post.nextBumpAt = sim.time + POST.BUMP_PERIOD; post.bumps++;
           const lock = sim.time + POST.BUMP_PERIOD + POST.BUMP_DUR;
           d.postLockUntil = Math.max(d.postLockUntil, lock);
           lockDefender(sim, d, lock, 'postBumped');
@@ -173,7 +209,13 @@ export function updatePost(sim: GameSim, dt: number) {
           sim.quiet('contact', { hard: true, post: true }, h.id);
         }
         if (sim.time < h.postBumpAt + POST.BUMP_DUR) move = POST.BUMP_STEP * dt / POST.BUMP_DUR;
-      } else move = (post.mode === 'even' ? POST.EVEN_SPEED : POST.WEAK_SPEED) * dt;
+      } else { move = (post.mode === 'even' ? POST.EVEN_SPEED : POST.WEAK_SPEED) * dt; post.pushT += dt; }
+    }
+    // the double team arrives: tell the player to kick it out
+    const help = byId(sim, post.helpId);
+    if (help && !post.helpCalled && sim.time >= post.helpAt && dist(help.p, h.p) < 4.5) {
+      post.helpCalled = true; post.helpArrivedAt = sim.time;
+      sim.emit({ kind: 'post', text: `DOUBLE TEAM: ${help.name} comes over · pass it out!`, pid: h.id, quiet: !sim.isHuman(h) });
     }
     // weaker: the defender fights back
     if (d && post.mode === 'weaker' && sim.time >= post.nextBumpAt) {

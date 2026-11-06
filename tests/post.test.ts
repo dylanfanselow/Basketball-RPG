@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Player } from '../src/sim/player';
 import { add, dist, norm, scale, sub } from '../src/sim/math';
 import { computeContest, postShotType, selectShotType } from '../src/sim/shooting';
-import { POST, postGap, postMode } from '../src/sim/post';
+import { POST, postGap, postMode, helpChance } from '../src/sim/post';
 import { GameSim, UserInput } from '../src/sim/game';
 import { makeGame, simToEnd } from './helpers';
 
@@ -50,7 +50,7 @@ describe('post up (L2)', () => {
     const gained = d0 - dist(u.p, rim);
     expect(gained).toBeGreaterThan(POST.BUMP_STEP * 2.5); // ~3 bumps
     expect(still).toBeGreaterThan(moving); // steps, not a glide
-    expect(lockedTicks / Math.round(2.5 / DT)).toBeGreaterThan(0.8); // stun-locked while you keep bumping
+    expect(lockedTicks / Math.round((2.5 - POST.FIRST_BUMP) / DT)).toBeGreaterThan(0.95); // stun-locked from the first bump on (round 44: it comes after FIRST_BUMP)
     expect(dist(d.p, u.p)).toBeCloseTo(POST.GAP, 1); // on your back
     expect(computeContest(u, [d], g.side(u.team), 'hook', g.time).raw).toBe(0);
     expect(d.postedBy).toBe(u.id);
@@ -127,6 +127,55 @@ describe('post up (L2)', () => {
     expect(ev.terms.find((t: any) => t.kind === 'contest').label).toMatch(/sealed/);
   });
 
+  it('round 44: a post is a commitment — mashing L2 gets no window, and you can\'t re-post right away', () => {
+    const { g, u, d, toRim } = setup(95, 35);
+    post(g, toRim, 0.15);              // tap
+    g.update(DT, idle);                 // let go at once
+    expect(u.post).not.toBeNull();      // still committed
+    for (let i = 0; i < Math.round(POST.COMMIT / DT); i++) g.update(DT, idle);
+    expect(u.post).toBeNull();
+    expect(u.postWindowUntil).toBeLessThan(g.time); // no bump landed: no window, no lock
+    expect(g.time < d.postLockUntil).toBe(false);
+    post(g, toRim, 0.3);                // mash again: still recovering
+    expect(u.post).toBeNull();
+    for (let i = 0; i < Math.round(POST.REPOST_CD / DT); i++) g.update(DT, idle);
+    post(g, toRim, 0.2);
+    expect(u.post).not.toBeNull();      // ready again
+  });
+
+  it('round 44: posting exposes the ball (likelier steals) and big mismatches draw a double team', () => {
+    expect(helpChance(0)).toBe(0); expect(helpChance(POST.HELP_GAP)).toBeCloseTo(POST.HELP_MIN); expect(helpChance(15)).toBeGreaterThan(helpChance(7));
+    expect(helpChance(60)).toBe(POST.HELP_MAX);
+    // steals: the chance a swipe gets (read off the rng call), posting vs facing him
+    const chanceOf = (posting: boolean) => {
+      const { g, d, toRim } = setup(70, 70);
+      if (posting) post(g, toRim, 0.3);
+      let seen = 0; const rng = (g as any).rng; const orig = rng.chance.bind(rng);
+      rng.chance = (c: number) => { if (!seen) seen = c; return false; };
+      d.swipeCdUntil = 0; d.stunnedUntil = -9; g.swipe(d);
+      rng.chance = orig;
+      return seen;
+    };
+    const rate = (posting: boolean) => chanceOf(posting);
+    expect(rate(true)).toBeGreaterThan(rate(false) * 1.2); // even the man on your back gets a better reach-in (helpers more)
+  });
+
+  it('round 44: a kick-out from the post is marked for its own animation', () => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'PF', core: core(70, 95), isUser: true });
+    const g = makeGame({ mode: 'practice', practice: { defenders: 1, teammates: 1, runPlays: false } }, u);
+    g.freezeAI = true;
+    const d = g.teams[1].onCourt[0], mate = g.teams[0].onCourt.find((q) => q !== u)!;
+    d.core.strength = 35; d.recompute();
+    const rim = g.rim(u.team);
+    u.p = add(rim, { x: -12, y: 3 }); const toRim = norm(sub(rim, u.p));
+    d.p = add(u.p, scale(toRim, 2.4)); mate.p = add(rim, { x: -20, y: -14 });
+    u.dribbledSinceCatch = true; g.update(DT, idle);
+    post(g, toRim, 0.6);
+    expect(u.post).not.toBeNull();
+    g.pass(u, mate);
+    expect(g.lastPostPassAt).toBe(g.lastPassAt);
+  });
+
   it('post shots: sideways hook, toward layup/push, away fade (if unlocked) or floater, neutral layup/hook', () => {
     const { g, u, rim, toRim } = setup(70, 70);
     const side = g.side(u.team), lat = { x: -toRim.y, y: toRim.x }, away = scale(toRim, -1), none = { x: 0, y: 0 };
@@ -155,4 +204,20 @@ describe('post up (L2)', () => {
     }
     expect(posts).toBeGreaterThan(1);
   }, 20000);
+
+  it('round 44: in real games the defense doubles mismatched posts and the AI kicks it out', () => {
+    let doubles = 0, kicks = 0, posts = 0;
+    for (const seed of [3, 5, 8, 11]) {
+      const g = makeGame({ seed, quarterLen: 120 });
+      const orig = g.emit.bind(g);
+      g.emit = (e) => { if (e.kind === 'post' && /DOUBLE TEAM/.test(e.text)) doubles++; if (e.kind === 'post' && /^POST UP/.test(e.text)) posts++; orig(e); };
+      let lastKick = g.lastPostPassAt;
+      const origUpdate = g.update.bind(g);
+      g.update = (dt: number, inp: UserInput) => { origUpdate(dt, inp); if (g.lastPostPassAt !== lastKick) { kicks++; lastKick = g.lastPostPassAt; } };
+      simToEnd(g);
+    }
+    console.log(`posts ${posts}, doubles ${doubles}, kick-outs ${kicks}`);
+    expect(doubles).toBeGreaterThan(0);
+    expect(kicks).toBeGreaterThan(0);
+  }, 60000);
 });

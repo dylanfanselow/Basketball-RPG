@@ -154,6 +154,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 44: posting is a commitment, doubles + kick-outs.** Mashing L2 was overpowered (each press re-started the
+  post with an instant bump and a free window). Now: a post lasts at least `COMMIT` 0.9 s (letting go early doesn't end
+  it), the first bump comes `FIRST_BUMP` 0.55 s in, the window only opens if a bump landed (stronger) or you leaned
+  ≥ 0.35 s (even), and re-posting waits `REPOST_CD` 1.4 s ("Post up recovering…"). **Posting exposes the ball**: swipes
+  on a posting player ×1.6, and the man on your back reaches in at 0.8 (was 0.4 from behind). **Help defense**: with a
+  strength edge (gap ≥ 4) the defense may rotate the nearest other defender over (15 % → 85 % as the gap grows,
+  0.5–1 s to rotate); he leaves his man, sets up beside the post ("DOUBLE TEAM … pass it out!") and starts digging
+  after 0.55 s. **△ passes out of the post** with its own animation (`postPass`: pivot up, ball overhead, two-handed
+  whip); the AI kicks out of doubles too.
 - **Round 43: colour-coded orbs + sleep.** Orbs wear their target's colour (Shooting green, Finishing blue, Strength
   red, Mobility light blue, Playmaking yellow; energy = the owner's lime green). **✕ Sleep at the couch** ends the day:
   the room goes dark with Zzz, a "DAY n" banner, then the lights come back and **green orbs rise from the couch into

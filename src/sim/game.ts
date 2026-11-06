@@ -14,7 +14,7 @@ import { thinkDefense } from './ai/defense';
 import { UltState, UltRuntime, tryActivateUlt, tickUlt, ULT_GAINS } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
-import { updatePost, onPostShot, postLocked, postIntent } from './post';
+import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
 import { ShotPlan, planShot, samplePlan } from './ballPhysics';
 
 export interface UserInput {
@@ -149,6 +149,8 @@ export class GameSim {
   passTarget: Player | null = null;
   assistCand: { passer: Player; receiver: Player; at: number } | null = null;
   lastPasser: Player | null = null; lastPassAt = -99;
+  /** the last pass was a kick-out from a post (round 44: drawn with the `postPass` clip) */
+  lastPostPassAt = -99;
   trust: TrustState;
   ult: UltRuntime;
   grade = { good: 0, bad: 0, points: 0 };
@@ -1269,6 +1271,7 @@ export class GameSim {
     const riskMult = magnet ? 0.15 : d <= safe ? (overhead ? 0.5 : 0.6) : 1.8 + (d - safe) / 20;
     this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead };
     this.lastPasser = from; this.lastPassAt = this.time;
+    if (from.post || this.time < from.postWindowUntil) this.lastPostPassAt = this.time; // kicked out of the post: its own animation
     from.deadDribble = false;
     this.quiet('pass', { lob, dist: d }, from.id);
     from.state = from.state === 'dribbleMove' ? from.state : 'idle';
@@ -1424,10 +1427,12 @@ export class GameSim {
     if (!h || h.team === p.team) return;
     const dd = dist(h.p, p.p);
     if (dd > 4) return;
-    const front = dot(norm(sub(p.p, h.p)), h.face) > -0.2 ? 1 : 0.4;
+    // backing down exposes the ball (round 44): swipes on a post are likelier, and even the man on your back can reach in
+    const posting = !!h.post;
+    const front = posting ? (h.post!.defId === p.id ? 0.8 : 1) : dot(norm(sub(p.p, h.p)), h.face) > -0.2 ? 1 : 0.4;
     const security = 0.6 + (h.sub.ballSpeed / 99) * 0.6;
     const windmill = h.state === 'shoot' && !!h.pendingShot?.windmill; // Windmill Gather: the ball is swung away, no strip
-    const chance = windmill ? 0 : (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1);
+    const chance = windmill ? 0 : (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1) * (posting ? POST.STEAL_MULT : 1);
     if (this.rng.chance(chance)) {
       p.box.stl++; h.box.tov++;
       this.emit({ kind: 'steal', text: `STEAL by ${p.name}!`, team: p.team, pid: p.id, big: true });

@@ -582,6 +582,15 @@ CLIPS.push(
     { t: 1, pose: { ...arms(legs(P({ hip: [-4, 44], neck: [-3, 74], head: [-5, 83], sF: [-2, 71], sB: [-5, 71] }), [6, 0], [-14, 0]), [10, 62], [-14, 60]), lat: { hF: 12, hB: -12 } } }] },
 );
 
+// ---------- post kick-out (round 44): pass out of the post / a double team ----------
+// From the post crouch he pivots up toward the target, takes the ball overhead in both hands (out of the digging
+// hands) and whips a two-handed outlet over the top, finishing with arms out and a step into it.
+CLIPS.push({ name: 'postPass', frames: 9, keys: [
+  { t: 0, pose: postPose({ dip: 1, back: 1, hand: [13, 42], ball: [14, 38] }) },
+  { t: 0.3, pose: { ...arms(legs(P({ hip: [-2, 45], head: [0, 87], neck: [-1, 78], sF: [0, 75], sB: [-3, 75] }), [8, 0], [-10, 0]), [-2, 96], [-4, 94]), ball: [-3, 101] } },
+  { t: 0.55, pose: { ...arms(legs(P({ hip: [1, 47], head: [6, 88], neck: [5, 79], sF: [6, 76], sB: [2, 76] }), [13, 0], [-9, 0]), [31, 82], [29, 80]), ball: [34, 83] } },
+  { t: 1, pose: { ...arms(legs(P({ hip: [1, 47], head: [5, 88], neck: [4, 79], sF: [5, 76], sB: [1, 76] }), [11, 0], [-9, 0]), [28, 64], [26, 62]), ball: null } }] });
+
 // ---------- loose-ball dive (✕ when the ball is loose on the floor) ----------
 // Launch low and forward, fly out horizontally with both arms reaching for the ball, slide on the floor, get up.
 CLIPS.push({ name: 'dive', frames: 12, keys: [
