@@ -16,7 +16,7 @@ export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne';
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
 /** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
-export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup }
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue }
 
 export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup): GameSim {
   if (mode === 'oneOnOne') return buildOneOnOne(oneOnOne ?? DEFAULT_1V1, Math.floor(Math.random() * 1e9));

@@ -92,7 +92,7 @@ export function drawCourt(scene: Phaser.Scene, paintColors: [string, string]) {
 }
 
 /** Stanchion + backboard (behind players) and the rim/net (sorted with players by depth). */
-export function drawHoops(scene: Phaser.Scene) {
+export function drawHoops(scene: Phaser.Scene, style: 'arena' | 'school' = 'arena') {
   const back = scene.add.graphics().setDepth(sy(23.5));
   const rimG = scene.add.graphics().setDepth(sy(25.4));
   const shotClocks: { x: number; y: number }[] = [];
@@ -103,6 +103,44 @@ export function drawHoops(scene: Phaser.Scene) {
     const boardX = bx + dir * 4, rimX = bx + dir * RIM_OFFSET;
     const postX = bx - dir * 4.2;            // stanchion post stands behind the baseline
     const baseX0 = bx - dir * 7.5, baseX1 = bx - dir * 1.6;
+    if (style === 'school') {
+      // round 56: schoolyard hoop — one round steel pole behind the baseline, a gooseneck out to a flat steel board
+      // (white paint, faded orange square, rust at the edges), facing in like the owner's sketch
+      const px = sx(bx - dir * 3.2), pw = 0.55 * S;
+      back.fillStyle(0x000000, 0.25); back.fillEllipse(px, sy(25) + 4, 34, 10);
+      back.fillStyle(0x3d4249, 1); back.fillRect(px - pw / 2, sy(25, 11.3), pw, 11.3 * S);
+      back.fillStyle(0x6a717a, 1); back.fillRect(px - pw / 2 + 2, sy(25, 11.3), 3, 11.3 * S);
+      back.fillStyle(0x2a2e33, 1); back.fillRect(px + pw / 2 - 3, sy(25, 11.3), 3, 11.3 * S);
+      // gooseneck: up, then out over the baseline to the board
+      back.lineStyle(pw * 0.8, 0x3d4249, 1);
+      back.beginPath(); back.moveTo(px, sy(25, 11.2)); back.lineTo(px + dir * 0.6 * S, sy(25, 12.4)); back.lineTo(sx(boardX) - dir * 0.3 * S, sy(25, 12.2)); back.strokePath();
+      back.lineStyle(2, 0x6a717a, 1);
+      back.beginPath(); back.moveTo(px - 2, sy(25, 11.2)); back.lineTo(px + dir * 0.6 * S - 2, sy(25, 12.4) - 3); back.lineTo(sx(boardX) - dir * 0.3 * S, sy(25, 12.2) - 3); back.strokePath();
+      // flat steel board on the same slightly-turned plane as the arena's glass (so it reads as a board, not a post)
+      const tilt = 0.8 * dir;
+      const pane = (y: number, z: number): [number, number] => [sx(boardX + (tilt * (y - 25)) / 3), sy(y, z)];
+      const quad = (pts: [number, number][]) => { back.beginPath(); back.moveTo(pts[0][0], pts[0][1]); for (const q of pts.slice(1)) back.lineTo(q[0], q[1]); back.closePath(); };
+      const Y0 = 22.3, Y1 = 27.7, Z0 = 9.8, Z1 = 13.0;
+      back.fillStyle(0xe4e1d6, 1); quad([pane(Y0, Z1), pane(Y1, Z1), pane(Y1, Z0), pane(Y0, Z0)]); back.fillPath();
+      back.fillStyle(0xc9c5b8, 1); quad([pane(Y0, Z1), pane(Y0 + 0.6, Z1), pane(Y0 + 0.6, Z0), pane(Y0, Z0)]); back.fillPath();
+      back.fillStyle(0x9a6a48, 0.55); quad([pane(Y1 - 1.2, Z0 + 0.6), pane(Y1, Z0 + 0.6), pane(Y1, Z0), pane(Y1 - 1.2, Z0)]); back.fillPath(); // rust
+      back.lineStyle(2.5, 0x3a3f46, 1); quad([pane(Y0, Z1), pane(Y1, Z1), pane(Y1, Z0), pane(Y0, Z0)]); back.strokePath();
+      back.lineStyle(2.5, 0xd06a2a, 0.9); quad([pane(24, 11.5), pane(26, 11.5), pane(26, 10.1), pane(24, 10.1)]); back.strokePath();
+      const ry = sy(25, 10), rx = sx(rimX), rw = 0.75 * S, rh = 0.75 * D * 1.4;
+      const ell = (g: Phaser.GameObjects.Graphics, a0: number, a1: number, ex = rw, ey = rh) => {
+        g.beginPath();
+        for (let k = 0; k <= 16; k++) { const a = a0 + ((a1 - a0) * k) / 16; const qx = rx + Math.cos(a) * ex, qy = ry + Math.sin(a) * ey; if (k) g.lineTo(qx, qy); else g.moveTo(qx, qy); }
+        g.strokePath();
+      };
+      back.lineStyle(3, 0xb8430e, 1); ell(back, Math.PI, Math.PI * 2);
+      const net: NetHoop = { rx, ry, rw, rh, back: scene.add.graphics().setDepth(sy(23.5) + 0.1), front: scene.add.graphics().setDepth(sy(25.4) - 0.1), drawn: '', chain: true };
+      drawNet(net, 0, 0, 0);
+      nets.push(net);
+      rimG.lineStyle(3.5, 0xe0581a, 1); ell(rimG, 0, Math.PI);
+      const edge = rx - dir * rw;
+      rimG.fillStyle(0xb04a14, 1); rimG.fillRect(Math.min(edge, sx(boardX)), ry - 2, Math.abs(sx(boardX) - edge), 4);
+      continue;
+    }
     // shadow + padded base sitting on the floor
     back.fillStyle(0x000000, 0.28); back.fillEllipse((sx(baseX0) + sx(baseX1)) / 2, sy(25, 0) + 6, Math.abs(sx(baseX1) - sx(baseX0)) + 16, 22);
     const bxL = Math.min(sx(baseX0), sx(baseX1)), bw = Math.abs(sx(baseX1) - sx(baseX0));
@@ -166,7 +204,7 @@ export function drawHoops(scene: Phaser.Scene) {
 }
 
 /** One hoop's net: rim center/size in screen px and the two graphics layers it is drawn on. */
-export interface NetHoop { rx: number; ry: number; rw: number; rh: number; back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics; drawn: string }
+export interface NetHoop { rx: number; ry: number; rw: number; rh: number; back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics; drawn: string; /** round 56: schoolyard chain net */ chain?: boolean }
 
 /**
  * Tapered mesh hanging from the rim. stretch (0..1): pulled down by the ball going through (longer, bottom opens up);
@@ -186,18 +224,20 @@ export function drawNet(n: NetHoop, stretch: number, sway: number, bulge: number
     const push = 1 + bulge * 0.5 * Math.max(0, 1 - Math.abs(f - bulgeAt) / 0.45);
     return [rx + (t * 2 - 1) * w * push + swayPx * f * f, ry + NET * f];
   };
-  back.lineStyle(1.2, 0xc8ccd8, 0.55);
+  const chain = !!n.chain; // round 56: a steel chain net — heavier, grey, beaded links
+  back.lineStyle(chain ? 1.6 : 1.2, chain ? 0x8a9098 : 0xc8ccd8, chain ? 0.7 : 0.55);
   for (let k = 0; k <= N; k++) {
     const t = k / N;
     back.beginPath(); back.moveTo(at(t, 0)[0], ry - rh * 0.35);
     for (const f of [0.35, 0.7, 1]) back.lineTo(...at(t, f));
     back.strokePath();
   }
-  front.lineStyle(1.5, 0xffffff, 0.9);
+  front.lineStyle(chain ? 2 : 1.5, chain ? 0xb9c0c8 : 0xffffff, 0.9);
   for (let k = 0; k < N; k++) {
     const a = k / N, b = (k + 1) / N;
     front.lineBetween(...at(a, 0), ...at(b, 0.5)); front.lineBetween(...at(b, 0), ...at(a, 0.5));
     front.lineBetween(...at(a, 0.5), ...at(b, 1)); front.lineBetween(...at(b, 0.5), ...at(a, 1));
   }
   front.lineBetween(...at(0, 1), ...at(1, 1));
+  if (chain) { front.fillStyle(0xdfe4ea, 0.9); for (let k = 0; k <= N; k++) for (const f of [0.25, 0.5, 0.75, 1]) { const [qx, qy] = at(k / N, f); front.fillRect(qx - 1, qy - 1, 2, 2); } }
 }

@@ -158,6 +158,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 56: the school court venue** (owner's sketch + photo), a real game venue for story events.
+  - Side-on like the arena: asphalt court, a chain-link fence along the back of the court (posts, top rail, knuckled
+    top), then the school: tan portable classrooms long side to us with white wall AC units, barred windows, a ramp
+    (as in the photo), the brick main building ("LINCOLN HIGH SCHOOL"), a flag pole, lunch tables, bike rack, trash
+    cans, tetherball, banners. Hoops on single poles with a gooseneck and a steel board, chain nets, facing in.
+  - Drawn in the apartment / garage pixel style, baked once per variant (`render/schoolArt.ts`).
+  - **Day:** a few kids by the fence and on a small bleacher (cheer big plays, softer crowd sound). **Rainy night:**
+    no kids, wet asphalt with puddles and long reflections, lit windows, light poles, rain + splashes + lightning,
+    rain sound. No announcer, table, benches, coaches or celebs at the school.
+  - Picked by `GameInit.venue` (story events) or the dev panel "venue (next game)"; default arena.
 - **Round 55: ultimates (owner's design).**
   - **Cinematic:** slow-mo (0.38×, game clock too; ≤ 1.7 sim s, 2.2 for the chase-down), screen darkened around the ult
     player (+ ball, chase target), sound ducked with a deep whoosh. For **your ult and any ult against your team**; a

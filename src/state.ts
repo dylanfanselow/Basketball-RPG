@@ -14,6 +14,8 @@ export const app = {
     benchSpeed: 6,
     /** dev: treat the next game as a big game (playoffs) — home crowd in team colors */
     bigGame: false,
+    /** round 56: venue for the next game (dev): arena / school court / school court, rainy night */
+    venue: 'arena' as import('./sim/game').Venue,
     /** multi-angle players: force every player to one drawn view (dev), plus a live cache readout */
     angles: { force: null as number | null, flip: false, readout: '' },
   },

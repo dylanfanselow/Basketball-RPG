@@ -5,7 +5,7 @@ import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
-import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H } from '../render/view';
+import { S, D, sx, sy, drawCourt, drawHoops, drawNet, NetHoop, WORLD_W, VIEW_W, VIEW_H, FLOOR_TOP } from '../render/view';
 import { SHEET_CACHE, MAX_SHEETS, ANGLE_CACHE, angPage, hashStr, playerSheetKey, dropSheet, sheetFor as bankSheetFor, angleCache as bankAngleCache } from '../render/playerBank';
 import { CELEB_W, CELEB_H, CELEB_FRAMES } from '../render/celebs';
 import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, castSheet } from '../render/celebArt';
@@ -30,6 +30,8 @@ import { topStats } from '../sim/boxScore';
 import { partsVersion } from '../render/faceParts';
 import { buildIcons } from '../render/roomArt';
 import { UltFx, LIFT_DEPTH } from '../render/aura';
+import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from '../render/schoolArt';
+import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
@@ -123,7 +125,16 @@ export class GameScene extends Phaser.Scene {
   animMem = new Map<string, { clip: string; u: number }>();
   lastVel = new Map<string, { x: number; y: number; squeakAt: number }>();
   heldBall: { x: number; y: number; behind?: number } | null = null;
-  crowd!: Crowd;
+  crowd!: CrowdLike;
+  /** round 56: the school court venue (day / rainy night), or null in the arena */
+  school: SchoolVariant | null = null;
+  flag: Phaser.GameObjects.Sprite | null = null;
+  rainG: Phaser.GameObjects.Graphics | null = null;
+  splashG: Phaser.GameObjects.Graphics | null = null;
+  flashRect: Phaser.GameObjects.Rectangle | null = null;
+  drops: { x: number; y: number; len: number; sp: number }[] = [];
+  splashes: { x: number; y: number; t: number }[] = [];
+  nextLightning = 0;
   shotClockTexts: Phaser.GameObjects.Text[] = [];
   tableText!: Phaser.GameObjects.Text;
   announcers: { sprite: Phaser.GameObjects.Sprite; phase: number }[] = [];
@@ -161,21 +172,36 @@ export class GameScene extends Phaser.Scene {
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
     this.inputP2 = twoHumans ? new InputMapper(this, 2) : null;
     const [t0, t1] = this.sim.teams;
-    drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
-    const hoops = drawHoops(this);
+    // round 56: the venue — the arena, or the school court (day / rainy night) for story events
+    const venue = this.initData?.venue ?? app.settings.venue ?? 'arena';
+    this.sim.cfg.venue = venue;
+    this.school = venue === 'arena' ? null : venue === 'schoolRain' ? 'rain' : 'day';
+    this.flag = null; this.rainG = null; this.splashG = null; this.flashRect = null; this.drops = []; this.splashes = [];
+    if (this.school) this.flag = addSchoolCourt(this, this.school).flag;
+    else drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
+    const hoops = drawHoops(this, this.school ? 'school' : 'arena');
     this.nets = hoops.nets; this.netHits = [{ at: -9999, amp: 0 }, { at: -9999, amp: 0 }];
     this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
-    this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed);
-    this.buildSideline();
+    if (!this.school) {
+      this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed);
+      this.buildSideline();
+    } else {
+      // no stands, table, benches, coaches or celebs out here: a few kids by the fence (not on the rainy night)
+      this.crowd = new SchoolKids(this, t0.def.seed, { enabled: this.school === 'day', colors: SCHOOL_COLORS, fenceY: FENCE_Y, bleacher: BLEACHER });
+      this.celebs = []; this.coaches = []; this.announcers = [];
+      if (this.school === 'rain') this.buildRain();
+    }
     this.shadows = this.add.graphics().setDepth(-500);
     this.overlay = this.add.graphics().setDepth(-400);
     this.overlayTop = this.add.graphics().setDepth(5000);
     this.ballG = this.add.graphics();
     this.buildSprites();
-    this.cameras.main.setBackgroundColor('#0d0f1a');
+    this.cameras.main.setBackgroundColor(this.school === 'day' ? '#cfe6f4' : this.school === 'rain' ? '#0a0e1a' : '#0d0f1a');
     this.makeHud();
-    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); });
-    sfx.setArena(true); // crowd murmur only while a game is on
+    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; });
+    sfx.setArena(!this.school); // crowd murmur only while an arena game is on
+    sfx.rain(this.school === 'rain');
+    sfx.crowdSize = this.school === 'rain' ? 0 : this.school === 'day' ? 0.35 : 1;
     app.listeners.add(this.onAppChanged);
     this.events.once('shutdown', () => app.listeners.delete(this.onAppChanged));
   }
@@ -703,10 +729,14 @@ export class GameScene extends Phaser.Scene {
       s.setDepth(sy(p.p.y));
       // glossy hardwood: a faint, squashed, upside-down reflection under each player
       let r = this.reflections.get(p.id);
-      if (!r) { r = this.add.sprite(0, 0, texKey, frame).setOrigin(CX / FRAME_W, (FRAME_H - FOOT_Y) / FRAME_H).setFlipY(true).setAlpha(0.1).setTint(0x6a4a2a).setDepth(-450); this.reflections.set(p.id, r); }
+      if (!r) {
+        r = this.add.sprite(0, 0, texKey, frame).setOrigin(CX / FRAME_W, (FRAME_H - FOOT_Y) / FRAME_H).setFlipY(true).setAlpha(0.1).setTint(0x6a4a2a).setDepth(-450);
+        if (this.school === 'rain') r.setAlpha(0.2).setTint(0x9ab0d0); // wet asphalt: a cool, longer reflection
+        this.reflections.set(p.id, r);
+      }
       if (r.texture.key !== texKey) r.setTexture(texKey, frame); else r.setFrame(frame);
-      r.setScale(SPRITE_SCALE, SPRITE_SCALE * 0.5).setFlipX(flip).setPosition(s.x, sy(p.p.y) + p.z * S * 0.5)
-        .setVisible(p.p.x > 0 && p.p.x < 94 && p.p.y > 0.5);
+      r.setScale(SPRITE_SCALE, SPRITE_SCALE * (this.school === 'rain' ? 0.75 : 0.5)).setFlipX(flip).setPosition(s.x, sy(p.p.y) + p.z * S * (this.school === 'rain' ? 0.75 : 0.5))
+        .setVisible(this.school !== 'day' && p.p.x > 0 && p.p.x < 94 && p.p.y > 0.5); // dry asphalt doesn't shine
       const ghost = sim.time < p.screenedUntil;
       s.setTint(ghost ? 0xb0b0ff : 0xffffff);
       this.shadows.fillStyle(0x000000, 0.28);
@@ -733,10 +763,49 @@ export class GameScene extends Phaser.Scene {
     this.updateNets();
     this.crowd.clutch = sim.clutch;
     this.crowd.update(cam.scrollX, VIEW_W);
-    this.renderSideline();
+    if (!this.school) this.renderSideline();
+    else this.renderSchool();
     for (const t of this.shotClockTexts) t.setText(String(Math.max(0, Math.ceil(sim.shotClock))));
     this.drawOverlays();
     this.drawHud();
+  }
+
+  /** Round 56: the rainy night's live layers (made in create, never lazily): streaks over everything, splashes on the
+   * asphalt, a lightning flash now and then. */
+  buildRain() {
+    this.rainG = this.add.graphics().setScrollFactor(0).setDepth(4450);
+    this.splashG = this.add.graphics().setDepth(-380);
+    this.flashRect = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W * 2, VIEW_H * 2, 0xdfe8ff, 1).setScrollFactor(0).setDepth(4440).setAlpha(0);
+    this.drops = Array.from({ length: 150 }, () => ({ x: Math.random() * (VIEW_W + 200), y: Math.random() * VIEW_H, len: 10 + Math.random() * 14, sp: 900 + Math.random() * 500 }));
+    this.nextLightning = this.time.now + 6000 + Math.random() * 8000;
+  }
+  /** Round 56: per frame at the school court — the flag waves (day), the rain falls (night). */
+  renderSchool() {
+    const now = this.time.now;
+    if (this.flag) this.flag.setFrame(this.school === 'day' ? Math.floor(now / 160) % 4 : 0);
+    if (!this.rainG || !this.splashG) return;
+    const dt = Math.min(0.05, this.game.loop.delta / 1000), cam = this.cameras.main, g = this.rainG, sg = this.splashG;
+    g.clear(); g.lineStyle(1.2, 0xb8c8e0, 0.45);
+    for (const d of this.drops) {
+      d.y += d.sp * dt; d.x -= d.sp * 0.22 * dt;
+      if (d.y > VIEW_H || d.x < -20) {
+        if (Math.random() < 0.6) this.splashes.push({ x: cam.scrollX + Math.random() * VIEW_W, y: FLOOR_TOP - 34 + Math.random() * 390, t: now });
+        d.y = -d.len - Math.random() * 60; d.x = Math.random() * (VIEW_W + 200);
+      }
+      g.lineBetween(d.x, d.y, d.x + d.len * 0.22, d.y - d.len);
+    }
+    this.splashes = this.splashes.filter((p) => now - p.t < 180);
+    sg.clear();
+    for (const p of this.splashes) {
+      const k = (now - p.t) / 180, w = 2 + k * 5;
+      sg.lineStyle(1, 0xc8d6ec, 0.6 * (1 - k)); sg.lineBetween(p.x - w, p.y - 1 - k * 3, p.x - 1, p.y); sg.lineBetween(p.x + w, p.y - 1 - k * 3, p.x + 1, p.y);
+    }
+    if (this.flashRect && now >= this.nextLightning) {
+      this.nextLightning = now + 9000 + Math.random() * 14000;
+      this.tweens.killTweensOf(this.flashRect);
+      this.flashRect.setAlpha(0.32);
+      this.tweens.add({ targets: this.flashRect, alpha: 0, duration: 90, yoyo: true, repeat: 1, onComplete: () => { this.flashRect?.setAlpha(0.18); this.tweens.add({ targets: this.flashRect, alpha: 0, duration: 400 }); } });
+    }
   }
 
   nets: NetHoop[] = [];

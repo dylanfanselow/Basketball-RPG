@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CROWD_TOP, CROWD_ROWS, CROWD_ROW_H, WORLD_W, FLOOR_TOP, sx } from './view';
-import { SPRITE_SCALE, shade } from './sprites';
+import { SPRITE_SCALE, shade, ART } from './sprites';
 import { randomFan, buildCelebSheet, CelebLook, CELEB_W, CELEB_H, CELEB_FRAMES } from './celebs';
 
 interface Fan { x: number; row: number; shirt: number; shirtLit: number; skin: number; skinLit: number; hair: number; phase: number; away: boolean; standClutch: boolean; seat: boolean; size: number }
@@ -19,7 +19,7 @@ const HAIRS = [0x141010, 0x2b1d14, 0x4a3020, 0x7a5230, 0xb88a4a, 0xdcdcdc];
  * A cheer ripples outward from where it happened; groans make the home section sag and boo.
  * Only fans inside the camera are drawn each frame.
  */
-export class Crowd {
+export class Crowd implements CrowdLike {
   fans: Fan[] = [];
   g: Phaser.GameObjects.Graphics;
   /** 0..1 overall excitement, decays */
@@ -201,6 +201,87 @@ class FanRow {
       f.frame = frame;
       const bob = frame === 1 ? -jump * 0.6 - 1 : Math.sin(t * (2 + crowd.hype * 6) + f.phase) * (0.3 + crowd.hype);
       f.sprite.setFrame(frame).setY((f.baseY ?? FAN_ROW_FEET) + bob);
+    }
+  }
+}
+
+/** What GameScene needs from the people around the court (round 56: the arena crowd or the schoolyard kids). */
+export interface CrowdLike {
+  clutch: boolean;
+  react(worldX: number, power: number, home: boolean, boo?: boolean): void;
+  update(camX: number, viewW: number): void;
+}
+
+/**
+ * Round 56: the school court's spectators — a handful of kids in hoodies and tees standing along the fence and on the
+ * little bleacher at midcourt (none on the rainy night). They cheer every big play (it's a pickup crowd: both sides).
+ */
+export class SchoolKids implements CrowdLike {
+  clutch = false;
+  hype = 0.15;
+  private events: { x: number; t: number; power: number }[] = [];
+  private kids: { sprite: Phaser.GameObjects.Sprite; x: number; baseY: number; phase: number }[] = [];
+
+  constructor(private scene: Phaser.Scene, seed: number, opts: { enabled: boolean; colors: string[]; fenceY: number; bleacher: { x0: number; x1: number; rows: number[]; rise: number } }) {
+    if (!opts.enabled) return;
+    const rng = new Phaser.Math.RandomDataGenerator([`kids${seed}`]);
+    const looks: CelebLook[] = [];
+    for (let i = 0; i < 8; i++) {
+      const look = randomFan(() => rng.frac(), opts.colors, '#3b4a6b', false);
+      look.outfit = rng.pick(['tee', 'hoodie', 'hoodie', 'tee', 'tracksuit'] as const);
+      look.hat = rng.pick(['none', 'none', 'cap', 'beanie'] as const);
+      look.chain = false; look.shades = null;
+      if (rng.frac() < 0.5) look.color = rng.pick(['#3b4a6b', '#6b6b6b', '#2f2f3f', '#b03030', '#2a6a4a', '#e0e0e0']);
+      look.turn = 0.35;
+      looks.push(look);
+    }
+    // one sheet per look and pose: standing (by the fence) or sitting on a plank (the bleacher)
+    const sheet = (i: number, sit: boolean) => {
+      const key = `kid_${seed}_${i}_${sit ? 's' : 'f'}`;
+      if (!scene.textures.exists(key)) {
+        const tex = scene.textures.addCanvas(key, buildCelebSheet({ ...looks[i], stand: !sit, noChair: sit }))!;
+        for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+      }
+      return key;
+    };
+    const scale = SPRITE_SCALE * 0.72;
+    const put = (x: number, y: number, depth: number, sit: boolean) => {
+      const sprite = scene.add.sprite(x, y, sheet(rng.between(0, looks.length - 1), sit), 0).setOrigin(0.5, 1).setScale(scale).setDepth(depth).setFlipX(rng.frac() < 0.5);
+      this.kids.push({ sprite, x, baseY: y, phase: rng.frac() * 10 });
+    };
+    // a few standing along the fence (clear of the hoop poles), in little groups
+    for (const ft of [-5, 15, 17.5, 32, 62, 64.5, 99]) put(sx(ft) + rng.between(-6, 6), opts.fenceY + 8 + rng.between(0, 6), opts.fenceY + 10, false);
+    // a few sitting on the bleacher planks: the seat is at hip height, the legs hang down in front of the row below
+    const b = opts.bleacher, hip = 28 * (ART / 1.5) * scale;
+    b.rows.forEach((wy, i) => {
+      const plankTop = wy - (b.rows.length - i) * b.rise - 1;
+      for (let x = b.x0 + 20 + rng.between(0, 30); x < b.x1 - 16; x += 70 + rng.between(0, 50)) put(x, plankTop + hip, wy - 30 + i, true);
+    });
+  }
+
+  react(worldX: number, power: number, _home: boolean, boo = false) {
+    if (boo) return; // pickup crowd: they hype every big play
+    this.events.push({ x: worldX, t: this.scene.time.now, power });
+    this.hype = Math.min(1, this.hype + power * 0.5);
+  }
+
+  update(camX: number, viewW: number) {
+    const now = this.scene.time.now, t = now / 1000;
+    this.hype = Math.max(this.clutch ? 0.45 : 0.12, this.hype - 0.0025);
+    this.events = this.events.filter((e) => now - e.t < 3000);
+    for (const k of this.kids) {
+      const on = k.x > camX - 40 && k.x < camX + viewW + 40;
+      k.sprite.setVisible(on);
+      if (!on) continue;
+      let jump = 0, armsUp = false;
+      for (const e of this.events) {
+        const age = now - e.t - Math.abs(k.x - e.x) / 900 * 1000;
+        if (age < 0 || age > 1600) continue;
+        jump = Math.max(jump, Math.abs(Math.sin(age / 90)) * 7 * e.power * (1 - age / 1600)); armsUp = true;
+      }
+      const frame = armsUp || this.hype > 0.7 ? 1 : Math.sin(t / 2.3 + k.phase * 3) > 0.97 ? 2 : 0; // now and then a phone comes out
+      const bob = frame === 1 ? -jump * 0.6 - 1 : Math.sin(t * (2 + this.hype * 6) + k.phase) * (0.3 + this.hype);
+      k.sprite.setFrame(frame).setY(k.baseY + bob);
     }
   }
 }

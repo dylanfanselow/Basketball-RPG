@@ -143,6 +143,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `handleUser`, `pass(…, force)`, chase-down any angle + Swat & Go; anim `shot_dunk_clutch`; `render/aura.ts` `UltFx`
   (16 tinted sprite copies in two rings + 22 pooled `aura_wisp` flames, shade at depth 4000, lifted sprites 4100,
   banner); `sfx.duck`; `ControllerHud` ULT Fake / Hang Time / Kick Out labels.
+  Round 56 school court: `GameConfig.venue` (`Venue` = arena / school / schoolRain, cosmetic), `app.settings.venue`
+  (dev panel), `GameInit.venue`; `render/schoolArt.ts` (`buildSchoolArt` / `addSchoolCourt`: one baked texture per
+  variant at 0.75 art px per unit, pixel buffer for sky / asphalt, `FENCE_Y`, `BLEACHER`, `FLAG_POLE`, flag sprite
+  4 frames, court lines from the arena geometry); `drawHoops(scene, 'school')` + chain `NetHoop.chain`;
+  `crowd.ts` `CrowdLike` + `SchoolKids` (celeb sheets with `stand` / `noChair`); GameScene `school`, `buildRain` /
+  `renderSchool`, wet reflections; `sfx.rain`, `sfx.crowdSize`.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

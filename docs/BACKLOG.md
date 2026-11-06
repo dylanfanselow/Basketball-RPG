@@ -61,3 +61,4 @@
 - A physical PlayStation controller (tested with a simulated pad; standard mapping assumed).
 - Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).
 - Long-session performance of the animated crowd on slower machines.
+- **School court (round 56):** hook the story events to it (`GameInit.venue`), e.g. the high-school-rival 1v1 that unlocks the ultimate (VISION.md). Maybe a thunder sound for the lightning.

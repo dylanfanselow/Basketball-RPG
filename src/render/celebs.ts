@@ -25,6 +25,8 @@ export interface CelebLook {
   shades: string | null;
   chain: boolean;
   longHair: string | null;
+  /** round 56: always standing (schoolyard kids by the fence) / sitting with no chair drawn (on a bleacher plank) */
+  stand?: boolean; noChair?: boolean;
   /** chair color (default: plush red courtside seat) */
   seat?: string;
   /** plain fans: which side they root for (their shirt says so) */
@@ -170,9 +172,9 @@ function drawCeleb(ctx: Ctx, ox: number, c: CelebLook, frame: number) {
   const k = ART / 1.5; // art scale (1 at 1.5x)
   const L = (n: number) => n * k;
   const cx = ox + CELEB_W / 2, floor = CELEB_H - 3;
-  const standing = frame === 1;
+  const standing = frame === 1 || !!c.stand;
   const [skin] = SKIN_TONES[c.a.skin % SKIN_TONES.length];
-  if (!standing) frontChair(ctx, cx, floor, floor - L(25), floor - L(60), c.seat ?? '#b01c34', k); // plush courtside seat (or a plain arena seat)
+  if (!standing && !c.noChair) frontChair(ctx, cx, floor, floor - L(25), floor - L(60), c.seat ?? '#b01c34', k); // plush courtside seat (or a plain arena seat)
   const col = c.color, hi = tint(col, 0.3), sh = shade(col, 0.7), dk = shade(col, 0.5);
   // legs + shoes (dress: bare legs with heels; otherwise trousers)
   const shinTop = standing ? floor - L(38) : floor - L(21);

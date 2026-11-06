@@ -80,7 +80,10 @@ export interface GameConfig {
   featureUser?: boolean;
   /** big game (playoffs): the home crowd dresses in team colors */
   bigGame?: boolean;
+  /** round 56: where it's played (cosmetic): the arena, the school court, or the school court on a rainy night */
+  venue?: Venue;
 }
+export type Venue = 'arena' | 'school' | 'schoolRain';
 
 export type BallState =
   | { kind: 'held'; holder: Player }

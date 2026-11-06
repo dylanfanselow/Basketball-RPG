@@ -54,6 +54,7 @@ class Sfx {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     this.applySettings();
     this.startCrowd();
+    if (this.rainOn) this.rain(true);
   }
 
   applySettings() {
@@ -310,9 +311,37 @@ class Sfx {
     const g = this.arenaGate.gain, t = this.ctx.currentTime;
     g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 1 : 0, t + 0.6);
   }
+  /**
+   * Round 56: rain on the school court at night — a looping band of filtered noise with a slow swell, on the crowd
+   * bus (so it ducks with the arena in an ult cinematic). Remembered until audio is unlocked.
+   */
+  rain(on: boolean) {
+    this.rainOn = on;
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (on && !this.rainNodes) {
+      const src = ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+      const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(0.32, t + 1.2);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.07;
+      lfo.connect(lg).connect(g.gain); lfo.start();
+      src.connect(hp).connect(lp).connect(g).connect(this.crowdBus); src.start();
+      this.rainNodes = { src, g, lfo };
+    } else if (!on && this.rainNodes) {
+      const n = this.rainNodes; this.rainNodes = null;
+      n.g.gain.cancelScheduledValues(t); n.g.gain.setValueAtTime(n.g.gain.value, t); n.g.gain.linearRampToValueAtTime(0.0001, t + 0.5);
+      n.src.stop(t + 0.6); n.lfo.stop(t + 0.6);
+    }
+  }
+  private rainOn = false;
+  private rainNodes: { src: AudioBufferSourceNode; g: GainNode; lfo: OscillatorNode } | null = null;
   /** Cheer swell (intensity 0..1). */
+  /** Round 56: crowd size for cheers / groans (1 = arena, ~0.35 = a few kids at the school court, 0 = nobody). */
+  crowdSize = 1;
   cheer(intensity = 0.7) {
-    if (!this.ok() || !this.crowdGain) return;
+    intensity *= this.crowdSize;
+    if (!this.ok() || !this.crowdGain || intensity <= 0.01) return;
     const ctx = this.ctx!, t = ctx.currentTime;
     const g = this.crowdGain.gain, f = this.crowdFilter.frequency;
     g.cancelScheduledValues(t); f.cancelScheduledValues(t);
@@ -325,7 +354,7 @@ class Sfx {
     this.noiseHit({ type: 'bandpass', f: 1800, q: 0.8, peak: 0.25 * intensity, a: 0.2, d: 1.0 + intensity, dest: this.crowdBus });
   }
   groan() {
-    if (!this.ok()) return;
+    if (!this.ok() || this.crowdSize < 0.5) return;
     this.noiseHit({ type: 'bandpass', f: 520, f2: 260, q: 1.5, peak: 0.25, a: 0.25, d: 1.0, dest: this.crowdBus });
   }
 
