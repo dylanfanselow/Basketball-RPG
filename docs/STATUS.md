@@ -116,6 +116,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   per-screen switch; defense.ts blitz trap at the chase "over" spot, roller tag, drop). Career `scout` (last 5
   games, `applyScouting` at tip-off: ≥ 30 pts or ≥ 40% shots → tier 1, ≥ 55% → tier 2, buckets ×0.5). `effort` for
   CPU-only teams down 15+ (speed ×1.06, gap −0.3, swipes ×1.25, crash +0.2) until within 10.
+  Round 50: Pick-Up Pressure (`pd_pickup`, param `killDribble`): `GameSim.swipe` → after a missed steal (not a
+  foul) `pickUpChance` = (0.12 + 0.3 × perimD/99) / handle security (×0.7 mid-move, cap 0.5) × front → `deadDribble`
+  (event `pickup`); `liveDribble`; CPU grant `grantPickUp` (roster.ts: perimD ≥ 74, or ≥ 71 with Quick Hands); AI
+  on-ball swipes ×1.6 vs a live dribble with it.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

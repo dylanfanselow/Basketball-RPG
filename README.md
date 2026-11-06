@@ -44,6 +44,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - Career: the next opponent keeps a **scouting report**. A 30-a-night scorer starts the game keyed in, and a known ball hog starts doubled.
   - A CPU team down 15+ **turns up the pressure** (quicker, tighter, more swipes, crashes the glass) until it's within 10.
   - Dev panel *Attention*: random play calls per team (A/B), your move reads, the screen coverage, effort and each team's plays this game.
+- **Pick-Up Pressure** (Perimeter Defense ability, top of the tree, 2 points): when your swipe doesn't get the steal, a separate chance to make the dribbler pick up his dribble. It's better with Perimeter D and harder against great ball handlers. He has to pass or shoot within 5 seconds. Elite CPU perimeter defenders (about the top 10%) have it and reach more against a live dribble, so watch your handle against them.
 - **Doors** in the apartment and garage open with a latch and creak and close behind you; locked doors rattle.
 - **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.
 

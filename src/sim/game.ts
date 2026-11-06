@@ -1692,7 +1692,22 @@ export class GameSim {
       this.emit({ kind: 'foul', text: `Reach-in foul on ${p.name}`, team: p.team });
       this.shotClock = Math.max(this.shotClock, 14);
       this.deadBall(h.team, 1.0);
+    } else if (p.mods.pAdd('killDribble') > 0 && this.liveDribble(h) && this.rng.chance(this.pickUpChance(p, h) * front)) {
+      // Pick-Up Pressure (round 50): no steal, but he's so tight the dribbler has to pick it up — pass or shoot
+      h.deadDribble = true; h.deadDribbleAt = this.time; h.deadWarned = true;
+      if (h.state === 'dribbleMove') { h.state = 'idle'; h.move = null; h.bufferedMove = null; }
+      h.flickDir = 0;
+      this.emit({ kind: 'pickup', text: `${p.name} kills the dribble — ${h.name} has to pick it up`, team: p.team, pid: p.id, big: p === this.user || h === this.user, good: p.team === this.user?.team });
+      if (p === this.user) applyTrust(this.trust, 'stop', 0.5);
     }
+  }
+
+  /** Round 50: is he still dribbling (so Pick-Up Pressure can kill it)? Not already picked up, shooting or posting. */
+  liveDribble(h: Player): boolean { return !h.deadDribble && h.state !== 'shoot' && !h.pendingShot && !h.post; }
+  /** Pick-Up Pressure: the separate chance (after a missed swipe) that the dribbler has to pick it up. */
+  pickUpChance(p: Player, h: Player): number {
+    const security = 0.6 + (h.sub.ballSpeed / 99) * 0.6; // 0.6 (shaky) … 1.2 (elite handle)
+    return clamp((0.12 + 0.3 * p.sub.perimD / 99) / security * (h.state === 'dribbleMove' ? 0.7 : 1), 0, 0.5);
   }
 
   takeCharge(p: Player) {

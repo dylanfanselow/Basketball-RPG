@@ -156,7 +156,9 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     }
   }
   sim.steer(d, target, urgent);
-  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70) * (sim.effort[d.team] ? 1.25 : 1))) sim.swipe(d);
+  // round 50: a defender with Pick-Up Pressure reaches more against a live dribble (even a miss can kill it)
+  const pressure = man === h && h && d.mods.pAdd('killDribble') > 0 && sim.liveDribble(h) ? 1.6 : 1;
+  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70) * (sim.effort[d.team] ? 1.25 : 1) * pressure)) sim.swipe(d);
   void len;
 }
 

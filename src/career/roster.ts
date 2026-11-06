@@ -38,11 +38,24 @@ export function generateRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size
       number: e.number, skin: e.appearance.skin ?? 2, height: e.heightFt, appearance: withDefaults(e.appearance),
     }));
     markStars(out, real.map((e) => e.tier));
+    grantPickUp(out);
     return out;
   }
   const gen = generatedRoster(team, teamIdx, strength, size);
   markStars(gen);
+  grantPickUp(gen);
   return gen;
+}
+
+/**
+ * Round 50: elite perimeter defenders (top ~10%: Perimeter D 74+, or 71+ with Quick Hands) come with Pick-Up
+ * Pressure, so the CPU uses it too.
+ */
+export function grantPickUp(players: Player[]) {
+  for (const p of players) {
+    if (p.nodes.has('pd_pickup')) continue;
+    if (p.sub.perimD >= 74 || (p.nodes.has('pd_hands') && p.sub.perimD >= 71)) { p.nodes.add('pd_pickup'); p.recompute(); }
+  }
 }
 
 /**

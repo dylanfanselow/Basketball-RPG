@@ -154,6 +154,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 50: Pick-Up Pressure.** A high-level Perimeter Defense ability (top of the tree, needs Floor Burn, 2
+  points): when a swipe misses (and isn't a foul), a separate roll makes the dribbler pick up his dribble. Elite CPU
+  perimeter defenders (top ~10%) have it and reach more against a live dribble.
 - **Round 49: make the CPU better, not the player worse.**
   - Play calls are data-driven: a play lab sims every set by focus style, and the coach scores (play, focus) from those values, the matchups, tonight's results and the situation, then picks with some randomness.
   - The defense adapts to the human only: repeated moves are read and the favourite side is shaded; ball screens get under / blitz / switch by his shooting.
