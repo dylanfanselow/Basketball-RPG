@@ -319,3 +319,16 @@ describe('round 45: angled jump shots + sleeping on the couch', () => {
     }
   });
 });
+
+describe('round 46: the sleeping pose fits its frame', () => {
+  it('head (plus the tallest hair) and feet stay inside the 96-px frame for a 7-footer', async () => {
+    const { figureHeight, CX, FRAME_W } = await import('../src/render/sprites');
+    const k = figureHeight(7.0) / 100, cl = CLIP.sleep;
+    // measured in the browser: hair reaches ~22 px past the head joint (hightop, head tipped back), shoes ~5 px past the feet
+    for (let f = 0; f < cl.frames; f++) {
+      const p = sampleClip(cl, frameTime(cl, f));
+      expect(CX + p.head[0] * k - 22).toBeGreaterThanOrEqual(0);
+      for (const ft of [p.fF, p.fB]) expect(CX + ft[0] * k + 5).toBeLessThan(FRAME_W);
+    }
+  });
+});

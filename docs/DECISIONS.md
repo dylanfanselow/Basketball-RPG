@@ -154,6 +154,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 46: season calendar + sleep fixes.** The calendar follows the owner's parchment reference (pixel grid,
+  `M T W Th F Sa Su`) but with **our own damage** (torn top-left, notched right edge, dog-eared bottom-left, coffee
+  ring), the **month name at the top** (year beside it) and **key games only** (pennant in the opponent's colours +
+  OPENER / RIVAL / NAT TV / FINALE) instead of the reference's events. Day 1 = Mon 19 Oct 2026, so the opener is
+  Tue 20 Oct (2026-27 opening night). ✕ at the wall calendar opens it; ◀ ▶ months, L1 closes. Sleeping: the whole
+  head stays in frame (propped up on the pillow, knees softly bent) and **the couch's own blanket** comes off the
+  couch and covers his legs (no second blanket).
 - **Round 45: you lie on the couch to sleep; jump shots face the basket.** Sleeping shows the player on his back on
   the couch (`sleep` clip, head propped on the pillow, the couch blanket pulled over his legs, the cat stays on top),
   under a lighter night tint with Zzz off his head. **Jump shots (jumper, fade, push, floater, hook, step-through

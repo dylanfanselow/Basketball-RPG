@@ -254,19 +254,25 @@ function drawWallDecor(c: C) {
   // living-room window with half-drawn blinds
   drawWindow(c, Math.round(AX(24.4)), 120, Math.round(AX(30.4) - AX(24.4)), 82, 0.28);
   drawPosters(c);
-  // wall calendar on the left wall, next to the fridge (future: upcoming key games + special events)
+  // wall calendar on the left wall, next to the fridge (round 46: the same parchment page as the calendar screen —
+  // month at the top, 7-day grid, a pennant on a key game, a few days crossed off, a torn top-left corner)
   const K = CALENDAR;
-  onWall(c, 'L', K.y0 - 0.12, K.y1 + 0.12, K.h0 - 0.08, K.h1 + 0.2, (_x, _y, u, v) => (u < 0.03 || u > 0.97 || v < 0.025 || v > 0.94 ? '#6e665a' : null));
-  onWall(c, 'L', K.y0, K.y1, K.h0, K.h1, (_x, _y, u, v) => {
+  const bite = (a: number, v: number, r: number) => a + (1 - v) * 0.8 < r;   // a = 0 on screen-left, v = 1 at the top
+  onWall(c, 'L', K.y0 - 0.12, K.y1 + 0.12, K.h0 - 0.08, K.h1 + 0.2, (_x, _y, u, v) => (bite(1 - u, v, 0.2) ? null : u < 0.03 || u > 0.97 || v < 0.025 || v > 0.94 ? '#9a7a4e' : null));
+  onWall(c, 'L', K.y0, K.y1, K.h0, K.h1, (x, y, u, v) => {
     const a = 1 - u; // 0 at the fridge end ... 1 toward the garage door (reads left to right on screen)
-    if (v > 0.8) return v > 0.97 ? '#9b2f28' : Math.abs(a - 0.25) < 0.05 && v > 0.93 ? '#555555' : Math.abs(a - 0.75) < 0.05 && v > 0.93 ? '#555555' : '#c8433a';
-    if (v > 0.74) return '#f6f3ea';
-    const col = Math.floor(a * 5), row = Math.floor((0.74 - v) / 0.74 * 5);
-    const cu = a * 5 - col, cv = ((0.74 - v) / 0.74) * 5 - row;
-    if (cu < 0.18 || cv < 0.15) return '#f6f3ea';
-    if ((row === 1 && col === 3) || (row === 3 && col === 1)) return cu > 0.35 && cu < 0.85 && cv > 0.3 && cv < 0.85 ? '#e07a2c' : '#e2ddd0';
-    if (row === 0 && col < 2 && Math.abs(cu - cv) < 0.2) return '#8a8478';
-    return '#e2ddd0';
+    if (bite(a, v, 0.16)) return null;
+    if (bite(a, v, 0.19)) return '#fff7e0';                                  // torn fibres
+    const paper = hn(x, y, 5) < 0.08 ? '#ead6aa' : '#f3e2bb';
+    if (v > 0.82) return v > 0.87 && v < 0.92 && a > 0.32 && a < 0.68 && (x + y) % 3 !== 0 ? '#4a3a28' : paper; // the month
+    const ink = '#5a4632';
+    // a simplified grid (the wall is too slanted for 7 columns to read): crossed-off days shaded, one pennant
+    const col = Math.floor(a * 5), row = Math.floor(((0.8 - v) / 0.8) * 4);
+    const cu = a * 5 - col, cv = ((0.8 - v) / 0.8) * 4 - row;
+    if (cu < 0.16 || cv < 0.12 || Math.abs(v - 0.8) < 0.015) return ink;
+    if (row === 2 && col === 3 && cu > 0.3 && cv > 0.3 && cv < 0.8 && cu - 0.3 < (0.5 - Math.abs(cv - 0.55)) * 1.6) return '#c8433a'; // pennant
+    if (row === 0 || (row === 1 && col < 3)) return hn(x, y, 8) < 0.5 ? '#d8c49c' : '#cdb890';                                         // crossed off
+    return paper;
   });
   // light switch + outlets
   R(c, Math.round(AX(20.2)), 196, 5, 8, '#f1eee6'); P(c, Math.round(AX(20.2)) + 2, 199, '#9a958a'); P(c, Math.round(AX(20.2)) + 2, 200, '#9a958a');
@@ -285,6 +291,99 @@ function drawWallDecor(c: C) {
     void x; void y;
     return col;
   });
+}
+
+// ---------------------------------------------------------------- season calendar (round 46)
+/**
+ * The calendar page (the owner's parchment reference, with our own damage): art px, scaled by 1/AS on screen. The
+ * scene puts the month title, weekday letters, day numbers and pennant labels on top as text, using `CAL`.
+ */
+export const CAL = { W: 600, H: 430, gx0: 27, colW: 78, titleH: 54, headH: 34, gridBottom: 392 };
+export const calRowH = (rows: number) => Math.floor((CAL.gridBottom - CAL.titleH - CAL.headH) / rows);
+export interface CalCell { past: boolean; today: boolean; pennant?: [string, string] }
+
+export function drawCalendarPage(cells: (CalCell | null)[][]): HTMLCanvasElement {
+  const { W, H, gx0, colW, titleH, headH, gridBottom } = CAL, gx1 = gx0 + colW * 7, gy0 = titleH, rows = cells.length, rh = calRowH(rows);
+  const cv = canvas(W, H), c = cv.getContext('2d')!;
+  c.imageSmoothingEnabled = false;
+  // where the paper is missing: a torn bite out of the top-left, a ripped notch on the right edge, nicks along the
+  // bottom; the bottom-left corner is folded over (dog-ear, drawn after)
+  const jag = (a: number, s: number) => Math.round(hn(a, s, 7) * 3 + Math.sin(a * 0.9 + s) * 1.5);
+  const EAR = 34;
+  const gone = (x: number, y: number) => {
+    if (x + y * 1.3 < 46 + jag(x + y, 1)) return true;                               // top-left bite
+    const ny = Math.abs(y - H * 0.58);
+    if (ny < 16 && x > W - 1 - (16 - ny) * 1.1 + jag(y, 2)) return true;           // right-edge notch
+    if (y > H - 4 && hn(Math.floor(x / 5), 3, 9) < 0.3 && y > H - 2 - (hn(Math.floor(x / 5), 4, 9) * 4)) return true; // nicks
+    if (x + (H - 1 - y) < EAR) return true;                                          // folded-over corner
+    return false;
+  };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (gone(x, y)) continue;
+    // aged cream paper: soft blotches, grain, darker toward the edges
+    const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+    let col = mix('#f7e8c4', '#ecd5a6', 0.5 + 0.5 * Math.sin(x * 0.021 + Math.sin(y * 0.017) * 2) * Math.cos(y * 0.025));
+    if (edge < 8) col = mix(col, '#d9bb86', (8 - edge) / 10);
+    if (hn(x, y, 5) < 0.06) col = shade(col, 0.96);
+    // a water stain (ring + faint tint) up in the top-right
+    const sa = Math.atan2(y - 30, x - W * 0.8), sr = 24 + Math.sin(sa * 3) * 2 + Math.sin(sa * 7 + 1) * 1;
+    const d = Math.hypot(x - W * 0.8, (y - 30) * 1.15);
+    if (d < sr + 2) col = mix(col, '#d8b47c', d > sr - 1 - Math.max(0, Math.sin(sa * 2)) * 2 ? 0.3 + 0.15 * Math.cos(sa) : 0.08);
+    // torn edges: pale fibres right at a tear, a darker rim behind them
+    const torn = (dx: number, dy: number) => gone(x + dx, y + dy);
+    if (torn(-1, 0) || torn(0, -1) || torn(1, 0) || torn(0, 1)) col = '#fff7e0';
+    else if (torn(-2, 0) || torn(0, -2) || torn(2, 0) || torn(0, 2)) col = '#c9a46c';
+    else if (edge === 0) col = '#9a7a4e';
+    P(c, x, y, col);
+  }
+  // a crack running in from the notch
+  for (let i = 0; i < 22; i++) P(c, W - 18 - i, Math.round(H * 0.58 + Math.sin(i * 0.7) * 1.5 + i * 0.15), '#b08e5c');
+  // the dog-ear: the missing corner folded up over the page (a = px from the left, b = px from the bottom; the flap is
+  // the corner reflected across the fold line a + b = EAR), its back a shade darker, with a soft shadow beside it
+  for (let b = 0; b <= EAR; b++) for (let a = 0; a <= EAR; a++) {
+    if (a + b <= EAR) continue;
+    const x = a, y = H - 1 - b, rim = a === EAR || b === EAR;
+    P(c, x, y, rim ? '#8a6c44' : a + b === EAR + 1 ? '#b8945e' : hn(x, y, 6) < 0.08 ? '#d4b47e' : mix('#e6cc98', '#d6b680', (a + b - EAR) / EAR));
+  }
+  c.fillStyle = 'rgba(60,40,20,0.22)'; c.fillRect(EAR + 1, H - 1 - EAR, 3, EAR + 1); c.fillRect(0, H - 1 - EAR - 3, EAR + 1, 3);
+  // grid: the header row, then the weeks (2-px ink lines)
+  const ink = '#3b2f22';
+  const lineH = (y: number) => { for (let x = gx0; x <= gx1 + 1; x++) if (!gone(x, y)) { P(c, x, y, ink); P(c, x, y + 1, ink); } };
+  const lineV = (x: number, y0: number, y1: number) => { for (let y = y0; y <= y1 + 1; y++) if (!gone(x, y)) { P(c, x, y, ink); P(c, x + 1, y, ink); } };
+  const gyB = gy0 + headH + rh * rows;
+  lineH(gy0); lineH(gy0 + headH);
+  for (let r = 1; r <= rows; r++) lineH(gy0 + headH + rh * r);
+  lineV(gx0, gy0, gyB); lineV(gx1, gy0, gyB);
+  for (let k = 1; k < 7; k++) lineV(gx0 + colW * k, gy0 + headH, gyB);
+  void gridBottom;
+  // the cells: today glows, past days are crossed off in pencil, key games fly a pennant in the opponent's colours
+  cells.forEach((week, r) => week.forEach((cell, k) => {
+    if (!cell) return;
+    const x0 = gx0 + colW * k + 2, y0 = gy0 + headH + rh * r + 2, w = colW - 2, h = rh - 2;
+    if (cell.today) {
+      c.fillStyle = 'rgba(255,214,90,0.35)'; c.fillRect(x0, y0, w, h);
+      for (let i = 0; i < 2; i++) { c.fillStyle = i ? '#f2b23a' : '#c9761c'; c.fillRect(x0 + i, y0 + i, w - 2 * i, 1); c.fillRect(x0 + i, y0 + h - 1 - i, w - 2 * i, 1); c.fillRect(x0 + i, y0 + i, 1, h - 2 * i); c.fillRect(x0 + w - 1 - i, y0 + i, 1, h - 2 * i); }
+    }
+    if (cell.past) {
+      const n = Math.min(w, h) - 14, cx = x0 + w / 2, cy = y0 + h / 2 + 3;
+      for (let i = 0; i < n; i++) {
+        const a = i - n / 2, wob = Math.round(hn(i, r * 7 + k, 11) * 1.2);
+        P(c, cx + a, cy + a + wob, 'rgba(110,92,74,0.55)'); P(c, cx + a, cy - a + wob, 'rgba(110,92,74,0.55)');
+      }
+    }
+    if (cell.pennant) {
+      const [main, trim] = cell.pennant, px = x0 + Math.round(w * 0.3), py = y0 + Math.round(h * 0.34), fw = 34, fh = 16;
+      R(c, px - 2, py - 2, 3, fh + 16, '#2e2418'); R(c, px - 1, py - 1, 1, fh + 14, '#7a6448');          // pole
+      for (let y = 0; y < fh; y++) {
+        const len = Math.round(fw * (1 - Math.abs(y - (fh - 1) / 2) / (fh / 2)) * 0.92 + 3);
+        R(c, px + 1, py + y, len + 1, 1, OL(main));
+        R(c, px + 1, py + y, len, 1, y < 2 ? tint(main, 0.3) : y > fh - 4 ? shade(main, 0.8) : main);
+        if (y === Math.floor(fh / 2) - 1 || y === Math.floor(fh / 2)) R(c, px + len - 6, py + y, 4, 1, trim); // trim at the tip
+      }
+      R(c, px + 1, py, 2, fh, trim);
+    }
+  }));
+  return cv;
 }
 
 // ---------------------------------------------------------------- tribute posters
@@ -605,28 +704,9 @@ function drawLamp(c: C, p: Piece) {
   R(c, cx - 15, fy - 89, 31, 1, '#c99a2a');
 }
 
-function drawCouch(c: C, p: Piece) {
-  const x0 = p.x, x1 = p.x + p.w, arm = 0.95;
-  const back = block(c, x0 + 0.2, x1 - 0.2, p.y, p.y + 0.9, 2.9, shade(ROSE, 0.92));
-  // back cushions
-  const n = 3, cw = (back.x1 - back.x0 - 24) / n;
-  for (let i = 0; i < n; i++) { const bx = Math.round(back.x0 + 12 + i * cw); R(c, bx, back.faceTop + 2, Math.round(cw) - 1, back.H - 8, shade(ROSE, 0.97)); R(c, bx + 1, back.faceTop + 3, Math.round(cw) - 3, 2, tint(ROSE, 0.2)); R(c, bx + Math.round(cw) - 2, back.faceTop + 2, 1, back.H - 8, shade(ROSE, 0.78)); }
-  const seat = block(c, x0 + arm, x1 - arm, p.y + 0.9, p.y + p.d, 1.5, shade(ROSE, 0.88), { top: tint(ROSE, 0.08) });
-  for (let i = 1; i < n; i++) { const sx = Math.round(seat.x0 + (i * (seat.x1 - seat.x0)) / n); R(c, sx, seat.top, 1, seat.yf - seat.yb, shade(ROSE, 0.8)); }
-  for (const ax of [x0, x1 - arm]) {
-    const a = block(c, ax, ax + arm, p.y + 0.3, p.y + p.d, 2.1, shade(ROSE, 0.9), { top: tint(ROSE, 0.15) });
-    R(c, a.x0 + 2, a.top + 1, a.x1 - a.x0 - 4, 2, tint(ROSE, 0.35));
-  }
-  // feet
-  for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
-  // rust blanket: one sheet of fabric draped over the right half — over the top of the back cushion, down its face,
-  // across the seat and over the seat's front edge. Volume comes from how each surface catches the light (tops lit,
-  // faces mid, the hanging part in shade), soft wrinkles running out from where it bunches, and a woven border.
-  const bx0 = Math.round(AX(x0 + p.w * 0.44)), bx1 = Math.round(AX(x1 - arm)) + 1;
-  const RAMP = ['#3a1208', '#56200d', '#742c15', '#91391c', '#ab4825', '#c45b31', '#d9743f', '#e88f5c'];
-  const backFace = back.faceTop, seatTopRow = seat.top, seatFront = seat.faceTop;
-  const startRow = back.top + 2;
-  for (let y = startRow - 2; y < seat.yf; y++) {
+/** The couch blanket draped over the back cushion and seat, between columns bx0..bx1 (rows from the couch's boxes). */
+function drawCouchBlanket(c: C, bx0: number, bx1: number, startRow: number, backFace: number, seatTopRow: number, seatFront: number, seatBottom: number) {
+  for (let y = startRow - 2; y < seatBottom; y++) {
     // the sheet's side edges wander a little (it's draped, not cut square); the right side tucks against the arm
     const lx = bx0 + Math.round(Math.sin(y * 0.23) * 2 + (y > seatFront ? (y - seatFront) * 0.5 : 0));
     const rx = bx1 - Math.round(Math.abs(Math.sin(y * 0.19 + 1)) * 2);
@@ -651,22 +731,93 @@ function drawCouch(c: C, p: Piece) {
         const f = Math.sin(x * 0.55 + Math.sin(y * 0.2));
         k += f > 0.5 ? 1 : f < -0.5 ? -1 : 0;
       }
-      if (hn(x, y, 43) < 0.05) k -= 1;                             // weave
-      let col = RAMP[Math.max(0, Math.min(RAMP.length - 1, k))];
       // woven border along the hem and the left edge
-      const dEdge = Math.min(hem - y, x - lx);
-      if (dEdge === 2 || dEdge === 3) col = mix(col, '#e2b35a', 0.55);
-      if (y === topEdge || x === lx || x === rx - 1 || y === hem) col = '#2e0e06';
-      P(c, x, y, col);
+      blanketPx(c, x, y, k, Math.min(hem - y, x - lx), y === topEdge || x === lx || x === rx - 1 || y === hem);
     }
   }
   // fringe on the hem + a soft shadow it throws on the seat front
   for (let x = bx0; x < bx1; x++) {
     const u = (x - bx0) / (bx1 - bx0);
     const hem = seatFront + 7 + Math.round(Math.sin(u * 11) * 2 + Math.sin(u * 4.3 + 1) * 2) + (u < 0.2 ? Math.round((0.2 - u) * 30) : 0);
-    if (x % 2 === 0) { P(c, x, hem + 1, '#e6c08a'); P(c, x, hem + 2, '#c9a06a'); }
-    c.fillStyle = 'rgba(40,10,5,0.28)'; c.fillRect(x, hem + 3, 1, 2);
+    blanketFringe(c, x, hem);
   }
+}
+
+/** The rust couch blanket's tone ramp (dark → lit). Shared by the draped blanket and the one pulled over you asleep. */
+const BLANKET_RAMP = ['#3a1208', '#56200d', '#742c15', '#91391c', '#ab4825', '#c45b31', '#d9743f', '#e88f5c'];
+/** One blanket pixel: tone `k` on the ramp (plus weave), the woven gold border `dEdge` px in from the edge, outlined. */
+function blanketPx(c: C, x: number, y: number, k: number, dEdge: number, outline: boolean) {
+  if (hn(x, y, 43) < 0.05) k -= 1;                             // weave
+  let col = BLANKET_RAMP[Math.max(0, Math.min(BLANKET_RAMP.length - 1, k))];
+  if (dEdge === 2 || dEdge === 3) col = mix(col, '#e2b35a', 0.55); // woven border
+  if (outline) col = '#2e0e06';
+  P(c, x, y, col);
+}
+/** The fringe under the hem at column x (+ the soft shadow it throws). */
+function blanketFringe(c: C, x: number, hem: number) {
+  if (x % 2 === 0) { P(c, x, hem + 1, '#e6c08a'); P(c, x, hem + 2, '#c9a06a'); }
+  c.fillStyle = 'rgba(40,10,5,0.28)'; c.fillRect(x, hem + 3, 1, 2);
+}
+
+/**
+ * The couch blanket pulled over you while you sleep (round 46): the same rust sheet (ramp, weave, gold border, fringe),
+ * tented over the bent knees and hanging over the seat's front edge. (ox, oy) = the sleeper's floor point; 1 art px =
+ * 1 pose unit of a 6'6" player (the scene scales the image by the player's figure height). Lengths are in pose units:
+ * hips at x≈2, knees up at x≈17, feet at x≈37 (anim.ts `sleep`).
+ */
+export function drawSleepBlanket(c: C, ox: number, oy: number) {
+  // height of the top of the sheet above the floor along x: over the hips, a soft hill over the knees, down to the feet
+  const top = (x: number) => 31 - (x + 6) * 0.06 + 17 * Math.exp(-(((x - 17) / (x < 17 ? 11 : 16)) ** 2)); // wider toward the shins
+  const slope = (x: number) => top(x + 1) - top(x - 1);
+  const SEAT_EDGE = 17;                        // the seat's front edge, px above the floor point (the sheet folds over it)
+  const hemUp = (x: number) => SEAT_EDGE - 7 - Math.round(Math.sin(x * 0.37) * 2 + Math.sin(x * 0.13 + 1) * 1.5);
+  const KNEE: [number, number] = [17, 47];
+  for (let up = 52; up >= 0; up--) {
+    const y = oy - up;
+    const lx = ox - 6 + Math.round(Math.sin(up * 0.23) * 1.5);
+    const rx = ox + 45 + Math.round(Math.abs(Math.sin(up * 0.19 + 1)) * 2);
+    for (let x = lx; x < rx; x++) {
+      const u = x - ox, tRow = oy - Math.round(top(u)), hem = oy - hemUp(u);
+      if (y < tRow || y > hem) continue;
+      // base tone by surface: the lit top of the fold, the side over the legs, the part hanging over the seat front
+      let k = y <= tRow + 2 ? 6 : y < oy - SEAT_EDGE ? 5 : 3;
+      if (y <= tRow + 4) k += slope(u) > 1.2 ? 1 : slope(u) < -1.2 ? -1 : 0; // light from the top left on the knee tent
+      // folds fanning down from the knees, plus a long diagonal one
+      const ang = Math.atan2(y - (oy - KNEE[1]), x - (ox + KNEE[0]));
+      const wr = Math.sin(ang * 7 + Math.hypot(u - KNEE[0], up - KNEE[1]) * 0.06);
+      const diag = Math.sin((x * 0.5 - y * 0.9) * 0.22);
+      if (y > tRow + 2) { if (wr > 0.72) k += 1; else if (wr < -0.78) k -= 1; }
+      if (diag > 0.85) k -= 1;
+      if (y >= oy - SEAT_EDGE && y <= oy - SEAT_EDGE + 1) k -= 1;  // the fold over the seat's front edge
+      if (y > oy - SEAT_EDGE + 2) {                                // hanging folds: vertical light / dark bands
+        const f = Math.sin(x * 0.55 + Math.sin(y * 0.2));
+        k += f > 0.5 ? 1 : f < -0.5 ? -1 : 0;
+      }
+      blanketPx(c, x, y, k, Math.min(hem - y, x - lx), y === tRow || x === lx || x === rx - 1 || y === hem);
+    }
+  }
+  for (let x = ox - 5; x < ox + 45; x++) blanketFringe(c, x, oy - hemUp(x - ox));
+}
+
+/** Frame 0: the blanket draped over the right half. Frame 1: bare (round 46: you've pulled it over you to sleep). */
+function drawCouch(c: C, p: Piece, f = 0) {
+  const x0 = p.x, x1 = p.x + p.w, arm = 0.95;
+  const back = block(c, x0 + 0.2, x1 - 0.2, p.y, p.y + 0.9, 2.9, shade(ROSE, 0.92));
+  // back cushions
+  const n = 3, cw = (back.x1 - back.x0 - 24) / n;
+  for (let i = 0; i < n; i++) { const bx = Math.round(back.x0 + 12 + i * cw); R(c, bx, back.faceTop + 2, Math.round(cw) - 1, back.H - 8, shade(ROSE, 0.97)); R(c, bx + 1, back.faceTop + 3, Math.round(cw) - 3, 2, tint(ROSE, 0.2)); R(c, bx + Math.round(cw) - 2, back.faceTop + 2, 1, back.H - 8, shade(ROSE, 0.78)); }
+  const seat = block(c, x0 + arm, x1 - arm, p.y + 0.9, p.y + p.d, 1.5, shade(ROSE, 0.88), { top: tint(ROSE, 0.08) });
+  for (let i = 1; i < n; i++) { const sx = Math.round(seat.x0 + (i * (seat.x1 - seat.x0)) / n); R(c, sx, seat.top, 1, seat.yf - seat.yb, shade(ROSE, 0.8)); }
+  for (const ax of [x0, x1 - arm]) {
+    const a = block(c, ax, ax + arm, p.y + 0.3, p.y + p.d, 2.1, shade(ROSE, 0.9), { top: tint(ROSE, 0.15) });
+    R(c, a.x0 + 2, a.top + 1, a.x1 - a.x0 - 4, 2, tint(ROSE, 0.35));
+  }
+  // feet
+  for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
+  // rust blanket: one sheet of fabric draped over the right half — over the top of the back cushion, down its face,
+  // across the seat and over the seat's front edge. Volume comes from how each surface catches the light (tops lit,
+  // faces mid, the hanging part in shade), soft wrinkles running out from where it bunches, and a woven border.
+  if (f === 0) drawCouchBlanket(c, Math.round(AX(x0 + p.w * 0.44)), Math.round(AX(x1 - arm)) + 1, back.top + 2, back.faceTop, seat.top, seat.faceTop, seat.yf);
 
   // plump cream pillow: sitting on the seat cushion and leaning on the back cushion, tilted, with real thickness
   const pw = 30, ph = 27, pl = Math.round(AX(x0 + arm + 0.15)), pt = back.faceTop + 2, tilt = -0.2;
@@ -988,7 +1139,7 @@ const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
   diningTable: drawDiningTable, chairL: (c, p) => drawChair(c, p, 'R'), chairR: (c, p) => drawChair(c, p, 'L'), chairBack: (c, p) => drawChair(c, p, 'F'),
   box: drawBox, ball: drawBall, trash: drawTrash,
 };
-const FRAMES: Record<string, number> = { tank: 2 };
+const FRAMES: Record<string, number> = { tank: 2, couch: 2 };
 
 /** Background + one cropped texture per furniture piece (+ the fan). Textures persist across scene visits. */
 export function buildRoomArt(tm: Phaser.Textures.TextureManager): { bg: string; pieces: ArtPiece[] } {
@@ -1107,6 +1258,13 @@ const CAT_FRAMES: string[][] = [
 ];
 const CAT_COL: Record<string, string> = { o: '#3a1f0e', O: '#e08a3c', d: '#a8541f', l: '#f2b066', w: '#f6f1e6', W: '#ffffff', I: '#1e1e1e', n: '#e58a8a', m: '#3a1f0e', p: '#e9a0a0', '-': '#3a1f0e' };
 export const CAT_W = 30, CAT_H = 27;
+
+/** The sleep blanket as a texture; `dx, dy` = its top-left in art px from the sleeper's floor point. */
+export function buildSleepBlanket(tm: Phaser.Textures.TextureManager): { key: string; dx: number; dy: number } {
+  const art = CACHE.get('room_sleep_blanket') ?? bake(tm, 'room_sleep_blanket', 1, (c) => drawSleepBlanket(c, 200, 200));
+  CACHE.set('room_sleep_blanket', art);
+  return { key: art.key, dx: art.x - 200, dy: art.y - 200 };
+}
 
 export function buildCatTexture(tm: Phaser.Textures.TextureManager): string {
   const key = 'room_cat';

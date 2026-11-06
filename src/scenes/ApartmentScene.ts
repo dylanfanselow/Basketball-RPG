@@ -1,18 +1,22 @@
 import Phaser from 'phaser';
-import { buildRoomArt, buildCatTexture, buildGlow, CAT_W, LAMP_ART } from '../render/roomArt';
+import { buildRoomArt, buildCatTexture, buildGlow, buildSleepBlanket, drawCalendarPage, CAT_W, LAMP_ART, CAL, calRowH, CalCell } from '../render/roomArt';
 import { RS, V, Piece, RoomDef, Station, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R, SPOTS } from '../world/apartment';
 import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB } from '../career/career';
+import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, MONTHS, WEEKDAYS } from '../career/calendar';
+import { figureHeight } from '../render/sprites';
+import { TEAMS } from '../sim/data';
 
 /**
  * The starter apartment (round 36): your base of operations. The left door leads to the garage gym, the front door
- * leaves. The cat lives on the couch.
+ * leaves. The cat lives on the couch. The calendar by the fridge opens the season calendar (round 46).
  */
 export class ApartmentScene extends RoomScene {
   tank: Phaser.GameObjects.Sprite | null = null;
+  couch: Phaser.GameObjects.Sprite | null = null;
   fan: Phaser.GameObjects.Sprite | null = null;
   glow!: Phaser.GameObjects.Image;
   cat!: Cat;
@@ -25,29 +29,39 @@ export class ApartmentScene extends RoomScene {
 
   init(data?: { at?: string }) {
     super.init(data);
-    this.tank = null; this.fan = null; this.catPolyKey = ''; this.blanketG = null;
+    this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null;
   }
 
   onCreate() {
     for (const { art, img } of this.pieces) {
       if (art.key === 'room_tank') this.tank = img as Phaser.GameObjects.Sprite;
       if (art.key === 'room_fan') this.fan = img as Phaser.GameObjects.Sprite;
+      if (art.key === 'room_couch') this.couch = img as Phaser.GameObjects.Sprite;
     }
+    const sb = buildSleepBlanket(this.textures);
+    this.blanket = this.add.image(0, 0, sb.key).setOrigin(0, 0).setVisible(false);
+    this.blanketOff = { x: sb.dx, y: sb.dy };
     this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(this.textures)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
   }
 
-  actions() { return [{ label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() }]; }
+  actions() {
+    return [
+      { label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() },
+      { label: 'Calendar', spot: SPOTS.calendar, run: () => this.openCalendar() },
+    ];
+  }
 
   /**
    * Sleep on the couch (round 43): the room goes dark, Zzz float off the couch, the next day starts ("DAY n"), the
    * lights come back and green energy orbs rise from the couch into the energy bar until it's full.
    */
   /** Where he lies while sleeping (the sprite's floor point: head on the pillow end, feet toward the blanket). */
-  static SLEEP_AT = { x: 26.9, y: 2.6 };
-  /** The blanket pulled over him while he sleeps (drawn just in front of him, under the cat). */
-  blanketG: Phaser.GameObjects.Graphics | null = null;
+  static SLEEP_AT = { x: 25.8, y: 2.6 };
+  /** The couch blanket, pulled off the couch and over him while he sleeps (in front of him, under the cat). */
+  blanket!: Phaser.GameObjects.Image;
+  blanketOff = { x: 0, y: 0 };
 
   sleep() {
     if (this.busy) return;
@@ -83,34 +97,101 @@ export class ApartmentScene extends RoomScene {
       // up off the couch
       this.stopActivity();
       this.pos = { ...SPOTS.couch }; this.face = { x: 0, y: 1 }; this.view = undefined; this.vel = { x: 0, y: 0 };
-      this.blanketG?.clear();
       this.busy = false;
       this.sendEnergyOrbs(sleepPlan(c), ENERGY_ORB, { x: sxOf(SPOTS.couch.x), y: syOf(SPOTS.couch.y) - 110 });
     });
   }
 
-  /** The couch blanket pulled up over his legs and hips while he sleeps (a soft draped sheet, the couch blanket's colours). */
+  /** While sleeping the couch is bare (frame 1): its blanket is over him. */
+  onActivity(st: Station | null) { this.couch?.setFrame(st?.id === 'sleep' ? 1 : 0); }
+
+  /** The blanket follows his body: same floor point, scaled with his figure height (1 art px = 1 pose unit at 6'6"). */
   drawBlanket() {
-    const g = (this.blanketG ??= this.add.graphics());
-    g.clear();
-    if (this.activity?.id !== 'sleep' || !this.player.visible) return;
-    g.setDepth(this.player.depth + 0.1);
-    const x0 = sxOf(ApartmentScene.SLEEP_AT.x + 0.15), x1 = sxOf(ApartmentScene.SLEEP_AT.x + 3.6), floor = syOf(ApartmentScene.SLEEP_AT.y);
-    const top = floor - 44, low = floor - 24, breathe = Math.sin(this.t * 2) * 0.8;
-    const pts = [
-      { x: x0, y: top + 2 + breathe }, { x: x0 + (x1 - x0) * 0.35, y: top - 2 + breathe * 0.6 }, { x: x0 + (x1 - x0) * 0.7, y: top + 1 },
-      { x: x1, y: top + 4 }, { x: x1 + 6, y: low + 2 }, { x: x1 + 2, y: low + 9 }, { x: x0 + (x1 - x0) * 0.6, y: low + 6 },
-      { x: x0 + (x1 - x0) * 0.3, y: low + 10 }, { x: x0 - 4, y: low + 5 },
-    ];
-    g.fillStyle(0x7a3412, 1).fillPoints(pts.map((p) => new Phaser.Math.Vector2(p.x, p.y + 1.5)), true);
-    g.fillStyle(0xd9692a, 1).fillPoints(pts.map((p) => new Phaser.Math.Vector2(p.x, p.y)), true);
-    g.fillStyle(0xf09050, 1).fillRect(x0 + 6, top + 3 + breathe * 0.6, (x1 - x0) * 0.75, 2);           // light on the top fold
-    g.fillStyle(0xa8481e, 1).fillRect(x0 + (x1 - x0) * 0.45, top + 8, 2, low - top - 4).fillRect(x0 + (x1 - x0) * 0.75, top + 9, 2, low - top - 2); // folds
+    const on = this.activity?.id === 'sleep' && this.player.visible;
+    this.blanket.setVisible(on);
+    if (!on) return;
+    const s = ART * (figureHeight(app.career.height) / 100);
+    const breathe = Math.sin(this.t * 2) * 0.4;
+    this.blanket.setScale(s).setPosition(sxOf(ApartmentScene.SLEEP_AT.x) + this.blanketOff.x * s, syOf(ApartmentScene.SLEEP_AT.y) + this.blanketOff.y * s + breathe).setDepth(this.player.depth + 0.1);
+  }
+
+  // ------------------------------------------------------------ season calendar (round 46)
+  /** The calendar screen: which month is showing, the season's months, and its objects. */
+  cal: { i: number; months: [number, number][]; objs: Phaser.GameObjects.GameObject[]; stickX: number } | null = null;
+
+  /** ✕ at the calendar: the month you're in, with the key games flying pennants. ◀ ▶ = month, L1 / ○ = close. */
+  openCalendar() {
+    if (this.busy) return;
+    this.busy = true;
+    const c = app.career, now = dateOfDay(c.life.day), months = seasonMonths(c);
+    if (!months.some(([y, m]) => y === now.y && m === now.m)) { months.push([now.y, now.m]); months.sort((a, b) => a[0] * 12 + a[1] - (b[0] * 12 + b[1])); }
+    this.cal = { i: months.findIndex(([y, m]) => y === now.y && m === now.m), months, objs: [], stickX: 0 };
+    this.drawCalendar();
+    sfx.blip(true);
+  }
+
+  closeCalendar() {
+    if (!this.cal) return;
+    for (const o of this.cal.objs) o.destroy();
+    this.cal = null; this.busy = false;
+    sfx.blip(false);
+  }
+
+  drawCalendar() {
+    const cal = this.cal!; for (const o of cal.objs) o.destroy(); cal.objs = [];
+    const c = app.career, [yr, mo] = cal.months[cal.i], weeks = monthGrid(yr, mo), keys = keyGamesByDay(c);
+    const cells: (CalCell | null)[][] = weeks.map((w) => w.map((d) => {
+      if (!d) return null;
+      const kg = keys.get(d.day), team = kg ? TEAMS.find((t) => t.id === kg.opponent) : undefined;
+      return { past: d.day >= 1 && d.day < c.life.day, today: d.day === c.life.day, pennant: kg ? [team?.colors[0] ?? '#6a3fa0', team?.colors[1] ?? '#f0f0f0'] : undefined };
+    }));
+    const tm = this.textures;
+    if (tm.exists('cal_page')) tm.remove('cal_page');
+    tm.addCanvas('cal_page', drawCalendarPage(cells));
+    const add = <T extends Phaser.GameObjects.GameObject>(o: T) => { cal.objs.push(o); return o; };
+    const pw = CAL.W * ART, ph = CAL.H * ART, ox = Math.round(640 - pw / 2), oy = Math.round(352 - ph / 2);
+    const X = (ax: number) => ox + ax * ART, Y = (ay: number) => oy + ay * ART;
+    add(this.add.rectangle(0, 0, 1280, 720, 0x0a0806, 0.6).setOrigin(0, 0).setDepth(9600));
+    add(this.add.image(ox + 8, oy + 10, 'cal_page').setOrigin(0, 0).setScale(ART).setDepth(9600).setTint(0x000000).setAlpha(0.35)); // shadow
+    add(this.add.image(ox, oy, 'cal_page').setOrigin(0, 0).setScale(ART).setDepth(9601));
+    const T = (x: number, y: number, str: string, size: number, col = '#2d2218', o: Phaser.Types.GameObjects.Text.TextStyle = {}) =>
+      add(this.add.text(x, y, str, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: 'bold', ...o }).setDepth(9602));
+    // the month at the top (where the reference has the season)
+    T(X(CAL.W / 2), Y(CAL.titleH / 2 + 2), MONTHS[mo], 40).setOrigin(0.5);
+    T(X(CAL.W - 70), Y(CAL.titleH / 2 + 6), String(yr), 18, '#6e5a40').setOrigin(0.5);
+    WEEKDAYS.forEach((d, k) => T(X(CAL.gx0 + CAL.colW * (k + 0.5)), Y(CAL.titleH + CAL.headH / 2 + 1), d, 26).setOrigin(0.5));
+    const rh = calRowH(weeks.length), WHY: Record<string, string> = { Opener: 'OPENER', Finale: 'FINALE', Rivalry: 'RIVAL', 'National TV': 'NAT TV' };
+    weeks.forEach((w, r) => w.forEach((d, k) => {
+      if (!d) return;
+      const x0 = CAL.gx0 + CAL.colW * k + 2, y0 = CAL.titleH + CAL.headH + rh * r + 2, cw = CAL.colW - 2, ch = rh - 2;
+      T(X(x0 + 3), Y(y0 + 1), String(d.d), 22, d.day < c.life.day ? '#6e5e4a' : '#2d2218');
+      const kg = keys.get(d.day); if (!kg) return;
+      const team = TEAMS.find((t) => t.id === kg.opponent), main = team?.colors[0] ?? '#6a3fa0';
+      const lum = parseInt(main.slice(1, 3), 16) * 0.3 + parseInt(main.slice(3, 5), 16) * 0.59 + parseInt(main.slice(5, 7), 16) * 0.11;
+      const px = x0 + Math.round(cw * 0.3), py = y0 + Math.round(ch * 0.34);
+      T(X(px + 4), Y(py + 8), kg.opponent, 13, lum > 150 ? '#1a1410' : '#ffffff', { stroke: lum > 150 ? '#ffffff' : '#1a1410', strokeThickness: 3 }).setOrigin(0, 0.5);
+      T(X(px + 3), Y(py + 18), WHY[kg.why] ?? kg.why.toUpperCase(), 11, '#8a2a14').setOrigin(0, 0);
+      add(this.add.image(X(x0 + cw - 4), Y(y0 + 4), 'icon_ball').setOrigin(1, 0).setScale(ART * 0.75 * 2).setDepth(9602));
+    }));
+    const prev = cal.i > 0, next = cal.i < cal.months.length - 1;
+    T(640, oy + ph + 22, `${prev ? '◀' : ' '}  ${next ? '▶' : ' '} month   ·   L1 close`, 16, '#ffffff', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
+  }
+
+  /** Calendar input (the room is `busy` while it's open, so it doesn't walk). */
+  calendarInput() {
+    const cal = this.cal!, inp = this.inp;
+    if (inp.cancel()) { this.closeCalendar(); return; }
+    const sx = inp.move.x, flick = Math.abs(sx) > 0.6 && Math.abs(cal.stickX) <= 0.6 ? Math.sign(sx) : 0;
+    cal.stickX = sx;
+    const dir = inp.pressed('left') || inp.pressed('tabPrev') || flick < 0 ? -1 : inp.pressed('right') || inp.pressed('tabNext') || flick > 0 ? 1 : 0;
+    const i = Math.max(0, Math.min(cal.months.length - 1, cal.i + dir));
+    if (i !== cal.i) { cal.i = i; this.drawCalendar(); sfx.blip(true); }
   }
 
   extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
 
   onUpdate(dt: number) {
+    if (this.cal) this.calendarInput();
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);
     const f = cat.hop ? 2 : cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : cat.state === 'loaf' ? 1 : 0;

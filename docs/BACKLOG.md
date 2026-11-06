@@ -26,13 +26,12 @@
 
 ## Not built yet (owner wants eventually)
 - **Calendar games + day loop:** what happens when you sleep past a game day (play it / miss it), the food bar
-  (fridge, eating), a lying-down sleep pose on the couch; games could send skill orbs too; stat points from level-ups
+  (fridge, eating); games could send skill orbs too; stat points from level-ups
   vs skill XP may need a balance pass.
 - **Garage follow-ups (round 39):** the mini-games score reps but don't train yet — tune difficulty with the owner, stat gains / energy + food cost per rep or
   session, speed bag and dip station, the hoop for shooting practice, maybe fix up the car.
 - **Apartment follow-ups (round 36):** fridge = eat
-  (food bar), sleep on the couch to end the day (energy bar, `life.day`++), calendar screen (key games + special
-  events), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in
+  (food bar), special events on the calendar (the screen + key games are in, round 46), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in
   the apartment (menu stays a dev tool). Ask the owner how the room reads (size of the cat, door visibility on the
   slanted walls, the island, lamp glow).
 - Ultimate unlock **story event + cutscene** (backstory-specific 1v1, then position-based ult choice).

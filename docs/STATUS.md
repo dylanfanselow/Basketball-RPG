@@ -18,6 +18,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 - **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
+- Round 46: season calendar — `career/calendar.ts` (`dateOfDay`: day 1 = Mon 19 Oct 2026, `monthGrid` Monday-first,
+  `keyGamesByDay`, `seasonMonths`); ✕ Calendar at `SPOTS.calendar` → `ApartmentScene.openCalendar()` overlay (page baked
+  by `roomArt.drawCalendarPage` + `CAL` layout, text on top; ◀ ▶ / L2 R1 / stick = month, L1 / ○ close). Sleep pose
+  re-fit inside the 96-px frame (head was cut off; test in anim.test.ts); couch has 2 frames (1 = bare) and
+  `buildSleepBlanket` bakes the same rust blanket over his legs (`blanketPx` / `blanketFringe` shared).
 - Round 45: `sleep` clip (anim.ts) + `ApartmentScene.sleep()` uses a pseudo station (`SLEEP_AT`, `depthFt`), the
   busy branch draws the player, `drawBlanket()`; `GameScene.ANGLED_SHOTS` + `shotViewFor` (view from the rim direction
   at the shot's start, locked per `p.anim.start`, queues the shooter's frames; holds the last drawn shot frame while one
@@ -182,7 +187,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   cabinet doors, cooktop, fume hood + duct to the ceiling, bonsai), floor lamp with a warm glow,
   couch (plump pillow on seat + back, blanket draped as a sheet over back cushion + seat) → coffee table → TV facing the couch (seen from behind), aquarium (animated),
   armchair facing left, bookshelf standing off the slanted right wall, wardrobe against the left wall (doors facing right), dining table + chairs, moving box, ball, ceiling
-  fan (animated), calendar on the left wall by the fridge, tribute posters (BE LIKE IKE, KING 23, MAMBA 24, CHEF 30; 3x5 pixel
+  fan (animated), parchment calendar on the left wall by the fridge (✕ opens the season calendar: month at the top,
+  M–Su grid, key games fly a pennant in the opponent's colours with OPENER / RIVAL / NAT TV / FINALE, today ringed,
+  past days crossed off; torn top-left, notched right edge, dog-eared bottom-left, coffee ring), tribute posters (BE LIKE IKE, KING 23, MAMBA 24, CHEF 30; 3x5 pixel
   font `text3`), a purple poster on the right wall, two windows, shoes by the garage doormat, a mound of mail, a trash can full of paper balls with missed shots around
   it; neighbour's garage on the
   left, tree + fence on the right. `SPOTS` (calendar, fridge, couch) mark where you'll use things later.
@@ -191,6 +198,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   you and the cat get `actorDepthFt` — in front of every overlapping piece you're behind or beside, behind every piece
   that starts in front of your feet (footprint polygons, so the slanted shelf / wardrobe work).
 - Doors: ✕ at the garage door = the garage gym (round 37); ✕ at the front door or L1 / Esc = back to the menu.
+- Sleeping pulls the couch's blanket off the couch and over your legs (the couch shows bare until you wake).
 - Orange tabby cat lives on the couch (sits / loafs on the blanket), hops down now and then, walks to favourite spots
   with grid pathfinding (`findPath`), avoids furniture and you, and hops back up.
 - HUD on the roof: energy + food bars, level + XP bar, days to the next key game (+ why / opponent), money, day.

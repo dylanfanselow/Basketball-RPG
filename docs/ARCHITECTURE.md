@@ -37,7 +37,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 `doorNear(p, reach, room)`; `Door` has `side` (L / R / B), `span`, `to` (scene + door you arrive at).
 
 ## Career (`src/career`)
-`career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
+`career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `calendar.ts` (round 46: career day ↔ real date, Monday-first month grids, key games by day), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
 `rosters.json`, procedural fallback), `story.ts` (future: events/story effects, `unlockUltimate`).
 
 ## Render & scenes
@@ -46,7 +46,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `render/view.ts` | Projection (`S`=22 px/ft, `D`=6.4, `OOB_FT`=10, `sx/sy`), court, hoops (`drawHoops`: glass pane via `pane()`, split rim on `back`/`rimG`, mesh net, stanchions). |
 | `render/sprites.ts` | Shaded sprite drawing at `ART`=1.5 (side-view sheets, open-stance front-view poses via `drawOpen`, front-view bench sheets, `frontHead`, `frontChair`), `crispen`, kits, `figureHeight`, `SPRITE_SCALE`. |
 | `render/playerBank.ts` | Shared player sprite sheets + multi-angle frame caches (`SHEET_CACHE`, `ANGLE_CACHE`, `sheetFor`, `angleCache`, `pumpSheet`, `dropSheet`, `playerSheetKey`, `hashStr`); used by GameScene and the apartment. |
-| `render/roomArt.ts` | Apartment art drawn in code at art resolution (960×540 = scene × 0.75): background (exteriors, posts, walls, plank floor, windows, doors, calendar, poster, floor clutter, contact shadows), one cropped texture per furniture piece (`buildRoomArt`, multi-frame tank / fan), cat pixel maps (`buildCatTexture`), HUD icons, lamp glow. |
+| `render/roomArt.ts` | Apartment art drawn in code at art resolution (960×540 = scene × 0.75): background (exteriors, posts, walls, plank floor, windows, doors, calendar, poster, floor clutter, contact shadows), one cropped texture per furniture piece (`buildRoomArt`, multi-frame tank / fan / couch: frame 1 bare), sleep blanket (`buildSleepBlanket`), season calendar page (`drawCalendarPage`, `CAL`), cat pixel maps (`buildCatTexture`), HUD icons, lamp glow. |
 | `render/sheetPool.ts`, `render/sheetWorker.ts` | Build sheets in parallel Web Workers (`requestSheet`), main-thread fallback. |
 | `render/celebs.ts` | Courtside celebrity looks (+ plain `randomFan` looks for the fan row) + 4-frame front sheets. |
 | `render/faceParts.ts` | Face-part library (pure, worker-safe): part types/views, `variantOf`, `drawPart` with per-player recolor (`recolorPixels`), `partsFor` (pictures a sheet job needs), `partsVersion` (sprite cache keys). |
