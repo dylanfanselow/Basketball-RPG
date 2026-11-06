@@ -149,6 +149,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   4 frames, court lines from the arena geometry); `drawHoops(scene, 'school')` + chain `NetHoop.chain`;
   `crowd.ts` `CrowdLike` + `SchoolKids` (celeb sheets with `stand` / `noChair`); GameScene `school`, `buildRain` /
   `renderSchool`, wet reflections; `sfx.rain`, `sfx.crowdSize`.
+  Round 57 trailer yard: `world/trailer.ts` (`TRAILER_YARD` RoomDef with `leftX` / `rightX` open sides and `liftAt`
+  for the steps, `TRAILER_SOLID` added via `extraObstacles`, `DOOR_SPOT`, `STEPS`); `RoomDef.leftX` / `liftAt` in
+  `solids()` / `RoomScene.drawPlayer`; `RoomScene.footSurface()` (grass / wood / concrete footsteps);
+  `render/trailerArt.ts` (background + pieces: door closed/open, hitch, barrel, generator 2 frames + cord, cooler,
+  bush); `scenes/TrailerScene.ts` (`goInside` → day ends, `TRAILER_DOOR_STORY` hooks, generator hum by distance
+  `sfx.genHum`); Menu entry.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

@@ -444,10 +444,14 @@ class Sfx {
    * Round 52: a footstep while walking around a room. `concrete` = the garage (a short sneaker tap), otherwise a
    * duller thud on the apartment's wood floor; `foot` alternates left / right (a touch of pan and pitch).
    */
-  footstep(concrete: boolean, foot: number, run = false) {
+  footstep(concrete: boolean | 'grass', foot: number, run = false) {
     if (!this.ok()) return;
     const pan = foot ? 0.12 : -0.12, k = rand(0.92, 1.08), v = run ? 1.25 : 1;
-    if (concrete) {
+    if (concrete === 'grass') {
+      // round 57: grass and dirt — a soft swish and a dull thud
+      this.noiseHit({ type: 'highpass', f: 2600 * k, peak: 0.035 * v, a: 0.01, d: 0.09, pan });
+      this.tone({ f: 70 * k, f2: 45, peak: 0.06 * v, a: 0.004, d: 0.06, pan });
+    } else if (concrete) {
       this.noiseHit({ type: 'bandpass', f: 2100 * k, q: 1.3, peak: 0.05 * v, a: 0.002, d: 0.028, pan });
       this.tone({ f: 120 * k, f2: 75, peak: 0.07 * v, a: 0.002, d: 0.05, pan });
     } else {
@@ -455,6 +459,27 @@ class Sfx {
       this.tone({ f: 92 * k, f2: 58, peak: 0.1 * v, a: 0.003, d: 0.07, pan });
     }
   }
+  /**
+   * Round 57: the generator at the trailer chugging away — a low uneven engine drone; `level` 0..1 (by distance).
+   * Call with 0 (or leave the scene) to stop it.
+   */
+  genHum(level: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (level > 0 && !this.gen) {
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 58;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 340;
+      const g = ctx.createGain(); g.gain.value = 0;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 9.5; lg.gain.value = 0.35; // the chug
+      const amp = ctx.createGain(); amp.gain.value = 0.65;
+      lfo.connect(lg).connect(amp.gain);
+      osc.connect(lp).connect(amp).connect(g).connect(this.sfxBus); osc.start(); lfo.start();
+      this.gen = { osc, lfo, g };
+    }
+    if (this.gen) this.gen.g.gain.setTargetAtTime(this.settings.muted ? 0 : 0.11 * Math.max(0, Math.min(1, level)), t, 0.12);
+    if (level <= 0 && this.gen) { const n = this.gen; this.gen = null; n.g.gain.setTargetAtTime(0, t, 0.08); n.osc.stop(t + 0.5); n.lfo.stop(t + 0.5); }
+  }
+  private gen: { osc: OscillatorNode; lfo: OscillatorNode; g: GainNode } | null = null;
   /** Round 47: a door latch: a short bright click (two little metal clicks a few ms apart). */
   private latch(at = 0) {
     this.noiseHit({ type: 'highpass', f: 2600, peak: 0.22, a: 0.001, d: 0.025, at });

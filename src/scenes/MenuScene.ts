@@ -19,6 +19,7 @@ export class MenuScene extends Phaser.Scene {
     this.menu = new MenuList(this, 80, 140, [
       { label: 'Apartment (career home)', action: () => this.scene.start('Apartment'), hint: 'Your first place: walk around (furniture is solid). ✕ at a door, L1 to leave.' },
       { label: 'Garage (gym)', action: () => this.scene.start('Garage'), hint: 'Behind the apartment\'s left door. Training comes later.' },
+      { label: 'Trailer (backstory)', action: () => this.scene.start('Trailer'), hint: 'Lights on a generator: walk up the steps, ✕ at the door ends the day.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },

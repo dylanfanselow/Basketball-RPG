@@ -88,6 +88,8 @@ export abstract class RoomScene extends Phaser.Scene {
   busy = false;
   /** Room-specific objects after the art is placed. */
   onCreate(): void { /* optional */ }
+  /** What your feet land on (round 57): concrete (true), wood (false) or grass. */
+  footSurface(): boolean | 'grass' { return this.room().id === 'garage'; }
   /** Room-specific per-frame work (animations, pets…), after you've moved. */
   onUpdate(_dt: number): void { /* optional */ }
   /** Room-specific draw order for other walkers. */
@@ -371,7 +373,7 @@ export abstract class RoomScene extends Phaser.Scene {
     // round 52: footsteps — one per stride while walking (concrete in the garage, wood in the apartment)
     if (moved > 0.001) {
       const run = Math.hypot(this.vel.x, this.vel.y) > WALK * 1.15, stride = run ? 3.1 : 2.4;
-      if (this.dist - this.stepAt >= stride) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.room().id === 'garage', this.stepFoot, run); }
+      if (this.dist - this.stepAt >= stride) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.footSurface(), this.stepFoot, run); }
     } else this.stepAt = this.dist - 1.6; // the first step comes quickly after you start moving
 
     // things to do (sleep) first, then equipment, then doors
@@ -457,7 +459,9 @@ export abstract class RoomScene extends Phaser.Scene {
     const st = this.activity;
     // standing on something (the treadmill deck) + off the floor in a jump shot; the shadow stays on the floor
     const jump = this.mini?.jumpFt() ?? 0;
-    const sx = sxOf(this.pos.x), floorY = syOf(this.pos.y) - (st ? st.lift * RS : 0), sy = floorY - jump * RS;
+    // round 57: outdoors you can be standing on steps (the room's liftAt)
+    const lift = st ? st.lift : this.room().liftAt?.(this.pos) ?? 0;
+    const sx = sxOf(this.pos.x), floorY = syOf(this.pos.y) - lift * RS, sy = floorY - jump * RS;
     this.shadow.clear();
     if (!st || st.clip === 'jog' || st.clip === 'jumpRope' || st.clip === 'squat' || st.clip === 'shot_jumper' || st.clip === 'mat_pound') this.shadow.fillStyle(0x2a1a0e, 0.32 - jump * 0.06).fillEllipse(sx, floorY, 34 - jump * 5, 10 - jump);
     if (!sheet) return;

@@ -30,7 +30,8 @@ export type Kind =
   | 'fridge' | 'counter' | 'island' | 'lamp' | 'couch' | 'tank' | 'tvTable' | 'coffeeTable' | 'armchair'
   | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash'
   // garage (round 37)
-  | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'car' | 'boxes' | 'kettlebells' | 'jumpRope';
+  | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'car' | 'boxes' | 'kettlebells' | 'jumpRope'
+  | 'trailerDoor' | 'hitch' | 'barrel' | 'generator' | 'cooler' | 'bush';
 
 /** x/y/w/d = bounding footprint; `poly` (optional) = the real footprint when it isn't a rectangle (along a slanted wall). */
 export interface Piece { id: string; kind: Kind; x: number; y: number; w: number; d: number; solid: boolean; poly?: Poly }
@@ -130,7 +131,13 @@ export function stationU(st: Station, t: number, loop: boolean): number {
  * A walkable room: its furniture, doors, default spawn and stations (all rooms share the cutaway frame `ROOM`).
  * `rightX`: the room runs straight to a cut-off at this x (feet) instead of a slanted right wall.
  */
-export interface RoomDef { id: string; furniture: Piece[]; doors: Door[]; spawn: V; rightX?: number; stations?: Station[] }
+export interface RoomDef {
+  id: string; furniture: Piece[]; doors: Door[]; spawn: V; rightX?: number; stations?: Station[];
+  /** round 57: an open left side, cut off at this x (outdoors) instead of the slanted left wall */
+  leftX?: number;
+  /** round 57: how high you stand here (ft) — walking up steps */
+  liftAt?: (p: V) => number;
+}
 export const APARTMENT: RoomDef = { id: 'apartment', furniture: FURNITURE, doors: DOORS, spawn: SPAWN };
 
 /** Everything solid: furniture footprints + the four walls (big polygons outside the floor). */
@@ -138,7 +145,8 @@ export function solids(extra: Poly[] = [], room: RoomDef = APARTMENT): Poly[] {
   const F = ROOM.depth, far = 60;
   const walls: Poly[] = [
     rect(-far, -far, far * 3, far),                                                            // back wall
-    [{ x: -far, y: -1 }, { x: wallL(-1), y: -1 }, { x: wallL(F + 1), y: F + 1 }, { x: -far, y: F + 1 }], // left wall
+    room.leftX !== undefined ? rect(room.leftX - far, -far, far, far * 3)                            // open side, cut off
+      : [{ x: -far, y: -1 }, { x: wallL(-1), y: -1 }, { x: wallL(F + 1), y: F + 1 }, { x: -far, y: F + 1 }], // left wall
     room.rightX !== undefined ? rect(room.rightX, -far, far, far * 3)                                // open side, cut off
       : [{ x: wallR(-1), y: -1 }, { x: far, y: -1 }, { x: far, y: F + 1 }, { x: wallR(F + 1), y: F + 1 }], // right wall
     rect(-far, F, far * 3, far),                                                               // front edge
