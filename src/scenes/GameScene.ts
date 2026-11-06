@@ -28,6 +28,7 @@ import { ULTIMATES } from '../sim/data';
 import { ultLevelName } from '../sim/ultimates';
 import { topStats } from '../sim/boxScore';
 import { partsVersion } from '../render/faceParts';
+import { buildIcons } from '../render/roomArt';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -80,8 +81,16 @@ export class GameScene extends Phaser.Scene {
   ballG!: Phaser.GameObjects.Graphics;
   hud!: Phaser.GameObjects.Graphics;
   eqText!: Phaser.GameObjects.Text;
-  /** Round 51: the rhythm meter's label, and its gain / loss pops and notch flash. */
+  /** Round 51: the rhythm meter's label, and its gain / loss pops and notch flash (round 53: a purple skill card with
+   * an icon, the big number and an RHY tag). */
   rhythmText!: Phaser.GameObjects.Text;
+  rhythmNum!: Phaser.GameObjects.Text;
+  rhythmTag!: Phaser.GameObjects.Text;
+  rhythmIcon!: Phaser.GameObjects.Image;
+  /** Round 53: the short shot chance, top right. */
+  shotText!: Phaser.GameObjects.Text;
+  /** Round 53: your assignment just switched (circle flash + label). */
+  switchFlash = { at: -9999, name: '' };
   rhythmFlash = { at: -9, color: 0xffffff };
   iqText!: Phaser.GameObjects.Text;
   scoreText!: Phaser.GameObjects.Text;
@@ -307,7 +316,12 @@ export class GameScene extends Phaser.Scene {
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
     this.hud = fixed(this.add.graphics().setDepth(9000));
     this.eqText = fixed(this.add.text(12, 8, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', wordWrap: { width: VIEW_W - 24 }, lineSpacing: 2 }).setDepth(9001));
-    this.rhythmText = fixed(this.add.text(VIEW_W / 2, 9, '', { fontFamily: FONT, fontSize: '13px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5, 0).setDepth(9002));
+    buildIcons(this.textures);
+    this.rhythmText = fixed(this.add.text(VIEW_W / 2, 9, '', { fontFamily: FONT, fontSize: '13px', color: '#ecdcff', fontStyle: 'bold', stroke: '#140a22', strokeThickness: 3 }).setOrigin(1, 0.5).setDepth(9002));
+    this.rhythmNum = fixed(this.add.text(VIEW_W / 2, 9, '', { fontFamily: FONT, fontSize: '26px', color: '#ffffff', fontStyle: 'bold', stroke: '#140a22', strokeThickness: 4 }).setOrigin(0, 0.5).setDepth(9002));
+    this.rhythmTag = fixed(this.add.text(VIEW_W / 2, 9, 'RHY', { fontFamily: FONT, fontSize: '10px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0, 0.5).setAlpha(0.55).setDepth(9002));
+    this.rhythmIcon = fixed(this.add.image(VIEW_W / 2, 9, 'icon_sk_rhythm').setOrigin(0, 0.5).setScale(2).setDepth(9002).setVisible(false));
+    this.shotText = fixed(this.add.text(VIEW_W - 58, 30, '', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold', stroke: '#000', strokeThickness: 4 }).setOrigin(1, 0.5).setDepth(9002));
     this.iqText = fixed(this.add.text(VIEW_W / 2, 92, '', { fontFamily: FONT, fontSize: '16px', color: '#ff9f9f', fontStyle: 'bold', stroke: '#000', strokeThickness: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
     this.scoreText = fixed(this.add.text(12, 66, '', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setDepth(9001));
     this.playText = fixed(this.add.text(VIEW_W / 2, VIEW_H - 30, '', { fontFamily: FONT, fontSize: '16px', color: '#ffe680', align: 'center' }).setOrigin(0.5, 0).setDepth(9001));
@@ -469,7 +483,8 @@ export class GameScene extends Phaser.Scene {
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
       if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
     }
-    if (e.kind === 'rhythmDelta' && e.pid === this.sim.user?.id) this.rhythmPop(e.data?.amount ?? 0, e.data?.why ?? '');
+    if (e.kind === 'rhythmDelta' && e.pid === this.sim.user?.id) this.rhythmPop(e.data?.amount ?? 0, e.data?.why ?? '', e.data?.math ?? '');
+    if (e.kind === 'switch' && e.pid === this.sim.user?.id) this.switchFlash = { at: this.time.now, name: e.data?.to ?? '' };
     if (e.kind === 'rhythm' && e.pid === this.sim.user?.id) this.rhythmFlash = { at: this.time.now, color: 0xffe680 };
     this.playSound(e);
     if (e.quiet) return;
@@ -998,7 +1013,13 @@ export class GameScene extends Phaser.Scene {
     // defensive assignment
     if (!onO && u.guarding) {
       const m = sim.players.find((p) => p.id === u.guarding);
-      if (m) { g.lineStyle(2, 0xff5050, 0.9); g.strokeEllipse(sx(m.p.x), sy(m.p.y), 2.6 * S, 2.6 * D); if (dist(m.p, u.p) > 8) { g.lineStyle(1, 0xff5050, 0.4); g.lineBetween(sx(u.p.x), sy(u.p.y), sx(m.p.x), sy(m.p.y)); } }
+      // round 53: a switch (fast-break cross-match, screen switch, scramble) flashes the circle and names your new man
+      const sw = Math.max(0, 1 - (this.time.now - this.switchFlash.at) / 1400);
+      if (m) {
+        g.lineStyle(2 + 3 * sw, sw > 0 ? 0xffe060 : 0xff5050, 0.9); g.strokeEllipse(sx(m.p.x), sy(m.p.y), (2.6 + sw) * S, (2.6 + sw) * D);
+        if (dist(m.p, u.p) > 8 || sw > 0) { g.lineStyle(1 + sw * 2, sw > 0 ? 0xffe060 : 0xff5050, 0.4 + 0.5 * sw); g.lineBetween(sx(u.p.x), sy(u.p.y), sx(m.p.x), sy(m.p.y)); }
+        if (sw > 0) this.label(sx(m.p.x), sy(m.p.y, m.height + 2.4), `SWITCH → ${this.switchFlash.name}`, '#ffe060', 16);
+      }
     }
     // play assignment ghost path
     const asg = sim.userAssignment();
@@ -1155,43 +1176,53 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Round 51: the rhythm meter (styled like the garage skill cards): three notch ticks, gold pulse when full. */
+  /** Round 53: the deep purple rhythm skill card (like the garage skill cards): icon + big number on top, RHY + pill bar. */
+  static RHY = { base: 0x4a1d7a, edge: 0x9a6ae0, dark: 0x2e1050, fill: 0xb88aff, fill2: 0xe2ccff, track: 0x1c0a33, outline: 0x140a22 };
+  static RHY_CARD = { x: VIEW_W / 2 - 150, y: 4, w: 300, h: 54, top: 31 };
   drawRhythm(u: Player) {
-    const h = this.hud, sim = this.sim, r = u.rhythm / 100;
-    const x0 = VIEW_W / 2 - 200, y0 = 6, w = 400, ht = 48;
+    const h = this.hud, sim = this.sim, r = u.rhythm / 100, K = GameScene.RHY, { x: x0, y: y0, w, h: ht, top } = GameScene.RHY_CARD;
     const used = (sim.ultsUsed[u.id] ?? 0) >= 1, hasUlt = !!sim.ultOf(u);
     const ready = r >= 1 && hasUlt && !used;
     const flash = Math.max(0, 1 - (this.time.now - this.rhythmFlash.at) / 500);
-    // card: dark outline, coloured edge, warm body, a highlight strip along the top
-    h.fillStyle(0x1e1410, 1).fillRoundedRect(x0 - 2, y0 - 2, w + 4, ht + 4, 8);
-    h.fillStyle(ready ? 0xffd84a : 0xc8843a, 1).fillRoundedRect(x0, y0, w, ht, 7);
-    h.fillStyle(0x4a2c16, 1).fillRoundedRect(x0 + 2, y0 + 2, w - 4, ht - 4, 6);
-    h.fillStyle(0xffffff, 0.12).fillRect(x0 + 6, y0 + 4, w - 12, 2);
+    const pulse = ready ? 0.5 + 0.5 * Math.sin(this.time.now / 140) : 0;
+    const gold = (c: number) => { if (!ready) return c; const m = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(c), Phaser.Display.Color.ValueToColor(0xffd84a), 100, Math.round(pulse * 100)); return Phaser.Display.Color.GetColor(m.r, m.g, m.b); };
+    // card: dark outline, coloured edge, base top with a highlight, divider, darker bottom strip
+    h.fillStyle(K.outline, 1).fillRoundedRect(x0 - 2, y0 - 2, w + 4, ht + 4, 8);
+    h.fillStyle(gold(K.edge), 1).fillRoundedRect(x0, y0, w, ht, 7);
+    h.fillStyle(K.base, 1).fillRoundedRect(x0 + 2, y0 + 2, w - 4, top - 2, { tl: 6, tr: 6, bl: 0, br: 0 });
+    h.fillStyle(0xffffff, 0.14).fillRect(x0 + 5, y0 + 3.5, w - 10, 2);
+    h.fillStyle(gold(K.edge), 1).fillRect(x0 + 2, y0 + top, w - 4, 2);
+    h.fillStyle(K.dark, 1).fillRoundedRect(x0 + 2, y0 + top + 2, w - 4, ht - top - 4, { tl: 0, tr: 0, bl: 6, br: 6 });
     if (flash > 0) h.fillStyle(this.rhythmFlash.color, 0.45 * flash).fillRoundedRect(x0 + 2, y0 + 2, w - 4, ht - 4, 6);
-    // pill bar: dark track, warm fill (orange → gold as it fills), a highlight line; pulses when full
-    const bx = x0 + 14, by = y0 + 27, bw = w - 28, bh = 13;
-    h.fillStyle(0x1e1410, 0.95).fillRoundedRect(bx - 1, by - 1, bw + 2, bh + 2, bh / 2 + 1);
-    h.fillStyle(0x2c1a0c, 1).fillRoundedRect(bx, by, bw, bh, bh / 2);
-    if (r > 0.005) {
-      const col = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(0xe8743a), Phaser.Display.Color.ValueToColor(0xffd84a), 100, Math.round(r * 100));
-      const fill = Phaser.Display.Color.GetColor(col.r, col.g, col.b);
-      const pulse = ready ? 0.75 + 0.25 * Math.sin(this.time.now / 140) : 1;
-      h.fillStyle(fill, pulse).fillRoundedRect(bx, by, Math.max(bh, bw * r), bh, bh / 2);
-      h.fillStyle(0xffffff, 0.35 * pulse).fillRect(bx + 5, by + 2, Math.max(0, bw * r - 10), 2);
-    }
-    // notch ticks at 25 / 50 / 75 (gold once passed)
-    [0.25, 0.5, 0.75].forEach((n) => { h.fillStyle(r >= n ? 0xffe9a8 : 0x8a6a4a, 1).fillRect(bx + bw * n - 1, by - 4, 2, bh + 8); });
+    // top: icon, the big number, notch diamonds + status on the right
+    const midT = y0 + 1 + top / 2;
+    this.rhythmIcon.setVisible(true).setPosition(x0 + 8, midT);
+    this.rhythmNum.setVisible(true).setPosition(x0 + 36, midT + 1).setText(String(Math.floor(u.rhythm))).setColor(ready ? '#ffe680' : '#ffffff');
     const notch = [0.25, 0.5, 0.75].filter((n) => r >= n).length;
-    this.rhythmText.setPosition(VIEW_W / 2, y0 + 7).setText(`RHYTHM  ${'◆'.repeat(notch)}${'◇'.repeat(3 - notch)}   ${ready ? 'ULT READY · □' : used ? 'ultimate used' : `${Math.floor(u.rhythm)}%`}`)
-      .setColor(ready ? '#ffe680' : '#ffe9a8');
+    this.rhythmText.setVisible(true).setPosition(x0 + w - 10, midT + 1).setText(`${'◆'.repeat(notch)}${'◇'.repeat(3 - notch)}  ${ready ? 'ULT READY · □' : used ? 'ult used' : 'RHYTHM'}`)
+      .setColor(ready ? '#ffe680' : used ? '#a89ac0' : '#ecdcff');
+    // bottom: RHY tag + pill bar (dark track, lilac fill, highlight line) with notch ticks
+    const midB = y0 + top + 2 + (ht - top - 4) / 2;
+    this.rhythmTag.setVisible(true).setPosition(x0 + 9, midB);
+    const bx = x0 + 38, bh = 9, by = midB - bh / 2, bw = w - 50;
+    h.fillStyle(K.outline, 1).fillRoundedRect(bx - 1.5, by - 1.5, bw + 3, bh + 3, bh / 2 + 1.5);
+    h.fillStyle(K.track, 1).fillRoundedRect(bx, by, bw, bh, bh / 2);
+    if (r > 0.005) {
+      const col = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(K.fill), Phaser.Display.Color.ValueToColor(K.fill2), 100, Math.round(r * 100));
+      h.fillStyle(gold(Phaser.Display.Color.GetColor(col.r, col.g, col.b)), 1).fillRoundedRect(bx, by, Math.max(bh, bw * r), bh, bh / 2);
+      h.fillStyle(0xffffff, 0.4).fillRect(bx + 4, by + 1.5, Math.max(0, bw * r - 8), 1.5);
+    }
+    [0.25, 0.5, 0.75].forEach((n) => { h.fillStyle(r >= n ? 0xf0e0ff : 0x6a4a9a, 1).fillRect(bx + bw * n - 1, by - 3, 2, bh + 6); });
   }
-  /** A rhythm change for you: a pop near the meter ("+8 mid · step-back", "−6 turnover"). */
-  rhythmPop(amount: number, why: string) {
+  hideRhythm() { for (const o of [this.rhythmText, this.rhythmNum, this.rhythmTag, this.rhythmIcon]) o.setVisible(false); }
+  /** A rhythm change for you: a pop below the top bars with the math ("+5  2pts ×2.6 ×0.6 · mid · step-back", "−6 turnover"). */
+  rhythmPop(amount: number, why: string, math = '') {
     const u = this.sim.user; if (!u || app.settings.debug.equation || Math.abs(amount) < 0.5) return;
-    const x = VIEW_W / 2 - 186 + 372 * (u.rhythm / 100), good = amount > 0;
-    const label = `${good ? '+' : '−'}${Math.abs(amount).toFixed(0)}${why ? ` ${why}` : ''}`;
-    const t = this.add.text(x, 58, label, { fontFamily: FONT, fontSize: '13px', color: good ? '#bff58a' : '#ff8a7a', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9003);
-    this.tweens.add({ targets: t, y: 74, alpha: { from: 1, to: 0 }, duration: 1300, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
+    const good = amount > 0;
+    const label = `${good ? '+' : '−'}${Math.abs(amount).toFixed(0)}${math ? `  ${math}` : ''}${why ? `${math ? ' ·' : ''} ${why}` : ''}`;
+    // under the score row (clear of the score / shot clock line), centred under the card
+    const t = this.add.text(VIEW_W / 2, this.iqText.text ? 118 : 96, label, { fontFamily: FONT, fontSize: '15px', color: good ? '#bff58a' : '#ff8a7a', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9003);
+    this.tweens.add({ targets: t, y: t.y + 18, alpha: { from: 1, to: 0 }, delay: 700, duration: 1300, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
     if (!good) this.rhythmFlash = { at: this.time.now, color: 0xff4a3a };
   }
 
@@ -1211,7 +1242,11 @@ export class GameScene extends Phaser.Scene {
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     // round 51: without the dev equation the top bar is the rhythm meter, with the short hints on the left
     this.eqText.setWordWrapWidth(showEq || !sim.user ? VIEW_W - 24 : VIEW_W / 2 - 236).setFontSize(showEq || !sim.user ? 15 : 12).setText(eq);
-    if (!showEq && sim.user) this.drawRhythm(sim.user); else this.rhythmText.setText('');
+    if (!showEq && sim.user) this.drawRhythm(sim.user); else this.hideRhythm();
+    // round 53: the short shot chance, top right (always on; the full equation is the dev toggle)
+    const lsU = ls && ls.user && sim.time - ls.at < 3 ? ls : null;
+    const short = showEq ? null : prev ? { ev: prev, tail: '' } : lsU ? { ev: lsU.ev, tail: lsU.blocked ? '  ✗ BLK' : lsU.made ? '  ✓' : '  ✗' } : null;
+    if (short) { const f = fmtShort(short.ev); this.shotText.setText(f.text + short.tail).setColor(f.color); } else this.shotText.setText('');
     // High IQ (Perimeter D): on defense, read their set and who it's for
     const iq = this.highIQ();
     this.iqText.setText(iq ? `HIGH IQ · ${iq.play}${iq.target ? `  →  for ${iq.target.name}` : ''}` : '');
@@ -1277,6 +1312,22 @@ function latch(prev: UserInput | null, cur: UserInput): UserInput {
   return { ...cur, sprint: cur.sprint || prev.sprint, a: cur.a || prev.a, b: cur.b || prev.b, x: cur.x || prev.x, y: cur.y || prev.y };
 }
 const clearEdges = (i: UserInput): UserInput => ({ ...i, sprint: false, a: false, b: false, x: false, y: false });
+
+/** Round 53: the shot chance in few characters, `3PT 38 ×1.1 ×.62 = 26%` (multipliers ≈1 dropped, perks folded). */
+const SHORT_TYPE: Record<string, string> = { mid: 'MID', three: '3PT', deep3: 'DEEP', fade: 'FADE', floater: 'FLT', hook: 'HOOK', layup: 'LAY', dunk: 'DUNK', euro: 'EURO', push: 'PUSH', alleyOop: 'OOP', alleyOopLayup: 'OOP', stepThrough: 'STEP', stepThroughJumper: 'STEP', jelly: 'JELLY' };
+export function fmtShort(e: import('../sim/shooting').ShotEval): { text: string; color: string } {
+  const base = e.terms.find((t) => t.kind === 'base');
+  const m = (x: number) => (x >= 1 ? x.toFixed(2).replace(/0$/, '') : x.toFixed(2).replace(/^0/, '').replace(/0$/, ''));
+  let perk = 1; const parts: string[] = [];
+  for (const t of e.terms) {
+    if (t.kind === 'base') continue;
+    if (t.kind === 'perk' || t.kind === 'ult') { perk *= t.value; continue; }
+    if (Math.abs(t.value - 1) > 0.02) parts.push(`×${m(t.value)}`);
+  }
+  if (Math.abs(perk - 1) > 0.02) parts.push(`×${m(perk)}`);
+  const pct = Math.round(e.pct * 100);
+  return { text: `${SHORT_TYPE[e.type] ?? e.type.toUpperCase()} ${base ? Math.round(base.value * 100) : ''} ${parts.join(' ')} = ${pct}%`.replace(/  +/g, ' '), color: pct >= 45 ? '#8aff8a' : pct >= 30 ? '#ffe680' : '#ff8a7a' };
+}
 
 function fmtEq(e: import('../sim/shooting').ShotEval): string {
   return e.terms.map((t) => (t.kind === 'base' ? `${(t.value * 100).toFixed(0)}% ${t.label}` : `× ${t.value.toFixed(2)} ${t.label}`)).join('  ') + `  =  ${(e.pct * 100).toFixed(1)}%  (${e.pts}PT)`;

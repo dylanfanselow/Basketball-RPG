@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
 import { emptyInput } from '../src/sim/game';
 import { Player } from '../src/sim/player';
-import { methodKey, scoreGain, rhythmBoost, notchOf, gainScale, AFTER_ULT, POINT_GAIN, REPEAT_DECAY, RHYTHM_GAIN } from '../src/sim/rhythm';
+import { methodKey, scoreGain, scoreMath, quarterGain, QUARTER_GAIN, rhythmBoost, notchOf, gainScale, AFTER_ULT, POINT_GAIN, REPEAT_DECAY, RHYTHM_GAIN, RHYTHM_LOSS } from '../src/sim/rhythm';
+import { evaluateShot } from '../src/sim/shooting';
 import { tryActivateUlt } from '../src/sim/ultimates';
 import { rimPos } from '../src/sim/court';
 
@@ -48,7 +49,7 @@ describe('round 51: rhythm', () => {
     expect(gainScale(600)).toBeLessThan(gainScale(150));
     const u = mkUser(), g = live(u, { quarterLen: 300 });
     g.rhythmGain(u, 'assist');
-    expect(u.rhythm).toBeCloseTo(RHYTHM_GAIN.assist * gainScale(300), 5);
+    expect(u.rhythm).toBeCloseTo(RHYTHM_GAIN.assist * gainScale(300) * quarterGain(1), 5); // Q1 multiplier (round 53)
     g.rhythmLoss(u, 'posterized');
     expect(u.rhythm).toBe(0);
   });
@@ -96,5 +97,79 @@ describe('round 51: rhythm', () => {
     const inp = emptyInput();
     for (let t = 0; t < 3 && !g.ultsUsed[s.id]; t += 1 / 30) { if (g.holder() === s) s.aiNextThink = 0; g.update(1 / 30, inp); }
     expect(g.ultsUsed[s.id]).toBe(1);
+  });
+});
+
+describe('round 53: rhythm tuning', () => {
+  // a made basket resolved directly (no flight): `shooter` scores 2, optionally off `passer`'s pass
+  const make = (g: any, shooter: Player, passer?: Player, contest = 0) => {
+    const ev = evaluateShot(shooter, g.opp(shooter.team), g.side(shooter.team), 'layup', { now: g.time, clutch: false });
+    ev.contest = contest;
+    if (passer) g.assistCand = { passer, receiver: shooter, at: g.time };
+    g.resolveShot({ kind: 'shot', shooter, made: true, pts: 2, ev, foul: false });
+  };
+  it('gains grow each quarter (low in Q1); losses do not; practice is flat', () => {
+    expect(QUARTER_GAIN[0]).toBeLessThan(QUARTER_GAIN[3]);
+    expect(quarterGain(1)).toBe(QUARTER_GAIN[0]);
+    expect(quarterGain(5)).toBe(QUARTER_GAIN[3]); // OT = Q4
+    expect(quarterGain(1, true)).toBe(1);
+    const u = mkUser(), g = live(u, { quarterLen: 300 });
+    g.quarter = 4; g.rhythmGain(u, 'assist');
+    expect(u.rhythm).toBeCloseTo(RHYTHM_GAIN.assist * gainScale(300) * QUARTER_GAIN[3], 5);
+    g.setRhythm(u, 40); const r = u.rhythm; g.rhythmLoss(u, 'turnover');
+    expect(u.rhythm).toBeCloseTo(r - RHYTHM_LOSS.turnover * gainScale(300), 5);
+  });
+  it('rhythm pops carry the scoring math', () => {
+    expect(scoreMath(2, 0)).toBe(`2pts ×${POINT_GAIN}`);
+    expect(scoreMath(3, 1)).toBe(`3pts ×${POINT_GAIN} ×0.6`);
+    expect(scoreMath(2, 2)).toBe(`2pts ×${POINT_GAIN} ×0.6²`);
+    const u = mkUser(), g = live(u);
+    g.possession = u.team; make(g, u);
+    const pop = g.events.find((e) => e.kind === 'rhythmDelta');
+    expect(pop?.data?.math).toBe(`2pts ×${POINT_GAIN}`);
+  });
+  it('a missed play assignment costs no rhythm', () => {
+    expect('playMiss' in RHYTHM_LOSS).toBe(false);
+  });
+  it('ran your part of the play and a teammate scored: rhythm (no shot or assist needed), once', () => {
+    const u = mkUser(), g = live(u);
+    g.possession = u.team;
+    const mate = g.teams[u.team].onCourt.find((p) => p !== u)!, other = g.teams[u.team].onCourt.find((p) => p !== u && p !== mate)!;
+    g.setRhythm(u, 0);
+    g.ranPlay = { team: u.team };
+    make(g, mate, other);
+    expect(u.rhythm).toBeGreaterThan(0);
+    expect(g.ranPlay).toBeNull();
+    // didn't run it: nothing
+    g.setRhythm(u, 0); g.possession = u.team;
+    make(g, mate, other);
+    expect(u.rhythm).toBe(0);
+  });
+  it('"left your man" costs rhythm only when nobody contested the shot', () => {
+    const u = mkUser(), g = live(u);
+    const opp = g.opp(u.team)[0];
+    g.possession = opp.team; u.guarding = opp.id; g.update(1 / 30, emptyInput()); g.time += 3; // not a fresh switch
+    u.p = { x: opp.p.x + 30, y: opp.p.y };
+    g.setRhythm(u, 40);
+    make(g, opp, undefined, 0.5);
+    expect(u.rhythm).toBe(40); // contested by a teammate: no loss
+    g.possession = opp.team; u.guarding = opp.id;
+    make(g, opp, undefined, 0);
+    expect(u.rhythm).toBeLessThan(40);
+  });
+  it('fast break: defenders cross-match to the nearest man, you included, and the HUD is told', () => {
+    const u = mkUser(), g = live(u);
+    const off = g.opp(u.team), defs = g.teams[u.team].onCourt;
+    g.possession = off[0].team; g.live = true; g.transitionUntil = g.time + 5; g.runner.reset();
+    const mate = defs.find((d) => d !== u)!;
+    const a = off[0], b = off[1];
+    u.guarding = a.id; mate.guarding = b.id;
+    g.update(1 / 30, emptyInput()); // settle the tracked assignment
+    a.p = { x: 20, y: 10 }; b.p = { x: 60, y: 40 };
+    u.p = { x: 60, y: 38 }; mate.p = { x: 20, y: 12 };
+    (g as any).nextXMatchAt = 0;
+    g.update(1 / 30, emptyInput());
+    expect(u.guarding).toBe(b.id);
+    expect(g.events.some((e) => e.kind === 'switch' && e.data?.to === b.name)).toBe(true);
   });
 });

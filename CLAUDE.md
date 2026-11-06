@@ -14,7 +14,8 @@ Key rules from the owner:
 - Gameplay feel comes first; dev tools must make testing fast.
 - You control only your player; teammates pass based on trust/openness, never on demand.
 - PlayStation button labels. No shot meter: the contest cone stays on screen; the full shot equation is a dev toggle
-  (round 51 — the top bar is the **rhythm** meter, which powers the once-a-game ultimate).
+  (round 51 — the top bar is the **rhythm** meter, which powers the once-a-game ultimate). Round 53: a short
+  shot-chance line (`3PT 37 ×.85 ×.67 = 21%`) is always shown top-right while you have the ball.
 - Real 2026-27 rosters are intentionally committed.
 - Eyes on every face (players, fans, celebs, coaches…) match the owner's celeb art: `W I · · · · I W` (white outside,
   iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells` — never cross-eyed or uneven.

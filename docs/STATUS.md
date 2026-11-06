@@ -126,6 +126,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `ULT_GAINS`, `ultCharge` removed); `ultOf` (career ult, CPU stars `cpuUltFor`), `ultsUsed` (one a game), AI
   triggers (offense deep step-back / takeoff, defense chase-down); HUD `GameScene.drawRhythm` / `rhythmPop`;
   `settings.debug.equation`. Calibrated: ~2 players a game max out (median 88% of the game), ~0.8 ults a game in Q4.
+  Round 53: `QUARTER_GAIN` [0.6, 0.9, 1.2, 1.4] / `quarterGain` (gains only), `scoreMath` (pop math, event
+  `rhythmDelta.data.math`), `RHYTHM_GAIN.playRun` (`GameSim.ranPlay` set by `gradeUserPhase`, paid in `resolveShot`),
+  `playMiss` loss removed, `checkLeftMan(scorer, contest)` (skips contest ≥ 0.2 / `userGuardChangedAt` < 1.5 s),
+  `transitionMatchups` (fast-break cross-match, every 0.25 s) + `trackUserMatchup` (event `switch`). HUD: purple card
+  `GameScene.RHY` / `RHY_CARD` (`icon_sk_rhythm` from `roomArt.buildIcons`), `shotText` + `fmtShort` top-right,
+  `switchFlash`. Recalibrated: ~2.9 players max a game (median 90%), ~0.8 ults a game at 77–86% of the game.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

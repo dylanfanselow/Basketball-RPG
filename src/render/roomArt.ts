@@ -1307,6 +1307,11 @@ const ICONS: Record<string, { rows: string[]; pal: Record<string, string> }> = {
     '....kkkk....', '.kkkkCCkkkk.', '.kWWWWWWWWk.', '.kWrWrWaaWk.', '.kWWrWWWWak.', '.kWrWrWWWak.',
     '.kWWWWWWaWk.', '.kWWWWWaWWk.', '.kWWbbbWWWk.', '.kWWbWbWWWk.', '.kWWbbbWWWk.', '.kkkkkkkkkk.'],
   pal: { k: '#1e1410', C: '#c8ccd0', W: '#fbf6e8', r: '#c8433a', b: '#2a5fa0', a: '#5a5a5a' } },
+  // round 53: the game HUD's rhythm card (deep purple): a lilac eighth note
+  sk_rhythm: { rows: [
+    '.....kkkk...', '.....kNNNk..', '.....kNkNNk.', '.....kNk.kNk', '.....kNk..kk', '.....kNk....',
+    '..kkkkNk....', '.kNNNNNk....', 'kNWNNNNk....', 'kNNNNNnk....', '.kNNNnk.....', '..kkkk......'],
+  pal: { k: '#140a22', N: '#d8b8ff', n: '#9a6ae0', W: '#ffffff' } },
 };
 export function buildIcons(tm: Phaser.Textures.TextureManager) {
   for (const [name, ic] of Object.entries(ICONS)) {

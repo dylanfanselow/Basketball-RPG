@@ -8,7 +8,7 @@ import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isSt
 import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
-import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, notchOf, rhythmBoost, methodKey, scoreGain, methodLabel } from './rhythm';
+import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, quarterGain, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
 import { chooseCall } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
@@ -912,7 +912,46 @@ export class GameSim {
     this.updateBall(dt);
     this.updatePlay(dt);
     this.rules(dt);
+    this.transitionMatchups();
+    this.trackUserMatchup();
     this.updatePreview();
+  }
+
+  /** Round 53: you ran your part of this possession's play (rhythm when the team scores off it). */
+  ranPlay: { team: 0 | 1 } | null = null;
+  private ranPlayPoss: 0 | 1 = 0;
+  /** When your defensive assignment last changed (a switch), and who it was. */
+  userGuardChangedAt = -9;
+  private lastUserGuarding: string | null = null;
+  private nextXMatchAt = 0;
+  /**
+   * Round 53: fast-break cross-matching. While a team is in transition defense, two defenders swap men when each is
+   * clearly closer to the other's man (sum of distances 6 ft shorter). Includes you, so your circle / cone move to
+   * the man you're actually picking up; the switch sticks after the break, like a real one.
+   */
+  private transitionMatchups() {
+    if (!this.live || this.time < this.nextXMatchAt || !this.inTransition(this.possession)) return;
+    if (this.cfg.oneOnOne || this.cfg.halfCourt || this.cfg.mode === 'practice') return;
+    this.nextXMatchAt = this.time + 0.25;
+    const defs = this.defense(), byId = (id: string | null) => (id ? this.players.find((q) => q.id === id) : undefined);
+    for (let i = 0; i < defs.length; i++) for (let j = i + 1; j < defs.length; j++) {
+      const a = defs[i], b = defs[j], ma = byId(a.guarding), mb = byId(b.guarding);
+      if (!ma || !mb || a.state === 'fallen' || b.state === 'fallen') continue;
+      if (dist(a.p, mb.p) + dist(b.p, ma.p) + 6 < dist(a.p, ma.p) + dist(b.p, mb.p)) { a.guarding = mb.id; b.guarding = ma.id; }
+    }
+  }
+  /** Notice your assignment changing during live play (any switch) and tell the HUD; reset the ran-the-play mark. */
+  private trackUserMatchup() {
+    if (this.possession !== this.ranPlayPoss) { this.ranPlay = null; this.ranPlayPoss = this.possession; }
+    const u = this.user;
+    if (!u) return;
+    if (u.guarding !== this.lastUserGuarding) {
+      const prev = this.lastUserGuarding;
+      this.lastUserGuarding = u.guarding;
+      this.userGuardChangedAt = this.time;
+      const m = u.guarding ? this.players.find((q) => q.id === u.guarding) : null;
+      if (prev && m && this.live && this.userOnCourt && u.team !== this.possession) this.quiet('switch', { to: m.name }, u.id);
+    }
   }
 
   private resume() {
@@ -1016,11 +1055,11 @@ export class GameSim {
     if (ok) {
       this.grade.good++; this.grade.points += 1;
       applyTrust(this.trust, 'playExec');
+      this.ranPlay = { team: u.team };
       this.emit({ kind: 'grade', text: `✓ Ran your ${a.act} (${this.runner.play?.name})`, good: true, pid: u.id });
     } else {
       this.grade.bad++; this.grade.points -= 1;
-      applyTrust(this.trust, 'playMiss');
-      this.rhythmLoss(u, 'playMiss');
+      applyTrust(this.trust, 'playMiss'); // round 53: no rhythm loss for a missed assignment
       this.emit({ kind: 'grade', text: `✗ Missed your ${a.act} assignment`, good: false, pid: u.id });
     }
   }
@@ -1730,12 +1769,14 @@ export class GameSim {
 
   /**
    * Round 51: rhythm for any player (gains scale with the game length so a strong night fills it around the 4th
-   * quarter; losses too). Crossing a notch re-applies the stat boost; your changes pop on the HUD meter.
+   * quarter; losses too; round 53: gains × the quarter multiplier). Crossing a notch re-applies the stat boost; your changes pop on the HUD meter.
    */
-  addRhythm(p: Player | null | undefined, amount: number, why = '') {
+  addRhythm(p: Player | null | undefined, amount: number, why = '', math = '') {
     if (!p || !amount) return;
     const before = notchOf(p.rhythm);
-    p.rhythm = Math.max(0, Math.min(100, p.rhythm + amount * gainScale(this.cfg.quarterLen)));
+    // round 53: gains also grow each quarter (hidden from the pops' math)
+    const applied = amount * gainScale(this.cfg.quarterLen) * (amount > 0 && why !== 'dev' ? quarterGain(this.quarter, this.cfg.mode === 'practice') : 1);
+    p.rhythm = Math.max(0, Math.min(100, p.rhythm + applied));
     const after = notchOf(p.rhythm);
     if (after !== before) {
       p.boost = rhythmBoost(p.core, after); p.recompute();
@@ -1745,7 +1786,7 @@ export class GameSim {
       this.rhythmReadySaid[p.id] = true;
       this.emit({ kind: 'rhythm', text: this.isHuman(p) ? 'RHYTHM MAXED — ultimate ready (□)' : `${p.name} is in full rhythm`, pid: p.id, team: p.team, big: this.isHuman(p), data: { ready: true } });
     }
-    if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: amount * gainScale(this.cfg.quarterLen), why }, p.id);
+    if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: applied, why, math }, p.id);
   }
   /** Set rhythm directly (dev tools / ultimates), re-applying the notch boost. */
   setRhythm(p: Player, v: number) {
@@ -2194,7 +2235,12 @@ export class GameSim {
       // rhythm: points × 4, less each time you score the same way tonight (round 51)
       const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
       const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
-      this.addRhythm(s, scoreGain(val, used) * (dk && dk.kind === 'flash' ? 1.15 : 1), methodLabel(mk));
+      const flash = dk && dk.kind === 'flash';
+      this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1), methodLabel(mk), scoreMath(val, used) + (flash ? ' ×1.15' : ''));
+      // round 53: you ran your part of the play and the team scored off it (no shot or assist needed)
+      const u = this.user;
+      if (u && this.ranPlay && this.ranPlay.team === team && u.team === team && s !== u && ast !== u && this.userOnCourt) this.addRhythm(u, RHYTHM_GAIN.playRun, 'ran the play');
+      this.ranPlay = null;
       if (s === this.user) applyTrust(this.trust, 'madeShot');
       const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
       this.lastMadeAt = this.time;
@@ -2203,7 +2249,7 @@ export class GameSim {
         const nd = this.nearestDefender(s).d;
         if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.rhythmLoss(nd, 'posterized'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }
       }
-      this.checkLeftMan(s);
+      this.checkLeftMan(s, st.ev.contest);
       this.assistCand = null;
       if (this.cfg.oneOnOne) {
         // make it, take it: scorer checks it again (fouls just count the bucket, no free throws)
@@ -2247,10 +2293,12 @@ export class GameSim {
     return last;
   }
 
-  private checkLeftMan(scorer: Player) {
+  /** Round 53: only a real lapse — nobody contested the shot, and not right after a switch. */
+  private checkLeftMan(scorer: Player, contest = 0) {
     const u = this.user;
     if (this.cfg.oneOnOne) return; // no team trust in 1v1
     if (!u || !this.userOnCourt || u.team === scorer.team || u.guarding !== scorer.id) return;
+    if (contest >= 0.2 || this.time - this.userGuardChangedAt < 1.5) return;
     if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.rhythmLoss(u, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored — you left him', good: false, pid: u.id }); }
   }
 

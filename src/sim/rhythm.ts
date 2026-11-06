@@ -15,8 +15,9 @@ export const AFTER_ULT = 75;
 export const POINT_GAIN = 2.6;
 /** Each earlier bucket with the same method multiplies the next one's rhythm by this. */
 export const REPEAT_DECAY = 0.6;
-export const RHYTHM_GAIN = { assist: 4, steal: 3, block: 3, charge: 4, pickup: 2, stop: 1 } as const;
-export const RHYTHM_LOSS = { playMiss: 6, posterized: 10, turnover: 6, leftMan: 6, ankles: 5, badShot: 4, blocked: 3 } as const;
+export const RHYTHM_GAIN = { assist: 4, steal: 3, block: 3, charge: 4, pickup: 2, stop: 1, playRun: 3 } as const;
+/** Round 53: a missed play assignment no longer costs rhythm (trust still drops). */
+export const RHYTHM_LOSS = { posterized: 10, turnover: 6, leftMan: 6, ankles: 5, badShot: 4, blocked: 3 } as const;
 export type RhythmGain = keyof typeof RHYTHM_GAIN;
 export type RhythmLoss = keyof typeof RHYTHM_LOSS;
 /**
@@ -25,6 +26,13 @@ export type RhythmLoss = keyof typeof RHYTHM_LOSS;
  */
 export const REF_Q = 300;
 export const gainScale = (quarterLen: number) => clamp(REF_Q / Math.max(30, quarterLen), 0.25, 6);
+
+/**
+ * Round 53: gains grow each quarter (low in Q1 so nobody is maxed early; OT uses the Q4 value). Hidden from the HUD
+ * pops. Averages ~1 over a game so the ult still lands around the 4th quarter. Practice: always 1.
+ */
+export const QUARTER_GAIN = [0.6, 0.9, 1.2, 1.4] as const;
+export const quarterGain = (quarter: number, practice = false) => practice ? 1 : QUARTER_GAIN[clamp(Math.floor(quarter), 1, 4) - 1];
 
 /** Which notch (0-3) a rhythm value has passed. */
 export const notchOf = (r: number) => NOTCHES.filter((n) => r >= n).length;
@@ -43,6 +51,12 @@ export function methodKey(type: string, conds: Set<string>, ctx: { stepback?: bo
 }
 /** Rhythm for a basket worth `pts` with a method already used `times` times tonight (before the game-length scale). */
 export const scoreGain = (pts: number, times: number) => pts * POINT_GAIN * REPEAT_DECAY ** times;
+const SUP = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+/** Round 53: the scoring gain as readable math for the HUD pop: `2pts ×2.6 ×0.6²` (the decay only on a repeat). */
+export function scoreMath(pts: number, times: number): string {
+  const sup = String(times).split('').map((d) => SUP[+d]).join('');
+  return `${pts}pts ×${POINT_GAIN}${times > 0 ? ` ×${REPEAT_DECAY}${times > 1 ? sup : ''}` : ''}`;
+}
 /** Readable method name for HUD pops ("mid · step-back"). */
 export function methodLabel(key: string): string {
   const [type, how] = key.split('|');

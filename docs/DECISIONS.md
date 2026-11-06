@@ -9,7 +9,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Control:** you control **only your career player**; AI teammates; you must earn the ball (see VISION).
 - **No shot meter.** Instead a **cone** points from the shooter to the rim; defenders inside it reduce accuracy. The
   **full shot equation** (base × rating × (1−contest) × fatigue × perks…) used to be on the top bar; since round 51 it
-  is a **dev toggle** (dev panel → Attention → "Shot chance equation") and the top bar is the rhythm meter.
+  is a **dev toggle** (dev panel → Attention → "Shot chance equation") and the top bar is the rhythm meter. Round 53:
+  a **short shot-chance line** is always shown top-right while you have the ball (`3PT 37 ×.85 ×.67 = 21%`).
 - **Dev tools are high priority:** quick grant/remove of moves, abilities, stats, ultimates (dev panel, F1 / `).
 - Random events / story: not now, just don't block them.
 
@@ -157,6 +158,18 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 53: rhythm tuning + switches.**
+  - **No rhythm loss for a missed play assignment** (trust still drops). **Ran the play:** you executed a phase of
+    the play and your team scored off it (not your shot, not your assist) → +3 rhythm.
+  - **Defense:** posterized still costs rhythm (owner). "Left your man" costs rhythm only when nobody contested the
+    shot (contest < 20%) and not within 1.5 s of a switch.
+  - **Quarter multiplier on gains:** Q1 ×0.6, Q2 ×0.9, Q3 ×1.2, Q4/OT ×1.4 (practice ×1). Hidden from the pops.
+  - **Pops show the math** like the shot equation: `+5  2pts ×2.6 ×0.6² · mid · step-back`; the number is the applied
+    amount (includes the hidden game-length / quarter scale).
+  - **Rhythm card:** like the garage skill cards (owner's reference: icon + big number, tag + pill bar), **deep purple**.
+  - **Short shot chance top-right**, always on (owner's choice), few characters.
+  - **Forced switches move your assignment:** fast-break cross-matching (pairs swap men when each is 6+ ft closer to
+    the other's) includes you; the red circle / cone follow and flash "SWITCH → name". Switches stick after the break.
 - **Round 51: rhythm.**
   - **What it is:** a meter on the top bar (styled like the garage skill cards). Every player builds it with points and assists, plus smaller amounts from steals, blocks, charges, forced pick-ups and stops.
   - **Variety:** each scoring method (shot type × how it was made: catch, step-back, off the dribble, drive, post, transition, lob) gives ×0.6 less each time it's repeated in a game.

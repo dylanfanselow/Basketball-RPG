@@ -44,12 +44,15 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - Career: the next opponent keeps a **scouting report**. A 30-a-night scorer starts the game keyed in, and a known ball hog starts doubled.
   - A CPU team down 15+ **turns up the pressure** (quicker, tighter, more swipes, crashes the glass) until it's within 10.
   - Dev panel *Attention*: random play calls per team (A/B), your move reads, the screen coverage, effort and each team's plays this game.
-- **Rhythm (round 51)** is the meter on the top bar.
-  - **Building it:** it fills with your points and assists, and a little with steals, blocks, charges, forced pick-ups and stops. Scoring the same way again gives less each time ("+5 mid · step-back" pops show it), so mix it up.
-  - **Losing it:** missed assignments, getting posterized, turnovers, leaving your man, getting your ankles broken, forced bad shots and getting blocked.
+- **Rhythm (round 51)** is the deep purple card on the top bar (round 53: styled like the garage skill cards).
+  - **Building it:** it fills with your points and assists, and a little with steals, blocks, charges, forced pick-ups and stops. Run your part of a play and you get some when the team scores off it, even if you didn't shoot or assist. Scoring the same way again gives less each time, and the pop shows the math ("+5  2pts ×2.6 ×0.6 · mid · step-back"), so mix it up.
+  - **Quarters:** gains are smaller early and grow each quarter, so the meter fills late in the game.
+  - **Losing it:** getting posterized, turnovers, leaving your man (only if nobody contested his shot, and not right after a switch), getting your ankles broken, forced bad shots and getting blocked. A missed play assignment no longer costs rhythm (team and coach trust still drop).
   - **Notches:** three of them (◆), each boosting all your stats, the lower ones more.
   - **Ultimate:** a full meter powers it (□), **once a game**, and then the meter drops back to the 3rd notch. Every player has rhythm, and CPU stars use their own ultimates too.
-  - **Dev panel → Attention:** "Shot chance equation" brings the old equation back to the top bar. Under My player: Fill rhythm, Rhythm −25, Reset my ult.
+  - **Shot chance (round 53):** a short version sits in the top-right corner while you have the ball, e.g. `3PT 37 ×.85 ×.67 = 21%` (base, then your rating, contest, fatigue and perk multipliers).
+  - **Switches:** on a fast break, defenders cross-match to the nearest man, you included. Your red circle and cone move to your new man, and it flashes "SWITCH → name".
+  - **Dev panel → Attention:** "Shot chance equation" brings the full equation back to the top bar. Under My player: Fill rhythm, Rhythm −25, Reset my ult.
 - **Pick-Up Pressure** (Perimeter Defense ability, top of the tree, 2 points): when your swipe doesn't get the steal, a separate chance to make the dribbler pick up his dribble. It's better with Perimeter D and harder against great ball handlers. He has to pass or shoot within 5 seconds. Elite CPU perimeter defenders (about the top 10%) have it and reach more against a live dribble, so watch your handle against them.
 - **Footsteps** as you walk around the apartment (wood floor) and the garage (concrete), one per stride, a bit quicker and louder when you hurry.
 - **Doors** in the apartment and garage open with a latch and creak and close behind you; locked doors rattle.
