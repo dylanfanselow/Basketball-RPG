@@ -358,7 +358,7 @@ export abstract class RoomScene extends Phaser.Scene {
         return;
       }
     }
-    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Menu'); return; }
+    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Title'); return; } // round 58: back to the main menu
 
     // movement: stick = feet across / into the room, R2 or Shift hurries
     const m = this.inp.move, mag = Math.hypot(m.x, m.y);

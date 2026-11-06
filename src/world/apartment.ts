@@ -69,7 +69,7 @@ export const FURNITURE: Piece[] = [
 export interface Door { id: string; label: string; spot: V; side: 'L' | 'R' | 'B'; span: [number, number]; to?: { scene: string; at?: string }; soon?: string }
 export const DOORS: Door[] = [
   { id: 'garage', label: 'Garage', spot: { x: 6.4, y: 9.6 }, side: 'L', span: [8.1, 11.1], to: { scene: 'Garage', at: 'apartment' } },
-  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, side: 'R', span: [4.5, 7.4], to: { scene: 'Menu' } },
+  { id: 'front', label: 'Leave', spot: { x: 34.4, y: 5.9 }, side: 'R', span: [4.5, 7.4], to: { scene: 'Title' } },
 ];
 
 /** Things you'll use later (no action yet): where you stand to use them. */

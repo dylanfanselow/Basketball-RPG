@@ -14,7 +14,7 @@ export class MenuScene extends Phaser.Scene {
     // the scene object is reused: texts from the last visit were destroyed with it, so make fresh ones
     this.padText = this.add.text(80, 640, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
     this.soundText = this.add.text(80, 668, '', { fontFamily: FONT, fontSize: '15px', color: COL.dim });
-    title(this, 'HOOP CAREER', 'dev menu  ·  test any mode (the real game will open on Start / Load Game)');
+    title(this, 'HOOP CAREER', 'dev menu  ·  test any mode  ·  L1 / Esc: back to the main menu');
     const c = app.career;
     this.menu = new MenuList(this, 80, 140, [
       { label: 'Apartment (career home)', action: () => this.scene.start('Apartment'), hint: 'Your first place: walk around (furniture is solid). ✕ at a door, L1 to leave.' },
@@ -52,5 +52,7 @@ export class MenuScene extends Phaser.Scene {
     this.soundText.setText(sfx.running ? `🔊 Sound on  (M to ${sfx.settings.muted ? 'unmute' : 'mute'})` : '🔇 Press any key or click to enable sound');
     if (this.inp.pressed('mute')) sfx.toggleMute();
     this.padText.setText(pad ? `🎮 Controller: ${pad.id.replace(/\(.*\)/, '').trim()}` : 'No controller detected. Plug one in and press any button on it.').setColor(pad ? COL.good : COL.dim);
-    this.inp.poll(); if (this.inp.pressed('dev')) (window as any).__toggleDev?.(); this.menu.update(this.inp); }
+    this.inp.poll(); if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
+    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Title'); return; } // round 58: the real main menu
+    this.menu.update(this.inp); }
 }

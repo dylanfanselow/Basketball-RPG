@@ -158,6 +158,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 58: the real main menu** (owner's layout): NEW GAME + LOAD SAVE top left, SETTINGS bottom left, the title
+  "BASKETBALL RPG" top right. Background = the game itself under a gradient, changing with the highlighted option:
+  NEW GAME → the rainy school court (night, rain, lightning), LOAD SAVE → the apartment, SETTINGS → the arena (crowd).
+  The game boots into it; the old every-mode menu is the **dev menu** (Settings → Dev menu, dev panel button; its L1
+  goes back). New Game asks before replacing a save, then starts a fresh career in the apartment; Load Save (greyed
+  without a save) continues in the apartment. Rooms' L1 / the apartment's Leave / the trailer's Leave → main menu.
 - **Round 57: the trailer yard** (owner's photo + generator sketch): the "Lights on a generator" backstory place,
   its own walkable scene (menu: Trailer (backstory); story events later). Orientation as in the photo: camper long side
   to us, rounded front end + big curtained windows on the left, door centre-right with wooden steps, rusty hitch

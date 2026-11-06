@@ -52,7 +52,7 @@ export class TrailerScene extends RoomScene {
     return [
       { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => this.goInside() },
       // round 57c: the end of the path (by the mailbox) leaves
-      { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Menu'); } },
+      { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Title'); } },
     ];
   }
 

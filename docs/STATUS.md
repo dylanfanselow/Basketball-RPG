@@ -155,6 +155,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `render/trailerArt.ts` (background + pieces: door closed/open, hitch, barrel, generator 2 frames + cord, cooler,
   bush); `scenes/TrailerScene.ts` (`goInside` → day ends, `TRAILER_DOOR_STORY` hooks, generator hum by distance
   `sfx.genHum`); Menu entry.
+  Round 58 main menu: `scenes/TitleScene.ts` (first scene; three background cameras — arena (`drawCourt` + hoops +
+  `Crowd`), school rain (`addSchoolCourt` + rain + lightning), home (`buildRoomArt` + lamp glow) — cross-faded, each
+  ignoring the others' objects, plus a menu camera with gradients and a colour wash; New Game confirm; settings panel:
+  volumes, mute, quarter length, fullscreen, dev menu); `MenuScene` = dev menu (L1 → Title).
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

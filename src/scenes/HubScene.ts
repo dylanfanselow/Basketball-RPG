@@ -37,7 +37,7 @@ export class HubScene extends Phaser.Scene {
       { label: c.flags.ult_unlocked ? 'Ultimate' : 'Ultimate  ???', action: () => this.scene.start('Ultimate') },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }) },
       { label: 'Go Home (apartment)', action: () => this.scene.start('Apartment') },
-      { label: 'Main Menu', action: () => this.scene.start('Menu') },
+      { label: 'Main Menu', action: () => this.scene.start('Title') },
     ]);
   }
   update() { this.inp.poll(); if (this.inp.pressed('dev')) (window as any).__toggleDev?.(); this.menu.update(this.inp); if (this.inp.cancel()) this.scene.start('Menu'); }
