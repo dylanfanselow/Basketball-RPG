@@ -96,8 +96,12 @@ export abstract class RoomScene extends Phaser.Scene {
   onActivity(_st: Station | null): void { /* optional */ }
 
   /** `at` = the id of the door you come in through (you appear in front of it). */
+  /** Came in through a door (round 47: it closes behind you with a sound). */
+  enteredByDoor = false;
+
   init(data?: { at?: string }) {
     const r = this.room(), door = data?.at ? r.doors.find((d) => d.id === data.at) : undefined;
+    this.enteredByDoor = !!door;
     this.pos = { ...(door ? door.spot : r.spawn) };
     this.vel = { x: 0, y: 0 }; this.face = door ? { x: 0, y: 1 } : { x: 0, y: 1 }; this.view = undefined;
     this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null; this.busy = false;
@@ -131,6 +135,7 @@ export abstract class RoomScene extends Phaser.Scene {
     buildIcons(tm);
     this.onCreate();
     this.makeHud();
+    if (this.enteredByDoor) this.time.delayedCall(260, () => sfx.doorClose()); // the door swings shut behind you
   }
 
   // ------------------------------------------------------------ HUD (on the roof, styled like the reference's boxes)
@@ -379,7 +384,8 @@ export abstract class RoomScene extends Phaser.Scene {
     if (door) {
       this.prompt.setText(`✕ ${door.label}`).setPosition(sxOf(door.spot.x), syOf(door.spot.y) - 160);
       if (this.inp.pressed('a')) {
-        if (door.to) { this.scene.start(door.to.scene, door.to.at ? { at: door.to.at } : undefined); return; }
+        if (door.to) { sfx.doorOpen(); this.scene.start(door.to.scene, door.to.at ? { at: door.to.at } : undefined); return; }
+        sfx.doorLocked();
         (window as any).__toast?.(door.soon ?? 'Coming soon');
       }
     }

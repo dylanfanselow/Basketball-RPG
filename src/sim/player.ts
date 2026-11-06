@@ -60,6 +60,8 @@ export class Player {
   liftAt = 0; liftVz = 9.5;
   /** rocked by a block or a strip: no actions until then */
   stunnedUntil = -9;
+  /** Round 47: when a second defender closed on him with the ball (-1 = not doubled). */
+  doubledSince = -1;
   lastBitAt = 0; boxOutHeld = false; bumpedUntil = -9; crashing = false; boxingOut = false; lastBumpAt = -9;
   burstUntil = 0; burstCdUntil = 0; burstStartAt = -9;
   /** pump fake picked up the dribble: can only pass or shoot */

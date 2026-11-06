@@ -1,6 +1,7 @@
 import type { GameSim } from '../game';
 import { Player } from '../player';
 import { POST } from '../post';
+import { scorerStyle, ATT } from '../attention';
 import { RESTRICTED_R, inFrontcourt } from '../court';
 import { add, dist, norm, scale, sub, lerpV, clamp, dot, len } from '../math';
 
@@ -34,6 +35,33 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       return;
     }
   }
+  // round 47: double / triple team on a hot scorer (helpers come after a short read; the rest rotate)
+  const load = sim.isAI(d) && ATT.load ? sim.loadFor() : null;
+  const tp = sim.trapTarget();
+  const trap = tp && tp.team !== d.team && ATT.trap ? sim.trapFor(tp) : null;
+  if (trap && tp && sim.isAI(d) && sim.time >= trap.start) {
+    const h = tp;
+    const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x };
+    const hi = trap.helpers.indexOf(d.id);
+    if (hi >= 0) {
+      // the first helper comes from the side he's on, the second takes the other side: with the on-ball man in front
+      // they make a wall between him and the rim (inside his shot cone, so every one of them contests)
+      const first = sim.players.find((q) => q.id === trap.helpers[0]);
+      const s0 = first && dot(sub(first.p, h.p), pr) >= 0 ? 1 : -1;
+      const sideSign = hi === 0 ? s0 : -s0;
+      sim.steer(d, add(h.p, add(scale(pr, 1.7 * sideSign), scale(toRim, 2.1))), true);
+      if (sim.time - trap.start > 0.4 && dist(d.p, h.p) < 3.8 && sim.rng.chance(dt * 0.7 * (d.sub.steal / 70))) sim.swipe(d);
+      return;
+    }
+    const rot = trap.rotate.get(d.id);
+    const left = rot ? sim.players.find((q) => q.id === rot) : undefined;
+    if (left) {
+      // split the difference between his own man and the man left open, a step toward the ball (ready to close out)
+      const mid = lerpV(man.p, left.p, 0.5);
+      sim.steer(d, add(mid, scale(norm(sub(ballP, mid)), 2.5)), true);
+      return;
+    }
+  }
   // post double team (round 44): the rotated helper leaves his man, comes to the ball side of the post and digs at it
   if (h?.post && h.post.helpId === d.id && sim.time >= h.post.helpAt && sim.isAI(d)) {
     const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x };
@@ -59,6 +87,27 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     // drop coverage: big guarding the screener sinks toward the rim
     if (h && !sim.switchAll && (d.role === '5' || d.role === '4') && man.state === 'screen' && dist(man.p, h.p) < 8) {
       target = add(rim, scale(norm(sub(h.p, rim)), 9));
+    }
+    // round 47, keyed in: deny the catch to a hot scorer who lives off the catch (shooters, post scorers): stand in the
+    // passing lane a step off him (front the post when he's down low)
+    const st = sim.tierOf(man) >= 1 ? scorerStyle(man) : null;
+    if (ATT.deny && h && st && st !== 'creator' && h.team === man.team) {
+      // half in the lane, half toward the rim, so a back cut isn't a free layup
+      const low = st === 'post' && dist(man.p, rim) < 13;
+      const lane = norm(lerpV(norm(sub(rim, man.p)), norm(sub(ballP, man.p)), low ? 0.8 : 0.6));
+      target = add(man.p, scale(lane, low ? 1.3 : 1.8));
+      urgent = true;
+    } else if (load && load.helpers.includes(d.id) && load.hot !== man) {
+      // loaded up: this defender is one of the hot scorer's doublers — sit in the gap toward him, ready to jump the catch
+      target = lerpV(target, load.hot.p, 0.25);
+    } else if (ATT.shade) {
+      // help shading: sag toward a hot scorer near you (not your man) so you're in his cone on the drive
+      for (const o of sim.offense()) {
+        const t = o === man ? 0 : sim.tierOf(o);
+        if (!t || !inFrontcourt(sim.side(o.team), o.p) || dist(o.p, target) > 14) continue;
+        target = add(target, scale(norm(sub(o.p, target)), t >= 2 ? 2 : 1.2));
+        break;
+      }
     }
     // help on a beaten drive
     if (h) {

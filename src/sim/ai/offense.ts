@@ -178,6 +178,23 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     return;
   }
 
+  // round 47: doubled / tripled in the half court: find the open man after a read (better passers see it sooner);
+  // a great handler sometimes splits it instead
+  if (inFrontcourt(side, p.p) && sim.opp(p.team).filter((o) => dist(o.p, p.p) < 4.2 && sim.time >= o.stunnedUntil && o.state !== 'fallen').length >= 2) {
+    if (p.doubledSince < 0) p.doubledSince = sim.time;
+    if (sim.time - p.doubledSince > 0.25 + 0.55 * (1 - readSkill(p))) {
+      let best: Player | null = null, bv = -1;
+      for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+      if (best && bv > 0.1) { p.doubledSince = -1; throwTo(sim, p, best); return; }
+      if (!p.deadDribble && p.sub.ballSpeed > 82 && sim.rng.chance(0.25)) {
+        const toRim = norm(sub(rim, p.p)); p.doubledSince = -1;
+        sim.dribbleMove(p, scale({ x: -toRim.y, y: toRim.x }, sim.rng.chance(0.5) ? 1 : -1));
+        p.aiMode = 'drive'; p.aiModeUntil = sim.time + 1.4;
+        return;
+      }
+    }
+  } else p.doubledSince = -1;
+
   // ---- transition: read the break before walking it up ----
   if (sim.inTransition(p.team) && p.aiMode !== 'drive') {
     const sinceCatchT = sim.time - p.receivedAt;

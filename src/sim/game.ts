@@ -1,3 +1,4 @@
+import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCap, TIER_NAME, Tier, HEAT_AT, ATT } from './attention';
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { rmap } from './attributes';
@@ -160,6 +161,14 @@ export class GameSim {
   freezeAI = false;
   forceClutch = false;
   switchAll: boolean;
+  /** Round 47: each offensive player's heat (keyed in → doubles → triples), by player id. */
+  heat: Record<string, Heat> = {};
+  /** Round 47: dev switch — no smart matchups and no extra attention (old role-based matchups). */
+  attentionOff = false;
+  /** Dev / stats: smart matchups only, no keyed in / doubles / triples. */
+  tiersOff = false;
+  /** Stats: trap activations this game (a new double or triple on a catch). */
+  trapCount = [0, 0, 0, 0];
   /** testing: coach features the user as often as anyone else, and teammates trust them */
   featureUser: boolean;
   focusQueue: string[] = [];
@@ -266,14 +275,131 @@ export class GameSim {
     }
   }
 
+  /**
+   * Who guards whom (round 47): the best-fitting defender on the biggest threat (reputation + heat), the weakest
+   * defender hidden on the least dangerous man (attention.ts `assignGuards`). Role matching when attention is off.
+   */
   assignMatchups() {
     for (const t of [0, 1] as const) {
-      const opps = this.opp(t);
-      for (const d of this.teams[t].onCourt) {
+      const opps = this.opp(t), defs = this.teams[t].onCourt;
+      if (!this.attentionOff && defs.length >= 2 && opps.length >= 2) {
+        const pick = assignGuards(defs, opps, (o) => threatWeight(scorerRep(o), this.heat[o.id]?.score ?? 0));
+        for (const d of defs) d.guarding = pick.get(d.id) ?? null;
+        continue;
+      }
+      for (const d of defs) {
         const m = opps.find((o) => o.role === d.role) ?? opps[0] ?? null;
         d.guarding = m ? m.id : null;
       }
     }
+  }
+
+  /** The attention a player draws right now (0 normal … 3 triple teams). */
+  tierOf(p: Player): Tier { return this.attentionOff ? 0 : (this.heat[p.id]?.tier ?? 0); }
+  /** The highest tier this game allows (triples in 5v5, doubles in 3v3, none in 1v1 / small practice). */
+  get tierCap(): Tier { return this.cfg.oneOnOne || this.tiersOff ? 0 : tierCap(Math.min(this.teams[0].onCourt.length, this.teams[1].onCourt.length)); }
+  /** After a field-goal attempt: heat up the shooter; a higher tier is announced. */
+  private heatAfterShot(s: Player, made: boolean) {
+    if (this.attentionOff || this.tierCap === 0) return;
+    const h = (this.heat[s.id] ??= newHeat());
+    const up = afterShot(h, scorerRep(s), s.box, this.teams[s.team].score, made, this.tierCap);
+    if (up) {
+      // the new matchups (his weight went up) take over at the next inbound / change of possession
+      this.emit({ kind: 'attention', text: `${TIER_NAME[up]} on ${s.name}`, team: s.team, pid: s.id, big: up >= 2, data: { tier: up } });
+    }
+  }
+  /**
+   * Round 47: the double / triple team on the ball. Helpers are picked once per catch (the defenders whose own men
+   * matter least, nearest first) and leave after a short read; the rest rotate: each abandoned man gets a defender
+   * splitting the difference between him and his own man. Null when nobody is trapping.
+   */
+  trap: { holderId: string; key: string; helpers: string[]; start: number; rotate: Map<string, string> } | null = null;
+  /** How much the man this defender guards matters (reputation + heat). */
+  manWeight(d: Player): number {
+    const m = this.players.find((q) => q.id === d.guarding);
+    return m ? threatWeight(scorerRep(m), this.heat[m.id]?.score ?? 0) : 0;
+  }
+  /** Helpers for a double / triple on h: the defenders whose own men matter least, nearest first; the rim protector
+   *  stays home unless the ball is close to the rim; a round 44 post double counts as the first. */
+  pickHelpers(h: Player, n: number, pool: Player[]): Player[] {
+    const helpers: Player[] = [];
+    const postHelp = h.post?.helpId ? pool.find((d) => d.id === h.post!.helpId) : undefined;
+    if (postHelp) helpers.push(postHelp);
+    const rimGuard = this.opp(h.team).slice().sort((a, b) => b.sub.block + b.height * 10 - (a.sub.block + a.height * 10))[0];
+    const farOut = dist(h.p, this.rim(h.team)) > 12;
+    const cost = (d: Player) => this.manWeight(d) * 12 + dist(d.p, h.p) * 0.5 + (farOut && d === rimGuard ? 12 : 0);
+    for (const d of pool.filter((x) => x !== postHelp).sort((a, b) => cost(a) - cost(b))) { if (helpers.length >= n) break; helpers.push(d); }
+    return helpers;
+  }
+  /**
+   * Loading up (round 47): while a scorer the defense doubles (tier 2+) is off the ball in the half court, his
+   * would-be helpers already sit in the gap toward him, so the double lands on the catch. Picked once per possession.
+   */
+  load: { key: string; hotId: string; helpers: string[] } | null = null;
+  loadFor(): { hot: Player; helpers: string[] } | null {
+    if (!this.live || this.tierCap < 2 || this.trap) { this.load = null; return null; }
+    const off = this.offense(), side = this.side(this.possession);
+    const hot = off.filter((p) => this.tierOf(p) >= 2 && inFrontcourt(side, p.p)).sort((a, b) => this.tierOf(b) - this.tierOf(a) || (this.heat[b.id]?.score ?? 0) - (this.heat[a.id]?.score ?? 0))[0];
+    if (!hot || this.inTransition(this.possession) || this.holder() === hot) { this.load = null; return null; }
+    const key = `${hot.id}|${this.tierOf(hot)}|${this.possession}|${this.phaseStartedAt}`;
+    if (this.load?.key !== key) {
+      const own = this.defenderOf(hot);
+      const pool = this.opp(hot.team).filter((d) => d !== own && this.isAI(d) && d.state !== 'fallen' && d !== this.defenderOf(this.holder() ?? hot));
+      this.load = { key, hotId: hot.id, helpers: this.pickHelpers(hot, this.tierOf(hot) - 1, pool).map((d) => d.id) };
+    }
+    return { hot, helpers: this.load.helpers };
+  }
+  /** Who a trap would be on: the ball handler, or a hot scorer the ball is being passed to (doubles come on the catch). */
+  trapTarget(): Player | null {
+    const st = this.ball.st;
+    if (st.kind === 'held') return st.holder;
+    if (st.kind === 'pass' && !st.oop) return st.to;
+    return null;
+  }
+  trapFor(h: Player | null): GameSim['trap'] {
+    const tier = h ? this.tierOf(h) : 0;
+    const side = h ? this.side(h.team) : 1;
+    const on = !!h && tier >= 2 && this.live && h.team === this.possession && inFrontcourt(side, h.p) && dist(h.p, this.rim(h.team)) < 25 && !this.inTransition(h.team) && h.state !== 'shoot';
+    if (!on) { this.trap = null; return null; }
+    // one trap per stint with the ball (it starts while the pass is on its way and stays on him until he gives it up)
+    const key = `${h!.id}|${tier}`;
+    if (this.trap?.key === key) return this.trap;
+    const onBall = this.defenderOf(h!);
+    const w = (d: Player) => this.manWeight(d);
+    const pool = this.opp(h!.team).filter((d) => d !== onBall && this.isAI(d) && d.state !== 'fallen');
+    const helpers = this.pickHelpers(h!, tier - 1, pool);
+    // rotation: each man left open gets the nearest remaining defender whose own man matters least
+    const rotate = new Map<string, string>();
+    const rest = pool.filter((d) => !helpers.includes(d));
+    const open = helpers.map((d) => this.players.find((q) => q.id === d.guarding)).filter((m): m is Player => !!m && m !== h)
+      .sort((a, b) => scorerRep(b) - scorerRep(a));
+    for (const m of open) {
+      const c = rest.filter((d) => !rotate.has(d.id) && d.guarding !== m.id).sort((a, b) => dist(a.p, m.p) + w(a) * 6 - (dist(b.p, m.p) + w(b) * 6))[0];
+      if (c) rotate.set(c.id, m.id);
+    }
+    const start = this.time + (this.ball.st.kind === 'pass' ? this.rng.range(0.05, 0.25) : this.rng.range(0.3, 0.6));
+    this.trap = { holderId: h!.id, key, helpers: helpers.map((d) => d.id), start, rotate };
+    this.trapCount[tier]++;
+    return this.trap;
+  }
+  /**
+   * A pass out of a trap: the scramble. The closest defender closes out on the catch (swapping men with the
+   * receiver's own defender when he's well behind the play).
+   */
+  private scrambleOnCatch(from: Player, to: Player) {
+    if (!ATT.scramble || !this.trap || this.trap.holderId !== from.id) return;
+    this.trap = null;
+    const own = this.defenderOf(to);
+    const near = this.opp(to.team).filter((d) => this.isAI(d) && d.state !== 'fallen').sort((a, b) => dist(a.p, to.p) - dist(b.p, to.p))[0];
+    if (!near || near === own || !own || !this.isAI(own)) return;
+    if (dist(near.p, to.p) + 4 < dist(own.p, to.p)) { const g = near.guarding; near.guarding = to.id; own.guarding = g; }
+  }
+
+  /** Dev: force a player's tier (heat follows so it doesn't drop back). */
+  forceTier(p: Player, tier: Tier) {
+    const h = (this.heat[p.id] ??= newHeat());
+    h.tier = tier; h.score = Math.max(h.score, HEAT_AT[tier]); h.since = { fga: p.box.fga, fgm: p.box.fgm, pts: p.box.pts };
+    this.assignMatchups();
   }
 
   private benchUser() {
@@ -1100,7 +1226,7 @@ export class GameSim {
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
       if (chase && along < 0.4) chance = Math.max(chance, this.ult.active!.level.blockChance);
       if (this.rng.chance(chance)) {
-        d.box.blk++; p.box.fga++;
+        d.box.blk++; p.box.fga++; this.heatAfterShot(p, false);
         if (ev.pts === 3) p.box.tpa++;
         this.lastShot = { ev, made: false, name: p.name, user: p === this.user, blocked: true, at: this.time };
         this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
@@ -1707,6 +1833,7 @@ export class GameSim {
         if (k >= 1) {
           if (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen') {
             this.giveBall(st.to);
+            this.scrambleOnCatch(st.from, st.to);
             this.quiet('catch', {}, st.to.id);
             this.assistCand = { passer: st.from, receiver: st.to, at: this.time };
             if (this.runner.cur?.options?.includes(this.playRole(st.to))) st.to.receivedAt = this.time;
@@ -1909,6 +2036,7 @@ export class GameSim {
       this.wasShotRebound = true;
       this.assistCand = null;
     }
+    if (!st.foul || st.made) this.heatAfterShot(s, st.made);
   }
 
   private freeThrows(p: Player, n: number): boolean {

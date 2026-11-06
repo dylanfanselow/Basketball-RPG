@@ -394,6 +394,34 @@ class Sfx {
     this.tone({ f: 1318.5, peak: 0.09, a: 0.002, d: 0.18 });
     this.tone({ type: 'triangle', f: 2637, peak: 0.03, a: 0.002, d: 0.1, at: 0.02 });
   }
+  /** Round 47: a door latch: a short bright click (two little metal clicks a few ms apart). */
+  private latch(at = 0) {
+    this.noiseHit({ type: 'highpass', f: 2600, peak: 0.22, a: 0.001, d: 0.025, at });
+    this.noiseHit({ type: 'bandpass', f: 1800, q: 3, peak: 0.14, a: 0.001, d: 0.03, at: at + 0.018 });
+    this.tone({ type: 'triangle', f: 2400, peak: 0.03, a: 0.001, d: 0.04, at });
+  }
+  /** A door opening: the latch, then a short wooden creak (low, slightly wobbly, gliding up) and a soft air swish. */
+  doorOpen() {
+    if (!this.ok()) return;
+    this.latch();
+    this.tone({ type: 'sawtooth', f: 210, f2: 330, peak: 0.045, a: 0.06, d: 0.28, at: 0.05, vib: { rate: 23, depth: 18 }, lp: 900 });
+    this.tone({ type: 'sawtooth', f: 420, f2: 610, peak: 0.018, a: 0.06, d: 0.22, at: 0.07, vib: { rate: 31, depth: 25 }, lp: 1400 });
+    this.noiseHit({ type: 'lowpass', f: 500, f2: 1400, peak: 0.08, a: 0.08, d: 0.25, at: 0.1 });
+  }
+  /** A door closing: a soft wooden thump into the frame, then the latch catching. */
+  doorClose() {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'lowpass', f: 420, peak: 0.4, a: 0.003, d: 0.16 });
+    this.tone({ f: 78, f2: 52, peak: 0.42, a: 0.003, d: 0.18 });
+    this.noiseHit({ type: 'bandpass', f: 900, q: 1.2, peak: 0.08, a: 0.004, d: 0.12, at: 0.01 }); // the frame rings a little
+    this.latch(0.06);
+  }
+  /** A locked door: the handle rattles (two quick latch clicks), nothing opens. */
+  doorLocked() {
+    if (!this.ok()) return;
+    this.latch(); this.latch(0.11);
+    this.tone({ f: 120, f2: 95, peak: 0.12, a: 0.003, d: 0.08, at: 0.11 });
+  }
   greenChime() {
     if (!this.ok()) return;
     for (const [at, f] of [[0, 1046.5], [0.06, 1568], [0.12, 2093]] as const) { this.tone({ f, peak: 0.13, a: 0.003, d: 0.35, at }); this.tone({ type: 'triangle', f: f * 2, peak: 0.04, a: 0.002, d: 0.2, at }); }
