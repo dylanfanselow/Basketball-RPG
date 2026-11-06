@@ -51,6 +51,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
   - **Ultimate:** a full meter powers it (□), **once a game**, and then the meter drops back to the 3rd notch. Every player has rhythm, and CPU stars use their own ultimates too.
   - **Dev panel → Attention:** "Shot chance equation" brings the old equation back to the top bar. Under My player: Fill rhythm, Rhythm −25, Reset my ult.
 - **Pick-Up Pressure** (Perimeter Defense ability, top of the tree, 2 points): when your swipe doesn't get the steal, a separate chance to make the dribbler pick up his dribble. It's better with Perimeter D and harder against great ball handlers. He has to pass or shoot within 5 seconds. Elite CPU perimeter defenders (about the top 10%) have it and reach more against a live dribble, so watch your handle against them.
+- **Footsteps** as you walk around the apartment (wood floor) and the garage (concrete), one per stride, a bit quicker and louder when you hurry.
 - **Doors** in the apartment and garage open with a latch and creak and close behind you; locked doors rattle.
 - **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.
 

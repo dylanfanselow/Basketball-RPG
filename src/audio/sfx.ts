@@ -394,6 +394,21 @@ class Sfx {
     this.tone({ f: 1318.5, peak: 0.09, a: 0.002, d: 0.18 });
     this.tone({ type: 'triangle', f: 2637, peak: 0.03, a: 0.002, d: 0.1, at: 0.02 });
   }
+  /**
+   * Round 52: a footstep while walking around a room. `concrete` = the garage (a short sneaker tap), otherwise a
+   * duller thud on the apartment's wood floor; `foot` alternates left / right (a touch of pan and pitch).
+   */
+  footstep(concrete: boolean, foot: number, run = false) {
+    if (!this.ok()) return;
+    const pan = foot ? 0.12 : -0.12, k = rand(0.92, 1.08), v = run ? 1.25 : 1;
+    if (concrete) {
+      this.noiseHit({ type: 'bandpass', f: 2100 * k, q: 1.3, peak: 0.05 * v, a: 0.002, d: 0.028, pan });
+      this.tone({ f: 120 * k, f2: 75, peak: 0.07 * v, a: 0.002, d: 0.05, pan });
+    } else {
+      this.noiseHit({ type: 'lowpass', f: 650 * k, peak: 0.07 * v, a: 0.003, d: 0.06, pan });
+      this.tone({ f: 92 * k, f2: 58, peak: 0.1 * v, a: 0.003, d: 0.07, pan });
+    }
+  }
   /** Round 47: a door latch: a short bright click (two little metal clicks a few ms apart). */
   private latch(at = 0) {
     this.noiseHit({ type: 'highpass', f: 2600, peak: 0.22, a: 0.001, d: 0.025, at });

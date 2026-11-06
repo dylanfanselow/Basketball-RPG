@@ -155,6 +155,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
+  offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
 - **Round 51: rhythm.**
   - **What it is:** a meter on the top bar (styled like the garage skill cards). Every player builds it with points and assists, plus smaller amounts from steals, blocks, charges, forced pick-ups and stops.
   - **Variety:** each scoring method (shot type × how it was made: catch, step-back, off the dribble, drive, post, transition, lob) gives ×0.6 less each time it's repeated in a game.

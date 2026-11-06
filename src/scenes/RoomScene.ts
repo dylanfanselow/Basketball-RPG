@@ -96,6 +96,8 @@ export abstract class RoomScene extends Phaser.Scene {
   onActivity(_st: Station | null): void { /* optional */ }
 
   /** `at` = the id of the door you come in through (you appear in front of it). */
+  /** Footsteps (round 52): distance at the last step, and which foot. */
+  stepAt = 0; stepFoot = 0;
   /** Came in through a door (round 47: it closes behind you with a sound). */
   enteredByDoor = false;
 
@@ -104,7 +106,7 @@ export abstract class RoomScene extends Phaser.Scene {
     this.enteredByDoor = !!door;
     this.pos = { ...(door ? door.spot : r.spawn) };
     this.vel = { x: 0, y: 0 }; this.face = door ? { x: 0, y: 1 } : { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null; this.busy = false;
+    this.dist = 0; this.t = 0; this.stepAt = 0; this.stepFoot = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null; this.busy = false;
   }
 
   create() {
@@ -366,6 +368,11 @@ export abstract class RoomScene extends Phaser.Scene {
     const moved = Math.hypot(this.pos.x - before.x, this.pos.y - before.y);
     if (mag > 0.2) this.face = { x: m.x, y: m.y };
     this.dist += moved;
+    // round 52: footsteps — one per stride while walking (concrete in the garage, wood in the apartment)
+    if (moved > 0.001) {
+      const run = Math.hypot(this.vel.x, this.vel.y) > WALK * 1.15, stride = run ? 3.1 : 2.4;
+      if (this.dist - this.stepAt >= stride) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.room().id === 'garage', this.stepFoot, run); }
+    } else this.stepAt = this.dist - 1.6; // the first step comes quickly after you start moving
 
     // things to do (sleep) first, then equipment, then doors
     const act = this.actions().find((a) => Math.hypot(this.pos.x - a.spot.x, this.pos.y - a.spot.y) <= (a.reach ?? 1.5));
