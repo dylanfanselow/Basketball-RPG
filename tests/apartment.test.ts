@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
-import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX, takeOrbEnergy, ORB_ENERGY, ORB_XP, spendStatPoint } from '../src/career/career';
+import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX, takeOrbEnergy, ORB_ENERGY, ORB_XP, spendStatPoint, advanceDay, sleepPlan, addEnergy, ENERGY_ORB, gameDay } from '../src/career/career';
 
 const polys = solids();
 const inside = (poly: { x: number; y: number }[], p: { x: number; y: number }) => {
@@ -164,6 +164,27 @@ describe('skill levels (round 41)', () => {
   });
 });
 
+describe('round 43: sleep + calendar', () => {
+  it('each night counts the key game down by one, to today (0)', () => {
+    const c = newCareer('A', 'SG', 'LAL');
+    c.season.gameNo = 1;
+    const k = nextKeyGame(c)!, start = k.daysAway;
+    advanceDay(c);
+    expect(nextKeyGame(c)!.daysAway).toBe(start - 1);
+    for (let i = 0; i < 40; i++) advanceDay(c);
+    expect(nextKeyGame(c)!.daysAway).toBe(0);
+    expect(c.life.day).toBe(42);
+  });
+  it('sleep sends enough energy orbs to refill the bar, capped at 100', () => {
+    const c = newCareer('A', 'SG');
+    c.life.energy = 33;
+    expect(sleepPlan(c)).toBe(Math.ceil(67 / ENERGY_ORB));
+    for (let i = sleepPlan(c); i > 0; i--) addEnergy(c, ENERGY_ORB);
+    expect(c.life.energy).toBe(100);
+    c.life.energy = 100; expect(sleepPlan(c)).toBe(0);
+  });
+});
+
 describe('career life + key games', () => {
   it('new careers have a life block; v2 saves migrate to v3', () => {
     const c = newCareer('A', 'SG');
@@ -179,10 +200,10 @@ describe('career life + key games', () => {
     const k = nextKeyGame(c)!;
     expect(k.index).toBe(0);
     expect(k.daysAway).toBe(1);
-    c.season.gameNo = 1;
+    c.season.gameNo = 1; c.life.day = 2;
     const k2 = nextKeyGame(c)!;
     expect(k2.index).toBeGreaterThan(0);
-    expect(k2.daysAway).toBe((k2.index - 1) * 2 + 1);
+    expect(k2.daysAway).toBe(gameDay(k2.index) - 2);
     expect(isKeyGame(c, k2.index)).toBeTruthy();
   });
 });

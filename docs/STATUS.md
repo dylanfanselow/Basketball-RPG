@@ -153,6 +153,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).
 
 ## Apartment (round 36)
+- Round 43: `ORB_COL` / `SKILL_COL` (RoomScene) colour each orb by target (`OrbTo` = stat | 'energy');
+  `sendEnergyOrbs` → `energyBox`, `addEnergy`. `RoomScene.actions()` (spot actions before stations) + `busy`
+  (cutscene: no input, room keeps animating); `ApartmentScene.sleep()` (night overlay, Zzz, `advanceDay`, DAY banner,
+  energy orbs = `sleepPlan`). Calendar: `gameDay(i) = 2 + 2i`, `daysUntilGame` from `life.day` (playing a game moves
+  the day to its date); HUD "TODAY". Dev: "Sleep (next day)".
 - Round 42: workout orbs. Mini-games emit `'orb'` (RepBar per rep, treadmill every `ORB_HITS` = 5 hits, a made
   shot); `ORBS` (minigames.ts) maps station → stats; `GarageScene.playSounds` calls `RoomScene.sendOrbs(stats, from)`
   (shot orbs wait for the rim phase). `sendOrbs` pays `takeOrbEnergy` (ORB_ENERGY 2) per orb, `updateOrbs` flies them

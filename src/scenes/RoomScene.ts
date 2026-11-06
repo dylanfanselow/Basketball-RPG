@@ -3,7 +3,7 @@ import { InputMapper } from '../input/input';
 import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
-import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP } from '../career/career';
+import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
 import { sfx } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
@@ -15,7 +15,27 @@ import { V, Piece, RoomDef, Station, stationU, actorDepthFt, pieceDepthFt, PLAYE
 
 export const WALK = 6.2, JOG = 10.5; // ft/s
 export const ART = 1 / AS;           // scene units per art px (4/3)
-const ROOM_TINT = 0xfff0dc;          // warm room light on the player, so he sits in the same lighting as the furniture
+const ROOM_TINT = 0xfff0dc;
+
+/** Skill card colours (round 41), shared by the orbs flying to each card (round 43). */
+export const SKILL_COL: Record<CoreStat, { tag: string; base: number; edge: number; dark: number; fill: number; track: number }> = {
+  shooting: { tag: 'SHT', base: 0x5a8a2a, edge: 0xa6d65a, dark: 0x3d6420, fill: 0x9ae04a, track: 0x2c4a16 },
+  finishing: { tag: 'FIN', base: 0x2f5f8f, edge: 0x7ab8ee, dark: 0x22476c, fill: 0x6ab8f0, track: 0x18324e },
+  strength: { tag: 'STR', base: 0x8e1c30, edge: 0xe06a86, dark: 0x6a1424, fill: 0xf05a80, track: 0x4a0e1a },
+  mobility: { tag: 'MOB', base: 0x3aa0c0, edge: 0xa8eaff, dark: 0x2a7a94, fill: 0x9ff2ff, track: 0x1e5a6e },
+  playmaking: { tag: 'PLY', base: 0xb8901c, edge: 0xffe07a, dark: 0x8a6a12, fill: 0xffd84a, track: 0x5e4810 },
+};
+/** Where an orb goes: a skill card, or the energy bar (sleep). */
+export type OrbTo = CoreStat | 'energy';
+/** Orb colours per target: dark rim, body, lighter top / glow, shine. Energy orbs are the owner's lime green. */
+export const ORB_COL: Record<OrbTo, { rim: number; body: number; light: number; shine: number }> = {
+  shooting: { rim: 0x2c4a16, body: 0x5a9a28, light: 0x8fd23a, shine: 0xd0f5a0 },
+  finishing: { rim: 0x18324e, body: 0x2f6fb0, light: 0x6ab8f0, shine: 0xd0ecff },
+  strength: { rim: 0x4a0e1a, body: 0xc0284a, light: 0xf05a80, shine: 0xffc8d6 },
+  mobility: { rim: 0x1e5a6e, body: 0x3ab8d8, light: 0x9ff2ff, shine: 0xeaffff },
+  playmaking: { rim: 0x5e4810, body: 0xd8a818, light: 0xffd84a, shine: 0xfff4c0 },
+  energy: { rim: 0x245a10, body: 0x6cc81e, light: 0x9be63a, shine: 0xd8ff9a },
+};          // warm room light on the player, so he sits in the same lighting as the furniture
 
 /**
  * A walkable cutaway room (apartment, garage, …): you walk around (stick / WASD, R2 / Shift to hurry), walls and
@@ -41,9 +61,11 @@ export abstract class RoomScene extends Phaser.Scene {
   private flashes: { stat: CoreStat; at: number; text: Phaser.GameObjects.Text }[] = [];
   private hudFx: Phaser.GameObjects.Graphics | null = null;
   /** Workout XP orbs in flight (round 42): from where you trained to a skill card; the XP lands when the orb does. */
-  private orbs: { stat: CoreStat; from: V; at: number; side: number }[] = [];
+  private orbs: { to: OrbTo; amount: number; from: V; at: number; side: number }[] = [];
+  /** The energy bar's box on the HUD (energy orbs fly into it). */
+  energyBox = { x: 346, y: 35, w: 72, h: 10 };
   private orbG: Phaser.GameObjects.Graphics | null = null;
-  private pops: { stat: CoreStat; at: number }[] = [];
+  private pops: { to: OrbTo; at: number }[] = [];
   private tiredAt = -9;
   private tiredText: Phaser.GameObjects.Text | null = null;
   sheetKey = '';
@@ -60,6 +82,10 @@ export abstract class RoomScene extends Phaser.Scene {
   abstract buildArt(tm: Phaser.Textures.TextureManager): { bg: string; pieces: ArtPiece[] };
   /** Extra things you can't walk through this frame (e.g. the cat). */
   extraObstacles(): Poly[] { return []; }
+  /** Things you can do at a spot that aren't workouts (round 43: sleep on the couch). Checked before stations. */
+  actions(): { label: string; spot: V; reach?: number; run: () => void }[] { return []; }
+  /** A cutscene is playing (sleeping): no walking or prompts; the room keeps animating. */
+  busy = false;
   /** Room-specific objects after the art is placed. */
   onCreate(): void { /* optional */ }
   /** Room-specific per-frame work (animations, pets…), after you've moved. */
@@ -74,7 +100,7 @@ export abstract class RoomScene extends Phaser.Scene {
     const r = this.room(), door = data?.at ? r.doors.find((d) => d.id === data.at) : undefined;
     this.pos = { ...(door ? door.spot : r.spawn) };
     this.vel = { x: 0, y: 0 }; this.face = door ? { x: 0, y: 1 } : { x: 0, y: 1 }; this.view = undefined;
-    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null;
+    this.dist = 0; this.t = 0; this.pieces = []; this.artOf = new Map(); this.activity = null; this.actT = 0; this.mini = null; this.busy = false;
   }
 
   create() {
@@ -155,19 +181,14 @@ export abstract class RoomScene extends Phaser.Scene {
     // energy / food
     panel(258, 22, 168, 66, 0x6b4c34, 0x9b7a55);
     icon(266, 40, 'energy', 2); T(284, 31, 'ENERGY', 11, '#ffe9a8'); bar(346, 35, 72, L.energy / 100, 0x6fd24a);
+    this.energyBox = { x: 346, y: 35, w: 72, h: 10 };
     icon(266, 70, 'food', 2); T(284, 61, 'FOOD', 11, '#ffe9a8'); bar(346, 65, 72, L.food / 100, 0x6fd24a);
     // level block (round 41, the owner's reference): LVL + a long XP bar, then the five skill cards
     panel(436, 22, 248, 66, 0x5a3f2a, 0x9b7a55);
     icon(442, 31, 'star', 2);
     T(458, 23, `LVL ${c.level}`, 14, '#ffffff', 3);
     pill(526, 27, 150, 8, c.xp / xpToNext(c.level), 0x8a3e1a, 0xe8743a);
-    const SK: Record<CoreStat, { tag: string; base: number; edge: number; dark: number; fill: number; track: number }> = {
-      shooting: { tag: 'SHT', base: 0x5a8a2a, edge: 0xa6d65a, dark: 0x3d6420, fill: 0x9ae04a, track: 0x2c4a16 },
-      finishing: { tag: 'FIN', base: 0x2f5f8f, edge: 0x7ab8ee, dark: 0x22476c, fill: 0x6ab8f0, track: 0x18324e },
-      strength: { tag: 'STR', base: 0x8e1c30, edge: 0xe06a86, dark: 0x6a1424, fill: 0xf05a80, track: 0x4a0e1a },
-      mobility: { tag: 'MOB', base: 0x3aa0c0, edge: 0xa8eaff, dark: 0x2a7a94, fill: 0x9ff2ff, track: 0x1e5a6e },
-      playmaking: { tag: 'PLY', base: 0xb8901c, edge: 0xffe07a, dark: 0x8a6a12, fill: 0xffd84a, track: 0x5e4810 },
-    };
+    const SK = SKILL_COL;
     // the olive-brown strip the cards sit in (like the gaps between the reference's cards)
     g.fillStyle(0x1e1410, 1).fillRoundedRect(440, 42, 240, 43, 4);
     g.fillStyle(0x6e5c3e, 1).fillRoundedRect(441, 43, 238, 41, 4);
@@ -191,7 +212,7 @@ export abstract class RoomScene extends Phaser.Scene {
     const kg = nextKeyGame(c);
     const opp = kg ? TEAMS.find((t) => t.id === kg.opponent) : null;
     icon(702, 46, 'ball', 3);
-    T(730, 28, kg ? `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}` : 'SEASON DONE', 20);
+    T(730, 28, !kg ? 'SEASON DONE' : kg.daysAway === 0 ? 'TODAY' : `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}`, 20);
     T(730, 58, kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
     // money / day
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
@@ -220,11 +241,17 @@ export abstract class RoomScene extends Phaser.Scene {
     let sent = 0;
     for (const stat of stats) {
       if (!takeOrbEnergy(app.career)) { this.showTired(from); break; }
-      this.orbs.push({ stat, from: { ...from }, at: this.t + sent * 0.16, side: sent % 2 ? 1 : -1 });
+      this.orbs.push({ to: stat, amount: ORB_XP, from: { ...from }, at: this.t + sent * 0.16, side: sent % 2 ? 1 : -1 });
       sent++;
     }
     if (sent) { app.changed(); sfx.orbSend(); }
   }
+  /** Sleep (round 43): `n` energy orbs (each worth `each`) rise from `from` into the energy bar, free of charge. */
+  sendEnergyOrbs(n: number, each: number, from: V) {
+    for (let i = 0; i < n; i++) this.orbs.push({ to: 'energy', amount: each, from: { x: from.x + (i % 3 - 1) * 14, y: from.y }, at: this.t + i * 0.14, side: i % 2 ? 1 : -1 });
+    if (n) sfx.orbSend();
+  }
+  private targetBox(to: OrbTo) { return to === 'energy' ? this.energyBox : this.skillCards.get(to); }
   private showTired(from: V) {
     if (this.t - this.tiredAt < 1.5) return;
     this.tiredAt = this.t;
@@ -233,8 +260,8 @@ export abstract class RoomScene extends Phaser.Scene {
     sfx.blip(false);
   }
   /** Where an orb is k (0..1) along its flight: a lazy arc up off you, then it speeds into the card. */
-  private orbAt(o: { stat: CoreStat; from: V; side: number }, k: number): V | null {
-    const b = this.skillCards.get(o.stat); if (!b) return null;
+  private orbAt(o: { to: OrbTo; from: V; side: number }, k: number): V | null {
+    const b = this.targetBox(o.to); if (!b) return null;
     const to = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
     const c = { x: o.from.x + o.side * 70, y: Math.min(o.from.y, to.y) + (o.from.y - to.y) * 0.15 - 40 };
     const e = k * k * (1.6 - 0.6 * k); // slow start, fast finish
@@ -245,40 +272,43 @@ export abstract class RoomScene extends Phaser.Scene {
     if (!this.orbG) this.orbG = this.add.graphics().setDepth(9400);
     const g = this.orbG.clear();
     const R = 6.5;
-    const ball = (p: V, a = 1, r = R) => {
-      g.fillStyle(0x7ed321, 0.22 * a).fillCircle(p.x, p.y, r * 1.9);          // glow
-      g.fillStyle(0x245a10, a).fillCircle(p.x, p.y, r + 1.2);                 // dark rim
-      g.fillStyle(0x6cc81e, a).fillCircle(p.x, p.y, r);
-      g.fillStyle(0x9be63a, a).fillCircle(p.x - r * 0.18, p.y - r * 0.18, r * 0.72);
-      g.fillStyle(0xd8ff9a, a).fillCircle(p.x - r * 0.38, p.y - r * 0.4, r * 0.28); // shine
+    // each orb wears the colours of where it's going (round 43)
+    const ball = (to: OrbTo, p: V, a = 1, r = R) => {
+      const c = ORB_COL[to];
+      g.fillStyle(c.light, 0.22 * a).fillCircle(p.x, p.y, r * 1.9);          // glow
+      g.fillStyle(c.rim, a).fillCircle(p.x, p.y, r + 1.2);                   // dark rim
+      g.fillStyle(c.body, a).fillCircle(p.x, p.y, r);
+      g.fillStyle(c.light, a).fillCircle(p.x - r * 0.18, p.y - r * 0.18, r * 0.72);
+      g.fillStyle(c.shine, a).fillCircle(p.x - r * 0.38, p.y - r * 0.4, r * 0.28); // shine
     };
     this.orbs = this.orbs.filter((o) => {
       const k = (this.t - o.at) / RoomScene.ORB_FLIGHT;
       if (k < 0) return true;
-      if (k >= 1) { this.landOrb(o.stat); return false; }
-      for (const [dk, a] of [[0.09, 0.45], [0.05, 0.7]] as const) { const q = this.orbAt(o, Math.max(0, k - dk)); if (q) ball(q, a * (1 - k * 0.3), R * (1 - dk * 3)); }
-      const p = this.orbAt(o, k); if (p) ball(p, Math.min(1, k * 8), R * (k < 0.12 ? 0.4 + k * 5 : 1));
+      if (k >= 1) { this.landOrb(o.to, o.amount); return false; }
+      for (const [dk, a] of [[0.09, 0.45], [0.05, 0.7]] as const) { const q = this.orbAt(o, Math.max(0, k - dk)); if (q) ball(o.to, q, a * (1 - k * 0.3), R * (1 - dk * 3)); }
+      const p = this.orbAt(o, k); if (p) ball(o.to, p, Math.min(1, k * 8), R * (k < 0.12 ? 0.4 + k * 5 : 1));
       return true;
     });
-    // the card takes the orb: a green ring pops out of it
+    // the card (or the energy bar) takes the orb: a ring in the orb's colour pops out of it
     this.pops = this.pops.filter((p) => {
       const k = (this.t - p.at) / 0.4; if (k >= 1) return false;
-      const b = this.skillCards.get(p.stat); if (!b) return false;
-      g.lineStyle(3 * (1 - k), 0x9be63a, 1 - k).strokeRoundedRect(b.x - k * 6, b.y - k * 6, b.w + k * 12, b.h + k * 12, 5 + k * 3);
-      g.fillStyle(0xd8ff9a, 0.35 * (1 - k)).fillRoundedRect(b.x, b.y, b.w, b.h, 4);
+      const b = this.targetBox(p.to); if (!b) return false;
+      const c = ORB_COL[p.to];
+      g.lineStyle(3 * (1 - k), c.light, 1 - k).strokeRoundedRect(b.x - k * 6, b.y - k * 6, b.w + k * 12, b.h + k * 12, Math.min(5 + k * 3, (b.h + k * 12) / 2));
+      g.fillStyle(c.shine, 0.35 * (1 - k)).fillRoundedRect(b.x, b.y, b.w, b.h, Math.min(4, b.h / 2));
       return true;
     });
     if (this.tiredText) { const k = (this.t - this.tiredAt) / 1.4; this.tiredText.setVisible(k < 1).setAlpha(1 - k * k).setY(this.tiredText.y - 0.4); }
   }
-  private landOrb(stat: CoreStat) {
-    const up = addSkillXp(app.career, stat, ORB_XP);
-    this.pops.push({ stat, at: this.t });
-    if (up) sfx.greenChime(); else sfx.orbPop();
+  private landOrb(to: OrbTo, amount: number) {
+    this.pops.push({ to, at: this.t });
+    if (to === 'energy') { addEnergy(app.career, amount); sfx.orbPop(); }
+    else { const up = addSkillXp(app.career, to, amount); if (up) sfx.greenChime(); else sfx.orbPop(); }
     app.changed();
   }
   /** Orbs still flying when the room closes land at once (their XP is never lost). */
   flushOrbs() {
-    for (const o of this.orbs) addSkillXp(app.career, o.stat, ORB_XP);
+    for (const o of this.orbs) { if (o.to === 'energy') addEnergy(app.career, o.amount); else addSkillXp(app.career, o.to, o.amount); }
     if (this.orbs.length) app.changed();
     this.orbs = []; this.pops = []; this.orbG = null; this.hudFx = null; this.tiredText = null; this.flashes = [];
   }
@@ -307,6 +337,7 @@ export abstract class RoomScene extends Phaser.Scene {
     this.updateHud();
     this.updateOrbs();
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
+    if (this.busy) { this.prompt.setVisible(false); this.onUpdate(dt); this.sortDepths(); this.drawDebug(); return; }
     if (this.activity) {
       // working out: stay on the equipment and play its mini-game; only L1 (Esc) stops (✕ / ○ are game buttons)
       this.actT += dt;
@@ -331,10 +362,16 @@ export abstract class RoomScene extends Phaser.Scene {
     if (mag > 0.2) this.face = { x: m.x, y: m.y };
     this.dist += moved;
 
-    // equipment first, then doors
-    const st = stationNear(this.pos, this.room());
-    const door = st ? null : doorNear(this.pos, 1.6, this.room());
-    this.prompt.setVisible(!!door || !!st);
+    // things to do (sleep) first, then equipment, then doors
+    const act = this.actions().find((a) => Math.hypot(this.pos.x - a.spot.x, this.pos.y - a.spot.y) <= (a.reach ?? 1.5));
+    if (act) {
+      this.prompt.setVisible(true).setText(`✕ ${act.label}`).setPosition(sxOf(act.spot.x), syOf(act.spot.y) - 165);
+      this.drawPlayer(0);
+      if (this.inp.pressed('a')) { act.run(); return; }
+    }
+    const st = act ? null : stationNear(this.pos, this.room());
+    const door = st || act ? null : doorNear(this.pos, 1.6, this.room());
+    if (!act) this.prompt.setVisible(!!door || !!st);
     if (st) {
       this.prompt.setText(`✕ ${st.label}`).setPosition(sxOf(st.spot.x), syOf(st.spot.y) - 165);
       if (this.inp.pressed('a')) this.startActivity(st);

@@ -124,6 +124,7 @@ export function applyGameResult(c: CareerState, r: GameResult) {
   c.xp += xp;
   let levels = 0;
   while (c.xp >= xpToNext(c.level)) { c.xp -= xpToNext(c.level); c.level++; c.statPoints += 3; c.perkPoints += 1; levels++; }
+  c.life.day = Math.max(c.life.day, gameDay(c.season.gameNo)); // the game was played on its day
   c.season.gameNo++;
   if (r.won) c.season.wins++; else c.season.losses++;
   const evo: string[] = [];
@@ -175,7 +176,18 @@ export function isKeyGame(c: CareerState, i: number): string | null {
   if (i % 4 === 3) return 'National TV';
   return null;
 }
-export const daysUntilGame = (c: CareerState, i: number) => Math.max(0, (i - c.season.gameNo) * 2 + 1);
+/** Games are on the calendar (round 43): game i is on day 2 + 2i (the opener is tomorrow from day 1). */
+export const gameDay = (i: number) => 2 + 2 * i;
+/** Days from today until game i (0 = today). */
+export const daysUntilGame = (c: CareerState, i: number) => Math.max(0, gameDay(i) - c.life.day);
+/** Sleeping refills energy with orbs worth this much each. */
+export const ENERGY_ORB = 10, ENERGY_MAX = 100;
+/** How many energy orbs a night's sleep sends (enough to refill the bar). */
+export const sleepPlan = (c: CareerState) => Math.ceil(Math.max(0, ENERGY_MAX - c.life.energy) / ENERGY_ORB);
+/** Add energy (capped). */
+export function addEnergy(c: CareerState, n: number) { c.life.energy = Math.min(ENERGY_MAX, Math.max(0, c.life.energy + n)); }
+/** Sleep: the next day starts (energy comes back through the orbs the room sends). */
+export function advanceDay(c: CareerState) { c.life.day++; }
 export function nextKeyGame(c: CareerState): { index: number; opponent: string; daysAway: number; why: string } | null {
   const n = c.season.schedule.length;
   for (let i = c.season.gameNo; i < n; i++) {

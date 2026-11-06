@@ -1,7 +1,7 @@
 import { app } from '../state';
 import { CORE_STATS, TREES, ULTIMATES, PLAYS, NODES } from '../sim/data';
 import { POSITIONS, HEIGHTS } from '../sim/attributes';
-import { newCareer, CareerState, addSkillXp, newSkills, setStat } from '../career/career';
+import { newCareer, CareerState, addSkillXp, newSkills, setStat, advanceDay } from '../career/career';
 import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
@@ -169,6 +169,7 @@ export function initDevPanel() {
       btn('Skills → 40', () => { c.skills = newSkills(); for (const st of CORE_STATS) setStat(c, st, 40); syncLive(); }),
       btn('Energy 100', () => { c.life.energy = 100; app.changed(); }, 'Refill energy (workout orbs cost energy)'),
       btn('Energy 0', () => { c.life.energy = 0; app.changed(); }, 'Empty energy (test "TOO TIRED")'),
+      btn('Sleep (next day)', () => { advanceDay(c); c.life.energy = 100; app.changed(); }, 'Skip to the next day with full energy (in the apartment: walk to the couch, ✕ Sleep)'),
     ));
     root.append(section('Core stats', stats));
 

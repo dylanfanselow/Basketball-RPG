@@ -154,6 +154,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 43: colour-coded orbs + sleep.** Orbs wear their target's colour (Shooting green, Finishing blue, Strength
+  red, Mobility light blue, Playmaking yellow; energy = the owner's lime green). **✕ Sleep at the couch** ends the day:
+  the room goes dark with Zzz, a "DAY n" banner, then the lights come back and **green orbs rise from the couch into
+  the energy bar** (10 each) until it's full. Games are on the calendar (game i on day 2 + 2i), so sleeping counts the
+  key game down; on its day the HUD says **TODAY**. Missing / playing games by date isn't built yet; food unchanged.
 - **Round 42: workouts send XP orbs** (green, like the owner's picture) from you to the skill cards; the XP lands when
   the orb hits its card (bar fills, pling; a level-up flashes + chimes). **Each orb costs energy** (2); at 0 energy
   nothing is sent ("TOO TIRED · REST TO TRAIN"). What earns orbs: one full bar on the squat / bench / dribbling mat,

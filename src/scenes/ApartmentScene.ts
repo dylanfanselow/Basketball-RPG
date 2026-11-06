@@ -1,7 +1,11 @@
 import Phaser from 'phaser';
 import { buildRoomArt, buildCatTexture, buildGlow, CAT_W, LAMP_ART } from '../render/roomArt';
-import { RS, V, Piece, RoomDef, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R } from '../world/apartment';
+import { RS, V, Piece, RoomDef, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R, SPOTS } from '../world/apartment';
 import { RoomScene, ART, circlePoly } from './RoomScene';
+import { FONT } from './ui';
+import { app } from '../state';
+import { sfx } from '../audio/sfx';
+import { advanceDay, sleepPlan, ENERGY_ORB } from '../career/career';
 
 /**
  * The starter apartment (round 36): your base of operations. The left door leads to the garage gym, the front door
@@ -32,6 +36,42 @@ export class ApartmentScene extends RoomScene {
     this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(this.textures)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
+  }
+
+  actions() { return [{ label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() }]; }
+
+  /**
+   * Sleep on the couch (round 43): the room goes dark, Zzz float off the couch, the next day starts ("DAY n"), the
+   * lights come back and green energy orbs rise from the couch into the energy bar until it's full.
+   */
+  sleep() {
+    if (this.busy) return;
+    this.busy = true;
+    this.player.setVisible(false); this.shadow.clear();
+    const c = app.career, couch = { x: sxOf(25.4), y: syOf(1.6) - 70 };
+    const night = this.add.rectangle(0, 0, 1280, 720, 0x0a1030, 1).setOrigin(0, 0).setDepth(8900).setAlpha(0);
+    this.tweens.add({ targets: night, alpha: 0.86, duration: 800, ease: 'Sine.easeInOut' });
+    const zs = [0, 1, 2].map((i) => {
+      const z = this.add.text(couch.x + i * 14, couch.y, 'Z', { fontFamily: FONT, fontSize: `${16 + i * 6}px`, color: '#cfe0ff', fontStyle: 'bold', stroke: '#0a1030', strokeThickness: 4 }).setOrigin(0.5).setDepth(8950).setAlpha(0);
+      this.tweens.add({ targets: z, y: couch.y - 46 - i * 10, x: couch.x + 18 + i * 16, alpha: { from: 0, to: 1 }, duration: 900, delay: 500 + i * 380, yoyo: false, onComplete: () => this.tweens.add({ targets: z, alpha: 0, duration: 400 }) });
+      return z;
+    });
+    sfx.blip(true);
+    this.time.delayedCall(1700, () => {
+      advanceDay(c); app.changed();
+      const banner = this.add.text(640, 330, `DAY ${c.life.day}`, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+      this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 700, yoyo: true, onComplete: () => banner.destroy() });
+      sfx.greenChime();
+    });
+    this.time.delayedCall(2700, () => {
+      this.tweens.add({ targets: night, alpha: 0, duration: 700, ease: 'Sine.easeInOut', onComplete: () => night.destroy() });
+      for (const z of zs) z.destroy();
+      this.pos = { ...SPOTS.couch }; this.face = { x: 0, y: 1 }; this.view = undefined; this.vel = { x: 0, y: 0 };
+    });
+    this.time.delayedCall(3300, () => {
+      this.busy = false;
+      this.sendEnergyOrbs(sleepPlan(c), ENERGY_ORB, { x: sxOf(SPOTS.couch.x), y: syOf(SPOTS.couch.y) - 110 });
+    });
   }
 
   extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
