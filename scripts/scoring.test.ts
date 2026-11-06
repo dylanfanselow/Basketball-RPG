@@ -11,8 +11,8 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
   const pairs = [['LAL', 'NYK'], ['DAL', 'OKC'], ['DEN', 'MIL'], ['BOS', 'PHI']];
   const lines: string[] = [];
   let stars = { pts: 0, fga: 0, fgm: 0, n: 0 }, rest = { pts: 0, fga: 0, fgm: 0 }, ast = 0;
-  const tiers = [0, 0, 0, 0]; let traps = 0, teamPts = 0, share = 0; const hg = { pts: 0, fga: 0, fgm: 0, share: 0, n: 0, tiers: [0, 0, 0, 0] }; const con: Record<string, any> = {};
-  for (const [a, b] of pairs) for (let seed = 1; seed <= 3; seed++) {
+  const tiers = [0, 0, 0, 0]; let traps = 0, teamPts = 0, share = 0; const ab = { smart: 0, random: 0, wins: 0, n: 0 }; const hg = { pts: 0, fga: 0, fgm: 0, share: 0, n: 0, tiers: [0, 0, 0, 0] }; const con: Record<string, any> = {};
+  for (const [a, b] of pairs) for (let seed = 1; seed <= Number(process.env.SEEDS ?? 3); seed++) {
     const ta = TEAMS.find((t) => t.id === a)!, tb = TEAMS.find((t) => t.id === b)!;
     const g = new GameSim({ mode: 'game', quarterLen: 300, seed, teams: [ta, tb], rosters: [generateRoster(ta, 0), generateRoster(tb, 1)], userId: null, trust: { team: 50, coach: 50 }, ult: { unlocked: false, id: null, level: 0 } });
     const no = mode.startsWith('no-') ? mode.slice(3) : '';
@@ -25,6 +25,10 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
       (g as any).pass = (from: any, to: any) => { if (from === hog) return; return orig(from, from.team === hog.team && hog.team === g.possession && g.teams[0].onCourt.includes(hog) ? hog : to); };
     }
     OPEN_COURT.on = !process.env.NO_OPEN;
+    // COACH=ab: one side on the smart coach, the other on random calls (swapped every other seed)
+    const smartSide = (seed % 2) as 0 | 1;
+    if (process.env.COACH === 'ab') g.randomCalls = [smartSide !== 0, smartSide !== 1];
+    if (process.env.COACH === 'random') g.randomCalls = [true, true];
     g.attentionOff = mode === 'off'; g.tiersOff = mode === 'matchups'; g.assignMatchups();
     const inp = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
     let seen: any = null, lastMove = -9;
@@ -52,6 +56,7 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
       }
     }
     traps += g.trapCount[2] + g.trapCount[3];
+    if (process.env.COACH === 'ab') { const sm = g.teams[smartSide].score, rd = g.teams[1 - smartSide].score; ab.smart += sm; ab.random += rd; ab.wins += sm > rd ? 1 : 0; ab.n++; }
     if (hog) {
       const ps0 = [...new Set(g.teams[0].roster)], tf0 = ps0.reduce((n, p) => n + p.box.fga, 0);
       hg.pts += hog.box.pts; hg.fga += hog.box.fga; hg.fgm += hog.box.fgm; hg.share += hog.box.fga / Math.max(1, tf0); hg.n++; hg.tiers[g.heat[hog.id]?.tier ?? 0]++;
@@ -70,8 +75,9 @@ for (const mode of (process.env.MODES ?? 'off,matchups,full').split(',')) it(`sc
     }
   }
   { const sd = OPEN_COURT.startD; const b = [0, 20, 40, 60, 80].map((lo) => sd.filter((x) => x >= lo && x < lo + 20).length); console.log(`OPEN [${mode}] runs/g ${(OPEN_COURT.runs / 12).toFixed(1)} halfcourt ${(OPEN_COURT.half / 12).toFixed(1)} shots/g ${(OPEN_COURT.shots / 12).toFixed(1)} start-dist buckets 0-20/20-40/40-60/60-80: ${b.join('/')}`); OPEN_COURT.runs = 0; OPEN_COURT.shots = 0; OPEN_COURT.startD = []; OPEN_COURT.half = 0; }
+  if (ab.n) console.log(`COACH A/B [${mode}] smart ${(ab.smart / ab.n).toFixed(1)} ppg vs random ${(ab.random / ab.n).toFixed(1)} ppg, smart won ${ab.wins}/${ab.n}`);
   if (hg.n) console.log(`HOGLINE [${mode}] ${(hg.pts / hg.n).toFixed(1)} pts on ${(hg.fga / hg.n).toFixed(1)} FGA (${(100 * hg.share / hg.n).toFixed(0)}% of team shots), FG ${(100 * hg.fgm / hg.fga).toFixed(1)}%, ended at tier 0/1/2/3: ${hg.tiers.join('/')}`);
   for (const [k, v] of Object.entries(con)) console.log(`  [${mode}] tier ${k}: ${v.n} shots, avg contest ${(100 * v.c / v.n).toFixed(0)}%, open ${(100 * v.open / v.n).toFixed(0)}%, FG ${(100 * v.m / v.n).toFixed(0)}% ${JSON.stringify(v.when ?? {})}`);
   if (process.env.LINES) console.log(lines.join('\n'));
-  console.log(`[${mode}] traps/g ${(traps / 12).toFixed(1)} team PPG ${(teamPts / stars.n).toFixed(1)} TOP SCORERS avg ${(stars.pts / stars.n).toFixed(1)} pts (${(100 * share / stars.n).toFixed(0)}% of team FGA), FG ${(100 * stars.fgm / stars.fga).toFixed(1)}% on ${(stars.fga / stars.n).toFixed(1)} FGA | REST FG ${(100 * rest.fgm / rest.fga).toFixed(1)}% | team AST/g ${(ast / stars.n).toFixed(1)} | players ending at tier 0/1/2/3: ${tiers.join('/')}`);
+  console.log(`[${mode}] traps/g ${(traps / stars.n * 2).toFixed(1)} team PPG ${(teamPts / stars.n).toFixed(1)} TOP SCORERS avg ${(stars.pts / stars.n).toFixed(1)} pts (${(100 * share / stars.n).toFixed(0)}% of team FGA), FG ${(100 * stars.fgm / stars.fga).toFixed(1)}% on ${(stars.fga / stars.n).toFixed(1)} FGA | REST FG ${(100 * rest.fgm / rest.fga).toFixed(1)}% | team AST/g ${(ast / stars.n).toFixed(1)} | players ending at tier 0/1/2/3: ${tiers.join('/')}`);
 }, 600000);

@@ -106,6 +106,16 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`assignMatchups(true)`, `assignGuards` distW), scouting matchups at dead balls. Shooting: `crowdAt` →
   `crowd at the rim (n)` ×0.88^(n−1), `poster over n` ×0.85^(n−1); dunk block discount 0.6 → 0.8 → 1 with the crowd.
   Offense: `clearPath` + open-court finish (running toward the rim in transition / > 30 ft), `OPEN_COURT` switch.
+  Round 49: play lab `scripts/playLab.test.ts` (each play forced via `allowedPlays`, focus rotated with role swaps;
+  points per run / TO / shot mix / contest by focus style → `data/plays/playValues.json`; post sets now post up:
+  `handlerAI` focus of a `post` set goes to `postAI`). CPU coach `sim/plays/coach.ts` (`scoreCall`, `chooseCall`
+  softmax T 0.08: lab value + matchup edge + pnr vs poor perimeter bigs + `GameSim.playLog` + clutch / need threes /
+  hot hand + variety + lob wrinkle penalty; `randomCalls` per team); focus pass bonus +0.18; `attackSwitch` +
+  `sim.mismatch`. Defense vs humans: `moveLog` / `moveRead` (0.8^(n−2), floor 0.35, 45 s) / `favoriteSide` shading;
+  `screenFor` + `screenCoverage` under / blitz / switch / over (`screenContact` skips under, ×0.6 stun on blitz,
+  per-screen switch; defense.ts blitz trap at the chase "over" spot, roller tag, drop). Career `scout` (last 5
+  games, `applyScouting` at tip-off: ≥ 30 pts or ≥ 40% shots → tier 1, ≥ 55% → tier 2, buckets ×0.5). `effort` for
+  CPU-only teams down 15+ (speed ×1.06, gap −0.3, swipes ×1.25, crash +0.2) until within 10.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

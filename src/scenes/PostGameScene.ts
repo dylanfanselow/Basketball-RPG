@@ -32,7 +32,9 @@ export class PostGameScene extends Phaser.Scene {
     ];
     if (sim.milestones.length) lines.push('Milestones: ' + sim.milestones.map((m) => ULT_MILESTONES[m]?.name ?? m).join(', '), '');
     if (this.mode === 'career') {
-      const r = applyGameResult(app.career, { box: bx, won, grade: sim.grade, milestones: sim.milestones });
+      const b = sim.heat[u.id]?.buckets ?? { rim: 0, jumper: 0, post: 0 };
+      const teamFga = [...new Set(sim.teams[u.team].roster)].reduce((n, p) => n + p.box.fga, 0);
+      const r = applyGameResult(app.career, { box: bx, won, grade: sim.grade, milestones: sim.milestones, scout: { pts: bx.pts, fga: bx.fga, teamFga, ...b } });
       app.changed();
       lines.push(`+${r.xp} XP   (Lv ${app.career.level}, ${app.career.xp}/${xpToNext(app.career.level)})`);
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);

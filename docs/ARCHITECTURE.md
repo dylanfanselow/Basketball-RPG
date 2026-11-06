@@ -17,6 +17,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ballPhysics.ts` | Physical shots: `simulateShot` (ball vs rim ring / glass / net, fixed 1/240 s step), `planShot` (outcome-steered launch search), `samplePlan`. Pure, deterministic. |
 | `rim.ts` | Scripted rim sequences, now dunks only: `buildPath`, `sampleRim`. |
 | `plays/runner.ts` | `PlayRunner`: phases, reset timer, role swap, focus player. |
+| `plays/coach.ts` | Round 49 CPU coach: `scoreCall` / `chooseCall` from `data/plays/playValues.json` (play lab) + matchups + this game's `playLog`. |
 | `ai/offense.ts` | Off-ball targets (play, freelance, transition lanes), handler AI (shoot/pass/drive/moves, transition reads, open-man bonuses, dead dribble). |
 | `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges; round 47 attention: shading, deny, doubles / triples, rotation, load-up. |
 | `attention.ts` | Round 47: who guards whom (`assignGuards`, `guardFit`, `scorerRep`, `scorerStyle`), heat tiers (`afterShot`, `HEAT_AT`, `tierCap`), `ATT` switches; round 48 buckets + `coverage()` schemes. |
@@ -83,4 +84,5 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 `rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `apartment.test.ts` (collision, reachability, cat, save v3, key games), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`). `scripts/scoring.test.ts` (round 47) compares top
-scorers / team PPG with attention off, matchups only and full (`MODES=…`, `HOG=1` for a ball-hog scenario).
+scorers / team PPG with attention off, matchups only and full (`MODES=…`, `HOG=1` for a ball-hog scenario, `COACH=ab` smart vs random calls, `SEEDS=n`). `scripts/playLab.test.ts` (round 49)
+sims every play by focus style; `WRITE=1` regenerates `src/data/plays/playValues.json`.

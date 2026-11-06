@@ -154,6 +154,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 49: make the CPU better, not the player worse.**
+  - Play calls are data-driven: a play lab sims every set by focus style, and the coach scores (play, focus) from those values, the matchups, tonight's results and the situation, then picks with some randomness.
+  - The defense adapts to the human only: repeated moves are read and the favourite side is shaded; ball screens get under / blitz / switch by his shooting.
+  - Career scouting report starts a known scorer keyed in (or doubled for a known hog).
+  - A CPU team down 15+ plays harder (no rating buffs). Owner: no hidden rating boosts; difficulty from decisions and schemes.
 - **Round 48: help by how he scores, crowded rims, finish the run.** The double / triple follows the scorer's buckets
   this game (prior from his style): rim scorer → **wall off the drive** (helpers deep on his line to the rim, so a
   move only beats his own man); shooter → **pack him** (tight on-ball, one over, one under); post → dig; mixed → one

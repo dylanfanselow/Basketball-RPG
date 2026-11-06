@@ -37,6 +37,13 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
 - **How the double comes depends on how you score (round 48):** score at the rim and the helpers **wall off the drive** (they wait in the lane between you and the rim, so one crossover only beats your own man); live on jumpers and they **pack you** (your man crowds you, one helper over, one under); score in the post and they dig. Shown in the event ("DOUBLE TEAMS on you — protecting the rim") and the dev panel (*Attention*: "+10 rim / jumper / post" buttons to try each).
 - **Finishing through a crowd is harder:** a layup or dunk into 2+ contesting defenders adds `crowd at the rim (n)` (×0.88 each extra) and, on a dunk, `poster over n` (×0.85 each); dunks into a crowd get blocked more.
 - **Open court:** a teammate running ahead of everyone keeps going and finishes instead of passing back to the point guard.
+- **Smarter CPU (round 49):**
+  - The coach no longer calls random sets. It picks the play and who it's for from how each set performed in a simulated "play lab", plus tonight's matchups (it hunts mismatches and slow bigs in the pick & roll), what's working this game, and the situation. The feed names the target, e.g. *Coach: "Spain Pick & Roll" — hunting their big*. Players attack mismatches after a switch.
+  - The defense learns **your** moves: the same move three or more times in 45 s works less ("They're reading your Crossover"), and your man shades the side you like to go.
+  - On your screens they go under if you can't shoot, blitz if you can, or switch when it's even.
+  - Career: the next opponent keeps a **scouting report**. A 30-a-night scorer starts the game keyed in, and a known ball hog starts doubled.
+  - A CPU team down 15+ **turns up the pressure** (quicker, tighter, more swipes, crashes the glass) until it's within 10.
+  - Dev panel *Attention*: random play calls per team (A/B), your move reads, the screen coverage, effort and each team's plays this game.
 - **Doors** in the apartment and garage open with a latch and creak and close behind you; locked doors rattle.
 - **Box score (top left):** your name, field goals, and your three most valuable stats. Steals and blocks count about 3× a point, assists 1.5×, rebounds 1.3×. Your rebounds also play a ding and pop **REBOUND +1**.
 

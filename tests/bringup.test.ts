@@ -45,7 +45,8 @@ describe('bringing it up', () => {
       };
       simToEnd(g);
     }
-    expect(far).toBeGreaterThan(near * 2);
+    // round 49: a smarter CPU coach scores more → more inbounds after makes, where the defender starts closer
+    expect(far).toBeGreaterThan(near * 1.5);
     expect(cross.reduce((a, b) => a + b, 0) / cross.length).toBeLessThan(6);
     expect(viol).toBeLessThanOrEqual(1);
   }, 40000);

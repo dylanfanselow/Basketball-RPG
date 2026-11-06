@@ -312,6 +312,8 @@ export function initDevPanel() {
     if (s) {
       at.append(check('Attention off (role matchups, no doubles)', s.attentionOff, (v) => { s.attentionOff = v; s.assignMatchups(); }));
       at.append(check('Smart matchups only (no tiers)', s.tiersOff, (v) => { s.tiersOff = v; }));
+      at.append(check('Random play calls: my team (round 49 A/B)', s.randomCalls[0], (v) => { s.randomCalls[0] = v; }));
+      at.append(check('Random play calls: their team', s.randomCalls[1], (v) => { s.randomCalls[1] = v; }));
     }
     for (const k of Object.keys(ATT) as (keyof typeof ATT)[]) at.append(check(`behaviour: ${k}`, ATT[k], (v) => { ATT[k] = v; }));
     at.append(el('div', { class: 'note' }, `Tiers start at heat ${HEAT_AT.slice(1).join(' / ')} (≈ % of the team's shots, mostly). They never cool, and only go up while he beats the current coverage (≥3 shots at ≥1 pt/shot or ≥50%).`));
@@ -325,7 +327,11 @@ export function initDevPanel() {
         return `${p.name.padEnd(18).slice(0, 18)} rep ${scorerRep(p).toFixed(0)} ${scorerStyle(p).padEnd(7)} heat ${(h?.score ?? 0).toFixed(0).padStart(3)} T${g.tierOf(p)}${g.tierOf(p) >= 2 ? ` ${g.coverageOf(p)}` : ''}  guards ${man?.name ?? '-'}`;
       }));
       const tr = g.trap ? `TRAP (${g.trap.scheme}) on ${g.players.find((p) => p.id === g.trap!.holderId)?.name}: ${g.trap.helpers.length} helper(s)` : 'no trap';
-      e.textContent = [...rows, tr].join('\n');
+      const sc = g.screenCov ? `screen coverage: ${g.screenCov.kind} on ${g.players.find((p) => p.id === g.screenCov!.handlerId)?.name}` : 'screen coverage: -';
+      const eff = `effort: ${g.teams[0].def.id} ${g.effort[0] ? 'ON' : 'off'} · ${g.teams[1].def.id} ${g.effort[1] ? 'ON' : 'off'}`;
+      const calls = [0, 1].map((t) => `${g.teams[t].def.id} calls: ${Object.entries(g.playLog[t]).map(([k, l]) => `${k} ${l.pts}/${l.runs}`).join(', ') || '-'}`);
+      const reads = g.user ? `your moves: ${[...new Set((g.moveLog[g.user.id] ?? []).map((m) => m.id))].map((id) => `${id} ${(g.moveRead(g.user!, id) * 100).toFixed(0)}%`).join(', ') || '-'}  fav side ${g.favoriteSide(g.user).toFixed(1)}` : '';
+      e.textContent = [...rows, tr, sc, eff, reads, ...calls].join('\n');
     }, 500);
 
     // multi-angle players

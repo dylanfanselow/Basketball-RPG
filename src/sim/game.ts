@@ -1,4 +1,4 @@
-import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCap, TIER_NAME, Tier, HEAT_AT, ATT, coverage, Coverage, COVERAGE_NAME } from './attention';
+import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCap, TIER_NAME, Tier, HEAT_AT, ATT, coverage, Coverage, COVERAGE_NAME, guardFit, screenCoverage, ScreenCov, SCREEN_COV_TEXT } from './attention';
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { rmap } from './attributes';
@@ -8,6 +8,7 @@ import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isSt
 import { pickDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
+import { chooseCall } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
@@ -163,6 +164,70 @@ export class GameSim {
   switchAll: boolean;
   /** Round 47: each offensive player's heat (keyed in → doubles → triples), by player id. */
   heat: Record<string, Heat> = {};
+  /** Round 49: each team's results per play this game (the coach calls more of what works). */
+  playLog: [Record<string, { runs: number; pts: number }>, Record<string, { runs: number; pts: number }>] = [{}, {}];
+  /** The last few calls per team (newest last) and the call in progress (to score it when it ends). */
+  recentCalls: [string[], string[]] = [[], []];
+  curCall: { team: 0 | 1; play: string; score0: number } | null = null;
+  /** Dev / A-B stats: this team's coach calls random sets (the pre-round-49 behaviour). */
+  randomCalls: [boolean, boolean] = [false, false];
+  /**
+   * Round 49: the ball screen being defended with a coverage (for you, or a hot handler): who's screening for whom,
+   * how (under / blitz / switch / over) and since when. Picked once per screen; announced once per possession.
+   */
+  screenCov: { handlerId: string; screenerId: string; kind: ScreenCov; at: number } | null = null;
+  private screenCovSaid = -1;
+  /** After a switch: a mismatch the offense goes after (the big on a small, or a guard on a slow big). */
+  mismatch: { pid: string; until: number } | null = null;
+  /** The coverage for the screen coming for this handler right now, if the defense cares about him. */
+  screenFor(h: Player): GameSim['screenCov'] {
+    const sc = this.screenCov;
+    if (sc && sc.handlerId === h.id && this.time - sc.at < 2.5) return sc;
+    if (!(h.isUser || this.tierOf(h) >= 1) || this.attentionOff) return (this.screenCov = null);
+    const scr = this.mates(h).find((m) => (m.state === 'screen' || (m.screenFor?.pid === h.id && this.time < m.screenFor.until)) && dist(m.p, h.p) < 7);
+    if (!scr) return (this.screenCov = null);
+    const kind = screenCoverage(h, this.defenderOf(h), this.defenderOf(scr), this.heat[h.id]);
+    this.screenCov = { handlerId: h.id, screenerId: scr.id, kind, at: this.time };
+    if (this.screenCovSaid !== this.phaseStartedAt && kind !== 'over') {
+      this.screenCovSaid = this.phaseStartedAt;
+      this.emit({ kind: 'coverage', text: `${this.teams[1 - h.team].def.id} ${SCREEN_COV_TEXT[kind]} on ${h.name}'s screens`, team: (1 - h.team) as 0 | 1 });
+    }
+    return this.screenCov;
+  }
+  /** Round 49: a human player's recent dribble moves (the defense learns them). */
+  moveLog: Record<string, { id: string; side: number; at: number }[]> = {};
+  private readSaid: Record<string, number> = {};
+  /** How fresh this move still is against this defense: the 3rd+ use in 45 s works less (×0.8 each, floor 0.35). */
+  moveRead(p: Player, id: string): number {
+    const n = (this.moveLog[p.id] ?? []).filter((m) => m.id === id && this.time - m.at < 45).length;
+    return Math.max(0.35, 0.8 ** Math.max(0, n - 2));
+  }
+  /** His favourite side to go (−1…1 along perp(toRim)) from his last 8 moves; 0 until there are 3. */
+  favoriteSide(p: Player): number {
+    const log = (this.moveLog[p.id] ?? []).slice(-8);
+    return log.length >= 3 ? log.reduce((a, m) => a + m.side, 0) / log.length : 0;
+  }
+  /**
+   * Round 49: a CPU team (no human on it) down 15+ turns up the pressure until it's within 10: a step quicker,
+   * tighter on the ball, more swipes, more bodies on the offensive glass. No rating changes.
+   */
+  effort: [boolean, boolean] = [false, false];
+  private updateEffort() {
+    if (this.cfg.mode !== 'game' || this.cfg.oneOnOne) return;
+    for (const t of [0, 1] as const) {
+      if (this.teams[t].onCourt.some((p) => !this.isAI(p))) { this.effort[t] = false; continue; }
+      const down = this.teams[1 - t].score - this.teams[t].score;
+      if (!this.effort[t] && down >= 15) { this.effort[t] = true; this.emit({ kind: 'effort', text: `${this.teams[t].def.name} turn up the pressure`, team: t, big: true }); }
+      else if (this.effort[t] && down < 10) this.effort[t] = false;
+    }
+  }
+  /** Close the call in progress: its points go into the play log. */
+  closeCall() {
+    const c = this.curCall; if (!c) return;
+    const L = (this.playLog[c.team][c.play] ??= { runs: 0, pts: 0 });
+    L.runs++; L.pts += this.teams[c.team].score - c.score0;
+    this.curCall = null;
+  }
   /** Round 47: dev switch — no smart matchups and no extra attention (old role-based matchups). */
   attentionOff = false;
   /** Dev / stats: smart matchups only, no keyed in / doubles / triples. */
@@ -398,6 +463,25 @@ export class GameSim {
     const near = this.opp(to.team).filter((d) => this.isAI(d) && d.state !== 'fallen').sort((a, b) => dist(a.p, to.p) - dist(b.p, to.p))[0];
     if (!near || near === own || !own || !this.isAI(own)) return;
     if (dist(near.p, to.p) + 4 < dist(own.p, to.p)) { const g = near.guarding; near.guarding = to.id; own.guarding = g; }
+  }
+
+  /**
+   * Round 49 scouting report (career): from your last 3 games, a big scorer (30+ a night or 40%+ of the shots) starts
+   * keyed in, a known ball hog (55%+ of the shots) starts at doubles; how you scored carries over at half weight.
+   */
+  applyScouting(games: { pts: number; fga: number; teamFga: number; rim: number; jumper: number; post: number }[]) {
+    const u = this.user; if (!u || this.attentionOff) return;
+    const last = games.slice(-3); if (!last.length) return;
+    const avg = (f: (g: typeof last[number]) => number) => last.reduce((a, g) => a + f(g), 0) / last.length;
+    const pts = avg((g) => g.pts), share = avg((g) => (g.teamFga > 0 ? g.fga / g.teamFga : 0));
+    const tier = Math.min(this.tierCap, share >= 0.55 ? 2 : pts >= 30 || share >= 0.4 ? 1 : 0) as Tier;
+    if (!tier) return;
+    const h = (this.heat[u.id] ??= newHeat());
+    h.tier = tier; h.score = Math.max(h.score, HEAT_AT[tier]);
+    h.buckets = { rim: avg((g) => g.rim) * 0.5, jumper: avg((g) => g.jumper) * 0.5, post: avg((g) => g.post) * 0.5 };
+    this.assignMatchups();
+    const opp = this.teams[1 - u.team].def;
+    this.emit({ kind: 'attention', text: `Scouting report: ${opp.name} ${tier >= 2 ? 'will double' : 'are keyed in on'} ${u.name} (${pts.toFixed(0)} pts, ${(share * 100).toFixed(0)}% of the shots lately)`, team: (1 - u.team) as 0 | 1, big: true, data: { tier } });
   }
 
   /** Dev: force a player's tier (heat follows so it doesn't drop back). */
@@ -748,6 +832,8 @@ export class GameSim {
     if (isLob(id) && nonLob.length && this.rng.chance(lobber ? 0.45 : 0.7)) id = PlayRunner.pick(this.rng, nonLob, this.runner.lastPlayId);
     let swap: [string, string] | null = null;
     let focus: Player | null = null;
+    let why = '';
+    this.closeCall();
     const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
     if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
@@ -759,6 +845,20 @@ export class GameSim {
         if (fits.length) id = this.rng.pick(fits);
         else if (focus === this.user && PLAYS[id].focus) swap = [PLAYS[id].focus!, focus.role]; // run any set for the user by swapping roles
         else if (focus !== this.user) focus = null;
+      }
+    } else if (!this.randomCalls[this.possession]) {
+      // round 49: the coach scores every (play, focus) and picks one — lab values + matchups + what's working tonight
+      const best = small ? [...off].sort((a, b) => b.overall - a.overall)[0] : null;
+      const avgUse = off.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, off.length);
+      const plays = Object.keys(PLAYS).filter((pid) => allowed(pid));
+      const focuses = off.filter((p) => this.isAI(p) && p.state !== 'fallen');
+      const pick = chooseCall(this, plays, focuses, this.playLog[this.possession], this.recentCalls[this.possession],
+        (pid, f) => f.sub.dunk >= 50 + (7 - f.height) * 30 && !!PLAYS[pid].focus,
+        (f) => (f.star || f === best) && f.box.usage <= avgUse * 1.8 + 2);
+      if (pick) {
+        id = pick.play; focus = pick.focus;
+        swap = PLAYS[id].focus && PLAYS[id].focus !== pick.focus.role ? [PLAYS[id].focus!, pick.focus.role] : null;
+        why = pick.why;
       }
     } else {
       // stars get their number called: about 30% of sets (half in the clutch) are an iso for one of them
@@ -772,13 +872,18 @@ export class GameSim {
     this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
     const fp = focus as Player | null;
-    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"` : `Coach: "${this.runner.play!.name}"`, team: this.possession });
+    const tail = (fp && !isIso(id) && PLAYS[id].focus && this.byRole(this.possession, PLAYS[id].focus!) !== fp ? ` for ${fp.name}` : '') + (why ? ` — ${why}` : '');
+    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"${why ? ` — ${why}` : ''}` : `Coach: "${this.runner.play!.name}"${tail}`, team: this.possession });
+    this.curCall = { team: this.possession, play: id, score0: this.teams[this.possession].score };
+    const rc = this.recentCalls[this.possession]; rc.push(id); if (rc.length > 3) rc.shift();
   }
 
   // ---------- main tick ----------
   update(dt: number, input: UserInput, input2?: UserInput) {
     if (this.over) return;
     this.time += dt;
+    if (this.curCall && this.curCall.team !== this.possession) this.closeCall();
+    this.updateEffort();
     for (const p of this.players) p.mods.expire(this.time);
 
     if (!this.live) {
@@ -999,7 +1104,7 @@ export class GameSim {
     if (d < 0.35) { p.want = v(); return; }
     const hasBall = this.holder() === p;
     if (urgent && d > 20 && this.live) this.startBurst(p); // AI uses the same burst + cooldown rules (long sprints only)
-    const max = (urgent || d > 6 ? this.topSpeed(p) : p.walkSpeed) * (hasBall ? p.ballSpeedMult : 1) * speedMult;
+    const max = (urgent || d > 6 ? this.topSpeed(p) : p.walkSpeed) * (hasBall ? p.ballSpeedMult : 1) * speedMult * (this.effort[p.team] ? 1.06 : 1);
     const sp = Math.min(max, d * 3.2);
     p.want = scale(norm(to), sp);
   }
@@ -1275,7 +1380,7 @@ export class GameSim {
     void jumper;
     // decide who crashes the offensive glass on this shot
     for (const m of this.teams[p.team].onCourt) {
-      const crashP = m.role === '5' ? 0.95 : m.role === '4' ? (m.sub.three < 65 ? 0.85 : 0.2) : m.sub.finishing > m.sub.three + 8 ? 0.2 : 0.05;
+      const crashP = (m.role === '5' ? 0.95 : m.role === '4' ? (m.sub.three < 65 ? 0.85 : 0.2) : m.sub.finishing > m.sub.three + 8 ? 0.2 : 0.05) + (this.effort[m.team] ? 0.2 : 0);
       m.crashing = m !== p && this.rng.chance(crashP);
     }
     this.lastShot = { ev, made, name: p.name, user: p === this.user, at: this.time };
@@ -1468,12 +1573,20 @@ export class GameSim {
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
     this.emit({ kind: 'move', text: m.name, pid: p.id });
 
+    // round 49: the defense learns a human's moves — the same move again and again works less, and they shade his side
+    const human = !this.isAI(p) && !this.attentionOff;
+    const read = human ? this.moveRead(p, id) : 1;
+    if (human) {
+      const log = (this.moveLog[p.id] ??= []);
+      log.push({ id, side: sideOf(toRim, dir), at: this.time }); if (log.length > 30) log.shift();
+      if (read < 0.8 && this.time - (this.readSaid[id] ?? -99) > 20) { this.readSaid[id] = this.time; this.emit({ kind: 'read', text: `They're reading your ${m.name}`, pid: p.id, team: (1 - p.team) as 0 | 1 }); }
+    }
     // ankle check vs the closest defender
     if (nd.d && nd.dist < 5.5 && nd.d.state !== 'fallen') {
       const def = nd.d;
       const prox = clamp01(1 - (nd.dist - 2) / 3.5);
       const ratio = Math.pow((p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20), 2);
-      const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox;
+      const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox * read;
       if (m.pumpFake) {
         if (this.rng.chance(0.25 + 0.3 * ratio * prox)) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
       } else if (this.rng.chance(chance)) {
@@ -1481,7 +1594,7 @@ export class GameSim {
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });
         this.gainUlt(p, ULT_GAINS.ankles);
       } else {
-        def.staggerUntil = this.time + m.stagger * clamp(ratio, 0.5, 1.8) * prox;
+        def.staggerUntil = this.time + m.stagger * clamp(ratio, 0.5, 1.8) * prox * read;
       }
     }
   }
@@ -1706,7 +1819,11 @@ export class GameSim {
 
   private screenContact(scr: Player, def: Player, d: number) {
     if (scr.state !== 'screen' || d > 2.6 || this.time < def.screenedUntil + 0.6) return;
-    const { stun, knock } = screenImpact(scr, def);
+    const h = this.holder();
+    const sc = h && h.team === scr.team && def.guarding === h.id ? this.screenFor(h) : null;
+    if (sc?.kind === 'under') return; // he went under the screen: nothing to run into
+    let { stun, knock } = screenImpact(scr, def);
+    if (sc?.kind === 'blitz') { stun *= 0.6; knock *= 0.6; } // fighting over the top while the big jumps out
     def.screenedUntil = this.time + stun;
     // knocked back off the screen (same stumble as losing a box-out): part of it at once, the rest as a slide
     const away = norm(sub(def.p, scr.p));
@@ -1722,9 +1839,27 @@ export class GameSim {
       if (scr === this.user) { applyTrust(this.trust, 'screen'); this.gainUlt(scr, ULT_GAINS.screen); this.emit({ kind: 'screen', text: `Screen! ${def.name} is stuck`, good: true, pid: scr.id }); }
       if (scr.mods.pMult('screenStun') > 1.3 && this.rng.chance(0.2)) { this.knockDown(def, 1.0, 'screen'); this.emit({ kind: 'screen', text: `${def.name} flattened by the screen`, big: true }); }
     }
-    if (this.switchAll) {
+    if (this.switchAll || sc?.kind === 'switch') {
       const scrDef = this.defenderOf(scr);
-      if (scrDef && scrDef !== def) { const g = def.guarding; def.guarding = scrDef.guarding; scrDef.guarding = g; }
+      if (scrDef && scrDef !== def) {
+        const g = def.guarding; def.guarding = scrDef.guarding; scrDef.guarding = g;
+        if (h && h.team === scr.team && def.guarding === scr.id) this.attackSwitch(h, scr, scrDef, def);
+      }
+    }
+  }
+
+  /**
+   * Round 49: a switch left a mismatch — go at it. A slow or much worse defender now on the handler: the AI handler
+   * drives. A big now guarded by a small: he's the mismatch (teammates look for him, and he posts once he has it).
+   */
+  private attackSwitch(h: Player, scr: Player, onH: Player, onScr: Player) {
+    if (this.isAI(h) && (guardFit(onH, h) < guardFit(onScr, h) - 10 || onH.sub.speed < h.sub.speed - 8)) {
+      h.aiMode = 'drive'; h.aiModeUntil = this.time + 1.6;
+      this.emit({ kind: 'move', text: `Switch! ${h.name} attacks ${onH.name}`, pid: h.id, team: h.team });
+    }
+    if (scr.height - onScr.height > 0.4) {
+      this.mismatch = { pid: scr.id, until: this.time + 3 };
+      this.emit({ kind: 'move', text: `Mismatch: ${scr.name} has ${onScr.name} on him`, pid: scr.id, team: scr.team });
     }
   }
 

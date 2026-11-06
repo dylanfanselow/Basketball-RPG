@@ -610,7 +610,8 @@ describe('round 20: net, screens, passing reads, stars', () => {
     simToEnd(g);
     const isos = g.events.filter((e) => e.kind === 'play' && e.text.includes('Iso for')).length;
     const plays = g.events.filter((e) => e.kind === 'play').length;
-    expect(isos).toBeGreaterThan(plays * 0.1);
+    // round 49: the coach gives isos on matchup value (not a fixed 30%), so a game can run fewer of them
+    expect(isos).toBeGreaterThan(plays * 0.05);
     expect(isos).toBeLessThan(plays * 0.5);
   });
 });

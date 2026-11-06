@@ -173,3 +173,22 @@ export const tierCap = (perSide: number): Tier => (perSide >= 5 ? 3 : perSide >=
 
 /** Which attention behaviours are on (dev panel / stats experiments). */
 export const ATT = { shade: true, deny: true, trap: true, load: true, scramble: true };
+
+// ---------------------------------------------------------------- screen coverages (round 49)
+/** How a defense plays a ball screen for a handler it cares about (you, or a hot handler). */
+export type ScreenCov = 'under' | 'blitz' | 'switch' | 'over';
+export const SCREEN_COV_TEXT: Record<ScreenCov, string> = { under: 'going under', blitz: 'blitzing', switch: 'switching', over: 'fighting over' };
+/**
+ * Can't shoot (best jumper < 70 and few jumper points tonight) → go under and dare him; a shooter (80+, or they're
+ * packing him) → blitz the screen and make him give it up; the screener's man guards him about as well → switch;
+ * otherwise fight over the top with the big in drop.
+ */
+export function screenCoverage(h: Player, onBall: Player | null, scrDef: Player | null, heat: Heat | undefined): ScreenCov {
+  const jumper = Math.max(s(h, 'three'), s(h, 'mid'));
+  const b = heat?.buckets, tot = b ? b.rim + b.jumper + b.post : 0;
+  const jumperShare = tot > 0 ? b!.jumper / tot : 0;
+  if (jumper < 70 && jumperShare < 0.4) return 'under';
+  if (jumper >= 80 || (heat && heat.tier >= 2 && coverage(h, heat) === 'chase')) return 'blitz';
+  if (onBall && scrDef && guardFit(scrDef, h) >= guardFit(onBall, h) - 8) return 'switch';
+  return 'over';
+}

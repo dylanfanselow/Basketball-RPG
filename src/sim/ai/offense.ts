@@ -305,6 +305,15 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   }
 
+  // round 49 (play lab): the focus of a post set backs his man down when he catches it in range — the sets used to
+  // leave it to chance (and iso posts never posted at all)
+  const pl = sim.runner.play;
+  const isFocus = !!pl && (sim.runner.focusPid ? sim.runner.focusPid === p.id : sim.playRole(p) === pl.focus);
+  if (pl?.tags.includes('post') && isFocus && sinceCatch > 0.2 && urgency < 0.85 && d >= 6 && d <= 17 && canPost(sim, p)) {
+    p.aiMode = 'post'; p.aiModeUntil = sim.time + sim.rng.range(2.5, 4.0);
+    postAI(sim, p);
+    return;
+  }
   // bigs with an edge on their man post him up
   if (!iso && sinceCatch > 0.3 && urgency < 0.75 && wantsPost(sim, p)) {
     p.aiMode = 'post'; p.aiModeUntil = sim.time + sim.rng.range(2.5, 4.5);
@@ -326,6 +335,9 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     const open = sim.openness(m);
     let val = catchEV(sim, m) * (0.5 + 0.6 * open);
     if (phase?.options?.includes(sim.playRole(m))) val += 0.22;
+    // round 49: the coach called this set for him — get him the ball when he's open (the action is the point of the call)
+    if (sim.runner.focusPid === m.id && !sim.runner.done && open > 0.45) val += 0.18;
+    if (sim.mismatch?.pid === m.id && sim.time < sim.mismatch.until) val += 0.35; // feed the switch mismatch
     // open man first: a teammate whose defender is far away gets the ball over the play
     const sep = separation(sim, m);
     if (sep.own > 7.5 && sep.help > 6) val += 0.4;

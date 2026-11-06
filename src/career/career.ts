@@ -24,6 +24,8 @@ export interface CareerState {
   ult: { id: string | null; level: number; evoPoints: number; seenMilestones: string[] };
   trust: TrustState;
   teamId: string;
+  /** Round 49: the scouting report other teams keep on you (your last games, newest last). */
+  scout?: ScoutGame[];
   season: { gameNo: number; wins: number; losses: number; schedule: string[] };
   forceStarter: boolean;
   /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
@@ -111,7 +113,9 @@ export function spendStatPoint(c: CareerState, stat: keyof CoreStats): boolean {
   return true;
 }
 
-export interface GameResult { box: BoxScore; won: boolean; grade: { good: number; bad: number; points: number }; milestones: string[] }
+export interface GameResult { box: BoxScore; won: boolean; grade: { good: number; bad: number; points: number }; milestones: string[]; scout?: ScoutGame }
+/** One game in the scouting report: your points and shots, your team's shots, where your points came from. */
+export interface ScoutGame { pts: number; fga: number; teamFga: number; rim: number; jumper: number; post: number }
 
 export function computeXP(r: GameResult): number {
   const b = r.box;
@@ -127,6 +131,7 @@ export function applyGameResult(c: CareerState, r: GameResult) {
   c.life.day = Math.max(c.life.day, gameDay(c.season.gameNo)); // the game was played on its day
   c.season.gameNo++;
   if (r.won) c.season.wins++; else c.season.losses++;
+  if (r.scout) { (c.scout ??= []).push(r.scout); if (c.scout.length > 5) c.scout.shift(); }
   const evo: string[] = [];
   if (c.flags.ult_unlocked) {
     for (const m of r.milestones) {

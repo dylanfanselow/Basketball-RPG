@@ -71,5 +71,6 @@ export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOn
     bigGame: app.settings.bigGame,
     rotation: mode === 'career' ? planRotation(c.trust.coach, app.settings.quarterLen, c.forceStarter) : undefined,
   });
+  if (mode === 'career') sim.applyScouting(c.scout ?? []); // round 49: they've seen your last games
   return sim;
 }

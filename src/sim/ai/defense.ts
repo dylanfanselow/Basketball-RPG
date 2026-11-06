@@ -70,6 +70,28 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     if (h.post.helpCalled && sim.time - h.post.helpArrivedAt > POST.HELP_REACT && dist(d.p, h.p) < 3.6 && sim.rng.chance(dt * 0.7 * (d.sub.steal / 70))) sim.swipe(d);
     return;
   }
+  // round 49: ball-screen coverage for a handler the defense cares about (you, or a hot handler)
+  const sc = h && h.team !== d.team && sim.isAI(d) && inFrontcourt(sim.side(h.team), h.p) ? sim.screenFor(h) : null;
+  if (sc && h) {
+    const scr = sim.players.find((q) => q.id === sc.screenerId);
+    const toRimH = norm(sub(rim, h.p));
+    if (scr && man === scr) {
+      if (sc.kind === 'blitz' && sim.time - sc.at < 1.6) {
+        // the big jumps out and traps him high, on the side the screen comes from
+        const side = dot(sub(scr.p, h.p), { x: -toRimH.y, y: toRimH.x }) >= 0 ? 1 : -1;
+        sim.steer(d, helpSpot('chase', 0, h, rim, side).at, true);
+        if (dist(d.p, h.p) < 3.8 && sim.rng.chance(dt * 0.6 * (d.sub.steal / 70))) sim.swipe(d);
+        return;
+      }
+      if (sc.kind === 'under') { sim.steer(d, add(rim, scale(norm(sub(h.p, rim)), 9)), true); return; } // drop deep
+    }
+    if (scr && sc.kind === 'blitz' && sim.time - sc.at < 2.2 && man !== h && man !== scr) {
+      // the low man tags the roller while the big is up on the ball
+      const scrDef = sim.defenderOf(scr), onBall = sim.defenderOf(h);
+      const tagger = sim.opp(h.team).filter((o) => o !== scrDef && o !== onBall && sim.isAI(o)).sort((a, b) => dist(a.p, scr.p) - dist(b.p, scr.p))[0];
+      if (tagger === d) { sim.steer(d, lerpV(scr.p, rim, 0.35), true); return; }
+    }
+  }
   if (man === h && hBack && !pressing) {
     // no press: give ground in the backcourt and pick him up around half court
     const gap = clamp(4 + 0.35 * Math.abs(man.p.x - 47), 4, 12);
@@ -77,8 +99,11 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   } else if (man === h) {
     // round 48: a shooter the defense is packing gets crowded (no air space for the catch-and-fire)
     const packed = sim.tierOf(man) >= 2 && sim.coverageOf(man) === 'chase';
-    const gap = 3.4 - (d.sub.perimD / 99) * 0.9 - (packed ? 1.1 : 0);
+    const gap = 3.4 - (d.sub.perimD / 99) * 0.9 - (packed ? 1.1 : 0) - (sim.effort[d.team] ? 0.3 : 0);
     target = add(man.p, scale(norm(sub(rim, man.p)), gap));
+    if (sc?.kind === 'under') target = add(man.p, scale(norm(sub(rim, man.p)), gap + 3.5)); // under the screen: sag, dare the jumper
+    // round 49: shade the side a human likes to go (up to 1 ft), so his favourite drive is the harder one
+    if (!sim.isAI(man)) { const fav = sim.favoriteSide(man), tr = norm(sub(rim, man.p)); if (fav) target = add(target, scale({ x: -tr.y, y: tr.x }, fav)); }
     urgent = true;
   } else {
     const dBall = dist(man.p, ballP);
@@ -131,7 +156,7 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     }
   }
   sim.steer(d, target, urgent);
-  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70))) sim.swipe(d);
+  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70) * (sim.effort[d.team] ? 1.25 : 1))) sim.swipe(d);
   void len;
 }
 

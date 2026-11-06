@@ -22,7 +22,8 @@ npm run build:single # single-file build for the browser link
    **Once the plan is written, build it — don't wait for a separate "go"** (owner, round 22). If a session restart
    drops plan mode before approval, carry on with the written plan.
 2. Implement sim first, tests next, then render/HUD/audio.
-3. Verify: `npm test`, headless stats (`scripts/stats.test.ts`), Playwright screenshots against a dev server
+3. Verify: `npm test`, headless stats (`scripts/stats.test.ts`, `scripts/scoring.test.ts`); after changing plays or
+   offense AI re-run the play lab (`WRITE=1 npx vitest run scripts/playLab.test.ts --dir . --config /dev/null`, ~3 min), Playwright screenshots against a dev server
    (pre-installed Chromium; `require('playwright')`; scripts live in the session scratchpad).
 4. Update README "Things to know while testing" if controls changed.
 5. Commit (attribution lines from the system reminder), `git pull --rebase`, push, rebuild single file, republish.
