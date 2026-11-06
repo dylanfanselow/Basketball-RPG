@@ -51,3 +51,26 @@ describe('round 49: the CPU coach', () => {
     for (const e of g.events.filter((e) => e.kind === 'play')) expect(e.text).not.toMatch(/3v3/);
   });
 });
+
+describe('round 54: closing time', () => {
+  it('in the last few possessions the coach mostly calls an iso for the top scorer', async () => {
+    const { topScorer } = await import('../src/sim/plays/coach');
+    const count = (late: boolean) => {
+      let iso = 0, n = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const g = makeGame({ seed });
+        const inp = emptyInput();
+        for (let t = 0; t < 30 && !(g.live && g.holder()); t += 1 / 30) g.update(1 / 30, inp);
+        if (late) { g.quarter = 4; g.clock = g.cfg.quarterLen * 0.05; }
+        const top = topScorer(g.offense())!;
+        g.callPlay();
+        n++;
+        if (PLAYS[g.runner.playId!].tags.includes('iso') && g.runner.focusPid === top.id) iso++;
+      }
+      return iso / n;
+    };
+    const early = count(false), late = count(true);
+    expect(late).toBeGreaterThan(0.55);
+    expect(late).toBeGreaterThan(early + 0.3);
+  });
+});

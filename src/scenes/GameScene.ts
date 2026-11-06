@@ -143,7 +143,7 @@ export class GameScene extends Phaser.Scene {
   init(data: GameInit) {
     this.initData = data;
     this.mode = data.mode ?? 'practice';
-    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.three = data.three; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = [];
+    this.matchSetup = data.setup; this.oneOnOne = data.oneOnOne; this.three = data.three; this.latched = [null, null]; this.ready = false; this.ended = false; this.paused = false; this.feed = []; this.popEnds = [];
     // the scene object is reused between games: drop per-game caches (textures themselves are kept in SHEET_CACHE)
     this.sprites.clear(); this.reflections.clear(); this.sheets.clear(); this.frontSprites.clear(); this.animMem.clear(); this.lastVel.clear(); this.runDist.clear(); this.slidePhase.clear(); this.defFlip.clear(); this.yawMem.clear(); this.shuffling.clear();
   }
@@ -483,7 +483,7 @@ export class GameScene extends Phaser.Scene {
       else if (e.kind === 'ult' && e.big) this.reactAll(team, 1, wx);
       if (e.kind === 'play') for (const c of this.coaches) if (c.team === e.team) this.coachCall(c, (e.text.match(/"(.+)"/)?.[1] ?? e.text) + '!');
     }
-    if (e.kind === 'rhythmDelta' && e.pid === this.sim.user?.id) this.rhythmPop(e.data?.amount ?? 0, e.data?.why ?? '', e.data?.math ?? '');
+    if (e.kind === 'rhythmDelta' && e.pid === this.sim.user?.id) this.rhythmPop(e.data?.amount ?? 0, e.data?.why ?? '', e.data ?? {});
     if (e.kind === 'switch' && e.pid === this.sim.user?.id) this.switchFlash = { at: this.time.now, name: e.data?.to ?? '' };
     if (e.kind === 'rhythm' && e.pid === this.sim.user?.id) this.rhythmFlash = { at: this.time.now, color: 0xffe680 };
     this.playSound(e);
@@ -1215,15 +1215,37 @@ export class GameScene extends Phaser.Scene {
     [0.25, 0.5, 0.75].forEach((n) => { h.fillStyle(r >= n ? 0xf0e0ff : 0x6a4a9a, 1).fillRect(bx + bw * n - 1, by - 3, 2, bh + 6); });
   }
   hideRhythm() { for (const o of [this.rhythmText, this.rhythmNum, this.rhythmTag, this.rhythmIcon]) o.setVisible(false); }
-  /** A rhythm change for you: a pop below the top bars with the math ("+5  2pts ×2.6 ×0.6 · mid · step-back", "−6 turnover"). */
-  rhythmPop(amount: number, why: string, math = '') {
+  /** When each on-screen rhythm pop ends (stacks new pops below live ones). */
+  popEnds: number[] = [];
+  /**
+   * A rhythm change for you, below the top bars (round 54: held ~3.5 s). Scoring pops are two lines: the gain and the
+   * method, then the math with the move's status in its own colour — `FRESH MOVE ×1.00` (green) or
+   * `×0.36 STALE — 3rd time tonight` (orange). Flat gains / losses are one line ("+4 assist", "−6 turnover").
+   */
+  rhythmPop(amount: number, why: string, d: { base?: string; times?: number; decay?: number } = {}) {
     const u = this.sim.user; if (!u || app.settings.debug.equation || Math.abs(amount) < 0.5) return;
-    const good = amount > 0;
-    const label = `${good ? '+' : '−'}${Math.abs(amount).toFixed(0)}${math ? `  ${math}` : ''}${why ? `${math ? ' ·' : ''} ${why}` : ''}`;
-    // under the score row (clear of the score / shot clock line), centred under the card
-    const t = this.add.text(VIEW_W / 2, this.iqText.text ? 118 : 96, label, { fontFamily: FONT, fontSize: '15px', color: good ? '#bff58a' : '#ff8a7a', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9003);
-    this.tweens.add({ targets: t, y: t.y + 18, alpha: { from: 1, to: 0 }, delay: 700, duration: 1300, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
-    if (!good) this.rhythmFlash = { at: this.time.now, color: 0xff4a3a };
+    const good = amount > 0, now = this.time.now, HOLD = 2000, FADE = 1500;
+    this.popEnds = this.popEnds.filter((t) => t > now);
+    const y = (this.iqText.text ? 118 : 96) + this.popEnds.length * 46;
+    this.popEnds.push(now + HOLD + FADE);
+    const st = (size: number, color: string) => ({ fontFamily: FONT, fontSize: `${size}px`, color, fontStyle: 'bold', stroke: '#000', strokeThickness: 4 });
+    const amt = `${good ? '+' : '−'}${Math.abs(amount).toFixed(0)}`;
+    const parts: Phaser.GameObjects.Text[] = [];
+    const head = this.add.text(0, 0, d.base ? `${amt} RHYTHM · ${why}` : `${amt}${why ? ` ${why}` : ''}`, st(16, good ? '#bff58a' : '#ff8a7a')).setOrigin(0.5, 0);
+    parts.push(head);
+    if (d.base) {
+      const times = d.times ?? 0, ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+      const base = this.add.text(0, 21, `${d.base}  `, st(14, '#ffffff')).setOrigin(0, 0);
+      const tag = times > 0
+        ? this.add.text(0, 21, `×${(d.decay ?? 1).toFixed(2)} STALE — ${ord(times + 1)} time tonight`, st(14, '#ffa040')).setOrigin(0, 0)
+        : this.add.text(0, 21, 'FRESH MOVE ×1.00', st(14, '#7dff9a')).setOrigin(0, 0);
+      const w = base.width + tag.width;
+      base.setX(-w / 2); tag.setX(-w / 2 + base.width);
+      parts.push(base, tag);
+    }
+    const c = this.add.container(VIEW_W / 2, y, parts).setScrollFactor(0).setDepth(9003);
+    this.tweens.add({ targets: c, y: y + 14, alpha: { from: 1, to: 0 }, delay: HOLD, duration: FADE, ease: 'Sine.easeIn', onComplete: () => c.destroy() });
+    if (!good) this.rhythmFlash = { at: now, color: 0xff4a3a };
   }
 
   drawHud() {

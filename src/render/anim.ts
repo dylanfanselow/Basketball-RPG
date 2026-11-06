@@ -738,41 +738,59 @@ const dunkClip = (name: string, keys: [number, Pose][]): Clip => ({ name, frames
 const DK_GATHER = dk('gather', [7, 61], [5, 59], [0, 0]);
 const DK_LOAD = dk('load', [6, 56], [4, 55], [0, 0]);
 const DK_LAND: Pose = { ...arms(athletic, [8, 72], [6, 70]), ball: null };
+// Round 54: every dunk gets its own takeoff, body angle and finish (not just different arms). Feet targets for the
+// airborne phases (legs solved at fixed length, knees forward):
+const FT = {
+  oneRise: [[9, 30], [-7, 4]], twoRise: [[4, 8], [-2, 7]], tuck: [[7, 32], [1, 30]], straight: [[3, 4], [-3, 4]],
+  hangBent: [[2, 12], [-3, 10]], swing: [[15, 16], [11, 13]], kickBack: [[-3, 12], [-9, 15]], split: [[16, 14], [-16, 12]],
+} as const satisfies Record<string, [J, J]>;
+/** A dunk pose: feet preset, hands at arm length, ball at the ball hand (+ offset) or null, the whole body leaned
+ * (deg > 0 = arched back, < 0 = leaning in over the rim), optionally seen from behind. */
+const dkx = (ft: keyof typeof FT, hF: J, hB: J, ball: J | null = [1, 3], o: { lean?: number; turn?: boolean } = {}): Pose => {
+  let pz = arms(legs(P({ hip: [0, 54] }), FT[ft][0] as J, FT[ft][1] as J), hF, hB);
+  pz = { ...pz, ball: ball ? [pz.hF[0] + ball[0], pz.hF[1] + ball[1]] : null };
+  if (o.lean) pz = leanBack(pz, o.lean);
+  return o.turn ? turned(pz) : pz;
+};
+/** Takeoffs: off one foot (long last stride) or two (feet together, deeper load). */
+const DK_GATHER1 = dk('gather', [7, 61], [5, 59], [0, 0], { kF: [10, 24], fF: [15, 0], kB: [-6, 27], fB: [-14, 7] });
+const DK_LOAD1 = dk('load', [6, 58], [4, 57], [0, 0], { kF: [9, 21], fF: [8, 0], kB: [-4, 24], fB: [-12, 10] });
+const DK_GATHER2 = dk('gather', [7, 60], [5, 59], [0, 0], { kF: [6, 26], fF: [6, 0], kB: [-3, 26], fB: [-5, 0] });
+const DK_LOAD2 = dk('load', [5, 54], [3, 53], [0, 0], { hip: [0, 37], kF: [9, 18], fF: [5, 0], kB: [0, 18], fB: [-4, 0], head: [6, 77], neck: [5, 69], sF: [6, 66], sB: [2, 66] });
+const one = (rest: [number, Pose][]): [number, Pose][] => [[0, DK_GATHER1], [0.25, DK_LOAD1], ...rest, [1, DK_LAND]];
+const two = (rest: [number, Pose][]): [number, Pose][] => [[0, DK_GATHER2], [0.25, DK_LOAD2], ...rest, [1, DK_LAND]];
+CLIPS.splice(CLIPS.findIndex((c) => c.name === 'shot_dunk'), 1);
 CLIPS.push(
-  dunkClip('shot_dunk_twoHand', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.45, dk('rise', [7, 96], [5, 95], [1, 3])], [0.6, dk('peak', [9, 103], [7, 102], [1, 3])],
-    [0.7, dk('slam', [14, 101], [12, 100], [1, 2])], [0.85, dk('hang', [12, 106], [10, 105], null)], [1, DK_LAND]]),
-  // tomahawk: one hand, the ball cocked high behind the head, then chopped down through the rim
-  dunkClip('shot_dunk_tomahawk', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.45, dk('rise', [3, 98], [9, 90], [0, 3])], [0.6, dk('peak', [-8, 104], [11, 94], [-1, 3])],
-    [0.7, dk('slam', [15, 101], [8, 88], [1, 2])], [0.85, dk('hang', [13, 106], [6, 92], null)], [1, DK_LAND]]),
-  // two-hand hammer: both hands way back behind the head, then down hard
-  dunkClip('shot_dunk_hammer', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.45, dk('rise', [4, 99], [2, 98], [1, 3])], [0.6, dk('peak', [-9, 102], [-10, 101], [0, 3])],
-    [0.7, dk('slam', [14, 100], [12, 99], [1, 2])], [0.85, dk('hang', [12, 106], [10, 105], null)], [1, DK_LAND]]),
-  // cock-back: the ball arm swung straight back behind him at shoulder height, off arm forward, then over the top
-  dunkClip('shot_dunk_cockBack', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.45, dk('rise', [-10, 72], [12, 92], [-2, 0])], [0.6, dk('peak', [-22, 88], [14, 96], [-3, 1])],
-    [0.7, dk('slam', [15, 101], [9, 90], [1, 2])], [0.85, dk('hang', [13, 106], [6, 92], null)], [1, DK_LAND]]),
-  // reverse: rises facing the rim, turns away in the air and throws it down backwards over his head
-  dunkClip('shot_dunk_reverse', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.45, dk('rise', [6, 96], [4, 95], [1, 3])], [0.6, turned(dk('peak', [-4, 104], [-6, 103], [0, 3]))],
-    [0.7, turned(dk('slam', [-13, 100], [-11, 99], [-1, 2]))], [0.85, turned(dk('hang', [-11, 105], [-9, 104], null))], [1, DK_LAND]]),
-  // windmill: the ball goes forward and down, back past the hip, up behind the head and over the top
-  dunkClip('shot_dunk_windmill', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.4, dk('rise', [11, 58], [6, 88], [1, -2])], [0.5, dk('rise', [-12, 62], [8, 92], [-1, -2])],
-    [0.6, dk('peak', [-13, 100], [9, 94], [-1, 3])], [0.7, dk('slam', [15, 102], [8, 90], [1, 2])],
-    [0.85, dk('hang', [13, 107], [6, 92], null)], [1, DK_LAND]]),
-  // 360: a full spin in the air (facing away at the middle of it), two hands
-  dunkClip('shot_dunk_360', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.42, dk('rise', [6, 80], [4, 79], [1, 1])], [0.52, turned(dk('rise', [6, 84], [4, 83], [1, 1]))],
-    [0.62, dk('peak', [8, 100], [6, 99], [1, 3])], [0.7, dk('slam', [14, 101], [12, 100], [1, 2])],
-    [0.85, dk('hang', [12, 106], [10, 105], null)], [1, DK_LAND]]),
+  // one-hand flush: off one foot, upright, quick through and straight down
+  dunkClip('shot_dunk', one([[0.45, dkx('oneRise', [7, 97], [5, 88])], [0.6, dkx('oneRise', [9, 105], [6, 90])],
+    [0.7, dkx('straight', [14, 101], [6, 88], [1, 2])], [0.85, dkx('straight', [11, 96], [5, 84], null)]])),
+  // two-hand flush: off two feet, both hands up together, hangs on the rim with the knees bent
+  dunkClip('shot_dunk_twoHand', two([[0.45, dkx('twoRise', [7, 96], [5, 95])], [0.6, dkx('tuck', [9, 104], [7, 103])],
+    [0.7, dkx('tuck', [14, 101], [12, 100], [1, 2])], [0.85, dkx('hangBent', [12, 106], [10, 105], null)]])),
+  // tomahawk: one foot with the knee driven high, leaning in, ball cocked high behind the head, chopped down, legs kick back
+  dunkClip('shot_dunk_tomahawk', one([[0.45, dkx('oneRise', [3, 100], [10, 90], [0, 3])], [0.6, dkx('oneRise', [-9, 104], [12, 92], [-1, 3], { lean: -10 })],
+    [0.7, dkx('kickBack', [16, 98], [8, 86], [1, 2], { lean: -16 })], [0.85, dkx('kickBack', [13, 100], [6, 88], null, { lean: -6 })]])),
+  // two-hand hammer: two feet, knees tucked, arched way back with both hands behind the head, then a long rim hang
+  dunkClip('shot_dunk_hammer', two([[0.45, dkx('twoRise', [4, 99], [2, 98])], [0.6, dkx('tuck', [-10, 102], [-11, 101], [0, 3], { lean: 16 })],
+    [0.7, dkx('tuck', [14, 100], [12, 99], [1, 2], { lean: 2 })], [0.85, dkx('swing', [12, 106], [10, 105], null, { lean: -4 })]])),
+  // cock-back: one foot, the ball arm swung straight back at shoulder height, chest open, then over the top
+  dunkClip('shot_dunk_cockBack', one([[0.45, dkx('oneRise', [-12, 74], [12, 92], [-2, 0])], [0.6, dkx('oneRise', [-24, 84], [15, 96], [-3, 1], { lean: 8 })],
+    [0.7, dkx('straight', [16, 100], [8, 88], [1, 2], { lean: -10 })], [0.85, dkx('straight', [13, 98], [6, 86], null, { lean: -4 })]])),
+  // reverse: two feet, turns his back to the rim in the air, legs split, throws it down backwards over his head
+  dunkClip('shot_dunk_reverse', two([[0.45, dkx('twoRise', [6, 96], [4, 95])], [0.6, dkx('tuck', [-4, 104], [-6, 103], [0, 3], { turn: true })],
+    [0.7, dkx('split', [-13, 100], [-11, 99], [-1, 2], { turn: true, lean: -6 })], [0.85, dkx('hangBent', [-11, 105], [-9, 104], null, { turn: true })]])),
+  // windmill: one foot, a full arm circle (forward and low, back past the hip, up behind, over), knees tucked through it
+  dunkClip('shot_dunk_windmill', one([[0.38, dkx('oneRise', [13, 60], [6, 88], [1, -2])], [0.46, dkx('tuck', [-12, 60], [8, 92], [-1, -2])],
+    [0.54, dkx('tuck', [-16, 86], [9, 94], [-1, 2], { lean: 6 })], [0.62, dkx('tuck', [-8, 105], [9, 94], [-1, 3], { lean: 8 })],
+    [0.7, dkx('swing', [15, 102], [8, 90], [1, 2], { lean: -8 })], [0.85, dkx('swing', [13, 107], [6, 92], null)]])),
+  // 360: two feet, tucked, a full spin (facing away through the middle of it), two hands
+  dunkClip('shot_dunk_360', two([[0.4, dkx('tuck', [6, 80], [4, 79], [1, 1])], [0.48, dkx('tuck', [6, 84], [4, 83], [1, 1], { turn: true })],
+    [0.56, dkx('tuck', [5, 90], [3, 89], [1, 1], { turn: true })], [0.63, dkx('tuck', [8, 100], [6, 99], [1, 3])],
+    [0.7, dkx('tuck', [14, 101], [12, 100], [1, 2], { lean: -6 })], [0.85, dkx('hangBent', [12, 106], [10, 105], null)]])),
   // 360 windmill: the spin with the ball circling down and back, then over the top
-  dunkClip('shot_dunk_360windmill', [[0, DK_GATHER], [0.25, DK_LOAD],
-    [0.4, dk('rise', [11, 58], [6, 86], [1, -2])], [0.5, turned(dk('rise', [-12, 62], [8, 90], [-1, -2]))],
-    [0.6, dk('peak', [-13, 100], [9, 94], [-1, 3])], [0.7, dk('slam', [15, 102], [8, 90], [1, 2])],
-    [0.85, dk('hang', [13, 107], [6, 92], null)], [1, DK_LAND]]),
+  dunkClip('shot_dunk_360windmill', two([[0.38, dkx('tuck', [13, 58], [6, 86], [1, -2])], [0.46, dkx('tuck', [-12, 62], [8, 90], [-1, -2], { turn: true })],
+    [0.54, dkx('tuck', [-14, 92], [8, 92], [-1, 2], { turn: true })], [0.62, dkx('tuck', [-10, 104], [9, 94], [-1, 3], { lean: 8 })],
+    [0.7, dkx('swing', [15, 102], [8, 90], [1, 2], { lean: -8 })], [0.85, dkx('swing', [13, 107], [6, 92], null)]])),
 );
 
 // ---------- alley-oops (hold △ to lob) ----------
@@ -789,18 +807,34 @@ CLIPS.push(
     { t: 0, pose: { ...arms(P({ ...DK_LEGS.peak } as PosePatch), [7, 104], [4, 103]), ball: null } },
     { t: 0.5, pose: { ...arms(P({ ...DK_LEGS.peak, head: [2, 92] } as PosePatch), [8, 105], [5, 104]), ball: null } },
     { t: 1, pose: { ...arms(P({ ...DK_LEGS.peak } as PosePatch), [7, 104], [4, 103]), ball: null } }] },
-  { name: 'shot_oop', frames: 9, release: 0.5, post: 0.6, keys: [
-    { t: 0, pose: dk('peak', [7, 104], [5, 103], [1, 3]) },
-    { t: 0.25, pose: dk('peak', [-2, 104], [-4, 103], [0, 3]) },
-    { t: 0.5, pose: dk('slam', [14, 100], [12, 99], [1, 2]) },
-    { t: 0.72, pose: dk('hang', [12, 106], [10, 105], null) },
-    { t: 1, pose: DK_LAND }] },
   { name: 'shot_oopLayup', frames: 9, release: 0.5, post: 0.6, keys: [
     { t: 0, pose: dk('peak', [8, 104], [3, 92], [1, 3]) },
     { t: 0.25, pose: dk('peak', [6, 98], [4, 90], [1, 3]) },
     { t: 0.5, pose: dk('slam', [12, 104], [5, 88], [1, 4]) },
     { t: 0.75, pose: dk('hang', [12, 106], [5, 86], null) },
     { t: 1, pose: DK_LAND }] },
+);
+
+// Round 54: alley-oop slams (oop dunk styles, dunks.ts OOP_DUNKS). Caught in the air with the hands up, then a clear
+// load, a hard finish through the rim and a hang. Release 0.5, 11 frames.
+const oopClip = (name: string, keys: [number, Pose][]): Clip => ({ name, frames: 11, release: 0.5, post: 0.6, keys: [...keys, [1, DK_LAND] as [number, Pose]].map(([t, pose]) => ({ t, pose })) });
+const OOP_CATCH2 = dkx('tuck', [8, 105], [6, 104]), OOP_CATCH1 = dkx('oneRise', [9, 105], [4, 94]);
+CLIPS.push(
+  // two-hand: catch, pull it back behind the head, both hands throw it down, hang
+  oopClip('shot_oop', [[0, OOP_CATCH2], [0.2, dkx('tuck', [-8, 103], [-10, 102], [0, 3], { lean: 10 })], [0.36, dkx('tuck', [-11, 100], [-12, 99], [0, 3], { lean: 14 })],
+    [0.5, dkx('swing', [15, 99], [13, 98], [1, 2], { lean: -8 })], [0.72, dkx('swing', [12, 106], [10, 105], null, { lean: -2 })]]),
+  // one-hand: catch it high one-handed and slam it straight down
+  oopClip('shot_oop_oneHand', [[0, OOP_CATCH1], [0.25, dkx('oneRise', [4, 106], [8, 92], [0, 3], { lean: 4 })],
+    [0.5, dkx('straight', [16, 99], [6, 86], [1, 2], { lean: -10 })], [0.72, dkx('straight', [13, 104], [5, 86], null)]]),
+  // tomahawk: catch, the ball cocked way back with one arm, chopped down, legs kick back
+  oopClip('shot_oop_tomahawk', [[0, OOP_CATCH1], [0.18, dkx('oneRise', [-6, 104], [10, 92], [-1, 3], { lean: 6 })], [0.34, dkx('oneRise', [-15, 97], [12, 94], [-2, 2], { lean: 12 })],
+    [0.5, dkx('kickBack', [16, 97], [8, 86], [1, 2], { lean: -16 })], [0.72, dkx('kickBack', [13, 100], [6, 88], null, { lean: -6 })]]),
+  // reverse: catch, turn the back to the rim, throw it down backwards over the head
+  oopClip('shot_oop_reverse', [[0, OOP_CATCH2], [0.25, dkx('tuck', [-4, 104], [-6, 103], [0, 3], { turn: true })],
+    [0.5, dkx('split', [-14, 99], [-12, 98], [-1, 2], { turn: true, lean: -6 })], [0.72, dkx('hangBent', [-11, 105], [-9, 104], null, { turn: true })]]),
+  // windmill: catch, the ball swings down and around, then over the top
+  oopClip('shot_oop_windmill', [[0, OOP_CATCH1], [0.14, dkx('tuck', [13, 64], [6, 90], [1, -2])], [0.27, dkx('tuck', [-12, 62], [8, 92], [-1, -2])],
+    [0.39, dkx('tuck', [-12, 98], [9, 94], [-1, 3], { lean: 8 })], [0.5, dkx('swing', [15, 101], [8, 90], [1, 2], { lean: -8 })], [0.72, dkx('swing', [13, 106], [6, 92], null)]]),
 );
 
 // Jelly Fake (Finishing ability): up for the dunk, then the ball is pulled down to the hip, he hangs (knees tucked,

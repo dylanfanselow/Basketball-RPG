@@ -132,6 +132,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `transitionMatchups` (fast-break cross-match, every 0.25 s) + `trackUserMatchup` (event `switch`). HUD: purple card
   `GameScene.RHY` / `RHY_CARD` (`icon_sk_rhythm` from `roomArt.buildIcons`), `shotText` + `fmtShort` top-right,
   `switchFlash`. Recalibrated: ~2.9 players max a game (median 90%), ~0.8 ults a game at 77–86% of the game.
+  Round 54: `dunks.ts` `OOP_DUNKS` / `pickOopDunk` / `canOopDunk` (also gates lob sets); `startShot` picks an oop
+  style for `alleyOop` (dunk mult term applies); anim.ts `dkx` + `FT` feet presets, one/two-foot takeoffs
+  (`DK_GATHER1/2`, `DK_LOAD1/2`), all dunk clips re-keyed, `oopClip` × 5 (`shot_oop`, `_oneHand`, `_tomahawk`,
+  `_reverse`, `_windmill`; sheet now 1007 frames); coach `endgame` / `topScorer` (closing-time isos);
+  `rhythmDelta.data` `base` / `times` / `decay` → two-line `rhythmPop` with `popEnds` stacking.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

@@ -127,6 +127,12 @@ describe('round 53: rhythm tuning', () => {
     g.possession = u.team; make(g, u);
     const pop = g.events.find((e) => e.kind === 'rhythmDelta');
     expect(pop?.data?.math).toBe(`2pts ×${POINT_GAIN}`);
+    // round 54: fresh / stale is carried separately for the HUD pop
+    expect(pop?.data?.times).toBe(0); expect(pop?.data?.decay).toBe(1);
+    g.possession = u.team; make(g, u);
+    const pops = g.events.filter((e) => e.kind === 'rhythmDelta');
+    expect(pops[pops.length - 1].data?.times).toBe(1);
+    expect(pops[pops.length - 1].data?.decay).toBeCloseTo(REPEAT_DECAY, 5);
   });
   it('a missed play assignment costs no rhythm', () => {
     expect('playMiss' in RHYTHM_LOSS).toBe(false);

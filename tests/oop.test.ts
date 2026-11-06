@@ -183,3 +183,42 @@ describe('lob sets in the playbook (5v5 and 3v3)', () => {
     expect(lobs).toBeGreaterThan(0);
   }, 40000);
 });
+
+describe('round 54: oops get dunked, each with its own slam; a bit less automatic', () => {
+  it('a 6\'5" with a modest Dunk rating dunks the lob now; a small non-leaper still lays it in', async () => {
+    const { canOopDunk, OOP_DUNKS, DUNK, pickOopDunk } = await import('../src/sim/dunks');
+    const mk = (h: number, dunk: number) => { const p = new Player({ id: 'x', name: 'X', team: 0, pos: 'SG', core: core(60) }); p.height = h; p.sub.dunk = dunk; return p; };
+    expect(canOopDunk(mk(6.42, 56))).toBe(true); // used to need ~67
+    expect(canOopDunk(mk(6.0, 50))).toBe(false);
+    for (const d of OOP_DUNKS) expect(DUNK[d.id]).toBe(d);
+    // styles respect the Dunk rating minimums
+    const { Rng } = await import('../src/sim/math');
+    const rng = new Rng(5), low = mk(6.8, 50), high = mk(6.8, 99);
+    const lowIds = new Set(Array.from({ length: 60 }, () => pickOopDunk(low, rng).id));
+    expect([...lowIds].every((id) => DUNK[id].min <= 50)).toBe(true);
+    const highIds = new Set(Array.from({ length: 200 }, () => pickOopDunk(high, rng).id));
+    expect(highIds.has('oopWindmill') && highIds.has('oopReverse') && highIds.has('oopTomahawk')).toBe(true);
+  });
+  it('the oop dunk plays its own slam clip and names it', async () => {
+    const { DUNK } = await import('../src/sim/dunks');
+    const { CLIP } = await import('../src/render/anim');
+    let seen = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const s = setup({ seed, mate: { finishing: 70, mobility: 70 }, mateHeight: 6.42 });
+      s.g.lobPass(s.u, s.m);
+      for (let i = 0; i < 120 && !(s.m.state === 'shoot' && s.m.pendingShot); i++) run(s.g, s.m, s.rim, 1);
+      const ps = s.m.pendingShot;
+      if (ps?.type !== 'alleyOop') continue;
+      seen++;
+      expect(DUNK[ps.dunk!]).toBeTruthy();
+      expect(s.m.anim?.name).toBe(DUNK[ps.dunk!].clip);
+      expect(CLIP[s.m.anim!.name]).toBeTruthy();
+    }
+    expect(seen).toBeGreaterThan(4);
+  });
+  it('lobs are less automatic: lower base for oop dunks and layups', async () => {
+    const { SHOT_TYPES } = await import('../src/sim/data');
+    expect((SHOT_TYPES.alleyOop as any).base[0][1]).toBeLessThan(0.9);
+    expect((SHOT_TYPES.alleyOopLayup as any).base[0][1]).toBeLessThan(0.78);
+  });
+});

@@ -30,7 +30,20 @@ export const DUNKS: DunkDef[] = [
   { id: 'spin360', name: '360', min: 90, kind: 'flash', mult: 0.95, ult: 6, clip: 'shot_dunk_360' },
   { id: 'windmill360', name: '360 Windmill', min: 95, kind: 'flash', mult: 0.93, ult: 6, clip: 'shot_dunk_360windmill' },
 ];
-export const DUNK = Object.fromEntries(DUNKS.map((d) => [d.id, d])) as Record<string, DunkDef>;
+/**
+ * Round 54: alley-oop dunks (the catcher is already up at the rim). Not part of the dunk package list (unlocks and the
+ * level-up screen use DUNKS); the same Dunk-rating minimums gate the fancier ones.
+ */
+export const OOP_DUNKS: DunkDef[] = [
+  { id: 'oopTwoHand', name: 'Alley-Oop Slam', min: 0, kind: 'power', mult: 1, ult: 0, clip: 'shot_oop' },
+  { id: 'oopOneHand', name: 'Alley-Oop One-Hand Slam', min: 0, kind: 'power', mult: 1, ult: 0, clip: 'shot_oop_oneHand' },
+  { id: 'oopTomahawk', name: 'Alley-Oop Tomahawk', min: 62, kind: 'power', mult: 1, ult: 1, clip: 'shot_oop_tomahawk' },
+  { id: 'oopReverse', name: 'Alley-Oop Reverse', min: 78, kind: 'flash', mult: 0.98, ult: 3, clip: 'shot_oop_reverse' },
+  { id: 'oopWindmill', name: 'Alley-Oop Windmill', min: 86, kind: 'flash', mult: 0.96, ult: 4, clip: 'shot_oop_windmill' },
+];
+export const DUNK = Object.fromEntries([...DUNKS, ...OOP_DUNKS].map((d) => [d.id, d])) as Record<string, DunkDef>;
+/** Round 54: can he dunk a lob? Easier than off the dribble (he's already up there): a 6'5" needs ~55, a 6'0" 65. */
+export const canOopDunk = (p: Player) => p.sub.dunk >= 40 + (7 - p.height) * 25;
 
 export const unlockedDunks = (p: Player) => DUNKS.filter((d) => p.sub.dunk >= d.min);
 /** The next dunk to unlock (and the rating it needs), or null when he has them all. */
@@ -53,7 +66,15 @@ export function pickDunk(p: Player, o: { contested: boolean; speedToRim: number;
     pool = have.map((d, i) => ({ d, w: 1 + i * 0.9 + (d.kind === 'flash' ? 1.5 : 0) }));
   }
   if (!pool.length) return DUNK.flush;
+  return weighted(pool, rng);
+}
+function weighted(pool: { d: DunkDef; w: number }[], rng: Rng): DunkDef {
   let r = rng.next() * pool.reduce((a, x) => a + x.w, 0);
   for (const x of pool) { r -= x.w; if (r <= 0) return x.d; }
   return pool[pool.length - 1].d;
+}
+/** Round 54: the oop finish, weighted toward the flashiest he has unlocked. */
+export function pickOopDunk(p: Player, rng: Rng): DunkDef {
+  const have = OOP_DUNKS.filter((d) => p.sub.dunk >= d.min);
+  return weighted(have.map((d, i) => ({ d, w: 1 + i * 0.8 + (d.kind === 'flash' ? 1 : 0) })), rng);
 }

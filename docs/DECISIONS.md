@@ -158,6 +158,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 54: lobs, oop dunks, dunk variety, closing time, rhythm pop.**
+  - **Lobs a little less automatic:** alley-oop base 84% / 76% (0 / 5 ft, was 90 / 82), oop layup 68 / 56 (was 78 / 66),
+    contestW 0.6, oop windup 0.2 s (was 0.16, so the slam reads), timing term 0.65–1. Sims: ~61% made (was 74%).
+  - **Oops get dunked:** `canOopDunk` = dunk ≥ 40 + (7 − height) × 25 (easier than off the dribble). Oop slam styles
+    (`OOP_DUNKS`, own clips): two-hand, one-hand, tomahawk 62, reverse 78, windmill 86.
+  - **Dunks look different:** each has its own takeoff (one / two feet), body lean and finish (owner: "too similar").
+  - **Closing time:** last ~12% of Q4 / OT → isos for the team's top scorer (+0.3 coach score; random coach 75%); the
+    user gets it when he's the top scorer and coach trust ≥ 60.
+  - **Rhythm pop:** held ~3.5 s; two lines with FRESH (green) / STALE ×decay (orange) spelled out. Same effect, clearer.
 - **Round 53: rhythm tuning + switches.**
   - **No rhythm loss for a missed play assignment** (trust still drops). **Ran the play:** you executed a phase of
     the play and your team scored off it (not your shot, not your assist) → +3 rhythm.

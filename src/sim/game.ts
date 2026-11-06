@@ -5,11 +5,11 @@ import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
 import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt } from './shooting';
-import { pickDunk, DUNK } from './dunks';
+import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
-import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, quarterGain, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
-import { chooseCall } from './plays/coach';
+import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, quarterGain, POINT_GAIN, REPEAT_DECAY, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
+import { endgame, topScorer, chooseCall } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
@@ -823,7 +823,7 @@ export class GameSim {
     // iso sets are only for designated stars; everything else is the regular playbook
     // lob sets only when the player they're for can finish above the rim; a good lob passer calls them more
     const isLob = (pid: string) => PLAYS[pid].tags.includes('lob');
-    const canOop = (pid: string) => { const f = PLAYS[pid].focus, m = f ? this.byRole(this.possession, f) : null; return !!m && m.sub.dunk >= 50 + (7 - m.height) * 30; };
+    const canOop = (pid: string) => { const f = PLAYS[pid].focus, m = f ? this.byRole(this.possession, f) : null; return !!m && canOopDunk(m); };
     const regular = Object.keys(PLAYS).filter((pid) => !isIso(pid) && allowed(pid) && (!isLob(pid) || canOop(pid)));
     const lobber = off.some((p) => p.sub.lob >= 75 || p.mods.pAdd('lob') > 0);
     const pool = regular;
@@ -848,6 +848,9 @@ export class GameSim {
         else if (focus === this.user && PLAYS[id].focus) swap = [PLAYS[id].focus!, focus.role]; // run any set for the user by swapping roles
         else if (focus !== this.user) focus = null;
       }
+    } else if (!this.randomCalls[this.possession] && endgame(this) && isos.length && this.user && this.userOnCourt && topScorer(off) === this.user && this.trust.coach >= 60 && this.rng.chance(0.6)) {
+      // round 54: you're the go-to scorer and the coach trusts you: your number gets called at closing time
+      isoFor(this.user); why = 'closing time';
     } else if (!this.randomCalls[this.possession]) {
       // round 49: the coach scores every (play, focus) and picks one — lab values + matchups + what's working tonight
       const best = small ? [...off].sort((a, b) => b.overall - a.overall)[0] : null;
@@ -855,8 +858,8 @@ export class GameSim {
       const plays = Object.keys(PLAYS).filter((pid) => allowed(pid));
       const focuses = off.filter((p) => this.isAI(p) && p.state !== 'fallen');
       const pick = chooseCall(this, plays, focuses, this.playLog[this.possession], this.recentCalls[this.possession],
-        (pid, f) => f.sub.dunk >= 50 + (7 - f.height) * 30 && !!PLAYS[pid].focus,
-        (f) => (f.star || f === best) && f.box.usage <= avgUse * 1.8 + 2);
+        (pid, f) => canOopDunk(f) && !!PLAYS[pid].focus,
+        (f) => ((f.star || f === best) && f.box.usage <= avgUse * 1.8 + 2) || (endgame(this) && f === topScorer(off))); // round 54: the closer gets his iso late
       if (pick) {
         id = pick.play; focus = pick.focus;
         swap = PLAYS[id].focus && PLAYS[id].focus !== pick.focus.role ? [PLAYS[id].focus!, pick.focus.role] : null;
@@ -869,7 +872,9 @@ export class GameSim {
       // 3v3 is iso ball too: no designated star needed, the team's best player (or a star) gets his number called
       const best = small ? [...off].sort((a, b) => b.overall - a.overall)[0] : null;
       const stars = off.filter((p) => (p.star || p === best) && p.box.usage <= avgUse * 1.8 + 2);
-      if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : small ? 0.35 : 0.3)) isoFor(this.rng.pick(stars));
+      const closer = endgame(this) ? topScorer(off) : null; // round 54: the last few possessions go to the top scorer
+      if (closer && isos.length && this.rng.chance(0.75)) isoFor(closer);
+      else if (stars.length && isos.length && this.rng.chance(this.clutch ? 0.5 : small ? 0.35 : 0.3)) isoFor(this.rng.pick(stars));
     }
     this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
@@ -1298,7 +1303,8 @@ export class GameSim {
     p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
     // dunk style (unlocks with the Dunk rating: power when contested, flashy when open) and the Windmill Gather
     const speedToRim = dot(p.vel, norm(sub(this.rim(p.team), p.p)));
-    const dunk = type === 'dunk' ? pickDunk(p, { contested: computeContest(p, this.opp(p.team), this.side(p.team), 'dunk', this.time).raw > 0.25, speedToRim, d: dist(p.p, this.rim(p.team)) }, this.rng) : null;
+    const dunk = type === 'dunk' ? pickDunk(p, { contested: computeContest(p, this.opp(p.team), this.side(p.team), 'dunk', this.time).raw > 0.25, speedToRim, d: dist(p.p, this.rim(p.team)) }, this.rng)
+      : type === 'alleyOop' ? pickOopDunk(p, this.rng) : null; // round 54: oops have their own slams
     const windmill = windmillGather(p, type, speedToRim);
     p.pendingShot = { type, override, dunk: dunk?.id, windmill };
     if (type === 'dunk') p.dunkStartAt = this.time;
@@ -1518,12 +1524,11 @@ export class GameSim {
     if (near && to.z > 1.5) {
       // timing: catching it at the top of the leap is clean; on the way up or down it's harder
       const q = clamp01(1 - Math.abs(to.vz) / Math.max(1, to.jumpVel * 0.9));
-      const canDunk = to.sub.dunk >= 50 + (7 - to.height) * 30;
       this.giveBall(to);
       this.assistCand = { passer: st.from, receiver: to, at: this.time };
       to.state = 'idle';
-      this.startShot(to, canDunk ? 'alleyOop' : 'alleyOopLayup');
-      if (to.pendingShot) to.pendingShot.oopTiming = 0.75 + 0.25 * q;
+      this.startShot(to, canOopDunk(to) ? 'alleyOop' : 'alleyOopLayup');
+      if (to.pendingShot) to.pendingShot.oopTiming = 0.65 + 0.35 * q; // round 54: timing matters more
       this.emit({ kind: 'move', text: 'Alley-oop!', pid: to.id, big: true });
       return;
     }
@@ -1771,7 +1776,7 @@ export class GameSim {
    * Round 51: rhythm for any player (gains scale with the game length so a strong night fills it around the 4th
    * quarter; losses too; round 53: gains × the quarter multiplier). Crossing a notch re-applies the stat boost; your changes pop on the HUD meter.
    */
-  addRhythm(p: Player | null | undefined, amount: number, why = '', math = '') {
+  addRhythm(p: Player | null | undefined, amount: number, why = '', math = '', extra: Record<string, unknown> = {}) {
     if (!p || !amount) return;
     const before = notchOf(p.rhythm);
     // round 53: gains also grow each quarter (hidden from the pops' math)
@@ -1786,7 +1791,7 @@ export class GameSim {
       this.rhythmReadySaid[p.id] = true;
       this.emit({ kind: 'rhythm', text: this.isHuman(p) ? 'RHYTHM MAXED — ultimate ready (□)' : `${p.name} is in full rhythm`, pid: p.id, team: p.team, big: this.isHuman(p), data: { ready: true } });
     }
-    if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: applied, why, math }, p.id);
+    if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: applied, why, math, ...extra }, p.id);
   }
   /** Set rhythm directly (dev tools / ultimates), re-applying the notch boost. */
   setRhythm(p: Player, v: number) {
@@ -2236,13 +2241,14 @@ export class GameSim {
       const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
       const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
       const flash = dk && dk.kind === 'flash';
-      this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1), methodLabel(mk), scoreMath(val, used) + (flash ? ' ×1.15' : ''));
+      this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1), methodLabel(mk), scoreMath(val, used) + (flash ? ' ×1.15' : ''),
+        { base: `${val}pts ×${POINT_GAIN}${flash ? ' ×1.15' : ''}`, times: used, decay: REPEAT_DECAY ** used }); // round 54: the pop shows fresh / stale clearly
       // round 53: you ran your part of the play and the team scored off it (no shot or assist needed)
       const u = this.user;
       if (u && this.ranPlay && this.ranPlay.team === team && u.team === team && s !== u && ast !== u && this.userOnCourt) this.addRhythm(u, RHYTHM_GAIN.playRun, 'ran the play');
       this.ranPlay = null;
       if (s === this.user) applyTrust(this.trust, 'madeShot');
-      const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
+      const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk|Alley-Oop/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
       this.lastMadeAt = this.time;
       this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {

@@ -215,7 +215,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
   if (type === 'jelly') terms.push({ label: 'Jelly Fake', value: JELLY_MULT, kind: 'perk' }); // finger-roll at the top of a hang
   if (ctx.oopTiming !== undefined && ctx.oopTiming < 0.995) terms.push({ label: 'oop timing', value: ctx.oopTiming, kind: 'perk' });
-  const dk = type === 'dunk' && ctx.dunk ? DUNK[ctx.dunk] : null;
+  const dk = (type === 'dunk' || type === 'alleyOop') && ctx.dunk ? DUNK[ctx.dunk] : null;
   if (dk && dk.mult !== 1) terms.push({ label: dk.name, value: dk.mult, kind: 'perk' }); // flashy dunks are riskier
 
   const rating = shooter.sub[def.sub];
