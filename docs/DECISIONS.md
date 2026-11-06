@@ -154,6 +154,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     (fadeaway), **CHEF 30** (night night).
   - **Round 36g:** posters hung at **random-looking spots, heights and slight tilts** (`hang`); a **trash can** by the
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
+- **Round 47: defenses react to outliers, not normal stars.** Contests keep stacking as 1 − Π(1 − cᵢ) (owner: keep it,
+  get help into the cone). **Who guards whom** is computed (3v3 + 5v5): best-fitting defender on the biggest threat,
+  the weakest defender hidden (Knicks–Lakers: Brunson doesn't guard Luka). **Heat** is mostly the share of the
+  team's shots (and points); a star at ~30% is left alone (owner: target the 75–100% outliers; 114–123 team PPG is
+  fine). Heat **never cools**; a tier only rises while he beats the current coverage (if his % drops, the defense is
+  working and doesn't send another man). Keyed in = help shading + **deny the catch only for post / catch-and-shoot
+  scorers**; doubles; **full triples anywhere** when hot enough, with the other defenders rotating. No usage fatigue.
 - **Round 46: season calendar + sleep fixes.** The calendar follows the owner's parchment reference (pixel grid,
   `M T W Th F Sa Su`) but with **our own damage** (torn top-left, notched right edge, dog-eared bottom-left, coffee
   ring), the **month name at the top** (year beside it) and **key games only** (pennant in the opponent's colours +

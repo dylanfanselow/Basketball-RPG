@@ -48,40 +48,40 @@ describe('round 47: who guards whom', () => {
   });
 });
 
-describe('round 47: heat', () => {
-  const box = { fga: 0, fgm: 0, pts: 0 };
-  const shoot = (h: ReturnType<typeof newHeat>, made: boolean, rep: number, teamPts: number, cap = 3) => {
-    box.fga++; if (made) { box.fgm++; box.pts += 2; }
-    return afterShot(h, rep, box, teamPts, made, cap);
-  };
-  it('a star who keeps scoring efficiently climbs one tier at a time; heat never drops', () => {
-    Object.assign(box, { fga: 0, fgm: 0, pts: 0 });
-    const h = newHeat(); let last = 0, team = 0;
-    for (let i = 0; i < 40; i++) {
-      team += 4; shoot(h, i % 3 !== 2, 92, team);
-      expect(h.score).toBeGreaterThanOrEqual(last); last = h.score;
+describe('round 47: heat (the outliers who take most of the shots)', () => {
+  /** He takes `share` of his team's shots; everyone else shoots 45% for 2. */
+  const run = (share: number, makeEvery: (i: number) => boolean, rep: number, shots: number, cap = 3) => {
+    const h = newHeat(), box = { fga: 0, fgm: 0, pts: 0 }, team = { fga: 0, pts: 0 };
+    let others = 0, last = 0;
+    for (let i = 0; i < shots; i++) {
+      // the rest of the team's shots between his
+      others += (1 - share) / share;
+      while (others >= 1) { others--; team.fga++; if ((team.fga * 7) % 20 < 9) team.pts += 2; } // 45%, deterministic
+      const made = makeEvery(i);
+      box.fga++; team.fga++; if (made) { box.fgm++; box.pts += 2; team.pts += 2; }
+      afterShot(h, rep, box, team, made, cap);
+      expect(h.score).toBeGreaterThanOrEqual(last); last = h.score; // never cools
     }
-    expect(h.tier).toBe(3);
+    return h;
+  };
+  const efficient = (i: number) => i % 3 !== 2; // 67%
+  it('a ball hog taking ~85% of the shots and making them climbs to triples, one tier at a time', () => {
+    expect(run(0.85, efficient, 85, 40).tier).toBe(3);
   });
-  it('cold under the current coverage: no extra man is sent (and the tier never steps down)', () => {
-    Object.assign(box, { fga: 0, fgm: 0, pts: 0 });
-    const h = newHeat(); let team = 0;
-    while (h.tier < 2) { team += 4; shoot(h, true, 92, team); }
-    for (let i = 0; i < 30; i++) { team += 3; shoot(h, i % 4 === 0, 92, team); } // 25% against the double
+  it('half the shots → doubles, not triples', () => {
+    expect(run(0.55, efficient, 85, 40).tier).toBe(2);
+  });
+  it('a normal star taking ~30% of the shots is left alone (at most keyed in)', () => {
+    expect(run(0.3, efficient, 95, 30).tier).toBeLessThanOrEqual(1);
+    expect(run(0.25, efficient, 95, 30).tier).toBe(0);
+  });
+  it('cold against the double: no extra man is sent, and the tier never steps down', () => {
+    const h = run(0.85, (i) => (i < 24 ? efficient(i) : i % 4 === 0), 85, 50);
     expect(h.tier).toBe(2);
     expect(h.score).toBeGreaterThanOrEqual(HEAT_AT[2]);
   });
   it('3v3 stops at doubles; 1v1 never escalates', () => {
     expect(tierCap(5)).toBe(3); expect(tierCap(3)).toBe(2); expect(tierCap(1)).toBe(0);
-    Object.assign(box, { fga: 0, fgm: 0, pts: 0 });
-    const h = newHeat(); let team = 0;
-    for (let i = 0; i < 40; i++) { team += 3; shoot(h, true, 95, team, 2); }
-    expect(h.tier).toBe(2);
-  });
-  it('a role player needs a real hot night to get keyed in', () => {
-    Object.assign(box, { fga: 0, fgm: 0, pts: 0 });
-    const h = newHeat(); let team = 0;
-    for (let i = 0; i < 5; i++) { team += 10; shoot(h, true, 62, team); }
-    expect(h.tier).toBe(0); // 10 points on a team scoring 50
+    expect(run(0.9, () => true, 95, 40, 2).tier).toBe(2);
   });
 });

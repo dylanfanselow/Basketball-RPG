@@ -418,6 +418,7 @@ export class GameScene extends Phaser.Scene {
       case 'rim': if (!d.seq) sfx.clank(pan, !!d.board); break; // live-rim misses already played their contacts
       case 'rimHit': d.kind === 'tick' ? sfx.rimTick(pan) : sfx.clank(pan, d.kind === 'board'); break;
       case 'airball': sfx.airball(pan); break;
+      case 'attention': sfx.cheer(d.tier >= 2 ? 0.55 : 0.35); break; // the crowd notices the defense loading up (round 47)
       case 'boxout': break;
       case 'bounce': sfx.bounce(d.v ?? 6, pan); break;
       case 'screenHit': sfx.thud(pan, false); break;

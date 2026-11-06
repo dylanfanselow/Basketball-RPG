@@ -10,6 +10,7 @@ import { withDefaults } from '../render/appearance';
 import { openPixelEditor } from './pixelEditor';
 import { partVariants, PartType } from '../render/faceParts';
 import { unlockedDunks, nextDunk } from '../sim/dunks';
+import { ATT, scorerRep, scorerStyle, TIER_NAME, HEAT_AT, Tier } from '../sim/attention';
 
 /**
  * Developer tools overlay (F1 / ` / Create+Options). Everything applies live: to the career save
@@ -298,6 +299,32 @@ export function initDevPanel() {
     gc.append(slider('bench sim speed', 1, 16, 1, app.settings.benchSpeed, (v) => { app.settings.benchSpeed = v; }));
     gc.append(slider('quarter length (s)', 30, 720, 30, app.settings.quarterLen, (v) => { app.settings.quarterLen = v; }));
     root.append(section('Game controls', gc));
+
+    // round 47: attention on scorers (who guards whom, heat tiers, doubles / triples)
+    const at = el('div');
+    if (s && s.user) {
+      const u = s.user;
+      at.append(el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'force on me:'),
+        ...([0, 1, 2, 3] as Tier[]).map((t) => btn(t === 0 ? 'normal' : TIER_NAME[t].toLowerCase(), () => s.forceTier(u, t), `Make the defense treat you as tier ${t}`))));
+    }
+    if (s) {
+      at.append(check('Attention off (role matchups, no doubles)', s.attentionOff, (v) => { s.attentionOff = v; s.assignMatchups(); }));
+      at.append(check('Smart matchups only (no tiers)', s.tiersOff, (v) => { s.tiersOff = v; }));
+    }
+    for (const k of Object.keys(ATT) as (keyof typeof ATT)[]) at.append(check(`behaviour: ${k}`, ATT[k], (v) => { ATT[k] = v; }));
+    at.append(el('div', { class: 'note' }, `Tiers start at heat ${HEAT_AT.slice(1).join(' / ')} (≈ % of the team's shots, mostly). They never cool, and only go up while he beats the current coverage (≥3 shots at ≥1 pt/shot or ≥50%).`));
+    at.append(el('pre', { class: 'live', id: 'attRead' }, ''));
+    root.append(section('Attention (doubles / triples)', at));
+    // one shared timer: the live heat + matchup readout
+    if (!(window as any).__attRO) (window as any).__attRO = setInterval(() => {
+      const e = document.getElementById('attRead'), g = app.sim; if (!e || !g) return;
+      const rows = [0, 1].flatMap((t) => g.teams[t as 0 | 1].onCourt.map((p) => {
+        const h = g.heat[p.id], man = g.players.find((q) => q.id === p.guarding);
+        return `${p.name.padEnd(18).slice(0, 18)} rep ${scorerRep(p).toFixed(0)} ${scorerStyle(p).padEnd(7)} heat ${(h?.score ?? 0).toFixed(0).padStart(3)} T${g.tierOf(p)}  guards ${man?.name ?? '-'}`;
+      }));
+      const tr = g.trap ? `TRAP on ${g.players.find((p) => p.id === g.trap!.holderId)?.name}: ${g.trap.helpers.length} helper(s)` : 'no trap';
+      e.textContent = [...rows, tr].join('\n');
+    }, 500);
 
     // multi-angle players
     const an = el('div'), ang = app.settings.angles;

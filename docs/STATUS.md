@@ -90,6 +90,17 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   deflection lanes. R1 icon pass.
 
 ## Team play & AI
+- Round 47 attention (`sim/attention.ts`): `assignGuards` (every pairing, max Σ threatWeight × `guardFit` − size
+  mismatch; `scorerRep`, `scorerStyle` post / catch / creator) drives `GameSim.assignMatchups`. Heat per player
+  (`GameSim.heat`, `afterShot` on every FGA incl. blocks): ~% of the team's shots (70%) + points (30%), + up to 5 rep
+  and 4 hot streak, counted after 25 team FGA / 6 own; never cools; tiers at 40 / 52 / 70, one at a time, only while
+  he beats the current coverage (≥ 3 FGA at ≥ 1 pt/shot or 50%); 5v5 caps at triples, 3v3 at doubles, 1v1 none.
+  Defense (`ai/defense.ts`): keyed in = help shading toward him + deny for post / catch scorers; tier 2-3 =
+  `GameSim.trapFor` (helpers from `pickHelpers`, rim protector stays home far out, starts while the pass is on its
+  way, on inside 28 ft / held to 31 ft) as a wall in his shot cone + rotation (`trap.rotate`), `loadFor` (helpers sit
+  in the gap while he's off the ball), `scrambleOnCatch`. Offense: AI handlers pass out of doubles (`doubledSince`).
+  Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
+  `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me
   role swap; freelance 5-out + backdoor cuts.
 - Stars + isos: `Player.star` (roster tier ≥ 4, max 2, else the best player; `markStars` in `career/roster.ts`; the

@@ -302,7 +302,8 @@ export class GameSim {
   private heatAfterShot(s: Player, made: boolean) {
     if (this.attentionOff || this.tierCap === 0) return;
     const h = (this.heat[s.id] ??= newHeat());
-    const up = afterShot(h, scorerRep(s), s.box, this.teams[s.team].score, made, this.tierCap);
+    const teamFga = [...new Set(this.teams[s.team].roster)].reduce((n, p) => n + p.box.fga, 0);
+    const up = afterShot(h, scorerRep(s), s.box, { fga: teamFga, pts: this.teams[s.team].score }, made, this.tierCap);
     if (up) {
       // the new matchups (his weight went up) take over at the next inbound / change of possession
       this.emit({ kind: 'attention', text: `${TIER_NAME[up]} on ${s.name}`, team: s.team, pid: s.id, big: up >= 2, data: { tier: up } });
@@ -359,7 +360,7 @@ export class GameSim {
   trapFor(h: Player | null): GameSim['trap'] {
     const tier = h ? this.tierOf(h) : 0;
     const side = h ? this.side(h.team) : 1;
-    const on = !!h && tier >= 2 && this.live && h.team === this.possession && inFrontcourt(side, h.p) && dist(h.p, this.rim(h.team)) < 25 && !this.inTransition(h.team) && h.state !== 'shoot';
+    const on = !!h && tier >= 2 && this.live && h.team === this.possession && inFrontcourt(side, h.p) && dist(h.p, this.rim(h.team)) < (this.trap?.holderId === h.id ? 31 : 28) && !this.inTransition(h.team) && h.state !== 'shoot';
     if (!on) { this.trap = null; return null; }
     // one trap per stint with the ball (it starts while the pass is on its way and stays on him until he gives it up)
     const key = `${h!.id}|${tier}`;

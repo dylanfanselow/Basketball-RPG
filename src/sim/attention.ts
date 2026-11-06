@@ -5,9 +5,10 @@ import { clamp, clamp01 } from './math';
  * Round 47: how a defense reacts to scorers, the way real defenses do.
  *  - Who guards whom: the best-fitting defender goes on the biggest threat, the weakest defender hides on the least
  *    dangerous man (Brunson doesn't guard Luka). Works for 3v3 and 5v5 (every pairing is tried).
- *  - Heat: a scorer who keeps scoring efficiently draws more attention — keyed in, then doubles, then triples. Heat
- *    never cools in a game; if his efficiency drops under the current coverage, the coverage is working and the
- *    defense doesn't send another man.
+ *  - Heat: the outliers — a player taking a huge share of his team's shots (and scoring on them) draws more
+ *    attention: keyed in, then doubles, then triples. A star taking ~30% of the shots is normal and is left alone.
+ *    Heat never cools in a game; if his efficiency drops under the current coverage, the coverage is working and
+ *    the defense doesn't send another man.
  * Pure (no Phaser, no state.ts).
  */
 
@@ -87,7 +88,9 @@ export function assignGuards(defs: Player[], offs: Player[], weight: (o: Player)
 export type Tier = 0 | 1 | 2 | 3;
 export const TIER_NAME = ['', 'KEYED IN', 'DOUBLE TEAMS', 'TRIPLE TEAM'] as const;
 /** Heat score needed for each tier (index = tier). */
-export const HEAT_AT = [0, 42, 68, 88];
+export const HEAT_AT = [0, 40, 52, 70];
+/** Heat only counts once the team has taken this many shots and he has taken this many (early shares are noise). */
+export const HEAT_MIN_TEAM_FGA = 25, HEAT_MIN_FGA = 6;
 /** Shots he must take against the current coverage (and beat it) before the defense sends more. */
 export const BEAT_FGA = 3;
 
@@ -100,14 +103,17 @@ export interface Heat {
 }
 export const newHeat = (): Heat => ({ score: 0, tier: 0, since: { fga: 0, fgm: 0, pts: 0 }, recent: [] });
 
-/** The heat score from this game so far (before the never-cools max). */
-export function heatScore(rep: number, pts: number, teamPts: number, recent: boolean[]): number {
-  const repTerm = clamp01((rep - 60) / 35) * 30;
-  const share = teamPts >= 10 ? pts / teamPts : 0;
-  const shareTerm = Math.max(0, share - 0.2) * 100;
-  const volume = pts * 0.7;
-  const hot = recent.slice(-4).filter(Boolean).length * 5;
-  return repTerm + shareTerm + volume + hot;
+/**
+ * The heat score from this game so far (before the never-cools max): mostly his share of the team's shots (70%) and
+ * points (30%), ×100 — ~30 for a normal star, 50+ for someone taking half the shots, 70+ for a ball hog — plus a
+ * little for reputation (up to 5) and a hot streak (up to 4).
+ */
+export function heatScore(rep: number, box: { fga: number; pts: number }, team: { fga: number; pts: number }, recent: boolean[]): number {
+  if (team.fga < HEAT_MIN_TEAM_FGA || box.fga < HEAT_MIN_FGA) return 0;
+  const share = 0.7 * (box.fga / team.fga) + 0.3 * (team.pts > 0 ? box.pts / team.pts : 0);
+  const repTerm = clamp01((rep - 80) / 15) * 5;
+  const hot = recent.slice(-4).filter(Boolean).length;
+  return share * 100 + repTerm + hot;
 }
 
 /** Is he beating the coverage he's seeing now? (enough shots against it, scoring efficiently) */
@@ -121,9 +127,9 @@ export function beatingCoverage(h: Heat, box: { fga: number; fgm: number; pts: n
  * After one of his shots: update the heat (it never goes down) and maybe raise the tier by one. `cap` = the highest
  * tier this game allows (3 in 5v5, 2 in 3v3, 0 in 1v1). Returns the new tier if it went up, else null.
  */
-export function afterShot(h: Heat, rep: number, box: { fga: number; fgm: number; pts: number }, teamPts: number, made: boolean, cap: number): Tier | null {
+export function afterShot(h: Heat, rep: number, box: { fga: number; fgm: number; pts: number }, team: { fga: number; pts: number }, made: boolean, cap: number): Tier | null {
   h.recent.push(made); if (h.recent.length > 6) h.recent.shift();
-  h.score = Math.max(h.score, heatScore(rep, box.pts, teamPts, h.recent));
+  h.score = Math.max(h.score, heatScore(rep, box, team, h.recent));
   const next = (h.tier + 1) as Tier;
   if (next > cap || h.score < HEAT_AT[next] || !beatingCoverage(h, box)) return null;
   h.tier = next; h.since = { fga: box.fga, fgm: box.fgm, pts: box.pts };

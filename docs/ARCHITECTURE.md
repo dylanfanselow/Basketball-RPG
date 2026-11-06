@@ -18,7 +18,8 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `rim.ts` | Scripted rim sequences, now dunks only: `buildPath`, `sampleRim`. |
 | `plays/runner.ts` | `PlayRunner`: phases, reset timer, role swap, focus player. |
 | `ai/offense.ts` | Off-ball targets (play, freelance, transition lanes), handler AI (shoot/pass/drive/moves, transition reads, open-man bonuses, dead dribble). |
-| `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges. |
+| `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges; round 47 attention: shading, deny, doubles / triples, rotation, load-up. |
+| `attention.ts` | Round 47: who guards whom (`assignGuards`, `guardFit`, `scorerRep`, `scorerStyle`), heat tiers (`afterShot`, `HEAT_AT`, `tierCap`), `ATT` switches. |
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
@@ -81,4 +82,5 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 `sim.test.ts` (mechanics, AI game stats, inbounds, rebounding, moves), `anim.test.ts` (clips, appearance, events),
 `rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `apartment.test.ts` (collision, reachability, cat, save v3, key games), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
-`npx vitest run scripts/stats.test.ts --dir . --config /dev/null`).
+`npx vitest run scripts/stats.test.ts --dir . --config /dev/null`). `scripts/scoring.test.ts` (round 47) compares top
+scorers / team PPG with attention off, matchups only and full (`MODES=…`, `HOG=1` for a ball-hog scenario).
