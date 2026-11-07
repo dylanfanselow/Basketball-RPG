@@ -69,8 +69,9 @@ export function buildLessons(): Lesson[] {
       demo: 'pullup', demoTalk: K('Same jumper I\'m hitting tomorrow.'),
       after: [
         N('Hold ✕ to shoot. A quick tap is a pump fake.'),
-        N('No shot meter. Top right is your shot chance: the shot\'s base % × what\'s in the way = your odds.'),
-        N('The cone in front of you shows who\'s contesting. Tonight everything falls so you get the feel. In real games that number is the truth.'),
+        N('There\'s no shot meter. The number in the top right is your chance to make the shot you\'re lined up for.'),
+        N('It starts from that shot\'s base % and moves with your rating, how open you are and how tired you are.'),
+        N('The cone in front of you is where a defender has to be to contest it. Keep defenders out of it to keep that number up.'),
       ],
       ball: 'me',
       steps: [{ prompt: 'Hold ✕ to shoot', check: madeShot }],

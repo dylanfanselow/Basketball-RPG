@@ -120,14 +120,15 @@ export class StoryRun {
       const sim = this.gs.sim, c = app.career;
       const youWon = sim.teams[0].score > sim.teams[1].score;
       const you = c.firstName || c.name.split(' ')[0];
-      this.say([
+      // round 60e: give them a moment to land and stand before he talks (GameScene settles the sim meanwhile)
+      this.gs.time.delayedCall(1300, () => this.say([
         youWon
           ? { who: 'kingston', text: 'Rain got in my eyes. ...Nah, that was nice. Don\'t get used to it.' }
           : { who: 'kingston', text: `Good run, ${you}. You're gettin' there. Just not there.` },
         { who: 'kingston', text: 'Big day tomorrow. See you tomorrow. Don\'t be late.', then: () => { sfx.music(null); this.kingstonLeaves(); } }, // the game music fades as he goes
         { who: 'you', text: 'Everybody wants out of here. Me too.' },
         { who: 'you', text: 'But he\'s so much better than me... The scout\'s never even gonna notice me.', then: () => this.goTo('night') },
-      ]);
+      ]));
       return true;
     }
     this.goTo('ones');

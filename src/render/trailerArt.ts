@@ -401,7 +401,7 @@ function drawGenerator(c: C, p: Piece, f: number) {
   for (const [bx, by] of bolt) { P(c, lx + bx, ly + by, LOGO); if (hn(bx, by, 132) > 0.2) P(c, lx + bx + 1, ly + by, LOGO); }
   R(c, lx + 6, ly - 1, 5, 3, '#c8b040'); P(c, lx + 9, ly + 2, '#c8b040');                              // the peeled corner curling off
   // a red jerry can leaning on its right side
-  const jx = x1 + 6, jy = yf - j;
+  const jx = x1 + 6, jy = yf; // round 60e: on the ground, so it doesn't shake with the generator
   R(c, jx - 1, jy - 19, 13, 19, '#5a1010'); R(c, jx, jy - 18, 11, 18, '#b02020'); R(c, jx + 1, jy - 17, 3, 15, '#d04040');
   R(c, jx + 3, jy - 23, 5, 5, '#5a1010'); R(c, jx + 4, jy - 22, 3, 3, '#e8c040'); R(c, jx, jy - 9, 11, 1, '#7a1818');
   // control panel: outlets + a run light (on in frame 1)
@@ -454,7 +454,7 @@ export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = fals
   const pieces: ArtPiece[] = [];
   for (const p of TRAILER_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
-    const key = `trailer_${p.id}${sfx}_v2`;
+    const key = `trailer_${p.id}${sfx}_v3`;
     const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => {
       NIGHT = night; EMIT = [];
       draw(c, p, f);

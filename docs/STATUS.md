@@ -179,6 +179,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
+  calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
   Round 60d: `story.bigGameVerdict` (stat sum vs everyone, great = won + best sum), `StoryStage` `'after'`,
   `StoryState.bigGame`, PostGame story branch saves it → Trailer `{ story: 'after' }` (`afterLines`, daytime Mom,
   control back + stage `done`), dev menu *Story: After the game (great / promise)*; `tests/style.test.ts` (no em dashes).

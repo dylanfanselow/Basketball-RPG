@@ -200,4 +200,20 @@ describe('round 60 story', () => {
     sim.teams[1].score = 60; // a loss is never great
     expect(bigGameVerdict(sim)).toMatchObject({ won: false, great: false });
   });
+  it('round 60e: after the final whistle everyone lands and stands (no frozen jump shots)', () => {
+    const sim = buildOnes(career('SG'), 4);
+    const king = sim.players.find((p) => p.id === RIVAL_ID)!;
+    Object.assign(king, { z: 3, vz: 6, state: 'shoot' }); king.anim = { name: 'shot_mid', start: sim.time, release: sim.time + 0.2 };
+    king.vel = { x: 8, y: 0 };
+    sim.ball.st = { kind: 'dead' } as any; sim.ball.z = 9;
+    sim.over = true;
+    const at = { ...king.p };
+    for (let k = 0; k < 45; k++) sim.settle(1 / 30);
+    expect(king.z).toBe(0);
+    expect(king.state).toBe('idle');
+    expect(king.anim).toBeNull();
+    expect(Math.hypot(king.vel.x, king.vel.y)).toBeLessThan(0.5);
+    expect(king.p).toEqual(at); // settling never moves anyone
+    expect(sim.ball.z).toBeCloseTo(0.4);
+  });
 });

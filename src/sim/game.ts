@@ -1026,6 +1026,31 @@ export class GameSim {
     this.deadBall((this.quarter % 2 === 0 ? 1 : 0) as 0 | 1, 2.0, 'mid');
   }
 
+  /**
+   * Round 60e: after the final whistle the sim stops, so a shooter would hang in his jump-shot pose forever. This lets
+   * everyone come down and stand (back to idle / dribble), velocities die out and a loose ball drops to the floor.
+   * Positions don't move (story scenes walk players off themselves). No RNG.
+   */
+  settle(dt: number) {
+    if (!this.over) return;
+    this.time += dt;
+    for (const p of this.players) {
+      if (p.z > 0 || p.vz > 0) { p.vz -= 32 * dt; p.z = Math.max(0, p.z + p.vz * dt); if (p.z === 0) p.vz = 0; }
+      p.vel = scale(p.vel, Math.max(0, 1 - dt * 6));
+      if (p.z === 0) {
+        if (p.state === 'shoot' || p.state === 'jump' || p.state === 'dribbleMove') { p.state = 'idle'; p.pendingShot = null; p.move = null; }
+        if (p.anim && this.time - p.anim.start > 0.5) p.anim = null;
+        p.liftAt = 0;
+      }
+    }
+    if (this.ball.st.kind !== 'held') {
+      this.settleBallVz -= 32 * dt;
+      this.ball.z = Math.max(0.4, this.ball.z + this.settleBallVz * dt);
+      if (this.ball.z <= 0.4) this.settleBallVz = 0;
+    }
+  }
+  private settleBallVz = 0;
+
   private finish() {
     this.over = true; this.live = false;
     const u = this.user;

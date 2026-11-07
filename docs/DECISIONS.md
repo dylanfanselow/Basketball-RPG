@@ -158,6 +158,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60e (owner): polish.**
+  - The tutorial's shot-chance lines are plain and clear (no "everything falls" / "the number is the truth"): the top
+    right number is your chance to make the shot you're lined up for; it starts from the shot's base % and moves with
+    your rating, how open you are and how tired you are; the cone is where a defender has to be to contest.
+  - At the end of a game everyone lands and goes back to their base animation (no frozen jump shots); in the 1s
+    Kingston waits a moment before he talks and walks off.
+  - The red fuel can by the generator sits still (only the generator shakes).
 - **Round 60d (owner): Mom after the big game; no em dashes.**
   - **No em dashes, ever** (U+2014): not in code, comments, in-game text, docs, commit messages or replies. Use a
     comma, colon, period or parentheses. All existing ones were removed; `tests/style.test.ts` fails on any new one.

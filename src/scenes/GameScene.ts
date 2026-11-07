@@ -375,7 +375,7 @@ export class GameScene extends Phaser.Scene {
     this.input2.poll(); this.inputP2?.poll();
     if (this.input2.pressed('dev')) (window as any).__toggleDev?.();
     if (this.input2.pressed('mute')) this.feed.unshift({ text: sfx.toggleMute() ? 'Sound off (M)' : 'Sound on (M)', t: this.time.now, color: '#ffffff' });
-    if (this.ended) return;
+    if (this.ended) { this.sim.settle(Math.min(0.05, deltaMs / 1000)); this.render(); return; } // round 60e: they land and stand until PostGame
     if (this.paused) { this.updatePause(); return; }
     // tip-off waits until every player's sprite sheet has been drawn (built in parallel in the background)
     if (!this.ready) {
@@ -390,6 +390,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sim = this.sim;
+    if (sim.over) sim.settle(Math.min(0.05, deltaMs / 1000)); // round 60e: land and stand after the final whistle
     // round 60: story lines hold the game (✕ reads on); the tutorial box follows the director
     if (this.story?.update()) { for (const e of sim.drainEvents()) this.onEvent(e); this.render(); if (sim.over) this.story.onOver(); return; }
     // round 55: an ult's cinematic slows the whole game (clock included)
