@@ -501,7 +501,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
-- **Round 62: Mid-Range Rhythm** (Shooting tree, right arm after Mid-Range Maestro, cost 1): made midrange jumpers
+- **Round 63:** rebounds build rhythm (offensive boards more). **Off Night** (Perimeter D, after Hand in Face, cost 2):
+  the man you guard builds rhythm ×0.6, the rest of his team ×0.85, while you're on the floor. **Threes are always
+  jumpers** (a post shot from beyond the arc is a jumper, never a hook). Shooting tree: **Mid-Range Maestro removed**,
+  Mid-Range Rhythm renamed **Rhythm Shooter** (takes Maestro's slot), Elbow Assassin renamed **Killer**.
+- **Round 62: Mid-Range Rhythm** (renamed Rhythm Shooter in round 63) (Shooting tree, right arm after Mid-Range Maestro, cost 1): made midrange jumpers
   build ×1.5 rhythm. Midrange = 2-point pull-ups, plus fades and step-through pull-ups from 10 ft out (not layups,
   floaters or threes).
 - **Round 61b: passes go to the receiver.** Aimed where he'll be when it arrives (flight time), and every pass homes

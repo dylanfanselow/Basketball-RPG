@@ -179,6 +179,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 63: rebounds build rhythm (`RHYTHM_GAIN.oreb` 2.5 / `dreb` 1.5, in the rebound pickup); Perimeter D perk
+  **Off Night** (`pd_offnight`, cost 2, after Hand in Face, param `offNight`): in `addRhythm`, while an opponent with
+  it is on the floor his man gains ×0.6 and the rest ×0.85 (`OFF_NIGHT`, pop math `×0.6 Off Night`); post shots from
+  beyond the arc (or past `POST_SHOT_MAX` 20 ft) are jumpers (`postShotType`), so no more hooks from three; Shooting
+  tree: Mid-Range Maestro (`sh_mid`) removed (rosters and saves map it to `sh_midrhythm`, `migrateCareer`), Mid-Range
+  Rhythm renamed **Rhythm Shooter** and moved into its slot (prereq Shooter's Touch; Fade Away and Quick Release now
+  hang off it), Elbow Assassin renamed **Killer** (id `sh_clutch2` kept).
   Round 62: Shooting perk **Mid-Range Rhythm** (`sh_midrhythm`, passive, cost 1, after Mid-Range Maestro): param
   `midRhythm` ×1.5 on the rhythm from a made midrange jumper (`game.isMidrange`: a 2-point `mid`, or a fade /
   step-through pull-up from 10 ft out); the pop's math shows `×1.5 mid`.

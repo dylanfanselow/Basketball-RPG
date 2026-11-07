@@ -90,6 +90,7 @@
 | 61 | `ed43f6c` | A much smarter 1v1 CPU (combos, sprint, options in a row, counters, shoots when you can't contest in time, uses the clock) with Easy / Medium / Hard on offense and defense | `ai/forecast.ts`, `ai/oneOnOne.ts`, `ai/levels.ts`, defense levels, setup CPU box, dev "1v1 CPU thoughts" |
 | 61b | `a40555b` | Passes went to where the receiver was (or was supposed to be) and turned into turnovers, inbounds too | flight-time aim, in-flight homing, early catch, screener comes off the screen, `canCatch` |
 | 62 | `9ab3366` | A Shooting perk that gives extra rhythm for made midrange shots | `sh_midrhythm` (Mid-Range Rhythm), `midRhythm` param, `isMidrange` |
+| 63 | `TBD` | Rhythm from rebounds, Off Night (Perimeter D), no hooks from three, Rhythm Shooter / Killer renames, Mid-Range Maestro removed | `RHYTHM_GAIN.oreb/dreb`, `pd_offnight` + `OFF_NIGHT`, `postShotType` jumper past the arc, shooting.json, rosters + save migration |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

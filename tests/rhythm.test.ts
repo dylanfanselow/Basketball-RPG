@@ -6,6 +6,9 @@ import { methodKey, scoreGain, scoreMath, quarterGain, QUARTER_GAIN, rhythmBoost
 import { evaluateShot } from '../src/sim/shooting';
 import { tryActivateUlt } from '../src/sim/ultimates';
 import { rimPos } from '../src/sim/court';
+import { NODES } from '../src/sim/data';
+import { migrateCareer, createCareer } from '../src/career/career';
+import { defaultAppearance } from '../src/render/appearance';
 
 const live = (u?: Player, over: any = {}) => {
   const g = makeGame({ seed: 7, ...over }, u);
@@ -183,7 +186,7 @@ describe('round 53: rhythm tuning', () => {
   });
 });
 
-describe('round 62: Mid-Range Rhythm (Shooting perk)', () => {
+describe('round 62/63: Rhythm Shooter (Shooting perk)', () => {
   /** Score a made jumper of this type from d ft (resolved directly) and return the rhythm it gave. */
   const scoreFrom = (nodes: string[], type: string, d: number) => {
     const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: { shooting: 70, finishing: 60, strength: 60, mobility: 60, playmaking: 60 }, nodes, isUser: true });
@@ -196,16 +199,57 @@ describe('round 62: Mid-Range Rhythm (Shooting perk)', () => {
     return { gain: u.rhythm, pop: g.events.filter((e) => e.kind === 'rhythmDelta').pop() };
   };
   it('made midrange jumpers build x1.5 rhythm with the perk (and say so in the pop)', () => {
-    const base = scoreFrom(['sh_root', 'sh_mid'], 'mid', 16);
-    const perk = scoreFrom(['sh_root', 'sh_mid', 'sh_midrhythm'], 'mid', 16);
+    const base = scoreFrom(['sh_root'], 'mid', 16);
+    const perk = scoreFrom(['sh_root', 'sh_midrhythm'], 'mid', 16);
     expect(base.gain).toBeGreaterThan(0);
     expect(perk.gain).toBeCloseTo(base.gain * 1.5, 5);
     expect(perk.pop?.data?.math).toContain('×1.5 mid');
   });
   it('fades and step-through pull-ups from 10 ft out count; layups and threes do not', () => {
-    const nodes = ['sh_root', 'sh_mid', 'sh_midrhythm', 'sh_fade'];
-    expect(scoreFrom(nodes, 'fade', 14).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid', 'sh_fade'], 'fade', 14).gain * 1.5, 5);
-    expect(scoreFrom(nodes, 'layup', 3).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid'], 'layup', 3).gain, 5);
-    expect(scoreFrom(nodes, 'three', 24).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid'], 'three', 24).gain, 5);
+    const nodes = ['sh_root', 'sh_midrhythm', 'sh_fade'];
+    expect(scoreFrom(nodes, 'fade', 14).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_fade'], 'fade', 14).gain * 1.5, 5);
+    expect(scoreFrom(nodes, 'layup', 3).gain).toBeCloseTo(scoreFrom(['sh_root'], 'layup', 3).gain, 5);
+    expect(scoreFrom(nodes, 'three', 24).gain).toBeCloseTo(scoreFrom(['sh_root'], 'three', 24).gain, 5);
+  });
+});
+
+describe('round 63: rebounds, Off Night, tree changes', () => {
+  const board = (offensive: boolean) => {
+    const u = mkUser(), g = live(u);
+    g.setRhythm(u, 0);
+    g.possession = offensive ? u.team : ((1 - u.team) as 0 | 1);
+    (g as any).wasShotRebound = true;
+    g.ball.st = { kind: 'loose', vel: { x: 0, y: 0 }, vz: 0, lastTeam: 1 - u.team } as any;
+    g.ball.p = { ...u.p }; g.ball.z = 3;
+    for (let i = 0; i < 30 && g.holder() !== u; i++) g.update(1 / 60, emptyInput());
+    return { u, g };
+  };
+  it('a rebound builds rhythm (offensive boards more)', () => {
+    const d = board(false), o = board(true);
+    expect(d.g.holder()).toBe(d.u); expect(o.g.holder()).toBe(o.u);
+    expect(d.u.rhythm).toBeGreaterThan(0);
+    expect(o.u.rhythm).toBeGreaterThan(d.u.rhythm);
+  });
+  it('Off Night: the man you guard builds x0.6 rhythm, the rest of his team x0.85; the pop says so', () => {
+    const u = new Player({ id: 'U', name: 'Stopper', team: 0, pos: 'SG', core: { shooting: 60, finishing: 60, strength: 60, mobility: 70, playmaking: 60 }, nodes: ['pd_root', 'pd_contest', 'pd_offnight'], isUser: true });
+    const g = live(u), opp = g.opp(u.team);
+    const [man, other] = [opp[0], opp[1]];
+    u.guarding = man.id;
+    g.setRhythm(man, 0); g.setRhythm(other, 0);
+    g.rhythmGain(man, 'assist'); g.rhythmGain(other, 'assist');
+    const base = RHYTHM_GAIN.assist * gainScale(g.cfg.quarterLen) * quarterGain(g.quarter);
+    expect(man.rhythm).toBeCloseTo(base * 0.6, 5);
+    expect(other.rhythm).toBeCloseTo(base * 0.85, 5);
+    g.setRhythm(u, 0); g.rhythmGain(u, 'assist');
+    expect(u.rhythm).toBeCloseTo(base, 5); // your own team isn't touched
+  });
+  it('Mid-Range Maestro is gone (saves get Rhythm Shooter), Elbow Assassin is now Killer', () => {
+    expect(NODES.sh_mid).toBeUndefined();
+    expect(NODES.sh_midrhythm.name).toBe('Rhythm Shooter');
+    expect(NODES.sh_midrhythm.prereqs).toEqual(['sh_root']);
+    expect(NODES.sh_clutch2.name).toBe('Killer');
+    for (const n of Object.values(NODES)) for (const r of n.prereqs) expect(NODES[r], `${n.id} needs ${r}`).toBeDefined();
+    const c = migrateCareer({ ...createCareer({ name: 'A', pos: 'SG', heightIn: 77, appearance: defaultAppearance() }), nodes: ['sh_root', 'sh_mid', 'sh_fade'] });
+    expect(c!.nodes).toEqual(['sh_root', 'sh_midrhythm', 'sh_fade']);
   });
 });

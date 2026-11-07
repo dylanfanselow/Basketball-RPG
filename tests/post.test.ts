@@ -222,3 +222,19 @@ describe('post up (L2)', () => {
     expect(kicks).toBeGreaterThan(0);
   }, 180000);
 });
+
+describe('round 63: no hooks from three', () => {
+  it('a post shot from beyond the arc is a jumper (three / deep three, or a fade if owned and stick away)', () => {
+    const { g, u, rim, toRim } = setup(95, 35);
+    u.p = sub(rim, scale(toRim, 24));
+    const lateral = { x: -toRim.y, y: toRim.x };
+    u.postWindowUntil = g.time + 1; // still in the post window
+    for (const stick of [lateral, toRim, { x: 0, y: 0 }]) expect(selectShotType(u, g.side(u.team), stick, g.time)).toBe('three');
+    const fader = setup(95, 35, ['sh_root', 'sh_midrhythm', 'sh_fade']);
+    fader.u.p = sub(fader.rim, scale(fader.toRim, 24)); fader.u.postWindowUntil = fader.g.time + 1;
+    expect(selectShotType(fader.u, fader.g.side(fader.u.team), scale(fader.toRim, -1), fader.g.time)).toBe('fade');
+    // inside the arc the post hook is still there
+    u.p = sub(rim, scale(toRim, 13));
+    expect(selectShotType(u, g.side(u.team), lateral, g.time)).toBe('hook');
+  });
+});

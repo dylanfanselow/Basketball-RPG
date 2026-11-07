@@ -15,7 +15,9 @@ export const AFTER_ULT = 75;
 export const POINT_GAIN = 2.6;
 /** Each earlier bucket with the same method multiplies the next one's rhythm by this. */
 export const REPEAT_DECAY = 0.6;
-export const RHYTHM_GAIN = { assist: 4, steal: 3, block: 3, charge: 4, pickup: 2, stop: 1, playRun: 3 } as const;
+export const RHYTHM_GAIN = { assist: 4, steal: 3, block: 3, charge: 4, pickup: 2, stop: 1, playRun: 3, oreb: 2.5, dreb: 1.5 } as const;
+/** Round 63: Off Night (Perimeter D perk): the rhythm the man you guard (and the rest of his team) still builds. */
+export const OFF_NIGHT = { guarded: 0.6, team: 0.85 } as const;
 /** Round 53: a missed play assignment no longer costs rhythm (trust still drops). */
 export const RHYTHM_LOSS = { posterized: 10, turnover: 6, leftMan: 6, ankles: 5, badShot: 4, blocked: 3 } as const;
 export type RhythmGain = keyof typeof RHYTHM_GAIN;

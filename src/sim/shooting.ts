@@ -99,6 +99,9 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
   return 'mid';
 }
 
+/** Round 63: past this (ft, = the post-up range) or beyond the arc, a post shot is a jumper. */
+export const POST_SHOT_MAX = 20;
+
 /**
  * Post shots: stick sideways = hook, toward the rim = layup (close) or push shot, away = fade (if unlocked) or floater,
  * neutral = layup (close) or hook.
@@ -106,6 +109,8 @@ export function selectShotType(p: Player, side: Side, stick: Vec, now: number): 
 export function postShotType(p: Player, side: Side, stick: Vec): string {
   const rim = rimPos(side), d = dist(p.p, rim), toRim = norm(sub(rim, p.p)), sl = len(stick);
   const toward = sl > 0.3 ? dot(stick, toRim) / sl : 0;
+  // round 63: drifted back out to the arc (or past the post range): a jumper, never a hook or push shot from 3
+  if (isThree(side, p.p) || d > POST_SHOT_MAX) return toward < -0.45 && p.hasShot('fade') ? 'fade' : isThree(side, p.p) ? (d >= 27.5 ? 'deep3' : 'three') : 'mid';
   const lateral = sl > 0.3 ? Math.abs(cross(toRim, stick)) / sl : 0;
   if (lateral > 0.65 && Math.abs(toward) < 0.6) return 'hook';
   if (toward > 0.45) return d <= 6.5 ? 'layup' : 'push';

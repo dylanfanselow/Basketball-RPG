@@ -8,7 +8,7 @@ import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isSt
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
-import { RHYTHM_GAIN, RHYTHM_LOSS, RhythmGain, RhythmLoss, gainScale, quarterGain, POINT_GAIN, REPEAT_DECAY, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
+import { RHYTHM_GAIN, RHYTHM_LOSS, OFF_NIGHT, RhythmGain, RhythmLoss, gainScale, quarterGain, POINT_GAIN, REPEAT_DECAY, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
 import { endgame, topScorer, chooseCall } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
@@ -138,7 +138,7 @@ export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1
  *  (ft/s; lobs and overhead passes slower), how far it may drift from its first aim (ft), and the early-catch reach. */
 export const PASS = { leadMax: 1.0, home: 24, homeSlow: 12, homeMax: 12, earlyR: 2.4, /** dev / stats: early catches on */ early: true };
 
-/** Round 62: a midrange jumper (Mid-Range Rhythm): a 2-point pull-up, fade or step-through pull-up from 10 ft out. */
+/** Round 62: a midrange jumper (Rhythm Shooter): a 2-point pull-up, fade or step-through pull-up from 10 ft out. */
 export const isMidrange = (ev: { type: string; pts: number; dist: number }) =>
   ev.pts === 2 && (ev.type === 'mid' || ((ev.type === 'fade' || ev.type === 'stepThroughJumper') && ev.dist >= 10));
 
@@ -1885,6 +1885,12 @@ export class GameSim {
    */
   addRhythm(p: Player | null | undefined, amount: number, why = '', math = '', extra: Record<string, unknown> = {}) {
     if (!p || !amount) return;
+    // round 63: Off Night: an opponent on the floor with the perk takes some of it away (strongest one counts)
+    if (amount > 0 && why !== 'dev') {
+      let m = 1;
+      for (const o of this.opp(p.team)) if (o.mods.pAdd('offNight') > 0) m = Math.min(m, o.guarding === p.id ? OFF_NIGHT.guarded : OFF_NIGHT.team);
+      if (m < 1) { amount *= m; math = math ? `${math} ×${m} Off Night` : `×${m} Off Night`; }
+    }
     const before = notchOf(p.rhythm);
     // round 53: gains also grow each quarter (hidden from the pops' math)
     const applied = amount * gainScale(this.cfg.quarterLen) * (amount > 0 && why !== 'dev' ? quarterGain(this.quarter, this.cfg.mode === 'practice') : 1);
@@ -2310,6 +2316,7 @@ export class GameSim {
     this.wasShotRebound = false;
     if (wasShot) {
       g.box.reb++;
+      this.rhythmGain(g, g.team === this.possession ? 'oreb' : 'dreb'); // round 63: boards build rhythm
       if (g === this.user) this.quiet('rebound', { off: g.team === this.possession }, g.id);
       if (g === this.user && g.team === this.possession) applyTrust(this.trust, 'offReb');
     }
@@ -2363,7 +2370,7 @@ export class GameSim {
       const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
       const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
       const flash = dk && dk.kind === 'flash';
-      // round 62: Mid-Range Rhythm (Shooting perk): made midrange jumpers build more rhythm
+      // round 62: Rhythm Shooter (Shooting perk, was Mid-Range Rhythm): made midrange jumpers build more rhythm
       const midR = isMidrange(st.ev) ? s.mods.pMult('midRhythm') : 1;
       const extra = (flash ? ' ×1.15' : '') + (midR !== 1 ? ` ×${midR} mid` : '');
       this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1) * midR, methodLabel(mk), scoreMath(val, used) + extra,
