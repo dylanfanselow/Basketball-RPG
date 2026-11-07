@@ -84,7 +84,7 @@
 | 60b | `20e0dae` | Animate Kingston's walk-off, schedule says Big game, Mom at the trailer that night (golden opportunity, sends you to bed), a teammate says you look tired | `walkOff`, `RoomScene.walkTowards`, TrailerScene Mom cutscene (`buildMom`, `momScene`), StoryBox `me` / `mom` / `mate`, `storyKeyGame` |
 | 60c | `d109b25` | Drop the ult line, preload the trailer walk + Lacing up, Kingston Black with goggles, Step-Through lesson restarts on a miss, quieter rain, music (arcade loop in games, Sad Story with Mom) | `preload.ts`, `sfx.music` + music bus, `public/music/`, tutorial `fail` / `restartOnNewBall`, `kingstonLook` |
 | 60d | `f1b0725` | Mom after the big game (great: proud you made the most of your opportunity; else: the scout said you have promise), and no em dashes anywhere | `bigGameVerdict`, stage `after`, Trailer `afterLines`, em dashes removed repo-wide, `tests/style.test.ts`, CLAUDE.md rule |
-| 60e | _pending_ | Clearer shot-chance lesson, players land and stand after the final whistle, the fuel can no longer bobs | tutorial lines, `GameSim.settle`, trailerArt jerry can |
+| 60e | `9dd777c` | Clearer shot-chance lesson, players land and stand after the final whistle, the fuel can no longer bobs | tutorial lines, `GameSim.settle`, trailerArt jerry can |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
