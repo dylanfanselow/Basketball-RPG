@@ -3,7 +3,7 @@ import { InputMapper } from '../input/input';
 import { FONT, HI_RES } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { newCareer, loadCareer } from '../career/career';
+import { loadCareer } from '../career/career';
 import { drawCourt, drawHoops, VIEW_W, VIEW_H, WORLD_W } from '../render/view';
 import { Crowd } from '../render/crowd';
 import { addSchoolCourt } from '../render/schoolArt';
@@ -148,7 +148,7 @@ export class TitleScene extends Phaser.Scene {
       t.setColor(!ok ? '#5a6078' : on ? '#ffe680' : '#ffffff').setFontSize(on ? 46 : 38).setX(on ? 112 : 92);
     });
     const hints: Record<Item['id'], string> = {
-      new: 'Start a new career',
+      new: 'Create your player and start a career',
       load: this.hasSave ? `Continue — Day ${c.life.day} · Lv ${c.level} · ${c.name}` : 'No save yet',
       settings: 'Sound, game length, fullscreen, dev tools',
     };
@@ -186,11 +186,8 @@ export class TitleScene extends Phaser.Scene {
     else this.openSettings();
   }
 
-  private startNew() {
-    app.career = newCareer('Rookie', 'SG');
-    app.changed();
-    this.go('Apartment');
-  }
+  /** Round 59: New Game goes to the character builder (the career is made there). */
+  private startNew() { this.go('Create'); }
 
   private go(scene: string, data?: object) {
     if (this.leaving) return;

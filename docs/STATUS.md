@@ -159,6 +159,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `Crowd`), school rain (`addSchoolCourt` + rain + lightning), home (`buildRoomArt` + lamp glow) — cross-faded, each
   ignoring the others' objects, plus a menu camera with gradients and a colour wash; New Game confirm; settings panel:
   volumes, mute, quarter length, fullscreen, dev menu); `MenuScene` = dev menu (L1 → Title).
+  Round 59 builder: `scenes/CreateScene.ts` (LOOK rows over every `Appearance` field + `partVariants`, preview drawn
+  with `drawAngled` into the `cc_prev` canvas texture (4 idle frames, yaw 90 / 45 / 0), POSITION, HEIGHT, READY);
+  career `STARTER_CORE`, `HEIGHT_RANGE`, `fmtHeight`, `createCareer` (look + clamped height + starter skills).
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

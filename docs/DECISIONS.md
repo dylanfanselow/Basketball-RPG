@@ -158,6 +158,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 59: character builder** (New Game → it). Steps: **LOOK** (every appearance option: skin, hair incl. the
+  hand-drawn parts, colours, face, gear; live front / 3-4 / side preview), **POSITION**, **HEIGHT** (a range per
+  position: PG 6'0"–6'5", SG 6'3"–6'7", SF 6'5"–6'9", PF 6'7"–6'11", C 6'9"–7'3"), **READY** → the apartment.
+  **Starter skills by position, never below 40, same total for everyone:** PG 52/44/40/52/52, SG 56/46/40/52/46,
+  SF 50/50/44/50/46, PF 44/50/54/46/46, C 40/52/60/44/44 (shooting / finishing / strength / mobility / playmaking).
+  Name stays "Rookie" for now.
 - **Round 58: the real main menu** (owner's layout): NEW GAME + LOAD SAVE top left, SETTINGS bottom left, the title
   "BASKETBALL RPG" top right. Background = the game itself under a gradient, changing with the highlighted option:
   NEW GAME → the rainy school court (night, rain, lightning), LOAD SAVE → the apartment, SETTINGS → the arena (crowd).

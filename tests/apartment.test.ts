@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
+import { STARTER_CORE, HEIGHT_RANGE, createCareer } from '../src/career/career';
+import { defaultAppearance } from '../src/render/appearance';
 import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX, takeOrbEnergy, ORB_ENERGY, ORB_XP, spendStatPoint, advanceDay, sleepPlan, addEnergy, ENERGY_ORB, gameDay } from '../src/career/career';
 
 const polys = solids();
@@ -205,5 +207,27 @@ describe('career life + key games', () => {
     expect(k2.index).toBeGreaterThan(0);
     expect(k2.daysAway).toBe(gameDay(k2.index) - 2);
     expect(isKeyGame(c, k2.index)).toBeTruthy();
+  });
+});
+
+describe('round 59: character builder — starter skills + height by position', () => {
+  const POS = ['PG', 'SG', 'SF', 'PF', 'C'] as const;
+  it('nobody starts below 40; every position gets the same total; guards lean playmaking, bigs strength', () => {
+    const sum = (p: (typeof POS)[number]) => Object.values(STARTER_CORE[p]).reduce((a, b) => a + b, 0);
+    for (const p of POS) { for (const v of Object.values(STARTER_CORE[p])) expect(v).toBeGreaterThanOrEqual(40); expect(sum(p)).toBe(sum('PG')); }
+    expect(STARTER_CORE.PG.playmaking).toBeGreaterThan(STARTER_CORE.C.playmaking);
+    expect(STARTER_CORE.PG.shooting).toBeGreaterThan(STARTER_CORE.C.shooting);
+    expect(STARTER_CORE.C.strength).toBeGreaterThan(STARTER_CORE.PG.strength);
+    expect(STARTER_CORE.PF.strength).toBeGreaterThan(STARTER_CORE.PG.strength);
+  });
+  it('createCareer applies the look, the starter skills and a height clamped to the position', () => {
+    const look = { ...defaultAppearance(), hair: 'afro', skin: 4 };
+    const c = createCareer({ name: 'Kid', pos: 'C', heightIn: 60, appearance: look });
+    expect(c.height * 12).toBe(HEIGHT_RANGE.C[0]);
+    expect(c.appearance.hair).toBe('afro'); expect(c.skin).toBe(4);
+    expect(c.skills.strength.level).toBe(STARTER_CORE.C.strength); expect(c.core.strength).toBe(STARTER_CORE.C.strength);
+    expect(createCareer({ name: 'Kid', pos: 'PG', heightIn: 99, appearance: look }).height * 12).toBe(HEIGHT_RANGE.PG[1]);
+    for (const p of POS) expect(HEIGHT_RANGE[p][0]).toBeLessThan(HEIGHT_RANGE[p][1]);
+    expect(HEIGHT_RANGE.C[1]).toBeGreaterThan(HEIGHT_RANGE.PG[1]);
   });
 });

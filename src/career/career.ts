@@ -84,6 +84,31 @@ export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerSt
   };
 }
 
+/**
+ * Round 59: the character builder. Starter skills by position — never below 40 (the baseline), and every position gets
+ * the same total, just spread differently: guards lean shooting / playmaking / mobility, bigs lean strength and
+ * finishing (a PG has far more playmaking than a C, a C far more strength than a PG).
+ */
+export const STARTER_CORE: Record<Position, CoreStats> = {
+  PG: { shooting: 52, finishing: 44, strength: 40, mobility: 52, playmaking: 52 },
+  SG: { shooting: 56, finishing: 46, strength: 40, mobility: 52, playmaking: 46 },
+  SF: { shooting: 50, finishing: 50, strength: 44, mobility: 50, playmaking: 46 },
+  PF: { shooting: 44, finishing: 50, strength: 54, mobility: 46, playmaking: 46 },
+  C: { shooting: 40, finishing: 52, strength: 60, mobility: 44, playmaking: 44 },
+};
+/** Height range by position, in inches (inclusive). */
+export const HEIGHT_RANGE: Record<Position, [number, number]> = { PG: [72, 77], SG: [75, 79], SF: [77, 81], PF: [79, 83], C: [81, 87] };
+export const fmtHeight = (inches: number) => `${Math.floor(inches / 12)}'${Math.round(inches % 12)}"`;
+/** A new career from the builder: your look, position, height (clamped to the position's range) and starter skills. */
+export function createCareer(o: { name: string; pos: Position; heightIn: number; appearance: Appearance }): CareerState {
+  const c = newCareer(o.name, o.pos);
+  const [lo, hi] = HEIGHT_RANGE[o.pos];
+  c.height = Math.max(lo, Math.min(hi, Math.round(o.heightIn))) / 12;
+  c.appearance = { ...o.appearance }; c.skin = o.appearance.skin;
+  for (const s of CORE_STATS) { const v = Math.max(SKILL_START, STARTER_CORE[o.pos][s]); c.skills[s] = { level: v, xp: 0 }; c.core[s] = v; }
+  return c;
+}
+
 export const xpToNext = (level: number) => 120 + level * 45;
 
 /** Backstory + trait effects. Same Effect format as perks, so backstories are pure data. */
