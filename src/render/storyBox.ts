@@ -2,14 +2,19 @@ import Phaser from 'phaser';
 import { FONT } from '../scenes/ui';
 
 /** Who's talking in the box (round 60). The narrator (tutorial) has no name tag. */
-export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you';
-export interface BoxContent { who: BoxSpeaker; text: string; blocking: boolean; title?: string; sub?: string }
+export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you' | 'me' | 'mom' | 'mate';
+/** `name` overrides the speaker's tag (`me` = your first name, `mate` = the teammate's). */
+export interface BoxContent { who: BoxSpeaker; text: string; blocking: boolean; title?: string; sub?: string; name?: string }
 
 const TAG: Record<BoxSpeaker, { name: string; color: number; text: string } | null> = {
   narrator: null,
   kingston: { name: 'KINGSTON', color: 0x7a1f2b, text: '#ffe9a8' },
   coach: { name: 'COACH', color: 0x3a3f52, text: '#ffffff' },
   you: { name: 'YOU (thinking)', color: 0x2a3566, text: '#c9d6ff' },
+  // round 60b: you out loud, your mom, a teammate
+  me: { name: 'YOU', color: 0x2f6a4a, text: '#e6ffe9' },
+  mom: { name: 'MOM', color: 0x8a5a2a, text: '#fff1dc' },
+  mate: { name: 'TEAMMATE', color: 0x7a1f2b, text: '#ffffff' },
 };
 
 /**
@@ -84,7 +89,7 @@ export class StoryBox {
     this.body.setText(c.text.slice(0, Math.max(0, this.chars())))
       .setFontStyle(c.who === 'you' ? 'italic' : c.blocking ? '' : 'bold')
       .setColor(c.who === 'you' ? '#d6e0ff' : c.blocking ? '#ffffff' : '#ffe9a8');
-    if (t) this.tag.setText(t.name).setBackgroundColor(Phaser.Display.Color.IntegerToColor(t.color).rgba).setColor(t.text).setVisible(true);
+    if (t) this.tag.setText((c.name ?? t.name).toUpperCase()).setBackgroundColor(Phaser.Display.Color.IntegerToColor(t.color).rgba).setColor(t.text).setVisible(true);
     else this.tag.setVisible(false);
     const head = [c.title, c.sub].filter(Boolean).join('  ·  ');
     this.head.setText(flash > 0 ? '✓  ' + head : head).setVisible(!!head).setColor(flash > 0 ? '#5fe08a' : '#ffe680');

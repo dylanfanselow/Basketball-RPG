@@ -17,7 +17,7 @@ import { Rng } from '../sim/math';
 /** The Lincoln coach's spot on the far sideline (ft): by half court, so he's in the tip-off shot. */
 const COACH_X = 41;
 
-interface Say { who: BoxSpeaker; text: string; /** coach throws a fit during this line */ fit?: boolean; then?: () => void }
+interface Say { who: BoxSpeaker; text: string; /** tag override (your name, a teammate's) */ name?: string; /** coach throws a fit during this line */ fit?: boolean; then?: () => void }
 
 /**
  * Round 60: runs a prologue game inside GameScene — the tutorial's box (from the TutorialDirector), the 1s (intro,
@@ -34,6 +34,8 @@ export class StoryRun {
   private leaving = false;
   private overHandled = false;
   private coach: { sprite: Phaser.GameObjects.Sprite; x: number; cheerUntil: number } | null = null;
+  /** Round 60b: Kingston walking off after the 1s (court ft / s). */
+  private walker: { dir: { x: number; y: number }; speed: number } | null = null;
   private scout: { sprite: Phaser.GameObjects.Sprite; board: Phaser.GameObjects.Graphics; x: number; y: number } | null = null;
 
   constructor(private gs: GameScene, public which: StoryGame) {
@@ -49,8 +51,14 @@ export class StoryRun {
       this.buildCoach(); this.buildScout();
       const last = c.lastName || c.name.split(' ').slice(-1)[0];
       const kn = k ? k.last : 'Williams';
+      // round 60b: a teammate notices you look wiped out (you didn't sleep much last night...)
+      const mate = gs.sim.teams[0].roster.find((p) => p !== gs.sim.user);
+      const mateName = mate ? mate.name.split(' ')[0] : 'Teammate';
       this.say([
         { who: 'narrator', text: 'The next day. Lincoln High, game day. A man with a clipboard sits on the bleachers.' },
+        { who: 'mate', name: mateName, text: 'Yo, you good? You look dead tired.' },
+        { who: 'me', name: you, text: 'Didn\'t get much sleep last night.' },
+        { who: 'mate', name: mateName, text: 'Well wake up. Coach is looking for Kingston and he ain\'t here.' },
         { who: 'coach', text: `Where's ${kn}? WHERE IS ${kn.toUpperCase()}?!`, fit: true },
         { who: 'coach', text: 'A stomach virus?! TODAY?! The one day — the ONE day — a scout drives three hours to watch him!', fit: true },
         { who: 'coach', text: 'Unbelievable. Un-be-lievable.', fit: true },
@@ -71,7 +79,7 @@ export class StoryRun {
     let content: BoxContent | null = null;
     let hold = false;
     if (this.line) {
-      content = { who: this.line.who, text: this.line.text, blocking: true };
+      content = { who: this.line.who, text: this.line.text, blocking: true, name: this.line.name };
       hold = true;
       if (ok) {
         if (this.box.typing) this.box.finishTyping();
@@ -142,17 +150,37 @@ export class StoryRun {
     this.gs.time.delayedCall(760, () => this.gs.scene.start(scene, data));
   }
 
-  /** "See you tomorrow": he walks off into the rain (a quick dip to black and he's gone). */
+  /**
+   * "See you tomorrow": he turns and walks off into the rain, away from the hoop and out of the picture (round 60b;
+   * GameScene animates him from his velocity — the same stride rooms use for walking). Your thoughts play meanwhile.
+   */
   private kingstonLeaves() {
-    const gs = this.gs, cam = gs.cameras.main;
-    cam.fadeOut(260, 0, 0, 0);
-    gs.time.delayedCall(300, () => {
-      const sim = gs.sim;
+    const sim = this.gs.sim, king = sim.players.find((p) => p.id === RIVAL_ID);
+    if (!king) return;
+    sim.live = false; // nobody's defending anymore (no defensive shuffle)
+    if (sim.user && sim.holder() !== sim.user) sim.giveBall(sim.user);
+    const away = -sim.side(0); // the hoop is that way; he heads the other way, drifting toward the fence
+    const dir = { x: away, y: -0.18 }, n = Math.hypot(dir.x, dir.y);
+    this.walker = { dir: { x: dir.x / n, y: dir.y / n }, speed: 6.4 };
+    king.face = { ...this.walker.dir };
+    king.state = 'idle'; king.anim = null;
+  }
+
+  /** Kingston's walk, frame by frame; he leaves the court once he's out of the picture. */
+  private walkOff() {
+    const w = this.walker; if (!w) return;
+    const sim = this.gs.sim, king = sim.players.find((p) => p.id === RIVAL_ID);
+    if (!king) { this.walker = null; return; }
+    const dt = Math.min(0.05, this.gs.game.loop.delta / 1000);
+    king.vel = { x: w.dir.x * w.speed, y: w.dir.y * w.speed };
+    king.p = { x: king.p.x + king.vel.x * dt, y: Math.max(-1.5, king.p.y + king.vel.y * dt) };
+    king.face = { ...w.dir };
+    const cam = this.gs.cameras.main, x = sx(king.p.x);
+    if (x < cam.scrollX - 90 || x > cam.scrollX + VIEW_W + 90) {
       for (const t of sim.teams) t.onCourt = t.onCourt.filter((p) => p.id !== RIVAL_ID);
       sim.players = sim.players.filter((p) => p.id !== RIVAL_ID);
-      if (sim.ball.st.kind === 'held' && sim.ball.st.holder.id === RIVAL_ID) sim.giveBall(sim.user!);
-      cam.fadeIn(420, 0, 0, 0);
-    });
+      this.walker = null;
+    }
   }
 
   private banner(big: string, small: string) {
@@ -198,6 +226,7 @@ export class StoryRun {
   }
 
   private animate() {
+    this.walkOff();
     const now = this.gs.time.now;
     if (this.coach) {
       const c = this.coach, fit = !!this.line?.fit;

@@ -81,6 +81,7 @@
 | 59 | `07b8c5f` | New game → a character builder: hair and all the look options, position, height (range by position), starter stats by position (PGs more playmaking/shooting, bigs more strength; 40 floor) | `CreateScene` (look / position / height / ready, live preview), `STARTER_CORE` + `HEIGHT_RANGE` + `createCareer`, tests |
 | 59b | `c8a9be1` | Add picking a jersey number and first and last name | NAME step (keyboard typing + controller letter grid, random name) and NUMBER step (0-99, team's taken numbers skipped, shown on the jersey); name / number saved to the career |
 | 60 | `fa6fdfd` | After the builder: rainy-night 2v2 tutorial with best friend Kingston (same position), 1s vs him maxed out, trailer that night, next day's big game (coach's fit over Kingston's stomach virus, you start, a scout watches, +10 locked in) | `sim/story.ts`, `sim/tutorial.ts` (TutorialDirector, 10 lessons, Kingston demos), forced makes with the real chance shown, `StoryBox`, `StoryRun`, story stages saved + Load Save resume, dev menu Story entries |
+| 60b | _pending_ | Animate Kingston's walk-off, schedule says Big game, Mom at the trailer that night (golden opportunity, sends you to bed), a teammate says you look tired | `walkOff`, `RoomScene.walkTowards`, TrailerScene Mom cutscene (`buildMom`, `momScene`), StoryBox `me` / `mom` / `mate`, `storyKeyGame` |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

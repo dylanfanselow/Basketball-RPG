@@ -158,6 +158,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60b (owner): prologue follow-ups.**
+  - After "See you tomorrow. Don't be late." **Kingston turns and walks off** the court into the rain (no dip to
+    black); your thoughts play while he goes.
+  - **Mom at the trailer that night** (after the fade): you walk up the path, she comes out onto the step. You tell
+    her Kingston's so much better and nobody will look at you; she says keep putting in the work and be ready when
+    the **golden opportunity** comes, then waves you in to get some sleep. You follow her inside → the next day.
+  - **"You look tired":** on game day a teammate says you look dead tired; you: "Didn't get much sleep last night."
+    (More foreshadowing of the coffee / poisoning.)
+  - **Schedule card in high school:** "1 DAY · Big game vs JEF" until game day, "TODAY" on it, "PLAYED" after; the
+    NBA schedule comes back only outside the prologue (older saves).
 - **Round 60: the prologue (high school).** After the builder you're on the **rainy school court** (night) in a
   **2v2** with your best friend **Kingston Williams** — same position as you, he's the starter ahead of you. Your
   teammate and his are a complementary position (PG / SG → a C; SF / PF / C → a PG).

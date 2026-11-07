@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createCareer, migrateCareer, newCareer, STARTER_CORE } from '../src/career/career';
+import { createCareer, migrateCareer, newCareer, STARTER_CORE, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
 import { newStory, buildTutorial, buildOnes, buildBigGame, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
@@ -145,5 +145,15 @@ describe('round 60 story', () => {
     delete old.story;
     expect(migrateCareer(old)!.story).toEqual({ stage: 'done', rival: null, home: 'apartment' });
     expect(career('C').story!.stage).toBe('tutorial');
+  });
+  it('round 60b: the schedule card shows the big game while you are in high school', () => {
+    const c = career('PG');
+    for (const st of ['tutorial', 'ones', 'night'] as const) { c.story!.stage = st; expect(storyKeyGame(c)).toEqual({ when: '1 DAY', what: 'Big game vs JEF' }); }
+    c.story!.stage = 'bigGame'; expect(storyKeyGame(c)!.when).toBe('TODAY');
+    c.story!.stage = 'done'; expect(storyKeyGame(c)!.when).toBe('PLAYED');
+    // older saves (apartment home): the NBA schedule as before
+    const old = migrateCareer(JSON.parse(JSON.stringify({ ...newCareer('Old', 'SG'), story: undefined })))!;
+    expect(storyKeyGame(old)).toBeNull();
+    expect(nextKeyGame(old)).not.toBeNull();
   });
 });

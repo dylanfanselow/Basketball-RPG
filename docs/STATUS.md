@@ -179,6 +179,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 60b: `StoryRun.kingstonLeaves` / `walkOff` (he walks off from his velocity, removed once off-camera);
+  `RoomScene.walkTowards` (cutscene walking with collision + footsteps); TrailerScene story `'night'` cutscene with
+  Mom (`buildMom`: a standing celeb/fan sheet, your skin, long hair, hoodie; `momScene` walkIn → momOut → talk →
+  usher (wave frames 4/5) → walkUp → `goInside`); StoryBox speakers `me` / `mom` / `mate` + `name`; big-game
+  teammate lines; `career.storyKeyGame` for the roof HUD's key-game card (`hudSig` includes the stage).
   `CareerState.story` (`stage` tutorial → ones → night → bigGame → done, `rival`, `home`), migration → done /
   apartment; `setup.ts` `createStorySim`, `storyScene`, `setStage`, `ensureStory`; TrailerScene `story: 'night'`
   (lines, door → DAY n → big game); PostGame story branch → home; dev menu Story entries; dev panel Story buttons.

@@ -3,7 +3,7 @@ import { InputMapper } from '../input/input';
 import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
-import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
+import { xpToNext, nextKeyGame, storyKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
 import { sfx } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
@@ -146,7 +146,7 @@ export abstract class RoomScene extends Phaser.Scene {
   /** Everything the HUD shows, so it rebuilds only when something changes. */
   private hudSig(): string {
     const c = app.career;
-    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo]);
+    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo, c.story?.stage]);
   }
 
   makeHud() {
@@ -218,11 +218,11 @@ export abstract class RoomScene extends Phaser.Scene {
     });
     // key game
     panel(694, 22, 168, 66, 0x1f6f9a, 0x58a8d8);
-    const kg = nextKeyGame(c);
+    const kg = nextKeyGame(c), hs = storyKeyGame(c); // round 60b: in high school it's the big game
     const opp = kg ? TEAMS.find((t) => t.id === kg.opponent) : null;
     icon(702, 46, 'ball', 3);
-    T(730, 28, !kg ? 'SEASON DONE' : kg.daysAway === 0 ? 'TODAY' : `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}`, 20);
-    T(730, 58, kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
+    T(730, 28, hs ? hs.when : !kg ? 'SEASON DONE' : kg.daysAway === 0 ? 'TODAY' : `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}`, 20);
+    T(730, 58, hs ? hs.what : kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
     // money / day
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
     icon(882, 40, 'coin', 2); T(902, 30, `$${L.money}`, 18, '#bfe86a');
@@ -451,6 +451,24 @@ export abstract class RoomScene extends Phaser.Scene {
   /** The clip + spot in it the player shows this frame. */
   playerClip: { clip: string; u: number } | null = null;
   private lastAngled: { tex: string; frame: string | number; bo: J | null; behind: boolean } | null = null;
+
+  /**
+   * Round 60b: walk the player toward a spot on his own (story cutscenes, while `busy`): collision, facing, footsteps
+   * and the walk cycle like stick walking. True once he's there (or stuck).
+   */
+  walkTowards(target: V, dt: number, speed = WALK): boolean {
+    const dx = target.x - this.pos.x, dy = target.y - this.pos.y, d = Math.hypot(dx, dy);
+    if (d < 0.15) { this.vel = { x: 0, y: 0 }; this.drawPlayer(0); return true; }
+    const step = Math.min(d, speed * dt), extra = this.extraObstacles(), before = this.pos;
+    this.pos = moveWithCollision(this.pos, { x: dx / d * step, y: dy / d * step }, PLAYER_R, extra.length ? [...this.polys, ...extra] : this.polys);
+    const moved = Math.hypot(this.pos.x - before.x, this.pos.y - before.y);
+    this.vel = { x: dx / d * speed, y: dy / d * speed };
+    this.face = { x: dx / d, y: dy / d };
+    this.dist += moved;
+    if (this.dist - this.stepAt >= 2.4) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.footSurface(), this.stepFoot, false); }
+    this.drawPlayer(moved / Math.max(dt, 1e-3));
+    return moved < step * 0.05; // blocked: call it arrived rather than walking in place forever
+  }
 
   drawPlayer(speed: number) {
     this.playerBall = null;

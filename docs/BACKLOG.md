@@ -65,7 +65,8 @@
 - **Prologue follow-ups (round 60):** what the scout thinks after the big game (and where the career goes from high
   school to the NBA life / apartment); the **coffee / poisoning reveal** (Kingston finds out, then you do); Kingston
   as the high-school rival in the ult-unlock 1v1 (VISION). The trailer's roof HUD still shows NBA key games ("Opener
-  vs ATL") — needs a high-school calendar. Kingston has no walk-off animation (a dip to black). Ask the owner how
+  vs ATL") — fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
+  ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.
 - **Character builder (round 59):** the backstory pick (VISION) as another step.

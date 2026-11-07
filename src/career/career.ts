@@ -240,6 +240,19 @@ export const sleepPlan = (c: CareerState) => Math.ceil(Math.max(0, ENERGY_MAX - 
 export function addEnergy(c: CareerState, n: number) { c.life.energy = Math.min(ENERGY_MAX, Math.max(0, c.life.energy + n)); }
 /** Sleep: the next day starts (energy comes back through the orbs the room sends). */
 export function advanceDay(c: CareerState) { c.life.day++; }
+/**
+ * Round 60b: the schedule card while you're in high school — the big game against Jefferson (tomorrow until the
+ * night before, today on game day, played after). Null once the story isn't in the prologue (the NBA schedule).
+ */
+export function storyKeyGame(c: CareerState): { when: string; what: string } | null {
+  const st = c.story;
+  if (!st) return null;
+  const what = 'Big game vs JEF';
+  if (st.stage === 'bigGame') return { when: 'TODAY', what };
+  if (st.stage === 'done') return st.home === 'trailer' ? { when: 'PLAYED', what } : null;
+  return { when: '1 DAY', what };
+}
+
 export function nextKeyGame(c: CareerState): { index: number; opponent: string; daysAway: number; why: string } | null {
   const n = c.season.schedule.length;
   for (let i = c.season.gameNo; i < n; i++) {
