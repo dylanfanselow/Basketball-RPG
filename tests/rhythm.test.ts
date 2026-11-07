@@ -90,12 +90,15 @@ describe('round 51: rhythm', () => {
     const s = stars[0];
     g.cpuUlts[s.id] = { unlocked: true, id: 'deepStepback', level: 0 };
     const rim = rimPos(g.side(s.team));
-    g.possession = s.team; g.transitionUntil = 0; g.shotClock = 24; g.live = true;
-    s.p = { x: rim.x - Math.sign(rim.x - 47) * 22, y: 25 }; s.vel = { x: 0, y: 0 };
-    g.giveBall(s); g.setRhythm(s, 100);
     for (const d of g.opp(s.team)) d.sub.steal = 0;
     const inp = emptyInput();
-    for (let t = 0; t < 3 && !g.ultsUsed[s.id]; t += 1 / 30) { if (g.holder() === s) s.aiNextThink = 0; g.update(1 / 30, inp); }
+    // a few tries: it's a chance per think, and he may just drive and score first
+    for (let tries = 0; tries < 8 && !g.ultsUsed[s.id]; tries++) {
+      g.possession = s.team; g.transitionUntil = 0; g.shotClock = 24; g.live = true;
+      s.p = { x: rim.x - Math.sign(rim.x - 47) * 22, y: 25 }; s.vel = { x: 0, y: 0 }; s.state = 'idle';
+      g.giveBall(s); g.setRhythm(s, 100);
+      for (let t = 0; t < 3 && !g.ultsUsed[s.id] && g.holder() === s; t += 1 / 30) { s.aiNextThink = 0; g.update(1 / 30, inp); }
+    }
     expect(g.ultsUsed[s.id]).toBe(1);
   });
 });

@@ -501,6 +501,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 61b: passes go to the receiver.** Aimed where he'll be when it arrives (flight time), and every pass homes
+  in on him during the flight, so a turning route, a cut or you moving after the throw no longer sends it to a stale
+  spot. It only misses if he runs far from it. Aiming at where a CPU is *supposed* to go (his route spot) was tried
+  and drew more pick-offs, so the aim follows what he's actually doing. The CPU doesn't throw to someone who can't
+  catch; a pass to a screener takes him off the screen.
 - **Round 61: 1v1 CPU levels Easy / Medium / Hard** (setup screen, default Medium). The level changes **offense and
   defense**, decisions only (no rating boosts). **The key read: the CPU shoots the moment it works out the defender
   can't get a meaningful contest up by the release** (a forecast of the release, not the contest now). It strings

@@ -24,6 +24,9 @@
 10. Still unanswered from round 9: does the Step-Through feel right (pull-up and close finish), and do the
    stun/steal/block behavior and pass speed feel good?
 
+- **Round 61b follow-ups (passing):** watch passes to you in real play (headless used a wandering stand-in). Most
+  pick-offs are tipped right out of the passer's hands by his own defender on long passes; tune that if it feels like
+  too many. `PASS` in game.ts holds the homing numbers.
 - **Round 61 follow-ups (1v1 CPU):** tune Easy / Medium / Hard with the owner (`CPU_LEVELS` in `ai/levels.ts`;
   `scripts/oneOnOne.test.ts` for numbers). Strong post players lean on the post a lot once it works (memory); Hard
   only plays them off outside ~10 ft. Use the brain for CPU isos in 3v3 / 5v5 (owner: later). Not played against a

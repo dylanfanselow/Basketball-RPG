@@ -179,6 +179,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 61b (passes find the receiver): `passSafety` aims at `receiverAt(to, flight time)` (the real flight time,
+  capped by `PASS.leadMax`; velocity eased a little; a screener where he stands), every pass homes in on the receiver
+  in flight (`PASS.home` 24 ft/s, lobs / overhead `homeSlow` 12, at most `homeMax` 12 ft from `aim0`), catches on the
+  way from half the flight (`PASS.earlyR`), a pass to a screener ends his screen, the AI only throws to someone who
+  `canCatch` (ai/offense.ts: not down, rocked, mid-shot or in the air). Quiet event `passMiss`; pick-offs carry
+  `data` (receiver off the aim, length, k). `scripts/passing.test.ts`, `tests/passing.test.ts`.
   Round 61 (1v1 CPU, Easy / Medium / Hard): `sim/ai/levels.ts` (`CPU_LEVELS`: every number is a decision, none a
   rating), `sim/ai/forecast.ts` (`forecastShot`: where each defender will be at the release from his lock time,
   reaction, carried speed, the physics' easing and his contest jump, then the real `evaluateShot` on ghosts with

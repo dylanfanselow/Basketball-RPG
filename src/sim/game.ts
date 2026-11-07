@@ -115,7 +115,9 @@ export type BallState =
       /** interception multiplier from the pass length (short ≪ medium < long) */
       riskMult?: number;
       /** overhead lead pass over the defense (transition / to a runner): high arc, only catchable near the ends */
-      overhead?: boolean }
+      overhead?: boolean;
+      /** round 61b: where it was first aimed (homing drifts at most PASS_HOME_MAX ft from it) */
+      aim0?: Vec }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
       /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
       airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number };
@@ -131,6 +133,10 @@ export type BallState =
 
 /** quiet events drive audio/animation only and never show in the on-screen feed */
 export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1; pid?: string; big?: boolean; good?: boolean; quiet?: boolean; data?: Record<string, any> }
+
+/** Round 61b passing: how far ahead a pass is aimed at most (s), how fast it re-aims at the receiver in flight
+ *  (ft/s; lobs and overhead passes slower), how far it may drift from its first aim (ft), and the early-catch reach. */
+export const PASS = { leadMax: 1.0, home: 24, homeSlow: 12, homeMax: 12, earlyR: 2.4, /** dev / stats: early catches on */ early: true };
 
 /** Longest a held screen lasts (s). */
 export const SCREEN_HOLD_MAX = 6;
@@ -1525,10 +1531,26 @@ export class GameSim {
     const raw = dist(from.p, to.p);
     const running = dot(to.vel, toRim) > 8;
     const overhead = raw > 18 && (this.inTransition(from.team) || (running && this.openness(to) > 0.35));
-    const lead = clampToCourt(add(to.p, scale(to.vel, overhead ? Math.min(1.2, raw / from.passSpeed * 0.9 + 0.2) : 0.35)));
+    // round 61b: aim where he'll be when it gets there (the real flight time, and where a CPU receiver is heading),
+    // not a fixed 0.35 s guess
+    const k = overhead ? 1.15 : 1;
+    let t = (raw / from.passSpeed) * k + 0.06, lead = to.p;
+    for (let i = 0; i < 2; i++) {
+      lead = clampToCourt(this.receiverAt(to, Math.min(PASS.leadMax, overhead ? t + 0.15 : t)));
+      t = (dist(from.p, lead) / from.passSpeed) * k + 0.06;
+    }
     const d = dist(from.p, lead);
     const safe = from.safePassDist * (overhead ? 1.35 : 1);
     return { lead, d, safe, overhead, ok: d <= safe };
+  }
+
+  /**
+   * Round 61b: where this player will be in t seconds: his current velocity, easing off a little (people don't run in
+   * straight lines). The ball homes in on him in flight anyway.
+   */
+  receiverAt(p: Player, t: number): Vec {
+    if (p.state === 'screen' || p.state === 'charge') return p.p;
+    return add(p.p, scale(p.vel, t * (1 - Math.min(0.3, t * 0.3))));
   }
 
   /** Is this teammate a good alley-oop target (heading to the rim, landing spot in lob range)? */
@@ -1629,7 +1651,8 @@ export class GameSim {
     const dur = (d / speed) * (lob ? 1.6 : overhead ? 1.15 : 1) + 0.06;
     const magnet = !lob && !overhead && d <= safe * 0.6;
     const riskMult = magnet ? 0.15 : d <= safe ? (overhead ? 0.5 : 0.6) : 1.8 + (d - safe) / 20;
-    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead };
+    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead, aim0: { ...lead } };
+    if (to.state === 'screen') { to.state = 'idle'; to.stateT = 0; } // round 61b: the ball's coming: off the screen to go get it
     this.lastPasser = from; this.lastPassAt = this.time;
     if (from.post || this.time < from.postWindowUntil) this.lastPostPassAt = this.time; // kicked out of the post: its own animation
     from.deadDribble = false;
@@ -2128,6 +2151,17 @@ export class GameSim {
         const k = clamp01(st.t / st.dur);
         // short passes home in on the receiver (re-aim at where he is now)
         if (st.magnet && st.to.state !== 'fallen') st.b = lerpV(st.b, add(st.to.p, scale(st.to.vel, 0.05)), Math.min(1, dt * 12));
+        else if (!st.oop && st.to.state !== 'fallen') {
+          // round 61b: every pass homes in on the receiver (where he'll be when it arrives), at a capped rate, so a
+          // route that turns or a man who keeps moving still gets the ball; it only misses if he runs far from it
+          const want = clampToCourt(this.receiverAt(st.to, Math.max(0, st.dur - st.t)));
+          const step = (st.lob || st.overhead ? PASS.homeSlow : PASS.home) * dt;
+          const to = sub(want, st.b), dd = len(to);
+          let nb = dd <= step ? want : add(st.b, scale(to, step / dd));
+          const a0 = st.aim0 ?? st.b, off = sub(nb, a0);
+          if (len(off) > PASS.homeMax) nb = add(a0, scale(norm(off), PASS.homeMax));
+          st.b = nb;
+        }
         b.p = lerpV(st.a, st.b, k);
         b.z = st.oop ? st.oop.z0 + (st.oop.catchZ - st.oop.z0) * k + OOP_ARC * Math.sin(Math.PI * k) : 4.5 + (st.lob ? 7 : st.overhead ? 5.8 : 1.2) * Math.sin(Math.PI * k);
         const passLen = dist(st.a, st.b);
@@ -2141,7 +2175,7 @@ export class GameSim {
             const chance = (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.riskMult ?? (st.risky ? 1.8 : 1)) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
             if (this.rng.chance(chance)) {
               d.box.stl++; st.from.box.tov++;
-              this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true });
+              this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true, data: { recvOff: dist(st.to.p, st.b), inbound: !!st.inbound, len: passLen, k, human: this.isHuman(st.to) } });
               this.rhythmGain(d, 'steal'); this.rhythmLoss(st.from, 'turnover');
               if (d === this.user) applyTrust(this.trust, 'stop');
               if (st.from === this.user) applyTrust(this.trust, 'turnover');
@@ -2152,14 +2186,18 @@ export class GameSim {
           }
         }
         if (k >= 1 && st.oop) { this.oopArrive(st); break; }
-        if (k >= 1) {
-          if (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen') {
+        // round 61b: caught on the way when it comes within his reach (not only where it was aimed)
+        const early = PASS.early && !st.oop && k >= 0.5 && k < 1 && st.to.state !== 'fallen' && dist(st.to.p, b.p) < PASS.earlyR && b.z < st.to.reach + st.to.z + 1;
+        if (k >= 1 || early) {
+          if (early || (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen')) {
             this.giveBall(st.to);
             this.scrambleOnCatch(st.from, st.to);
             this.quiet('catch', {}, st.to.id);
             this.assistCand = { passer: st.from, receiver: st.to, at: this.time };
             if (this.runner.cur?.options?.includes(this.playRole(st.to))) st.to.receivedAt = this.time;
           } else {
+            // round 61b: nobody touched it and he wasn't there (dev stats / tests)
+            this.quiet('passMiss', { inbound: !!st.inbound, magnet: !!st.magnet, overhead: !!st.overhead, lob: st.lob, human: this.isHuman(st.to), state: st.to.state, miss: dist(st.to.p, b.p), len: dist(st.a, st.b) }, st.to.id);
             b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 8), vz: 0, lastTeam: st.from.team };
           }
         }

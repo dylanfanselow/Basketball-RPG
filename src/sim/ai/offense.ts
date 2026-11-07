@@ -10,6 +10,13 @@ import { isoThink } from './oneOnOne';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
 
+/**
+ * Round 61b: can he catch a pass right now? Not on the floor, not rocked (stunned), not in the middle of his own shot
+ * or a jump. The AI only throws to someone who can (a screener can: the pass takes him off the screen).
+ */
+export const canCatch = (sim: GameSim, m: Player) => m.state !== 'fallen' && m.state !== 'shoot' && m.state !== 'dive' && sim.time >= m.stunnedUntil && m.z < 0.5;
+const catchers = (sim: GameSim, p: Player) => sim.mates(p).filter((m) => canCatch(sim, m));
+
 /** A teammate is "ahead" when he's closer to the rim than every defender (a leak-out / beat-everyone runner). */
 export function aheadOfDefense(sim: GameSim, m: Player): boolean {
   const rim = sim.rim(m.team);
@@ -175,7 +182,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     p.want = v();
     if (sim.time - p.deadDribbleAt < 0.35) return;
     let best: Player | null = null, bv = -1;
-    for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+    for (const m of catchers(sim, p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
     if (best && bv > 0.15) sim.pass(p, best); else sim.startShot(p, selectShotType(p, side, v(), sim.time));
     return;
   }
@@ -186,7 +193,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     if (p.doubledSince < 0) p.doubledSince = sim.time;
     if (sim.time - p.doubledSince > 0.25 + 0.55 * (1 - readSkill(p))) {
       let best: Player | null = null, bv = -1;
-      for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+      for (const m of catchers(sim, p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
       if (best && bv > 0.1) { p.doubledSince = -1; throwTo(sim, p, best); return; }
       if (!p.deadDribble && p.sub.ballSpeed > 82 && sim.rng.chance(0.25)) {
         const toRim = norm(sub(rim, p.p)); p.doubledSince = -1;
@@ -220,7 +227,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // ---- transition: read the break before walking it up ----
   if (sim.inTransition(p.team) && p.aiMode !== 'drive') {
     const sinceCatchT = sim.time - p.receivedAt;
-    const mates = sim.mates(p);
+    const mates = catchers(sim, p);
     // throw ahead: anyone well down the floor with his man trailing (or nobody on him) gets it over the top
     const leaders = mates.filter((m) => {
       const md = dist(m.p, rim);
@@ -234,7 +241,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     if (lead && sinceCatchT > 0.55 - 0.43 * readSkill(p)) { throwTo(sim, p, lead); return; }
     // rebounding big: outlet to the point guard
     const pg = sim.byRole(p.team, '1');
-    if ((p.role === '4' || p.role === '5') && pg && pg !== p && sim.openness(pg) > 0.4 && laneRisk(sim, p, pg) < 0.4 && sinceCatchT > 0.25) { sim.pass(p, pg); return; }
+    if ((p.role === '4' || p.role === '5') && pg && pg !== p && canCatch(sim, pg) && sim.openness(pg) > 0.4 && laneRisk(sim, p, pg) < 0.4 && sinceCatchT > 0.25) { sim.pass(p, pg); return; }
     // numbers: attackers vs defenders between the ball and the rim
     const offAhead = mates.filter((m) => dist(m.p, rim) < d + 3).length + 1;
     const defBack = sim.opp(p.team).filter((o) => dist(o.p, rim) < d).length;
@@ -272,7 +279,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // gets it with the team's trust, and only if he actually cuts)
   if (phase?.lob && !resetting && sim.runner.lobPhase !== sim.runner.phase) {
     const m = sim.byPlayRole(p.team, phase.lob);
-    if (m && m !== p && sim.lobTarget(p, m) && dot(m.vel, norm(sub(rim, m.p))) > 4) {
+    if (m && m !== p && canCatch(sim, m) && sim.lobTarget(p, m) && dot(m.vel, norm(sub(rim, m.p))) > 4) {
       sim.runner.lobPhase = sim.runner.phase;
       if (!m.isUser || sim.rng.chance(passFactor(userTrust(sim)))) { sim.lobPass(p, m); return; }
     }
@@ -281,7 +288,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // reset: get the ball back to the top and to the point guard, then the coach calls the next set
   if (resetting) {
     const pg = sim.byRole(p.team, '1');
-    if (pg && pg !== p && sim.runner.swungAt < 0 && sinceCatch > 0.3 && laneRisk(sim, p, pg) < 0.4 && sim.openness(pg) > 0.3) {
+    if (pg && pg !== p && canCatch(sim, pg) && sim.runner.swungAt < 0 && sinceCatch > 0.3 && laneRisk(sim, p, pg) < 0.4 && sim.openness(pg) > 0.3) {
       sim.runner.swungAt = sim.time; sim.pass(p, pg); return;
     }
     sim.steer(p, spot(side, 'top'), false, 0.85);
@@ -296,7 +303,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const helpers = sim.opp(p.team).filter((o) => dist(o.p, p.p) < 6).length;
   if ((!iso || helpers >= 2) && sinceCatch > 0.9 - 0.7 * readSkill(p)) {
     let open: Player | null = null, ov = 0;
-    for (const m of sim.mates(p)) {
+    for (const m of catchers(sim, p)) {
       if (!openForPass(sim, p, m)) continue;
       const near = dist(m.p, rim) < 10;
       const val = catchEV(sim, m) + (near ? 0.4 : 0);
@@ -310,7 +317,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   if (!iso && phase?.ball && phase.ball !== sim.playRole(p) && sim.runner.ballCalledAt !== sim.runner.phase) {
     sim.runner.ballCalledAt = sim.runner.phase;
     const tgt = sim.byPlayRole(p.team, phase.ball);
-    if (tgt && laneRisk(sim, p, tgt) < 0.5) {
+    if (tgt && canCatch(sim, tgt) && laneRisk(sim, p, tgt) < 0.5) {
       const f = tgt.isUser ? 0.35 + 0.65 * userTrust(sim) / 100 : 1;
       if (sim.rng.chance(0.9 * f)) { sim.pass(p, tgt); return; }
     }
@@ -341,7 +348,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09 - (iso ? 0.12 : 0);
 
   let best: Player | null = null, bestVal = -1e9;
-  for (const m of sim.mates(p)) {
+  for (const m of catchers(sim, p)) {
     if (m.state === 'fallen') continue;
     const open = sim.openness(m);
     let val = catchEV(sim, m) * (0.5 + 0.6 * open);
@@ -466,7 +473,7 @@ function postAI(sim: GameSim, p: Player) {
   const doubled = sim.opp(p.team).some((o) => o.id !== def && dist(o.p, p.p) < 4 && sim.time >= o.stunnedUntil);
   if (doubled) {
     let best: Player | null = null, bv = -1;
-    for (const m of sim.mates(p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
+    for (const m of catchers(sim, p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
     if (best && bv > 0.1) { sim.pass(p, best); p.aiMode = 'none'; return; }
   }
   const locked = !!def && sim.players.some((q) => q.id === def && sim.time < q.postLockUntil);
@@ -511,7 +518,7 @@ function bringUp(sim: GameSim, p: Player) {
     p.aiNextThink = sim.time + 0.2 + sim.rng.next() * 0.15;
     // read the floor: whoever the press left open (ahead of the ball preferred)
     let best: Player | null = null, bv = -1;
-    for (const m of sim.mates(p)) {
+    for (const m of catchers(sim, p)) {
       if (m.state === 'fallen' || m.state === 'screen') continue;
       const open = sim.openness(m), risk = laneRisk(sim, p, m);
       if (open < 0.45 || risk > 0.35) continue;
