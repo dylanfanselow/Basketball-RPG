@@ -86,7 +86,7 @@
 | 60d | `f1b0725` | Mom after the big game (great: proud you made the most of your opportunity; else: the scout said you have promise), and no em dashes anywhere | `bigGameVerdict`, stage `after`, Trailer `afterLines`, em dashes removed repo-wide, `tests/style.test.ts`, CLAUDE.md rule |
 | 60e | `9dd777c` | Clearer shot-chance lesson, players land and stand after the final whistle, the fuel can no longer bobs | tutorial lines, `GameSim.settle`, trailerArt jerry can |
 | 60f | `83d615a` | Kingston has every perk in the 1s; new careers start with two perks by position (PG: shooting + passing) | `STARTER_PERKS`, `rivalPlayer` all `NODES`, builder line |
-| 60g | _pending_ | Pick any jersey number (you're in high school, not on the Lakers) | CreateScene: no taken numbers, Lincoln jersey preview |
+| 60g | `fb7da4e` | Pick any jersey number (you're in high school, not on the Lakers) | CreateScene: no taken numbers, Lincoln jersey preview |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
