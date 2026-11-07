@@ -14,6 +14,8 @@ export const STAT_MAX = 99;
 export interface CareerState {
   version: number;
   name: string; pos: Position; height: number; number: number; skin: number;
+  /** round 59b: the builder's first / last name (`name` = both); missing on older saves */
+  firstName?: string; lastName?: string;
   appearance: Appearance;
   core: CoreStats;
   level: number; xp: number; statPoints: number; perkPoints: number;
@@ -99,9 +101,19 @@ export const STARTER_CORE: Record<Position, CoreStats> = {
 /** Height range by position, in inches (inclusive). */
 export const HEIGHT_RANGE: Record<Position, [number, number]> = { PG: [72, 77], SG: [75, 79], SF: [77, 81], PF: [79, 83], C: [81, 87] };
 export const fmtHeight = (inches: number) => `${Math.floor(inches / 12)}'${Math.round(inches % 12)}"`;
-/** A new career from the builder: your look, position, height (clamped to the position's range) and starter skills. */
-export function createCareer(o: { name: string; pos: Position; heightIn: number; appearance: Appearance }): CareerState {
-  const c = newCareer(o.name, o.pos);
+/** Round 59b: a name as typed in the builder — letters, spaces, - and ' only, trimmed, at most 12 characters. */
+export const NAME_MAX = 12;
+export const cleanName = (s: string) => s.replace(/[^A-Za-z '\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX).trim();
+/**
+ * A new career from the builder: your name, look, position, height (clamped to the position's range), jersey number
+ * (0-99) and starter skills.
+ */
+export function createCareer(o: { name?: string; firstName?: string; lastName?: string; number?: number; pos: Position; heightIn: number; appearance: Appearance }): CareerState {
+  const first = cleanName(o.firstName ?? ''), last = cleanName(o.lastName ?? '');
+  const c = newCareer(first || last ? `${first} ${last}`.trim() : o.name ?? 'Rookie', o.pos);
+  if (first) c.firstName = first;
+  if (last) c.lastName = last;
+  if (o.number !== undefined) c.number = Math.max(0, Math.min(99, Math.round(o.number)));
   const [lo, hi] = HEIGHT_RANGE[o.pos];
   c.height = Math.max(lo, Math.min(hi, Math.round(o.heightIn))) / 12;
   c.appearance = { ...o.appearance }; c.skin = o.appearance.skin;

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { FURNITURE, DOORS, SPAWN, PLAYER_R, ROOM, solids, moveWithCollision, isFree, footprint, doorNear, wallL, wallR, newCat, catStep, CAT_R, CAT_SPOTS, CAT_HOP, SPOTS } from '../src/world/apartment';
 import { actorDepthFt, pieceDepthFt } from '../src/world/apartment';
-import { STARTER_CORE, HEIGHT_RANGE, createCareer } from '../src/career/career';
+import { STARTER_CORE, HEIGHT_RANGE, createCareer, cleanName, NAME_MAX } from '../src/career/career';
+import { takenNumbers, REAL_ROSTERS } from '../src/career/roster';
 import { defaultAppearance } from '../src/render/appearance';
 import { newCareer, migrateCareer, nextKeyGame, isKeyGame, addSkillXp, skillXpToNext, SKILL_MAX, takeOrbEnergy, ORB_ENERGY, ORB_XP, spendStatPoint, advanceDay, sleepPlan, addEnergy, ENERGY_ORB, gameDay } from '../src/career/career';
 
@@ -229,5 +230,24 @@ describe('round 59: character builder — starter skills + height by position', 
     expect(createCareer({ name: 'Kid', pos: 'PG', heightIn: 99, appearance: look }).height * 12).toBe(HEIGHT_RANGE.PG[1]);
     for (const p of POS) expect(HEIGHT_RANGE[p][0]).toBeLessThan(HEIGHT_RANGE[p][1]);
     expect(HEIGHT_RANGE.C[1]).toBeGreaterThan(HEIGHT_RANGE.PG[1]);
+  });
+});
+
+describe('round 59b: name + jersey number', () => {
+  it('cleans typed names: letters, space, - and \' only, trimmed, at most 12 characters', () => {
+    expect(cleanName('  Jalen  ')).toBe('Jalen');
+    expect(cleanName("O'Neal-Smith3!")).toBe("O'Neal-Smith");
+    expect(cleanName('Abcdefghijklmnop').length).toBe(NAME_MAX);
+    expect(cleanName('De   Shawn')).toBe('De Shawn');
+  });
+  it('createCareer keeps first / last / full name and the jersey number (0-99)', () => {
+    const c = createCareer({ firstName: 'Jalen', lastName: 'Carter', number: 23, pos: 'SG', heightIn: 77, appearance: defaultAppearance() });
+    expect(c.name).toBe('Jalen Carter'); expect(c.firstName).toBe('Jalen'); expect(c.lastName).toBe('Carter'); expect(c.number).toBe(23);
+    expect(createCareer({ firstName: 'A', lastName: 'B', number: 140, pos: 'SG', heightIn: 77, appearance: defaultAppearance() }).number).toBe(99);
+  });
+  it('knows which numbers a team already wears', () => {
+    const t = takenNumbers('LAL');
+    expect(t.size).toBeGreaterThan(5);
+    for (const e of REAL_ROSTERS.LAL) expect(t.get(e.number)).toBeTruthy();
   });
 });

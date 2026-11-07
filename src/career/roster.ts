@@ -7,6 +7,10 @@ import rostersRaw from '../data/rosters.json';
 
 export interface RosterEntry { name: string; number: number; pos: Position; heightFt: number; tier: number; archetype: string; core: CoreStats; perks: string[]; appearance: Partial<Appearance> }
 export const REAL_ROSTERS: Record<string, RosterEntry[]> = (rostersRaw as any).teams;
+/** Round 59b: jersey numbers already worn on a team (number → player), so the builder can skip them. */
+export function takenNumbers(teamId: string): Map<number, string> {
+  return new Map((REAL_ROSTERS[teamId] ?? []).map((e) => [e.number, e.name] as [number, string]));
+}
 
 const FIRST = ['Marcus', 'Jalen', 'Tyrese', 'Devin', 'Malik', 'Andre', 'Isaiah', 'Kobe', 'Darius', 'Trey', 'Luka', 'Nikola', 'Jaylen', 'Cade', 'Zion', 'Bam', 'Rudy', 'Khalil', 'Omari', 'Dante', 'Xavier', 'Cam', 'Jordan', 'Miles', 'Evan', 'Theo', 'Amari', 'Quentin', 'Rashad', 'Elijah', 'Bo', 'Kendrick', 'Shai', 'Victor', 'Ty', 'Reggie'];
 const LAST = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Price', 'Ward', 'Bryant', 'Okafor', 'Diallo', 'Novak', 'Petrovic', 'Simmons', 'Banks', 'Reed', 'Fields', 'Holloway', 'Jennings', 'Lowe', 'Moss', 'Pierce', 'Grant', 'Vance', 'Stone', 'Booker', 'Rivers', 'Hart', 'Knox', 'Silva', 'Adebayo', 'Fox', 'Duke', 'Wells', 'Payne', 'Shaw', 'Cross'];

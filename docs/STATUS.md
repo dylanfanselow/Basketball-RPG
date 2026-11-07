@@ -162,6 +162,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   Round 59 builder: `scenes/CreateScene.ts` (LOOK rows over every `Appearance` field + `partVariants`, preview drawn
   with `drawAngled` into the `cc_prev` canvas texture (4 idle frames, yaw 90 / 45 / 0), POSITION, HEIGHT, READY);
   career `STARTER_CORE`, `HEIGHT_RANGE`, `fmtHeight`, `createCareer` (look + clamped height + starter skills).
+  Round 59b: NAME step (`onKey` typing with `typedFrame` so letters aren't buttons; `GRID` on-screen keyboard for
+  controllers) and NUMBER step (`takenNumbers(teamId)` in roster.ts, preview in the home jersey); `cleanName`,
+  `NAME_MAX`; `CareerState.firstName` / `lastName` (optional); `createCareer` takes first / last / number.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

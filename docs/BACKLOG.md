@@ -63,4 +63,4 @@
 - Long-session performance of the animated crowd on slower machines.
 - **School court (round 56):** hook the story events to it (`GameInit.venue`), e.g. the high-school-rival 1v1 that unlocks the ultimate (VISION.md). Maybe a thunder sound for the lightning.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.
-- **Character builder (round 59):** a name entry (it's "Rookie" for now), jersey number, and the backstory pick (VISION) as more steps.
+- **Character builder (round 59):** the backstory pick (VISION) as another step.
