@@ -7,7 +7,8 @@ import { newStory } from '../sim/story';
 import { prepareStory } from './preload';
 import type { CareerState } from '../career/career';
 import { storyScene } from './setup';
-import { createCareer, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
+import { NODES } from '../sim/data';
+import { createCareer, STARTER_PERKS, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
 import { takenNumbers } from '../career/roster';
 import { POSITIONS, Position } from '../sim/attributes';
 import { CORE_STATS, TEAMS } from '../sim/data';
@@ -252,6 +253,8 @@ export class CreateScene extends Phaser.Scene {
       this.head.setText(`◀  ${POS_NAMES[this.pos]} (${this.pos})  ▶`);
       this.body.setText(`${POS_BLURB[this.pos]}\nHeight ${fmtHeight(lo)} – ${fmtHeight(hi)}\n\nStarter skills (40 is the floor):`);
       statBars(330);
+      // round 60f: the two perks this position starts with
+      this.rowTexts[13].setText(`Starter perks: ${STARTER_PERKS[this.pos].map((id) => NODES[id]?.name ?? id).join(' + ')}`).setPosition(684, 478).setColor('#ffe680').setFontSize(16);
       POSITIONS.forEach((p, i) => { const x = 690 + i * 104; g.fillStyle(p === this.pos ? 0x9a6ae0 : 0x2a2244, 1).fillRoundedRect(x, 520, 90, 44, 8); });
       POSITIONS.forEach((p, i) => this.rowTexts[8 + i].setText(p).setPosition(690 + i * 104 + 45 - p.length * 6, 530).setColor(p === this.pos ? '#ffffff' : '#8892b0'));
       this.help.setText('←→ position   ✕ next: height   ○ back');

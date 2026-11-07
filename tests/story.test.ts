@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { createCareer, migrateCareer, newCareer, STARTER_CORE, storyKeyGame, nextKeyGame } from '../src/career/career';
+import { createCareer, migrateCareer, newCareer, STARTER_CORE, STARTER_PERKS, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
 import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
+import { NODES } from '../src/sim/data';
 import { GameSim, UserInput, emptyInput } from '../src/sim/game';
 import { add, dist, norm, scale, sub, v } from '../src/sim/math';
 import type { Position } from '../src/sim/attributes';
@@ -215,5 +216,16 @@ describe('round 60 story', () => {
     expect(Math.hypot(king.vel.x, king.vel.y)).toBeLessThan(0.5);
     expect(king.p).toEqual(at); // settling never moves anyone
     expect(sim.ball.z).toBeCloseTo(0.4);
+  });
+  it('round 60f: starter perks by position; Kingston has every perk in the 1s', () => {
+    expect(career('PG').nodes).toEqual(['sh_root', 'pa_root']);
+    for (const pos of ['PG', 'SG', 'SF', 'PF', 'C'] as Position[]) {
+      expect(career(pos).nodes).toEqual(STARTER_PERKS[pos]);
+      for (const id of STARTER_PERKS[pos]) expect(NODES[id]?.prereqs).toEqual([]); // first perks of their trees
+    }
+    const c = career('PG');
+    const ones = rivalPlayer(c, 'ones'), tut = rivalPlayer(c, 'tutorial');
+    expect(ones.nodes.size).toBe(Object.keys(NODES).length);
+    expect(tut.nodes.size).toBeLessThan(Object.keys(NODES).length);
   });
 });

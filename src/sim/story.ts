@@ -6,7 +6,7 @@
  */
 import { GameSim } from './game';
 import { Player } from './player';
-import { TeamDef, CoreStats, CORE_STATS } from './data';
+import { TeamDef, CoreStats, CORE_STATS, NODES } from './data';
 import { Position, HEIGHTS } from './attributes';
 import { Rng, clamp } from './math';
 import { randomAppearance, Appearance } from '../render/appearance';
@@ -60,12 +60,13 @@ function fallbackRival(c: CareerState): RivalInfo {
 }
 function mulberry(seed: number) { const r = new Rng(seed); return () => r.next(); }
 
-/** Kingston as a Player: a little better than your tutorial self, or (1s) every offensive stat at 99. */
+/** Kingston as a Player: a little better than your tutorial self, or (1s) every offensive stat at 99 and every perk. */
 export function rivalPlayer(c: CareerState, mode: 'tutorial' | 'ones', team: 0 | 1 = 1): Player {
   const r = c.story?.rival ?? fallbackRival(c);
   const core = avgSpread(r.pos, RIVAL_EDGE);
   if (mode === 'ones') for (const s of OFFENSE) core[s] = 99;
-  const nodes = [...new Set([...AI_PERKS[r.pos], 'dr_handle', 'dr_cross', 'sh_root', 'fi_root'])];
+  // round 60f (owner): in the 1s he has every perk in every tree
+  const nodes = mode === 'ones' ? Object.keys(NODES) : [...new Set([...AI_PERKS[r.pos], 'dr_handle', 'dr_cross', 'sh_root', 'fi_root'])];
   return new Player({
     id: RIVAL_ID, name: `${r.first} ${r.last}`, team, pos: r.pos, core, nodes, number: r.number,
     skin: Math.max(3, r.appearance.skin), height: r.heightIn / 12, appearance: kingstonLook(r.appearance),

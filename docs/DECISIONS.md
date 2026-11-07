@@ -158,6 +158,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60f (owner): perks.** In the 1s Kingston has **every perk in every tree**. Every new career starts with
+  the first perk of two trees that fit the position (free): PG Shooter's Touch + Floor General, SG Shooter's Touch +
+  Tight Handle, SF Shooter's Touch + Rim Instincts, PF Rim Instincts + Brick Wall, C Glass Cleaner + Rim Instincts.
+  Shown on the builder's POSITION step.
 - **Round 60e (owner): polish.**
   - The tutorial's shot-chance lines are plain and clear (no "everything falls" / "the number is the truth"): the top
     right number is your chance to make the shot you're lined up for; it starts from the shot's base % and moves with

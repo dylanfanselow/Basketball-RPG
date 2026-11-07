@@ -112,6 +112,17 @@ export const STARTER_CORE: Record<Position, CoreStats> = {
   PF: { shooting: 44, finishing: 50, strength: 54, mobility: 46, playmaking: 46 },
   C: { shooting: 40, finishing: 52, strength: 60, mobility: 44, playmaking: 44 },
 };
+/**
+ * Round 60f (owner): every new career starts with the first perk of the two trees that fit the position (free, no perk
+ * points spent). PG: shooting + passing.
+ */
+export const STARTER_PERKS: Record<Position, string[]> = {
+  PG: ['sh_root', 'pa_root'],   // Shooter's Touch, Floor General
+  SG: ['sh_root', 'dr_handle'], // Shooter's Touch, Tight Handle
+  SF: ['sh_root', 'fi_root'],   // Shooter's Touch, Rim Instincts
+  PF: ['fi_root', 'sc_root'],   // Rim Instincts, Brick Wall
+  C: ['in_root', 'fi_root'],    // Glass Cleaner, Rim Instincts
+};
 /** Height range by position, in inches (inclusive). */
 export const HEIGHT_RANGE: Record<Position, [number, number]> = { PG: [72, 77], SG: [75, 79], SF: [77, 81], PF: [79, 83], C: [81, 87] };
 export const fmtHeight = (inches: number) => `${Math.floor(inches / 12)}'${Math.round(inches % 12)}"`;
@@ -132,6 +143,7 @@ export function createCareer(o: { name?: string; firstName?: string; lastName?: 
   c.height = Math.max(lo, Math.min(hi, Math.round(o.heightIn))) / 12;
   c.appearance = { ...o.appearance }; c.skin = o.appearance.skin;
   for (const s of CORE_STATS) { const v = Math.max(SKILL_START, STARTER_CORE[o.pos][s]); c.skills[s] = { level: v, xp: 0 }; c.core[s] = v; }
+  c.nodes = [...STARTER_PERKS[o.pos]];
   return c;
 }
 
