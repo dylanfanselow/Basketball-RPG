@@ -179,6 +179,19 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 61 (1v1 CPU, Easy / Medium / Hard): `sim/ai/levels.ts` (`CPU_LEVELS`: every number is a decision, none a
+  rating), `sim/ai/forecast.ts` (`forecastShot`: where each defender will be at the release from his lock time,
+  reaction, carried speed, the physics' easing and his contest jump, then the real `evaluateShot` on ghosts with
+  `now + windup`; `shotOptions` per stick), `sim/ai/oneOnOne.ts` (`isoThink`, run from `thinkOffense` in 1v1: clock →
+  open look (forecast contest under the level's cut = shoot now) → dead dribble → reactions (bit = Step-Through, in
+  the air / down / beaten / lane opened off a move = sprint drive, snap back a recovered side drive, fake a flying
+  closeout) → settle time drawn per possession → options in chains (combo with chained moves read near each move's
+  end, drive + sprint with rim finish / rim fake / back it out, post up → let go → window shot or step-back, fake,
+  reset), `sim.isoMemory` learns what works on this defender and his bite rate). Defense by level in `ai/defense.ts`
+  (reaction lag + read-ahead, scouted cushion, Hard plays a much stronger post player off, closes into the cone in the
+  windup, reach timing) and in game.ts (`jumpAt` timing / no jump, fake bite × level, `moveRead(p, id, early)` ×
+  level). `shooting.windupFor` (shared with `startShot`). Setup screen CPU box (`OneOnOneSetup.cpuLevel`), the 1s vs
+  Kingston on Hard, dev toggle "1v1 CPU thoughts" (`p.aiNote` over each CPU), `scripts/oneOnOne.test.ts`.
   Round 60f: `career.STARTER_PERKS` (createCareer sets `nodes`; builder POSITION step lists them), `rivalPlayer`
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene

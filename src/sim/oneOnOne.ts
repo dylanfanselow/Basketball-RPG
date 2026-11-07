@@ -1,20 +1,23 @@
 import { TEAMS } from './data';
 import { GameSim } from './game';
 import { generateRoster } from '../career/roster';
+import type { CpuLevel } from './ai/levels';
 
 /** 1v1 make-it-take-it choices: each side's team + roster index, P2 human/CPU, scoring. */
 export interface OneOnOneSetup {
   p1Team: string; p1Idx: number; p2Team: string; p2Idx: number;
   p2Human: boolean; target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean;
+  /** round 61: how the CPU plays (decisions only, never ratings) */
+  cpuLevel: CpuLevel;
 }
-export const DEFAULT_1V1: OneOnOneSetup = { p1Team: 'LAL', p1Idx: 0, p2Team: 'BOS', p2Idx: 0, p2Human: false, target: 11, scoring: '1s2s', winBy2: true };
+export const DEFAULT_1V1: OneOnOneSetup = { p1Team: 'LAL', p1Idx: 0, p2Team: 'BOS', p2Idx: 0, p2Human: false, target: 11, scoring: '1s2s', winBy2: true, cpuLevel: 'medium' };
 
 /**
  * Build a half-court 1v1 game between the two picked players (P1 = user, P2 = second human or CPU).
  * P2 ids get a suffix when both picks come from the same team so every player id stays unique.
- * p1Human=false makes P1 a CPU too (headless tests).
+ * p1Human=false makes P1 a CPU too (headless tests), at p1Level (default: the same level as P2's CPU).
  */
-export function buildOneOnOne(o: OneOnOneSetup, seed: number, p1Human = true): GameSim {
+export function buildOneOnOne(o: OneOnOneSetup, seed: number, p1Human = true, p1Level?: CpuLevel): GameSim {
   const t1 = TEAMS.find((t) => t.id === o.p1Team) ?? TEAMS[0];
   const t2 = TEAMS.find((t) => t.id === o.p2Team) ?? TEAMS[1];
   const r1 = generateRoster(t1, 0);
@@ -34,6 +37,6 @@ export function buildOneOnOne(o: OneOnOneSetup, seed: number, p1Human = true): G
     trust: { team: 60, coach: 60 },
     ult: { unlocked: false, id: null, level: 0 }, // no ultimates in 1v1
     featureUser: false,
-    oneOnOne: { target: o.target, scoring: o.scoring, winBy2: o.winBy2 },
+    oneOnOne: { target: o.target, scoring: o.scoring, winBy2: o.winBy2, cpu: o.cpuLevel ?? 'medium', cpu1: p1Level },
   });
 }

@@ -4,7 +4,7 @@ import { Player } from './player';
 import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt } from './shooting';
+import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -14,6 +14,8 @@ import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
+import { CPU_LEVELS, CpuLevel, CpuLevelCfg } from './ai/levels';
+import type { IsoMemory } from './ai/oneOnOne';
 import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
@@ -76,7 +78,9 @@ export interface GameConfig {
    */
   halfCourt?: boolean;
   /** half-court 1v1, make it take it (mode must be 'practice') */
-  oneOnOne?: { target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean };
+  oneOnOne?: { target: number; scoring: '1s2s' | '2s3s'; winBy2: boolean;
+    /** round 61: CPU level of team 1 (P2), and of team 0 when P1 is a CPU too (headless; defaults to cpu) */
+    cpu?: CpuLevel; cpu1?: CpuLevel };
   featureUser?: boolean;
   /** big game (playoffs): the home crowd dresses in team colors */
   bigGame?: boolean;
@@ -220,9 +224,9 @@ export class GameSim {
   moveLog: Record<string, { id: string; side: number; at: number }[]> = {};
   private readSaid: Record<string, number> = {};
   /** How fresh this move still is against this defense: the 3rd+ use in 45 s works less (×0.8 each, floor 0.35). */
-  moveRead(p: Player, id: string): number {
+  moveRead(p: Player, id: string, early = false): number {
     const n = (this.moveLog[p.id] ?? []).filter((m) => m.id === id && this.time - m.at < 45).length;
-    return Math.max(0.35, 0.8 ** Math.max(0, n - 2));
+    return Math.max(0.35, 0.8 ** Math.max(0, n - (early ? 1 : 2)));
   }
   /** His favourite side to go (−1…1 along perp(toRim)) from his last 8 moves; 0 until there are 3. */
   favoriteSide(p: Player): number {
@@ -336,6 +340,15 @@ export class GameSim {
   byPlayRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => this.playRole(p) === role) ?? null; }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(4, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
+  /** Round 61: a 1v1 CPU's level (null for humans and outside 1v1). */
+  cpuLevel(p: Player): CpuLevel | null {
+    const o = this.cfg.oneOnOne;
+    if (!o || !this.isAI(p)) return null;
+    return (p.team === 1 ? o.cpu : o.cpu1 ?? o.cpu) ?? 'medium';
+  }
+  cpuCfg(p: Player): CpuLevelCfg | null { const l = this.cpuLevel(p); return l ? CPU_LEVELS[l] : null; }
+  /** Round 61: what each 1v1 CPU has learned about his defender this game (ai/oneOnOne.ts). */
+  isoMemory: Record<string, IsoMemory> = {};
   isAI(p: Player) { return !((p === this.user && this.user.isUser) || (p === this.user2 && this.user2.isUser)); }
   /** Is this player controlled by a person (P1 or P2)? */
   isHuman(p: Player | null) { return !!p && !this.isAI(p); }
@@ -1318,7 +1331,8 @@ export class GameSim {
       if (dd > 6 || def.z > 0 || def.state === 'fallen' || postLocked(this, def) || this.time < def.stunnedUntil) continue;
       const ratio = (p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20);
       const prox = clamp01(1 - (dd - 2) / 4);
-      if (this.isAI(def) && this.rng.chance(Math.min(0.95, (0.22 + 0.3 * ratio * prox) * sell) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? 0.4 : 1))) {
+      const L = this.cpuCfg(def); // round 61: 1v1 CPU level (Easy bites more, Hard rarely twice)
+      if (this.isAI(def) && this.rng.chance(Math.min(0.95, (0.22 + 0.3 * ratio * prox) * sell * (L?.bite ?? 1)) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? L?.biteAgain ?? 0.4 : 1))) {
         def.lastBitAt = this.time; this.jump(def, 0.9);
         this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id });
       }
@@ -1349,9 +1363,8 @@ export class GameSim {
     if (this.holder() !== p || p.busy) return;
     const def = SHOT_TYPES[type];
     const jumper = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'].includes(type);
-    const windMult = jumper ? p.mods.pMult('release') : p.mods.pMult('gather');
     if (p.move?.id === 'pumpfake') p.move = null; // a shot cuts the fake short
-    p.state = 'shoot'; p.stateT = 0; p.stateDur = def.windup * windMult;
+    p.state = 'shoot'; p.stateT = 0; p.stateDur = windupFor(p, type);
     // dunk style (unlocks with the Dunk rating: power when contested, flashy when open) and the Windmill Gather
     const speedToRim = dot(p.vel, norm(sub(this.rim(p.team), p.p)));
     const dunk = type === 'dunk' ? pickDunk(p, { contested: computeContest(p, this.opp(p.team), this.side(p.team), 'dunk', this.time).raw > 0.25, speedToRim, d: dist(p.p, this.rim(p.team)) }, this.rng)
@@ -1381,7 +1394,10 @@ export class GameSim {
     // defenders react
     for (const d2 of this.opp(p.team)) {
       if (this.isAI(d2) && dist(d2.p, p.p) < 7.5 && d2.z === 0 && !d2.busy && !postLocked(this, d2)) {
-        d2.jumpAt = this.time + this.rng.range(0.1, 0.28) * (1.4 - d2.sub.block / 99 * 0.6);
+        // round 61: a 1v1 CPU's level sets how quick (and how sure) his contest jump is
+        const L = this.cpuCfg(d2);
+        if (L && L.noJump > 0 && this.rng.chance(L.noJump)) continue;
+        d2.jumpAt = this.time + (L ? this.rng.range(L.jump[0], L.jump[1]) : this.rng.range(0.1, 0.28)) * (1.4 - d2.sub.block / 99 * 0.6);
       }
     }
   }
@@ -1682,7 +1698,9 @@ export class GameSim {
 
     // round 49: the defense learns a human's moves, the same move again and again works less, and they shade his side
     const human = !this.isAI(p) && !this.attentionOff;
-    const read = human ? this.moveRead(p, id) : 1;
+    // round 61: a 1v1 CPU defender's level sets how well he reads it (Easy never, Hard from the 2nd use)
+    const LD = nd.d ? this.cpuCfg(nd.d) : null;
+    const read = !human ? 1 : LD ? clamp(1 - (1 - this.moveRead(p, id, LD.readEarly)) * LD.readMoves, 0.25, 1) : this.moveRead(p, id);
     if (human) {
       const log = (this.moveLog[p.id] ??= []);
       log.push({ id, side: sideOf(toRim, dir), at: this.time }); if (log.length > 30) log.shift();
@@ -1695,7 +1713,7 @@ export class GameSim {
       const ratio = Math.pow((p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20), 2);
       const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox * read;
       if (m.pumpFake) {
-        if (this.rng.chance(0.25 + 0.3 * ratio * prox)) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
+        if (this.rng.chance(Math.min(0.95, (0.25 + 0.3 * ratio * prox) * (LD?.bite ?? 1)))) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
       } else if (this.rng.chance(chance)) {
         this.knockDown(def, 1.3, 'ankles');
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });

@@ -388,6 +388,7 @@ export function initDevPanel() {
     dd.append(check('Passing lanes', d.lanes, (v) => (d.lanes = v)));
     dd.append(check('Play assignment path', d.paths, (v) => (d.paths = v)));
     dd.append(check('AI targets', d.aiTargets, (v) => (d.aiTargets = v)));
+    dd.append(check('1v1 CPU thoughts (what he reads, why he shoots)', !!d.aiThoughts, (v) => (d.aiThoughts = v)));
     dd.append(check('Hitboxes', d.hitboxes, (v) => (d.hitboxes = v)));
     dd.append(check('Post up debug (mode, locks)', d.post, (v) => (d.post = v)));
     dd.append(check('Apartment collision boxes', d.room, (v) => (d.room = v)));

@@ -1,6 +1,6 @@
 import type { GameSim } from '../game';
 import { Player } from '../player';
-import { POST } from '../post';
+import { POST, postGap } from '../post';
 import { scorerStyle, ATT } from '../attention';
 import { tryActivateUlt } from '../ultimates';
 import { RESTRICTED_R, inFrontcourt } from '../court';
@@ -105,11 +105,25 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   } else if (man === h) {
     // round 48: a shooter the defense is packing gets crowded (no air space for the catch-and-fire)
     const packed = sim.tierOf(man) >= 2 && sim.coverageOf(man) === 'chase';
-    const gap = 3.4 - (d.sub.perimD / 99) * 0.9 - (packed ? 1.1 : 0) - (sim.effort[d.team] ? 0.3 : 0);
-    target = add(man.p, scale(norm(sub(rim, man.p)), gap));
+    let gap = 3.4 - (d.sub.perimD / 99) * 0.9 - (packed ? 1.1 : 0) - (sim.effort[d.team] ? 0.3 : 0);
+    // round 61: a 1v1 CPU guards by his level: where he last saw his man (reaction lag, Hard reads ahead), a scouted
+    // cushion (Hard), a wandering one (Easy), and Hard steps into the cone during the windup
+    const L = sim.cpuCfg(d);
+    let mp = man.p;
+    if (L) {
+      if (!d.aiSeen || sim.time - d.aiSeen.at >= L.lag) d.aiSeen = { p: { ...man.p }, vel: { ...man.vel }, at: sim.time };
+      mp = add(d.aiSeen.p, scale(d.aiSeen.vel, L.lead));
+      if (L.scout) gap += (man.sub.three >= 75 ? -0.5 : man.sub.three < 55 ? 1.2 : 0) + (man.sprintSpeed > d.sprintSpeed + 0.5 ? 0.5 : 0);
+      if (L.wobble) gap += L.wobble * Math.sin(sim.time * 0.9 + d.id.length);
+      // a much stronger post player inside the post range: play him off, out of reach of the post-up
+      if (L.postAware && !man.post && postGap(man, d) >= POST.NOTICE && dist(man.p, rim) < POST.RANGE - 1) gap = Math.max(gap, POST.ENGAGE + 0.4);
+      if (man.state === 'shoot' && L.closeGap) { gap = Math.min(gap, L.closeGap); mp = man.p; }
+      gap = Math.max(1.2, gap);
+    }
+    target = add(mp, scale(norm(sub(rim, mp)), gap));
     if (sc?.kind === 'under') target = add(man.p, scale(norm(sub(rim, man.p)), gap + 3.5)); // under the screen: sag, dare the jumper
     // round 49: shade the side a human likes to go (up to 1 ft), so his favourite drive is the harder one
-    if (!sim.isAI(man)) { const fav = sim.favoriteSide(man), tr = norm(sub(rim, man.p)); if (fav) target = add(target, scale({ x: -tr.y, y: tr.x }, fav)); }
+    if (!sim.isAI(man)) { const fav = sim.favoriteSide(man) * (L?.shade ?? 1), tr = norm(sub(rim, man.p)); if (fav) target = add(target, scale({ x: -tr.y, y: tr.x }, fav)); }
     urgent = true;
   } else {
     const dBall = dist(man.p, ballP);
@@ -164,7 +178,10 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   sim.steer(d, target, urgent);
   // round 50: a defender with Pick-Up Pressure reaches more against a live dribble (even a miss can kill it)
   const pressure = man === h && h && d.mods.pAdd('killDribble') > 0 && sim.liveDribble(h) ? 1.6 : 1;
-  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70) * (sim.effort[d.team] ? 1.25 : 1) * pressure)) sim.swipe(d);
+  // round 61: a 1v1 CPU reaches by his level (Hard picks his moment: a move's sell or a post)
+  const LR = man === h && h ? sim.cpuCfg(d) : null;
+  const reach = LR && h ? (h.state === 'dribbleMove' || h.post ? LR.reach[0] : LR.reach[1]) : 1;
+  if (man === h && sim.isAI(d) && dist(d.p, h.p) < 4 && sim.rng.chance(dt * 0.12 * (d.sub.steal / 70) * (sim.effort[d.team] ? 1.25 : 1) * pressure * reach)) sim.swipe(d);
   void len;
 }
 

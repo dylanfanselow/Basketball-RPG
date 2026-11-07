@@ -24,6 +24,11 @@
 10. Still unanswered from round 9: does the Step-Through feel right (pull-up and close finish), and do the
    stun/steal/block behavior and pass speed feel good?
 
+- **Round 61 follow-ups (1v1 CPU):** tune Easy / Medium / Hard with the owner (`CPU_LEVELS` in `ai/levels.ts`;
+  `scripts/oneOnOne.test.ts` for numbers). Strong post players lean on the post a lot once it works (memory); Hard
+  only plays them off outside ~10 ft. Use the brain for CPU isos in 3v3 / 5v5 (owner: later). Not played against a
+  real person here: only CPU vs CPU headless plus browser screenshots.
+
 ## Not built yet (owner wants eventually)
 - **Calendar games + day loop:** what happens when you sleep past a game day (play it / miss it), the food bar
   (fridge, eating); games could send skill orbs too; stat points from level-ups

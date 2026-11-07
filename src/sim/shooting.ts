@@ -33,6 +33,12 @@ export function contestReach(type: string): number {
   return 6;
 }
 
+/** Seconds from the gather to the release for this shot (the type's windup x the shooter's release / gather perks). */
+export function windupFor(p: Player, type: string): number {
+  const jumper = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'].includes(type);
+  return SHOT_TYPES[type].windup * (jumper ? p.mods.pMult('release') : p.mods.pMult('gather'));
+}
+
 /** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
 export const STEP_THROUGH_WINDOW = 1.5;
 /** Step-Through stride length (ft); the Step-Through perk lengthens it. */

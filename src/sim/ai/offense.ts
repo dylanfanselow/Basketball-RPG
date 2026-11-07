@@ -6,6 +6,7 @@ import { evaluateShot, selectShotType, ShotEval } from '../shooting';
 import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
 import { tryActivateUlt } from '../ultimates';
+import { isoThink } from './oneOnOne';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
 
@@ -71,7 +72,7 @@ export function offBallTarget(sim: GameSim, p: Player): { pos: Vec; act: string;
 
 export function thinkOffense(sim: GameSim, p: Player, dt: number) {
   const h = sim.holder();
-  if (h === p) { handlerAI(sim, p, dt); return; }
+  if (h === p) { if (sim.cfg.oneOnOne) isoThink(sim, p, dt); else handlerAI(sim, p, dt); return; } // round 61: 1v1 brain
   const bs = sim.ball.st;
   if (bs.kind === 'pass' && bs.to === p) { sim.steer(p, bs.b, true); return; }
   if (p.state === 'screen') return;

@@ -4,14 +4,15 @@ import { FONT, COL, title, hiRes } from './ui';
 import { TEAMS } from '../sim/data';
 import { REAL_ROSTERS, RosterEntry } from '../career/roster';
 import { DEFAULT_1V1, OneOnOneSetup } from './setup';
+import { CPU_LEVEL_IDS, CPU_LEVEL_NAMES } from '../sim/ai/levels';
 
 const KEY = 'hoopcareer.oneOnOne';
 const TARGETS = [7, 11, 15, 21];
 
 /**
  * 1v1 make-it-take-it setup: each side picks a team and any player on its real roster,
- * then P2 (human or CPU), game-to, scoring and win-by-2.
- * Columns 0-3 are lists (P1 team, P1 player, P2 team, P2 player); 4-7 are the options along the bottom.
+ * then P2 (human or CPU), game-to, scoring, win-by-2 and the CPU level (round 61).
+ * Columns 0-3 are lists (P1 team, P1 player, P2 team, P2 player); 4-8 are the options along the bottom.
  */
 export class OneOnOneSetupScene extends Phaser.Scene {
   inp!: InputMapper;
@@ -63,6 +64,7 @@ export class OneOnOneSetupScene extends Phaser.Scene {
       { label: 'Game to', value: String(this.o.target) },
       { label: 'Scoring', value: this.o.scoring === '1s2s' ? "1s & 2s" : "2s & 3s" },
       { label: 'Win by 2', value: this.o.winBy2 ? 'On' : 'Off' },
+      { label: 'CPU', value: this.o.p2Human ? '(no CPU)' : CPU_LEVEL_NAMES[this.o.cpuLevel] },
     ];
   }
 
@@ -81,6 +83,7 @@ export class OneOnOneSetupScene extends Phaser.Scene {
     else if (col === 5) o.target = TARGETS[(TARGETS.indexOf(o.target) + d + TARGETS.length) % TARGETS.length] ?? 11;
     else if (col === 6) o.scoring = o.scoring === '1s2s' ? '2s3s' : '1s2s';
     else if (col === 7) o.winBy2 = !o.winBy2;
+    else if (col === 8) { const i = CPU_LEVEL_IDS.indexOf(o.cpuLevel); o.cpuLevel = CPU_LEVEL_IDS[(i + d + CPU_LEVEL_IDS.length) % CPU_LEVEL_IDS.length] ?? 'medium'; }
     this.redraw();
   }
 
@@ -108,10 +111,11 @@ export class OneOnOneSetupScene extends Phaser.Scene {
       }
     }
     this.options().forEach((op, i) => {
-      const col = 4 + i, x = 50 + i * 305, y = 515;
+      const col = 4 + i, x = 50 + i * 244, y = 515;
       const on = this.col === col;
-      this.g.lineStyle(2, on ? 0xffcc33 : 0x55607a, 1); this.g.strokeRect(x - 10, y - 6, 290, 32);
-      const txt = this.add.text(x + 4, y, `${op.label}:  ◀ ${op.value} ▶`, { fontFamily: FONT, fontSize: '16px', color: on ? COL.accent : COL.text }).setInteractive({ useHandCursor: true });
+      const dim = col === 8 && this.o.p2Human; // no CPU in a two-player game
+      this.g.lineStyle(2, on ? 0xffcc33 : 0x55607a, 1); this.g.strokeRect(x - 10, y - 6, 230, 32);
+      const txt = this.add.text(x + 4, y, `${op.label}:  ◀ ${op.value} ▶`, { fontFamily: FONT, fontSize: '16px', color: dim ? COL.dim : on ? COL.accent : COL.text }).setInteractive({ useHandCursor: true });
       txt.on('pointerdown', () => { this.col = col; this.change(col, 1); });
       this.texts.push(txt);
     });
@@ -121,7 +125,8 @@ export class OneOnOneSetupScene extends Phaser.Scene {
       ? `${tag} ${p.name} #${p.number} · ${p.pos} ${Math.floor(p.heightFt)}'${Math.round((p.heightFt % 1) * 12)}" · SHT ${p.core.shooting} FIN ${p.core.finishing} STR ${p.core.strength} MOB ${p.core.mobility} PLY ${p.core.playmaking}${p.perks.includes('fi_stepthru') ? ' · Step-Through' : ''}`
       : `${tag} -`;
     const same = p1 && p2 && this.o.p1Team === this.o.p2Team && this.o.p1Idx === this.o.p2Idx;
-    this.info.setText([line('P1', p1), line(this.o.p2Human ? 'P2' : 'CPU', p2), same ? '(mirror match: same player on both sides)' : ''].join('\n'));
+    const lvl = { easy: 'Easy: slow reads, misjudges contests, bites on fakes', medium: 'Medium: reads you, strings 2-3 options together', hard: 'Hard: shoots the moment you can\'t contest in time, long combos, learns what works on you' }[this.o.cpuLevel];
+    this.info.setText([line('P1', p1), line(this.o.p2Human ? 'P2' : 'CPU', p2), same ? '(mirror match: same player on both sides)' : '', this.o.p2Human ? '' : `CPU level · ${lvl}`].join('\n'));
   }
 
   start() {
@@ -135,8 +140,8 @@ export class OneOnOneSetupScene extends Phaser.Scene {
     if (inp.pressed('dev')) (window as any).__toggleDev?.();
     if (inp.pressed('down')) this.change(this.col, 1);
     if (inp.pressed('up')) this.change(this.col, -1);
-    if (inp.pressed('tabNext') || inp.pressed('right')) { this.col = (this.col + 1) % 8; this.redraw(); }
-    if (inp.pressed('tabPrev') || inp.pressed('left')) { this.col = (this.col + 7) % 8; this.redraw(); }
+    if (inp.pressed('tabNext') || inp.pressed('right')) { this.col = (this.col + 1) % 9; this.redraw(); }
+    if (inp.pressed('tabPrev') || inp.pressed('left')) { this.col = (this.col + 8) % 9; this.redraw(); }
     if (inp.confirm()) this.start();
     if (inp.cancel()) this.scene.start('Menu');
   }

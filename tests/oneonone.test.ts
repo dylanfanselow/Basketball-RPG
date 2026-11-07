@@ -5,7 +5,8 @@ import { add, norm, scale, sub } from '../src/sim/math';
 import { computeContest, bitOnFake } from '../src/sim/shooting';
 import { buildOneOnOne, DEFAULT_1V1 } from '../src/sim/oneOnOne';
 import { GameSim, UserInput } from '../src/sim/game';
-import { makeGame } from './helpers';
+import { makeGame, run1v1, emptyIsoStats, IsoStats } from './helpers';
+import { forecastShot } from '../src/sim/ai/forecast';
 
 const idle: UserInput = { move: { x: 0, y: 0 }, sprint: false, a: false, b: false, x: false, y: false, aHeld: false, bHeld: false };
 const core = (n = 60) => ({ shooting: n, finishing: n, strength: n, mobility: n, playmaking: n });
@@ -272,5 +273,129 @@ describe('passing', () => {
   it('passes are faster than before', () => {
     const { u } = mk(1);
     expect(u.passSpeed).toBeGreaterThanOrEqual(55);
+  });
+});
+
+describe('round 61: the 1v1 CPU brain', () => {
+  /** A 1v1 with P1 human (frozen) and a CPU P2 at this level; place the two by hand. */
+  const duel = (level: 'easy' | 'medium' | 'hard', seed = 5) => {
+    const g = buildOneOnOne({ ...DEFAULT_1V1, p1Team: 'OKC', p2Team: 'DEN', cpuLevel: level }, seed, true);
+    for (let i = 0; i < 90 && !g.live; i++) g.update(1 / 60, idle);
+    const u = g.user!, c = g.teams[1].onCourt[0];
+    return { g, u, c };
+  };
+  /** Give the ball to `who` at 24 ft (top), the other at `off` relative to him (x toward the rim = +). */
+  const place = (g: GameSim, who: Player, other: Player, off: { x: number; y: number }) => {
+    g.possession = who.team; g.giveBall(who);
+    const rim = g.rim(who.team), toRim = { x: Math.sign(rim.x - 47), y: 0 };
+    who.p = { x: rim.x - toRim.x * 24, y: rim.y }; who.vel = { x: 0, y: 0 };
+    other.p = { x: who.p.x + toRim.x * off.x, y: who.p.y + off.y }; other.vel = { x: 0, y: 0 };
+    other.state = 'idle'; other.z = 0; other.vz = 0;
+    g.shotClock = 14; g.live = true;
+  };
+
+  it('forecasts the contest at the release: right on him = big, far behind / on the floor = none, staggered < set', () => {
+    const { g, u, c } = duel('hard');
+    place(g, c, u, { x: 2.5, y: 0 });
+    const tight = forecastShot(g, c, 'three').contest;
+    place(g, c, u, { x: -14, y: 0 });
+    const behind = forecastShot(g, c, 'three').contest;
+    place(g, c, u, { x: 3, y: 0 });
+    u.state = 'fallen'; u.stateT = 0; u.stateDur = 1.3;
+    const down = forecastShot(g, c, 'three').contest;
+    place(g, c, u, { x: 6, y: 1 });
+    const set = forecastShot(g, c, 'three').contest;
+    u.staggerUntil = g.time + 0.5;
+    const stag = forecastShot(g, c, 'three').contest;
+    expect(tight).toBeGreaterThan(0.35);
+    expect(behind).toBeLessThan(0.02);
+    expect(down).toBeLessThan(0.02);
+    expect(stag).toBeLessThan(set);
+  });
+
+  it('a defender sprinting at the shooter is forecast where he will be (it matches the real release)', () => {
+    const errs: number[] = [];
+    for (const seed of [3, 4, 5]) {
+      const g = buildOneOnOne({ ...DEFAULT_1V1, cpuLevel: 'hard' }, seed, false, 'hard');
+      const orig = g.startShot.bind(g);
+      let fc: number | null = null;
+      (g as any).startShot = (p: Player, type: string, o?: any) => { fc = forecastShot(g, p, type).contest; orig(p, type, o); };
+      let last = g.lastShot;
+      for (let t = 0; t < 120 && !g.over; t += 1 / 60) {
+        g.update(1 / 60, idle);
+        if (g.lastShot !== last) { last = g.lastShot; if (fc !== null && !last!.blocked) errs.push(Math.abs(fc - last!.ev.contest)); fc = null; }
+      }
+    }
+    const mean = errs.reduce((a, b) => a + b, 0) / errs.length;
+    expect(errs.length).toBeGreaterThan(15);
+    expect(mean).toBeLessThan(0.08);
+  });
+
+  it('the key read: when he cannot get a contest up in time, a Hard CPU shoots on its next think', () => {
+    const { g, u, c } = duel('hard');
+    place(g, c, u, { x: -15, y: 0 }); // left far behind
+    let shot = '';
+    for (let i = 0; i < 20 && !shot; i++) { g.update(1 / 60, idle); if (c.state === 'shoot') shot = c.pendingShot!.type; }
+    expect(['three', 'mid', 'deep3']).toContain(shot);
+  });
+
+  it('he jumps on the fake → the CPU steps through', () => {
+    const { g, u, c } = duel('hard');
+    place(g, c, u, { x: 3.5, y: 0.5 });
+    c.p.x += Math.sign(g.rim(c.team).x - 47) * 8; u.p.x += Math.sign(g.rim(c.team).x - 47) * 8; // mid-range
+    g.pumpFake(c);
+    u.z = 0.5; u.vz = 8; u.lastJumpAt = g.time; // bit
+    let shot = '';
+    for (let i = 0; i < 40 && !shot; i++) { g.update(1 / 60, idle); if (c.state === 'shoot') shot = c.pendingShot!.type; }
+    expect(shot).toMatch(/^stepThrough/);
+  });
+
+  it('a Hard CPU strings options together: dribble combos, sprints, more than one option in a possession', () => {
+    const out: [IsoStats, IsoStats] = [emptyIsoStats(), emptyIsoStats()];
+    for (const s of [1, 2]) run1v1(buildOneOnOne({ ...DEFAULT_1V1, cpuLevel: 'hard' }, s * 101, false, 'hard'), out);
+    const both = (k: 'chains' | 'sprints') => out[0][k] + out[1][k];
+    expect(both('chains')).toBeGreaterThan(20);
+    expect(both('sprints')).toBeGreaterThan(20);
+    expect(Object.keys(out[0].moves).length + Object.keys(out[1].moves).length).toBeGreaterThan(4);
+  });
+
+  it('the shot clock: no violations on Hard / Medium, shots are spread (not all at the buzzer), threw up late ones', () => {
+    for (const lv of ['hard', 'medium'] as const) {
+      const out: [IsoStats, IsoStats] = [emptyIsoStats(), emptyIsoStats()];
+      for (const s of [1, 2, 3]) run1v1(buildOneOnOne({ ...DEFAULT_1V1, p1Team: 'GSW', p2Team: 'MIL', cpuLevel: lv }, s * 77, false, lv), out);
+      const clocks = [...out[0].clockAt, ...out[1].clockAt];
+      expect(out[0].violations + out[1].violations).toBe(0);
+      expect(clocks.filter((x) => x < 2).length / clocks.length).toBeLessThan(0.4);
+      expect(clocks.some((x) => x > 7)).toBe(true);
+    }
+  });
+
+  it('Hard gets cleaner looks than Easy and beats Easy in a mirror match', () => {
+    const out: [IsoStats, IsoStats] = [emptyIsoStats(), emptyIsoStats()];
+    for (let s = 1; s <= 8; s++) run1v1(buildOneOnOne({ ...DEFAULT_1V1, p1Team: 'BOS', p2Team: 'BOS', cpuLevel: 'easy' }, s * 31, false, 'hard'), out);
+    expect(out[0].contest / out[0].shots).toBeLessThan(out[1].contest / out[1].shots);
+    expect(out[0].wins).toBeGreaterThanOrEqual(6);
+  });
+
+  it('defense by level: an Easy CPU bites on pump fakes far more than a Hard one', () => {
+    const bites = (level: 'easy' | 'hard') => {
+      const { g, u, c } = duel(level);
+      let n = 0;
+      for (let i = 0; i < 200; i++) {
+        place(g, u, c, { x: 3, y: 0 });
+        g.time += 3; c.lastBitAt = 0; c.jumpAt = 0; u.state = 'idle'; u.move = null; u.deadDribble = false;
+        g.pumpFake(u);
+        if (c.lastBitAt > 0) n++;
+      }
+      return n;
+    };
+    expect(bites('easy')).toBeGreaterThan(bites('hard') * 1.6);
+  });
+
+  it('the setup default is Medium and the prologue 1s vs Kingston is Hard', () => {
+    expect(DEFAULT_1V1.cpuLevel).toBe('medium');
+    const g = buildOneOnOne({ ...DEFAULT_1V1 }, 1, true);
+    expect(g.cpuLevel(g.teams[1].onCourt[0])).toBe('medium');
+    expect(g.cpuLevel(g.user!)).toBeNull();
   });
 });

@@ -87,6 +87,7 @@
 | 60e | `9dd777c` | Clearer shot-chance lesson, players land and stand after the final whistle, the fuel can no longer bobs | tutorial lines, `GameSim.settle`, trailerArt jerry can |
 | 60f | `83d615a` | Kingston has every perk in the 1s; new careers start with two perks by position (PG: shooting + passing) | `STARTER_PERKS`, `rivalPlayer` all `NODES`, builder line |
 | 60g | `fb7da4e` | Pick any jersey number (you're in high school, not on the Lakers) | CreateScene: no taken numbers, Lincoln jersey preview |
+| 61 | `TBD` | A much smarter 1v1 CPU (combos, sprint, options in a row, counters, shoots when you can't contest in time, uses the clock) with Easy / Medium / Hard on offense and defense | `ai/forecast.ts`, `ai/oneOnOne.ts`, `ai/levels.ts`, defense levels, setup CPU box, dev "1v1 CPU thoughts" |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

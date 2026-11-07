@@ -54,6 +54,11 @@ export class Player {
   aiMode: 'none' | 'drive' | 'post' | 'beatPress' = 'none';
   /** AI: just did a Dreamer fake out of the post; shoot off it next */
   aiFakeFollow = false; aiModeUntil = 0; cutUntil = 0;
+  /** Round 61: the 1v1 CPU brain's per-possession state (ai/oneOnOne.ts) and its last thought (dev overlay). */
+  iso: import('./ai/oneOnOne').IsoState | null = null;
+  aiNote = ''; aiNoteAt = -9;
+  /** Round 61: a 1v1 CPU defender guards where he last "saw" his man (his level's reaction lag). */
+  aiSeen: { p: Vec; vel: Vec; at: number } | null = null;
   /** runtime sim fields */
   want: Vec = v(); moveVel: Vec = v(); jumpAt = 0; swipingUntil = 0; screenHit = false; boxedOut = 0; sprinting = false;
   /** current animation clip for the renderer (shots, moves, falls) */

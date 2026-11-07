@@ -501,3 +501,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 61: 1v1 CPU levels Easy / Medium / Hard** (setup screen, default Medium). The level changes **offense and
+  defense**, decisions only (no rating boosts). **The key read: the CPU shoots the moment it works out the defender
+  can't get a meaningful contest up by the release** (a forecast of the release, not the contest now). It strings
+  options together (dribble combos, sprint drives, post up → let go → step back, pump fake → Step-Through if he
+  jumps), counters what the defender gives it, takes open looks at once, settles at a clock time drawn per possession
+  (not always the last second) and throws one up before the buzzer. **The prologue 1s vs Kingston uses Hard.** The
+  brain is **1v1 only** for now; 3v3/5v5 isos can use it later.

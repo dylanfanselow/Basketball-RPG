@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { hiRes } from './ui';
 import { GameSim, GameEvent, UserInput } from '../sim/game';
 import { Player } from '../sim/player';
+import { CPU_LEVEL_NAMES } from '../sim/ai/levels';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
@@ -1076,9 +1077,17 @@ export class GameScene extends Phaser.Scene {
       const p2 = sim.teams[1].onCourt[0];
       if (p2) {
         g.lineStyle(3, 0xff8a3d, 0.95); g.strokeEllipse(sx(p2.p.x), sy(p2.p.y), 2.6 * S, 2.6 * D);
-        this.label(sx(p2.p.x), sy(p2.p.y, p2.z + p2.height + 1.0) - 14, sim.user2 ? 'P2' : 'CPU', '#ff9f6a', 14);
+        const lv = sim.cpuLevel(p2);
+        this.label(sx(p2.p.x), sy(p2.p.y, p2.z + p2.height + 1.0) - 14, sim.user2 ? 'P2' : `CPU · ${lv ? CPU_LEVEL_NAMES[lv].toUpperCase() : ''}`, '#ff9f6a', 14);
       }
       if (u) this.label(sx(u.p.x), sy(u.p.y, u.z + u.height + 1.0) - 22, 'P1', '#7dffb8', 14);
+      // round 61 dev: what each CPU is reading and why he shot
+      if (dbg.aiThoughts) for (const p of sim.players) {
+        if (!sim.cpuLevel(p) || !p.aiNote || sim.time - p.aiNoteAt > 3) continue;
+        this.label(sx(p.p.x), sy(p.p.y, p.z + p.height + 1.0) - 36, p.aiNote, '#ffe9a8', 12);
+        const t = this.labelTexts[this.labelTexts.length - 1], vw = this.cameras.main.worldView;
+        t.x = Phaser.Math.Clamp(t.x, vw.x + t.width / 2 + 6, vw.right - t.width / 2 - 6); // keep the whole line on screen
+      }
     }
     if (!u || !sim.userOnCourt) return;
 

@@ -22,12 +22,15 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ai/defense.ts` | Man defense, help, drop, transition get-back, steals, charges; round 47 attention: shading, deny, doubles / triples, rotation, load-up. |
 | `attention.ts` | Round 47: who guards whom (`assignGuards`, `guardFit`, `scorerRep`, `scorerStyle`), heat tiers (`afterShot`, `HEAT_AT`, `tierCap`), `ATT` switches; round 48 buckets + `coverage()` schemes. |
 | `ai/trust.ts` | Trust deltas, pass factor, call bonus. |
+| `ai/levels.ts` | Round 61: `CpuLevel` (easy / medium / hard), `CPU_LEVELS` (think speed, forecast noise, open cut, follow-ups, combo length, counters, sprint, settle time, memory; defense lag / lead / scout / closeout / jump / bite / reads / reach). Decisions only, never ratings. `GameSim.cpuLevel(p)` / `cpuCfg(p)` (1v1 CPUs only). |
+| `ai/forecast.ts` | Round 61: `forecastShot` (the contest at the release, not now: per defender `lockedFor` + reaction + carried speed + `coverDist` easing + contest jump, then real `evaluateShot` on ghost players at `now + windup`), `shotOptions` (one forecast per stick: standing, back, toward, away from his man). |
+| `ai/oneOnOne.ts` | Round 61: the 1v1 CPU handler `isoThink` (per-possession `IsoState` on `p.iso`, `sim.isoMemory`): clock, open look, reactions, settle, option chains (combo / drive / post / fake / reset), `chooseLink` (moves resolved with `resolveMove`, buffered near a move's end), `p.aiNote` for the dev overlay. |
 | `rotation.ts` | Coach trust → minutes/stints. |
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
 | `dunks.ts` | Dunk package: `DUNKS` (unlock by Dunk rating, power / flash, make ×, ult bonus, clip), `unlockedDunks`, `nextDunk`, `pickDunk` (contested → power, open → flashy). |
 | `threes.ts` | Quick 3v3: `ThreeSetup`, slots `SLOTS`/`SLOT_POS` (Guard PG/SG, Wing SG/SF/PF, Big PF/C), `defaultLineup`, `slotChoices`, `slotForPos`, `buildThrees` (no bench; `halfCourt` option). On court a three-man team is roles 1/3/5 (`refreshOnCourt`); `callPlay` uses only plays tagged `3v3` when three a side (iso for the best player ~35%). |
 | `story.ts`, `tutorial.ts` | Round 60 prologue: story games (`buildTutorial` 2v2 / `buildOnes` / `buildBigGame`, Kingston `rivalPlayer`, `avgSpread`, `complementPos`) and the `TutorialDirector` (a `GameSim.director`: lessons, scripted demos, step checks, the box's `view()`). `GameConfig.story` flags force makes / no blocks / soft D. |
-| `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
+| `oneOnOne.ts` | `OneOnOneSetup` (incl. `cpuLevel`), `DEFAULT_1V1`, `buildOneOnOne(o, seed, p1Human, p1Level?)` (pure 1v1 game builder; same-team P2 ids get `-p2`; P1 can be a CPU at its own level for headless tests). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
 ## World (`src/world`)
@@ -86,5 +89,5 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 `rosters.test.ts` (roster validity, play reset), `oneonone.test.ts` (pump fake, step-through incl. pull-up + perk stride, 1v1 rules, two humans, steals/blocks + stun, passing magnet/interceptions, R1 icon pass), `post.test.ts` (post-up modes, axis-only stick, release window, post shots, AI posts), `fade.test.ts` (Fade Away selection, cone, falloff), `dreamer.test.ts` (Dreamer fakes, bite rate, directional close shots), `bringup.test.ts` (half-court pickup, press, 8-second rule, speed with the ball), `apartment.test.ts` (collision, reachability, cat, save v3, key games), `helpers.ts` (`makeGame`, `simToEnd`).
 `scripts/stats.test.ts` / `scripts/debug.test.ts` print headless game stats (run with
 `npx vitest run scripts/stats.test.ts --dir . --config /dev/null`). `scripts/scoring.test.ts` (round 47) compares top
-scorers / team PPG with attention off, matchups only and full (`MODES=…`, `HOG=1` for a ball-hog scenario, `COACH=ab` smart vs random calls, `SEEDS=n`). `scripts/playLab.test.ts` (round 49)
+scorers / team PPG with attention off, matchups only and full (`MODES=…`, `HOG=1` for a ball-hog scenario, `COACH=ab` smart vs random calls, `SEEDS=n`). `scripts/oneOnOne.test.ts` (round 61) prints 1v1 CPU numbers per level pairing (`SEEDS`, `PAIRS=hard-easy,...`, `MATCH=LAL0-BOS0`); `tests/helpers.ts` `run1v1` / `IsoStats`. `scripts/playLab.test.ts` (round 49)
 sims every play by focus style; `WRITE=1` regenerates `src/data/plays/playValues.json`.
