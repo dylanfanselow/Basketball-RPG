@@ -6,19 +6,25 @@ import { planRotation } from '../sim/rotation';
 import { app } from '../state';
 import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
 import { ThreeSetup, buildThrees } from '../sim/threes';
+import { buildTutorial, buildOnes, buildBigGame, newStory } from '../sim/story';
+import { TutorialDirector } from '../sim/tutorial';
+import type { StoryStage } from '../career/career';
 export type { ThreeSetup } from '../sim/threes';
 export type { OneOnOneSetup } from '../sim/oneOnOne';
 export { DEFAULT_1V1 } from '../sim/oneOnOne';
 
-export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne';
+export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne' | 'story';
+/** Round 60: the prologue's games. */
+export type StoryGame = 'tutorial' | 'ones' | 'bigGame';
 
 /** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
 /** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
-export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue }
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue; /** round 60: a prologue game */ story?: StoryGame }
 
-export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup): GameSim {
+export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup, story?: StoryGame): GameSim {
+  if (mode === 'story') return createStorySim(story ?? 'tutorial');
   if (mode === 'oneOnOne') return buildOneOnOne(oneOnOne ?? DEFAULT_1V1, Math.floor(Math.random() * 1e9));
   const c = app.career;
   if (mode === 'quick3' && three) {
@@ -73,4 +79,40 @@ export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOn
   });
   if (mode === 'career') sim.applyScouting(c.scout ?? []); // round 49: they've seen your last games
   return sim;
+}
+
+/** Round 60: build a prologue game (the tutorial gets its director). */
+export function createStorySim(which: StoryGame): GameSim {
+  const c = app.career, seed = Math.floor(Math.random() * 1e9);
+  ensureStory();
+  if (which === 'ones') return buildOnes(c, seed);
+  if (which === 'bigGame') return buildBigGame(c, seed, app.settings.quarterLen);
+  const sim = buildTutorial(c, seed);
+  sim.director = new TutorialDirector(sim);
+  return sim;
+}
+
+/** A story (with Kingston) on the current career, for dev shortcuts on older saves. */
+export function ensureStory() {
+  const c = app.career;
+  if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' };
+  if (!c.story.rival) c.story.rival = newStory(c).rival;
+}
+
+/** Round 60: where the story continues for a stage (New Game, Load Save, dev menu). */
+export function storyScene(stage: StoryStage): [string, object | undefined] {
+  const c = app.career;
+  switch (stage) {
+    case 'tutorial': return ['Game', { mode: 'story', story: 'tutorial', venue: 'schoolRain' }];
+    case 'ones': return ['Game', { mode: 'story', story: 'ones', venue: 'schoolRain' }];
+    case 'night': return ['Trailer', { night: true, story: 'night' }];
+    case 'bigGame': return ['Game', { mode: 'story', story: 'bigGame', venue: 'school' }];
+    default: return c.story?.home === 'trailer' ? ['Trailer', undefined] : ['Apartment', undefined];
+  }
+}
+/** Set the story stage (and save). */
+export function setStage(stage: StoryStage) {
+  ensureStory();
+  app.career.story!.stage = stage;
+  app.changed();
 }

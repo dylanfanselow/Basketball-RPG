@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-05 (round 36: the starter apartment — walkable room with collision, life HUD).
+Last updated: 2026-11-07 (round 60: the prologue — rainy-night tutorial with Kingston, the 1s, the big game).
 Next session: start with BACKLOG.md → "Start here next session".

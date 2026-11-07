@@ -158,6 +158,28 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60: the prologue (high school).** After the builder you're on the **rainy school court** (night) in a
+  **2v2** with your best friend **Kingston Williams** — same position as you, he's the starter ahead of you. Your
+  teammate and his are a complementary position (PG / SG → a C; SF / PF / C → a PG).
+  - **Tutorial:** a nameless text box at the bottom (no tutor character); Kingston talks in the same box with his name
+    (big game tomorrow, scouts in the stands, his chance to get out of this shithole, his game-day morning: lucky
+    breakfast and his **pregame coffee** — the coffee is a Chekhov's gun: later the story reveals **you poisoned him**,
+    to him and to you). Each lesson: Kingston demos the move on his ball, then you try it. Order: move / sprint →
+    shoot (shot chance line + cone explained) → pass + call for it (trust, never on demand) → dribble move → post up
+    (L2) → pump fake + Step-Through → icon pass (R1) → screens → plays: follow the circles → defense (+ rhythm).
+    Ends with "y'all can head home, we'll finish with some 1s".
+  - In the tutorial **every shot goes in** but the shot-chance line still shows the real odds; no blocks, fouls,
+    CPU swipes or interceptions. You play with an **average player's spread** (your starter spread +12 on each
+    stat; your career stats don't change), Kingston +6 on top of that.
+  - **The 1s:** real odds, make it take it, 1s & 2s to 11, win by 2; Kingston's shooting / finishing / mobility /
+    playmaking are 99. After it: "See you tomorrow. Don't be late." He leaves and you think: you want out too, but
+    he's so much better, the scout will never notice you.
+  - **Home is the trailer** (you're in high school): night, go inside → the next day.
+  - **The big game** (school court, day, 5v5 vs Jefferson): the coach throws a fit — Kingston is out with a
+    **stomach virus** — then names you the starter and tells everyone to lock in and play good fundamental ball
+    because a **scout** is here (drawn by the bleachers with a clipboard). You're **LOCKED IN: +10 all stats**
+    (high-schoolers are ~38-52), clearly the best player on the floor.
+  - The stage is saved; Load Save resumes it. Older saves skip the prologue (home stays the apartment).
 - **Round 59: character builder** (New Game → it). Steps: **LOOK** (every appearance option: skin, hair incl. the
   hand-drawn parts, colours, face, gear; live front / 3-4 / side preview), **POSITION**, **HEIGHT** (a range per
   position: PG 6'0"–6'5", SG 6'3"–6'7", SF 6'5"–6'9", PF 6'7"–6'11", C 6'9"–7'3"), **READY** → the apartment.

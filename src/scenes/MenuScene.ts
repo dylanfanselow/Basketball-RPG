@@ -3,6 +3,8 @@ import { InputMapper } from '../input/input';
 import { MenuList, title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
+import { storyScene, setStage } from './setup';
+import type { StoryStage } from '../career/career';
 
 export class MenuScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
@@ -21,6 +23,10 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Garage (gym)', action: () => this.scene.start('Garage'), hint: 'Behind the apartment\'s left door. Training comes later.' },
       { label: 'Trailer (backstory)', action: () => this.scene.start('Trailer'), hint: 'Lights on a generator: walk up the steps, ✕ at the door ends the day; ✕ at the end of the path leaves.' },
       { label: 'Trailer (night)', action: () => this.scene.start('Trailer', { night: true }), hint: 'The trailer yard at night: the generator keeps the lamps on.' },
+      { label: 'Story: Tutorial (rain 2v2)', action: () => this.story('tutorial'), hint: 'Round 60 prologue: the rainy-night 2v2 with Kingston. Pause → Skip lesson; dev panel → Story.' },
+      { label: 'Story: 1s vs Kingston', action: () => this.story('ones'), hint: 'To 11, 1s & 2s, win by 2. His offense is all 99s.' },
+      { label: 'Story: Trailer (that night)', action: () => this.story('night'), hint: 'Home after the 1s; ✕ at the door → the next day.' },
+      { label: 'Story: Big game (scout)', action: () => this.story('bigGame'), hint: 'Kingston is out sick: the coach starts you. Locked in: +10 all stats.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -28,9 +34,9 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
       { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
-    ], 18);
-    this.add.text(80, 404, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
-    this.add.text(80, 428, [
+    ], 15);
+    this.add.text(640, 140, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
+    this.add.text(640, 168, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
       '✕  shoot  |  block                    K / Space',
@@ -45,6 +51,8 @@ export class MenuScene extends Phaser.Scene {
       '                                      F fullscreen · M mute',
     ].join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
   }
+  /** Round 60: jump to a story stage (sets it on the career, like Load Save would resume it). */
+  private story(stage: StoryStage) { setStage(stage); const [scene, data] = storyScene(stage); this.scene.start(scene, data); }
   padText!: Phaser.GameObjects.Text;
   soundText!: Phaser.GameObjects.Text;
   update() {

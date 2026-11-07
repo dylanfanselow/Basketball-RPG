@@ -165,6 +165,23 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   Round 59b: NAME step (`onKey` typing with `typedFrame` so letters aren't buttons; `GRID` on-screen keyboard for
   controllers) and NUMBER step (`takenNumbers(teamId)` in roster.ts, preview in the home jersey); `cleanName`,
   `NAME_MAX`; `CareerState.firstName` / `lastName` (optional); `createCareer` takes first / last / number.
+  Round 60 prologue: `sim/story.ts` (`LINCOLN` / `JEFFERSON` TeamDefs, `avgSpread` = starter spread +12, `RIVAL_EDGE` 6,
+  `LOCKED_IN` 10, `complementPos`, `newStory` (Kingston Williams, your position, random saved look), `rivalPlayer`
+  (tutorial / ones = 99 offense), `storyMe`, `extraPlayer`, `buildTutorial` (practice 2v2, half court, `story` flags),
+  `buildOnes` (1v1 to 11, 1s & 2s, win by 2), `buildBigGame` (5v5 school day, rosters of 5)); `sim/tutorial.ts`
+  (`buildLessons` — 10 lessons, `TutorialDirector` implements `Director`: blocking lines queue, Kingston demos
+  pull-up / cross / post hook / fake → step-through, teammate scripts, `tut_pnr` play with you as screener, step
+  checks on events (`iconPass`, `tutorialCheck` quiet events added), `view()` for the box, `skipLesson` / `skipAll`);
+  `GameConfig.story` (`forceMake` — roll kept, real `ev` shown — `noBlocks`, `noFouls`, `softD`: no CPU swipes,
+  charges or interceptions), `GameSim.director` (`tick`, `think`, `onReset` from `practiceReset`, `onEvent` from
+  `emit`), 2-man teams = roles 1 / 5, plays tagged `tutorial` only when `allowedPlays` names them;
+  `render/storyBox.ts` (`StoryBox`: speaker tag KINGSTON / COACH / YOU (thinking), typewriter, ✕ next, slim prompt
+  bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
+  the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
+  coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  `CareerState.story` (`stage` tutorial → ones → night → bigGame → done, `rival`, `home`), migration → done /
+  apartment; `setup.ts` `createStorySim`, `storyScene`, `setStage`, `ensureStory`; TrailerScene `story: 'night'`
+  (lines, door → DAY n → big game); PostGame story branch → home; dev menu Story entries; dev panel Story buttons.
   Event `attention` (feed + big text + crowd). Dev panel *Attention*; `ATT` behaviour switches; stats:
   `scripts/scoring.test.ts` (modes off / matchups / full, `HOG=1`).
 - 8 real sets (`plays.json`) with focus roles, reads/options, screen assignments; reset + new call; feature-me

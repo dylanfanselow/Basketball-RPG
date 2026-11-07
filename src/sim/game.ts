@@ -82,8 +82,24 @@ export interface GameConfig {
   bigGame?: boolean;
   /** round 56: where it's played (cosmetic): the arena, the school court, or the school court on a rainy night */
   venue?: Venue;
+  /**
+   * Round 60 story games (the prologue tutorial): every shot goes in (the real chance is still computed and shown),
+   * no blocks / fouls, CPU defenders don't reach or help (softD).
+   */
+  story?: { forceMake?: boolean; noBlocks?: boolean; noFouls?: boolean; softD?: boolean };
 }
 export type Venue = 'arena' | 'school' | 'schoolRain';
+
+/**
+ * Round 60: a script that runs a story game (the tutorial). `think` returns true when it drove that player this tick
+ * (the AI is skipped); `onReset` returns true when it set up the next possession itself (instead of practiceReset).
+ */
+export interface Director {
+  tick(sim: GameSim, dt: number): void;
+  think?(sim: GameSim, p: Player, dt: number): boolean;
+  onReset?(sim: GameSim): boolean;
+  onEvent?(sim: GameSim, e: GameEvent): void;
+}
 
 export type BallState =
   | { kind: 'held'; holder: Player }
@@ -164,6 +180,8 @@ export class GameSim {
   lastGoAhead: { pid: string; clock: number; quarter: number } | null = null;
   phaseStartedAt = 0;
   freezeAI = false;
+  /** Round 60: the story script running this game (the prologue tutorial), if any. */
+  director: Director | null = null;
   forceClutch = false;
   switchAll: boolean;
   /** Round 47: each offensive player's heat (keyed in → doubles → triples), by player id. */
@@ -321,7 +339,7 @@ export class GameSim {
   isAI(p: Player) { return !((p === this.user && this.user.isUser) || (p === this.user2 && this.user2.isUser)); }
   /** Is this player controlled by a person (P1 or P2)? */
   isHuman(p: Player | null) { return !!p && !this.isAI(p); }
-  emit(e: Omit<GameEvent, 't'>) { this.events.push({ t: this.time, ...e }); }
+  emit(e: Omit<GameEvent, 't'>) { const ev = { t: this.time, ...e }; this.events.push(ev); this.director?.onEvent?.(this, ev); }
   drainEvents(): GameEvent[] { const out = this.events.slice(this.evCursor); this.evCursor = this.events.length; return out; }
   defenderOf(p: Player): Player | null { return this.opp(p.team).find((d) => d.guarding === p.id) ?? null; }
   nearestDefender(p: Player): { d: Player | null; dist: number } {
@@ -339,7 +357,7 @@ export class GameSim {
       // (so the guard, wing and big logic and the 3v3 plays line up); ties go to the taller player as the bigger role
       const order = ['PG', 'SG', 'SF', 'PF', 'C'];
       const sorted = [...t.onCourt].sort((a, b) => order.indexOf(a.pos) - order.indexOf(b.pos) || a.height - b.height);
-      const roles = sorted.length === 3 ? ['1', '3', '5'] : ['1', '2', '3', '4', '5'];
+      const roles = sorted.length === 3 ? ['1', '3', '5'] : sorted.length === 2 ? ['1', '5'] : ['1', '2', '3', '4', '5']; // round 60: 2v2 = guard + big
       sorted.forEach((p, i) => (p.role = roles[i] ?? String(i + 1)));
     }
   }
@@ -589,6 +607,7 @@ export class GameSim {
   }
 
   practiceReset() {
+    if (this.director?.onReset?.(this)) return;
     if (this.cfg.oneOnOne) { this.checkBall(this.pendingInbound ?? this.possession); return; }
     const side = this.side(0);
     this.possession = 0;
@@ -821,7 +840,7 @@ export class GameSim {
     const off = this.offense();
     // three a side (3v3) runs the 3v3 playbook (roles 1 / 3 / 5); five a side never sees it
     const small = off.length <= 3;
-    const allowed = (pid: string) => PLAYS[pid].tags.includes('3v3') === small && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid));
+    const allowed = (pid: string) => PLAYS[pid].tags.includes('3v3') === small && (!PLAYS[pid].tags.includes('tutorial') || !!this.cfg.allowedPlays?.includes(pid)) && (!this.cfg.allowedPlays?.length || this.cfg.allowedPlays.includes(pid));
     const isIso = (pid: string) => PLAYS[pid].tags.includes('iso');
     // iso sets are only for designated stars; everything else is the regular playbook
     // lob sets only when the player they're for can finish above the rim; a good lob passer calls them more
@@ -908,8 +927,9 @@ export class GameSim {
 
     if (this.user && this.userOnCourt && this.user.isUser) this.handleUser(this.user, input, this.ux);
     if (this.user2 && this.user2.isUser && this.players.includes(this.user2)) this.handleUser(this.user2, input2 ?? emptyInput(), this.ux2);
+    this.director?.tick(this, dt);
     if (!this.freezeAI) {
-      for (const p of this.players) if (this.isAI(p) || this.inb?.inbounder === p) this.think(p, dt);
+      for (const p of this.players) if ((this.isAI(p) || this.inb?.inbounder === p) && !this.director?.think?.(this, p, dt)) this.think(p, dt);
     } else for (const p of this.players) if (this.isAI(p)) p.target = { ...p.p };
 
     this.pressHelp(); // a pressured handler in the backcourt gets a screen
@@ -1193,7 +1213,7 @@ export class GameSim {
     if (icons) {
       ux.aPending = false; ux.bWasHeld = false;
       const hit = icons.find((t) => inp[t.btn]);
-      if (hit) { const m = this.players.find((q) => q.id === hit.pid); if (m) this.pass(u, m); }
+      if (hit) { const m = this.players.find((q) => q.id === hit.pid); if (m) { this.pass(u, m); this.quiet('iconPass', { to: m.id }, u.id); } }
       return;
     }
 
@@ -1376,7 +1396,7 @@ export class GameSim {
     this.quiet('release', { type: ps.type }, p.id);
 
     // blocks
-    for (const d of this.opp(p.team)) {
+    for (const d of this.cfg.story?.noBlocks ? [] : this.opp(p.team)) {
       if (d.z < 0.6 || d.state === 'fallen' || postLocked(this, d)) continue;
       if (isStepThrough(ps.type) && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
       const dd = dist(d.p, p.p);
@@ -1421,8 +1441,9 @@ export class GameSim {
     }
 
     const def = SHOT_TYPES[ps.type];
-    const foul = (!!def.contact || ps.type === 'floater') && ev.contest > 0.3 && this.rng.chance(0.06 + 0.16 * ev.contest);
-    const made = this.rng.next() < ev.pct;
+    const foul = (!!def.contact || ps.type === 'floater') && ev.contest > 0.3 && this.rng.chance(0.06 + 0.16 * ev.contest) && !this.cfg.story?.noFouls;
+    const roll = this.rng.next(); // rolled either way, so a forced make doesn't change the rest of the game's RNG
+    const made = !!this.cfg.story?.forceMake || roll < ev.pct;
     const d = ev.dist;
     const dur = ps.type === 'dunk' ? 0.16 : 0.6 + d * 0.03; // slower flight = more time to fight for rebounding position
     const jumper = ['mid', 'three', 'deep3', 'stepThroughJumper'].includes(ps.type);
@@ -1727,6 +1748,7 @@ export class GameSim {
 
   swipe(p: Player) {
     if (this.time < p.swipeCdUntil || p.busy) return;
+    if (this.cfg.story?.softD && this.isAI(p)) return; // round 60 tutorial: CPU defenders don't reach
     p.swipeCdUntil = this.time + 0.8;
     p.swipingUntil = this.time + 0.3;
     const h = this.holder();
@@ -1774,6 +1796,7 @@ export class GameSim {
 
   takeCharge(p: Player) {
     if (p.busy || p.z > 0) return;
+    if (this.cfg.story?.softD && this.isAI(p)) return;
     p.state = 'charge'; p.stateT = 0; p.stateDur = 0.9; p.chargeSetAt = this.time; p.want = v(); p.vel = v();
   }
 
@@ -2066,7 +2089,7 @@ export class GameSim {
         b.z = st.oop ? st.oop.z0 + (st.oop.catchZ - st.oop.z0) * k + OOP_ARC * Math.sin(Math.PI * k) : 4.5 + (st.lob ? 7 : st.overhead ? 5.8 : 1.2) * Math.sin(Math.PI * k);
         const passLen = dist(st.a, st.b);
         for (const d of this.opp(st.from.team)) {
-          if (st.checked.has(d.id) || d.state === 'fallen') continue;
+          if (st.checked.has(d.id) || d.state === 'fallen' || (this.cfg.story?.softD && this.isAI(d))) continue;
           const swiping = this.time < (d.swipingUntil ?? 0);
           // long balls hang in the lanes: a bigger window to get a hand on them
           const r = (1.3 + clamp((passLen - 20) / 25, 0, 1) * 0.9) * d.mods.pMult('deflect') + (swiping ? 1.4 : 0);

@@ -6,6 +6,7 @@ import { applyGameResult, xpToNext } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
 import type { GameInit } from './setup';
+import { setStage, storyScene } from './setup';
 
 export class PostGameScene extends Phaser.Scene {
   inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null; replay?: GameInit;
@@ -39,6 +40,10 @@ export class PostGameScene extends Phaser.Scene {
       lines.push(`+${r.xp} XP   (Lv ${app.career.level}, ${app.career.xp}/${xpToNext(app.career.level)})`);
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);
       for (const e of r.evo) lines.push(`Ultimate evolution: ${e}`);
+    } else if (this.mode === 'story') {
+      // round 60: the big game — the prologue is done (what the scout thought comes later in the story)
+      setStage('done');
+      lines.push(won ? 'Lincoln wins. The man with the clipboard is still writing.' : 'Lincoln lost. The man with the clipboard is still writing.');
     } else {
       lines.push('(Quick games don\'t affect your career save.)');
     }
@@ -73,6 +78,9 @@ export class PostGameScene extends Phaser.Scene {
       else if (this.inp.pressed('y')) this.scene.start('Menu');
       return;
     }
-    if (this.inp.confirm()) this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
+    if (this.inp.confirm()) {
+      if (this.mode === 'story') { const [scene, data] = storyScene('done'); this.scene.start(scene, data); return; }
+      this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
+    }
   }
 }

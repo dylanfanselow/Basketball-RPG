@@ -61,6 +61,11 @@
 - A physical PlayStation controller (tested with a simulated pad; standard mapping assumed).
 - Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).
 - Long-session performance of the animated crowd on slower machines.
-- **School court (round 56):** hook the story events to it (`GameInit.venue`), e.g. the high-school-rival 1v1 that unlocks the ultimate (VISION.md). Maybe a thunder sound for the lightning.
+- **School court (round 56):** maybe a thunder sound for the lightning.
+- **Prologue follow-ups (round 60):** what the scout thinks after the big game (and where the career goes from high
+  school to the NBA life / apartment); the **coffee / poisoning reveal** (Kingston finds out, then you do); Kingston
+  as the high-school rival in the ult-unlock 1v1 (VISION). The trailer's roof HUD still shows NBA key games ("Opener
+  vs ATL") — needs a high-school calendar. Kingston has no walk-off animation (a dip to black). Ask the owner how
+  the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.
 - **Character builder (round 59):** the backstory pick (VISION) as another step.

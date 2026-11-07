@@ -271,6 +271,12 @@ export function initDevPanel() {
     // game controls
     const gc = el('div');
     if (s) {
+      // round 60: the prologue tutorial
+      const tut = s.director as any;
+      if (tut?.skipLesson) gc.append(el('div', { class: 'row' },
+        btn('Story: next lesson', () => tut.skipLesson()),
+        btn('Story: finish tutorial', () => tut.skipAll()),
+      ));
       gc.append(el('div', { class: 'row' },
         btn('Give me the ball', () => { if (s.user && s.userOnCourt) { s.giveBall(s.user); s.possession = s.user.team; s.live = true; s.assignMatchups(); } }),
         btn('Reset possession', () => { if (s.cfg.mode === 'practice') s.practiceReset(); else s.inbound(s.possession); }),

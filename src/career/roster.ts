@@ -12,11 +12,11 @@ export function takenNumbers(teamId: string): Map<number, string> {
   return new Map((REAL_ROSTERS[teamId] ?? []).map((e) => [e.number, e.name] as [number, string]));
 }
 
-const FIRST = ['Marcus', 'Jalen', 'Tyrese', 'Devin', 'Malik', 'Andre', 'Isaiah', 'Kobe', 'Darius', 'Trey', 'Luka', 'Nikola', 'Jaylen', 'Cade', 'Zion', 'Bam', 'Rudy', 'Khalil', 'Omari', 'Dante', 'Xavier', 'Cam', 'Jordan', 'Miles', 'Evan', 'Theo', 'Amari', 'Quentin', 'Rashad', 'Elijah', 'Bo', 'Kendrick', 'Shai', 'Victor', 'Ty', 'Reggie'];
-const LAST = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Price', 'Ward', 'Bryant', 'Okafor', 'Diallo', 'Novak', 'Petrovic', 'Simmons', 'Banks', 'Reed', 'Fields', 'Holloway', 'Jennings', 'Lowe', 'Moss', 'Pierce', 'Grant', 'Vance', 'Stone', 'Booker', 'Rivers', 'Hart', 'Knox', 'Silva', 'Adebayo', 'Fox', 'Duke', 'Wells', 'Payne', 'Shaw', 'Cross'];
+export const FIRST = ['Marcus', 'Jalen', 'Tyrese', 'Devin', 'Malik', 'Andre', 'Isaiah', 'Kobe', 'Darius', 'Trey', 'Luka', 'Nikola', 'Jaylen', 'Cade', 'Zion', 'Bam', 'Rudy', 'Khalil', 'Omari', 'Dante', 'Xavier', 'Cam', 'Jordan', 'Miles', 'Evan', 'Theo', 'Amari', 'Quentin', 'Rashad', 'Elijah', 'Bo', 'Kendrick', 'Shai', 'Victor', 'Ty', 'Reggie'];
+export const LAST = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Price', 'Ward', 'Bryant', 'Okafor', 'Diallo', 'Novak', 'Petrovic', 'Simmons', 'Banks', 'Reed', 'Fields', 'Holloway', 'Jennings', 'Lowe', 'Moss', 'Pierce', 'Grant', 'Vance', 'Stone', 'Booker', 'Rivers', 'Hart', 'Knox', 'Silva', 'Adebayo', 'Fox', 'Duke', 'Wells', 'Payne', 'Shaw', 'Cross'];
 
 /** Archetype biases per position so rosters feel like basketball teams. */
-const BIAS: Record<Position, Partial<CoreStats>> = {
+export const BIAS: Record<Position, Partial<CoreStats>> = {
   PG: { playmaking: 12, mobility: 8, shooting: 4, strength: -10 },
   SG: { shooting: 10, mobility: 5, playmaking: 2, strength: -6 },
   SF: { shooting: 3, finishing: 4, mobility: 3 },
@@ -25,7 +25,7 @@ const BIAS: Record<Position, Partial<CoreStats>> = {
 };
 
 /** Default perks AI players get so their moves/defense aren't totally vanilla. */
-const AI_PERKS: Record<Position, string[]> = {
+export const AI_PERKS: Record<Position, string[]> = {
   PG: ['dr_handle', 'dr_cross', 'pa_root', 'pd_root'],
   SG: ['sh_root', 'sh_catch', 'dr_handle', 'dr_cross'],
   SF: ['sh_root', 'fi_root', 'pd_root'],

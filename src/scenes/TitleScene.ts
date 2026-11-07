@@ -4,6 +4,7 @@ import { FONT, HI_RES } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { loadCareer } from '../career/career';
+import { storyScene } from './setup';
 import { drawCourt, drawHoops, VIEW_W, VIEW_H, WORLD_W } from '../render/view';
 import { Crowd } from '../render/crowd';
 import { addSchoolCourt } from '../render/schoolArt';
@@ -182,7 +183,7 @@ export class TitleScene extends Phaser.Scene {
     const it = this.items[this.idx];
     sfx.blip(true);
     if (it.id === 'new') { if (this.hasSave) this.openConfirm(); else this.startNew(); }
-    else if (it.id === 'load') this.go('Apartment');
+    else if (it.id === 'load') { const [scene, data] = storyScene(app.career.story?.stage ?? 'done'); this.go(scene, data); } // round 60: pick up the story where it is
     else this.openSettings();
   }
 

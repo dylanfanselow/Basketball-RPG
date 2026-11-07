@@ -35,7 +35,16 @@ export interface CareerState {
   /** Skyrim-style skill levels (round 41): each core skill levels on its own XP. Shown on the room HUD's skill cards.
    *  Since round 42 a skill's level IS its `core` rating (kept equal by addSkillXp / setStat / spendStatPoint). */
   skills: Record<CoreStat, { level: number; xp: number }>;
+  /**
+   * Round 60: the story. `stage` = where the prologue is (tutorial on the rainy court → the 1s → the trailer that
+   * night → the big game → done); `rival` = your best friend Kingston (his look is saved so he's the same person when
+   * the story brings him back); `home` = where Load Save drops you (older saves keep the apartment).
+   */
+  story?: StoryState;
 }
+export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'done';
+export interface RivalInfo { first: string; last: string; pos: Position; number: number; heightIn: number; appearance: Appearance }
+export interface StoryState { stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment' }
 
 export const SKILL_START = 40, SKILL_MAX = 99;
 export const newSkills = () => Object.fromEntries(CORE_STATS.map((s) => [s, { level: SKILL_START, xp: 0 }])) as CareerState['skills'];
@@ -197,6 +206,7 @@ export function migrateCareer(c: any): CareerState | null {
   if (c.version === 3) { c.skills = newSkills(); c.version = 4; }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
+  if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' }; // round 60: saves from before the prologue
   syncSkillsToCore(c as CareerState); // the cards show the real ratings
   return c as CareerState;
 }

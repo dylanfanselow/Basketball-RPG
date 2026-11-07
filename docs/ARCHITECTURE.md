@@ -26,6 +26,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `ultimates.ts` | Activation and per-tick logic for the 3 ultimates; milestone table. |
 | `dunks.ts` | Dunk package: `DUNKS` (unlock by Dunk rating, power / flash, make ×, ult bonus, clip), `unlockedDunks`, `nextDunk`, `pickDunk` (contested → power, open → flashy). |
 | `threes.ts` | Quick 3v3: `ThreeSetup`, slots `SLOTS`/`SLOT_POS` (Guard PG/SG, Wing SG/SF/PF, Big PF/C), `defaultLineup`, `slotChoices`, `slotForPos`, `buildThrees` (no bench; `halfCourt` option). On court a three-man team is roles 1/3/5 (`refreshOnCourt`); `callPlay` uses only plays tagged `3v3` when three a side (iso for the best player ~35%). |
+| `story.ts`, `tutorial.ts` | Round 60 prologue: story games (`buildTutorial` 2v2 / `buildOnes` / `buildBigGame`, Kingston `rivalPlayer`, `avgSpread`, `complementPos`) and the `TutorialDirector` (a `GameSim.director`: lessons, scripted demos, step checks, the box's `view()`). `GameConfig.story` flags force makes / no blocks / soft D. |
 | `oneOnOne.ts` | `OneOnOneSetup`, `DEFAULT_1V1`, `buildOneOnOne` (pure 1v1 game builder; same-team P2 ids get `-p2`). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
@@ -62,6 +63,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `render/crowd.ts` | Animated crowd: blob stands rows + `FanRow` (plain sprite fans behind the sideline), shared `reaction()` ripple, home-colored shirts (`bigGame` = mostly home colors). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
+| `scenes/storyRun.ts`, `render/storyBox.ts` | Round 60: `StoryRun` drives a prologue game inside GameScene (lines hold the sim, transitions by `setStage` / `storyScene`, coach + scout in the big game); `StoryBox` is the bottom text box (also used by TrailerScene). |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
 | `scenes/ThreeSetupScene.ts` | Quick 3v3 setup: team / opponent lists + lineups & options column (6 slots, play as, court); Left/Right changes a row, R1/L2 (Q/E) switch columns. |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |

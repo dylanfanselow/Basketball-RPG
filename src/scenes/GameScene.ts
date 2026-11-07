@@ -33,6 +33,7 @@ import { UltFx, LIFT_DEPTH } from '../render/aura';
 import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from '../render/schoolArt';
 import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
+import { StoryRun } from './storyRun';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -146,6 +147,8 @@ export class GameScene extends Phaser.Scene {
   loadText!: Phaser.GameObjects.Text;
   pauseText!: Phaser.GameObjects.Text;
   pauseIdx = 0;
+  /** Round 60: the prologue running in this game, if any. */
+  story: StoryRun | null = null;
   ended = false;
 
   constructor() { super('Game'); }
@@ -166,7 +169,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     hiRes(this);
-    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne, this.three);
+    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
@@ -198,6 +201,8 @@ export class GameScene extends Phaser.Scene {
     this.buildSprites();
     this.cameras.main.setBackgroundColor(this.school === 'day' ? '#cfe6f4' : this.school === 'rain' ? '#0a0e1a' : '#0d0f1a');
     this.makeHud();
+    // round 60: a prologue game (the tutorial box, the 1s, the big game's coach + scout)
+    this.story = this.mode === 'story' ? new StoryRun(this, this.initData.story ?? 'tutorial') : null;
     this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; });
     sfx.setArena(!this.school); // crowd murmur only while an arena game is on
     sfx.rain(this.school === 'rain');
@@ -387,6 +392,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sim = this.sim;
+    // round 60: story lines hold the game (✕ reads on); the tutorial box follows the director
+    if (this.story?.update()) { for (const e of sim.drainEvents()) this.onEvent(e); this.render(); if (sim.over) this.story.onOver(); return; }
     // round 55: an ult's cinematic slows the whole game (clock included)
     const speed = app.settings.timeScale * (sim.userOnCourt || sim.cfg.mode === 'practice' ? 1 : app.settings.benchSpeed) * UltFx.speed(sim, CINE_SPEED);
     const step = 1 / 60;
@@ -401,6 +408,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const e of sim.drainEvents()) this.onEvent(e);
     this.render();
+    if (sim.over && !this.ended && this.story?.onOver()) return; // the story takes it from here
     if (sim.over && !this.ended) {
       this.ended = true;
       this.time.delayedCall(1800, () => this.scene.start('PostGame', { mode: this.mode, sim: this.sim, replay: this.initData }));
@@ -412,7 +420,8 @@ export class GameScene extends Phaser.Scene {
 
   openPause(idx: number) { this.paused = true; this.pauseIdx = idx; this.drawPause(); }
 
-  pauseOptions() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : this.mode === 'quick3' ? 'Quit to 3v3 Select' : 'Quit to Menu']; }
+  pauseOptions() { return [...this.basePause(), ...(this.story?.pauseOptions() ?? [])]; }
+  basePause() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : this.mode === 'quick3' ? 'Quit to 3v3 Select' : this.mode === 'story' ? 'Quit to Title' : 'Quit to Menu']; }
 
   drawPause() {
     const opts = this.pauseOptions();
@@ -421,6 +430,7 @@ export class GameScene extends Phaser.Scene {
 
   leaveGame() {
     this.paused = false; this.pauseText.setVisible(false);
+    if (this.mode === 'story') { this.scene.start('Title'); return; } // round 60: the prologue saves its stage; Load Save resumes it
     this.scene.start(this.mode === 'career' ? 'Hub' : this.mode === 'oneOnOne' ? 'OneOnOneSetup' : this.mode === 'quick3' ? 'ThreeSetup' : 'Menu');
   }
 
@@ -436,6 +446,7 @@ export class GameScene extends Phaser.Scene {
         if (this.pauseIdx === 0) this.paused = false;
         else if (this.pauseIdx === 1) this.scene.restart(this.initData);
         else if (this.pauseIdx === 2) { (window as any).__toggleFullscreen?.(); this.pauseText.setVisible(true); }
+        else if (this.pauseIdx >= 4 && this.story) { this.paused = false; this.story.pauseAction(this.pauseIdx - 4); }
         else this.leaveGame();
         return;
       }
@@ -512,6 +523,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   onEvent(e: GameEvent) {
+    this.story?.onEvent(e);
     {
       const sim = this.sim;
       const who = e.pid ? sim.players.find((p) => p.id === e.pid) : null;

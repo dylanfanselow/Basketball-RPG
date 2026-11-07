@@ -3,6 +3,8 @@ import { InputMapper } from '../input/input';
 import { FONT, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
+import { newStory } from '../sim/story';
+import { storyScene } from './setup';
 import { createCareer, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
 import { takenNumbers } from '../career/roster';
 import { POSITIONS, Position } from '../sim/attributes';
@@ -40,7 +42,7 @@ interface Row { label: string; value: () => string; swatch?: () => string | null
  * The character builder (round 59; New Game → here). 1 NAME (first + last: type on the keyboard, or the on-screen
  * letters with a controller), 2 LOOK (every appearance option, live preview), 3 POSITION (starter skills, 40 floor),
  * 4 HEIGHT (a range per position), 5 NUMBER (0-99, numbers your team already wears are skipped; you see it on the
- * jersey), 6 READY → the career starts in the apartment.
+ * jersey), 6 READY → the prologue starts on the rainy school court (round 60).
  * ✕ next / pick · ○ (L1) back · □ randomize look · △ turn the preview.
  */
 export class CreateScene extends Phaser.Scene {
@@ -338,9 +340,11 @@ export class CreateScene extends Phaser.Scene {
   private finish() {
     this.leaving = true;
     app.career = createCareer({ firstName: this.first, lastName: this.last, number: this.number, pos: this.pos, heightIn: this.heightIn, appearance: this.look });
+    app.career.story = newStory(app.career); // round 60: high school — the prologue starts on the rainy court
     app.changed();
     sfx.greenChime();
     this.cameras.main.fadeOut(400, 0, 0, 0);
-    this.time.delayedCall(420, () => this.scene.start('Apartment'));
+    const [scene, data] = storyScene('tutorial');
+    this.time.delayedCall(420, () => this.scene.start(scene, data));
   }
 }
