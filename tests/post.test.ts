@@ -127,7 +127,7 @@ describe('post up (L2)', () => {
     expect(ev.terms.find((t: any) => t.kind === 'contest').label).toMatch(/sealed/);
   });
 
-  it('round 44: a post is a commitment — mashing L2 gets no window, and you can\'t re-post right away', () => {
+  it('round 44: a post is a commitment, mashing L2 gets no window, and you can\'t re-post right away', () => {
     const { g, u, d, toRim } = setup(95, 35);
     post(g, toRim, 0.15);              // tap
     g.update(DT, idle);                 // let go at once

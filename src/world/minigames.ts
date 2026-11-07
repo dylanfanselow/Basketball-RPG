@@ -121,7 +121,7 @@ export const DRIBBLE_MOVES: Record<FaceBtn, { clip: string; dur: number }> = {
 /** The stationary pound dribble between moves, and how long one bounce takes (s). */
 export const POUND = { clip: 'mat_pound', dur: 0.5 };
 /**
- * Dribbling mat (round 40; same rules as the old push-ups): press the button shown to fill a falling bar — each right
+ * Dribbling mat (round 40; same rules as the old push-ups): press the button shown to fill a falling bar, each right
  * button is a dribble move; a wrong one = ✗ for a second. Between moves you keep a steady pound dribble.
  */
 export class DribbleGame extends RepBar {

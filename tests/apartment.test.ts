@@ -211,7 +211,7 @@ describe('career life + key games', () => {
   });
 });
 
-describe('round 59: character builder — starter skills + height by position', () => {
+describe('round 59: character builder, starter skills + height by position', () => {
   const POS = ['PG', 'SG', 'SF', 'PF', 'C'] as const;
   it('nobody starts below 40; every position gets the same total; guards lean playmaking, bigs strength', () => {
     const sum = (p: (typeof POS)[number]) => Object.values(STARTER_CORE[p]).reduce((a, b) => a + b, 0);

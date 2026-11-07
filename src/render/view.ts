@@ -104,7 +104,7 @@ export function drawHoops(scene: Phaser.Scene, style: 'arena' | 'school' = 'aren
     const postX = bx - dir * 4.2;            // stanchion post stands behind the baseline
     const baseX0 = bx - dir * 7.5, baseX1 = bx - dir * 1.6;
     if (style === 'school') {
-      // round 56: schoolyard hoop — one round steel pole behind the baseline, a gooseneck out to a flat steel board
+      // round 56: schoolyard hoop, one round steel pole behind the baseline, a gooseneck out to a flat steel board
       // (white paint, faded orange square, rust at the edges), facing in like the owner's sketch
       const px = sx(bx - dir * 3.2), pw = 0.55 * S;
       back.fillStyle(0x000000, 0.25); back.fillEllipse(px, sy(25) + 4, 34, 10);
@@ -224,7 +224,7 @@ export function drawNet(n: NetHoop, stretch: number, sway: number, bulge: number
     const push = 1 + bulge * 0.5 * Math.max(0, 1 - Math.abs(f - bulgeAt) / 0.45);
     return [rx + (t * 2 - 1) * w * push + swayPx * f * f, ry + NET * f];
   };
-  const chain = !!n.chain; // round 56: a steel chain net — heavier, grey, beaded links
+  const chain = !!n.chain; // round 56: a steel chain net, heavier, grey, beaded links
   back.lineStyle(chain ? 1.6 : 1.2, chain ? 0x8a9098 : 0xc8ccd8, chain ? 0.7 : 0.55);
   for (let k = 0; k <= N; k++) {
     const t = k / N;

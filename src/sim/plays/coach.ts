@@ -64,7 +64,7 @@ export function scoreCall(sim: GameSim, play: string, focus: Player, log: Record
   }
   // situation
   const team = sim.teams[focus.team], diff = team.score - sim.teams[1 - focus.team].score;
-  // round 54: closing time — the last few possessions go to the team's top scorer, mostly as isos
+  // round 54: closing time, the last few possessions go to the team's top scorer, mostly as isos
   const closer = endgame(sim) && topScorer(team.onCourt) === focus;
   if (closer) { score += iso ? 0.3 : 0.1; why = 'closing time'; }
   const late = sim.quarter >= 4 && sim.clock < sim.cfg.quarterLen * 0.35;

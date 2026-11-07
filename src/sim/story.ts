@@ -1,7 +1,7 @@
 /**
  * Round 60: the prologue's games (Phaser-free; no state.ts). You're in high school: a rainy-night 2v2 with your best
  * friend Kingston Williams (the starter at your position) that doubles as the tutorial, then 1s against him with his
- * offense maxed out, then the next day's big game on the school court with a scout watching — Kingston is out sick
+ * offense maxed out, then the next day's big game on the school court with a scout watching, Kingston is out sick
  * and you start.
  */
 import { GameSim } from './game';
@@ -11,7 +11,7 @@ import { Position, HEIGHTS } from './attributes';
 import { Rng, clamp } from './math';
 import { randomAppearance, Appearance } from '../render/appearance';
 import { AI_PERKS, BIAS, FIRST, LAST } from '../career/roster';
-import { CareerState, RivalInfo, StoryState, STARTER_CORE, HEIGHT_RANGE, careerPlayer } from '../career/career';
+import { CareerState, RivalInfo, StoryState, BigGameResult, STARTER_CORE, HEIGHT_RANGE, careerPlayer } from '../career/career';
 
 /** Lincoln High (the school on the court): maroon + gold. The 2v2 is two Lincoln sides (team 1 wears white). */
 export const LINCOLN: TeamDef = { id: 'LIN', city: 'Lincoln', name: 'Lions', colors: ['#7a1f2b', '#e0b33a'], seed: 6001 };
@@ -19,7 +19,7 @@ export const LINCOLN: TeamDef = { id: 'LIN', city: 'Lincoln', name: 'Lions', col
 export const JEFFERSON: TeamDef = { id: 'JEF', city: 'Jefferson', name: 'Jaguars', colors: ['#1f3a7a', '#ffffff'], seed: 6002 };
 
 export const RIVAL_ID = 'KINGSTON';
-/** Tutorial: everyone plays as an average player (your builder stats stay as they are) — the starter spread +12. */
+/** Tutorial: everyone plays as an average player (your builder stats stay as they are), the starter spread +12. */
 export const AVG_BONUS = 12;
 /** Kingston is a little better than you in the tutorial. */
 export const RIVAL_EDGE = 6;
@@ -114,7 +114,7 @@ export function buildTutorial(c: CareerState, seed: number): GameSim {
   });
 }
 
-/** The 1s: you vs Kingston, make it take it, 1s & 2s to 11, win by 2. Real odds — and his offense is all 99s. */
+/** The 1s: you vs Kingston, make it take it, 1s & 2s to 11, win by 2. Real odds, and his offense is all 99s. */
 export function buildOnes(c: CareerState, seed: number): GameSim {
   const me = storyMe(c);
   const king = rivalPlayer(c, 'ones', 1);
@@ -131,6 +131,18 @@ export function buildOnes(c: CareerState, seed: number): GameSim {
  * The big game (school court, day): Lincoln (you + four high-schoolers) vs Jefferson. High-school players are rated
  * ~38-52; you're locked in (+10 on your average spread), so you're clearly the best player on the floor. No benches.
  */
+/**
+ * Round 60d (owner): how your big game went. Your stat sum (points + rebounds + assists + blocks + steals) against
+ * everyone on the floor; a great game = Lincoln won AND your sum is the highest (a tie counts).
+ */
+export function bigGameVerdict(sim: GameSim): BigGameResult & { mine: number; best: number } {
+  const me = sim.user!;
+  const sum = (p: Player) => p.box.pts + p.box.reb + p.box.ast + p.box.blk + p.box.stl;
+  const mine = sum(me), best = Math.max(...[...sim.teams[0].roster, ...sim.teams[1].roster].map(sum));
+  const won = sim.teams[me.team].score > sim.teams[1 - me.team].score;
+  return { won, mine, best, great: won && mine >= best, pts: me.box.pts, reb: me.box.reb, ast: me.box.ast };
+}
+
 export function buildBigGame(c: CareerState, seed: number, quarterLen = 180): GameSim {
   const rng = new Rng(seed ^ 0x5eed);
   const me = storyMe(c, LOCKED_IN);

@@ -4,7 +4,7 @@ import { clamp } from './math';
 /**
  * Round 51: rhythm. Every player builds it with points and assists (and, less, with stops); a scoring method you've
  * already used tonight gives less each time, and mistakes cost rhythm. Three notches (25 / 50 / 75) each add a base
- * boost to every stat — bigger for the lower stats. A full meter (100) powers the ultimate, once a game; using it
+ * boost to every stat, bigger for the lower stats. A full meter (100) powers the ultimate, once a game; using it
  * drops the meter back to the third notch. No fade over time. Pure (no Phaser, no state.ts).
  */
 export const NOTCHES = [25, 50, 75] as const;
@@ -66,7 +66,7 @@ export function methodLabel(key: string): string {
 }
 
 /**
- * The stat boost for a notch: each core stat gets notch × 2 × clamp((90 − stat) / 30, 0.5, 2) — a 40 gets ~+3.3 a
+ * The stat boost for a notch: each core stat gets notch × 2 × clamp((90 − stat) / 30, 0.5, 2), a 40 gets ~+3.3 a
  * notch, a 90 gets +1.
  */
 export function rhythmBoost(core: CoreStats, notch: number): Partial<CoreStats> {

@@ -33,7 +33,7 @@ describe('round 50: Pick-Up Pressure', () => {
     expect(n.type).toBe('ability');
     expect(n.prereqs).toContain('pd_flop');
   });
-  it('a missed swipe sometimes kills the dribble — only with the ability', () => {
+  it('a missed swipe sometimes kills the dribble, only with the ability', () => {
     let s = setup(true);
     const on = swipes(s.g, s.h, s.d, 300);
     expect(on.killed).toBeGreaterThan(30);

@@ -196,7 +196,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   } else p.doubledSince = -1;
 
-  // round 51: the Deep Step-Back ult was used — let the three fly out of it
+  // round 51: the Deep Step-Back ult was used, let the three fly out of it
   if (p.ultShotAt > 0 && sim.time >= p.ultShotAt) { p.ultShotAt = 0; sim.startShot(p, selectShotType(p, side, v(), sim.time)); return; }
   // round 51: a CPU star in full rhythm uses his ultimate when the moment fits (once a game)
   const ult = p.rhythm >= 100 && !sim.ultsUsed[p.id] ? sim.ultOf(p) : null;
@@ -204,7 +204,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && sim.rng.chance(0.12) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.75; return; } // round 55: after both step-backs
     if (ult.id === 'ftTakeoff' && d >= 9 && d <= 19 && dot(p.vel, norm(sub(rim, p.p))) > 5 && tryActivateUlt(sim, p)) return;
   }
-  // round 48: open floor on the run (transition / coming up the floor, moving toward the rim) — nobody in front of him
+  // round 48: open floor on the run (transition / coming up the floor, moving toward the rim), nobody in front of him
   // or alongside his path to the rim: keep going and finish (no pass back to the point guard). Re-checked every tick: the moment a defender gets in the way, the normal reads take over.
   const running = dot(p.vel, norm(sub(rim, p.p))) > 4 && (sim.inTransition(p.team) || d > 30);
   if (OPEN_COURT.on && !p.deadDribble && d > 7.5 && d < 70 && (running || p.aiMode === 'drive') && clearPath(sim, p)) {
@@ -315,7 +315,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     }
   }
 
-  // round 49 (play lab): the focus of a post set backs his man down when he catches it in range — the sets used to
+  // round 49 (play lab): the focus of a post set backs his man down when he catches it in range, the sets used to
   // leave it to chance (and iso posts never posted at all)
   const pl = sim.runner.play;
   const isFocus = !!pl && (sim.runner.focusPid ? sim.runner.focusPid === p.id : sim.playRole(p) === pl.focus);
@@ -345,7 +345,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     const open = sim.openness(m);
     let val = catchEV(sim, m) * (0.5 + 0.6 * open);
     if (phase?.options?.includes(sim.playRole(m))) val += 0.22;
-    // round 49: the coach called this set for him — get him the ball when he's open (the action is the point of the call)
+    // round 49: the coach called this set for him, get him the ball when he's open (the action is the point of the call)
     if (sim.runner.focusPid === m.id && !sim.runner.done && open > 0.45) val += 0.18;
     if (sim.mismatch?.pid === m.id && sim.time < sim.mismatch.until) val += 0.35; // feed the switch mismatch
     // open man first: a teammate whose defender is far away gets the ball over the play
@@ -533,7 +533,7 @@ function bringUp(sim: GameSim, p: Player) {
 
 /**
  * Round 48: is the way to the rim open? No defender ahead of him on his line to the rim or alongside it (within ~9 ft
- * sideways) — the ones trailing behind don't count.
+ * sideways), the ones trailing behind don't count.
  */
 /** Dev / stats switch for the round 48 open-court finish. */
 export const OPEN_COURT = { on: true, runs: 0, shots: 0, startD: [] as number[], half: 0 };

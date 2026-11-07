@@ -1,7 +1,7 @@
 import { Piece, RoomDef, V, rect } from './apartment';
 
 /**
- * Round 57: the trailer yard — the "Lights on a generator" backstory place (the owner's photo + sketch).
+ * Round 57: the trailer yard, the "Lights on a generator" backstory place (the owner's photo + sketch).
  * An open yard in the rooms' frame (same feet → screen mapping, so you're the same size as at home): the old camper
  * along the back, long side to us (rounded end with the big window on the left, the door centre-right), wooden steps
  * up to the door, the rusty hitch pointing left, the generator right of the steps with its cord running to the

@@ -150,7 +150,7 @@ export class TitleScene extends Phaser.Scene {
     });
     const hints: Record<Item['id'], string> = {
       new: 'Create your player and start a career',
-      load: this.hasSave ? `Continue — Day ${c.life.day} · Lv ${c.level} · ${c.name}` : 'No save yet',
+      load: this.hasSave ? `Continue: Day ${c.life.day} · Lv ${c.level} · ${c.name}` : 'No save yet',
       settings: 'Sound, game length, fullscreen, dev tools',
     };
     this.hint.setText(hints[it.id]).setY(it.y + 56);

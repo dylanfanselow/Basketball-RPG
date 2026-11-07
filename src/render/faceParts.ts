@@ -1,6 +1,6 @@
 /**
- * Hand-editable face parts. A player's head is assembled from parts — hair (front + back layer), beard, brows,
- * eyes, nose, mouth — each a small picture per view (side = profile, also used for the back of the head; front =
+ * Hand-editable face parts. A player's head is assembled from parts, hair (front + back layer), beard, brows,
+ * eyes, nose, mouth, each a small picture per view (side = profile, also used for the back of the head; front =
  * front and three-quarter). Pictures live in src/art/parts/<type>/<variant>_<view>.png and are edited in the pixel
  * editor; a part with no picture is drawn by the original code in sprites.ts, so nothing changes until someone
  * draws one.
@@ -22,7 +22,7 @@ export const PART_SIZE = 44;
 export const PART_C = PART_SIZE / 2;
 
 export interface PartImg { w: number; h: number; data: Uint8ClampedArray }
-/** Four-tone ramp as hex strings (hi, base, sh, deep) — the same shape sprites.ts uses. */
+/** Four-tone ramp as hex strings (hi, base, sh, deep), the same shape sprites.ts uses. */
 export interface Ramp4 { hi: string; base: string; sh: string; deep: string }
 
 export const partKey = (t: PartType, variant: string, view: PartView) => `${t}/${variant}_${view}`;

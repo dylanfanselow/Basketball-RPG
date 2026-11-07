@@ -34,7 +34,7 @@ export interface ShotSim {
   /** time the ball dropped through the ring (made), else null */
   through: number | null;
   end: { t: number; p: V3; v: V3 };
-  /** ended by the time cap (e.g. stuck rolling) — not a usable plan */
+  /** ended by the time cap (e.g. stuck rolling), not a usable plan */
   timedOut: boolean;
 }
 
@@ -127,7 +127,7 @@ export interface ShotPlan extends ShotSim { aim: V3; swish: boolean; airball: bo
 
 export interface PlanInput {
   release: V3; hoop: Hoop; type: string; made: boolean; airball: boolean;
-  /** shot distance (ft) and how contested (0..1) — bigger misses from deep / under pressure */
+  /** shot distance (ft) and how contested (0..1), bigger misses from deep / under pressure */
   dist: number; contest: number;
 }
 

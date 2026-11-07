@@ -15,7 +15,7 @@ import { RoomScene } from './RoomScene';
 /**
  * The garage gym behind the apartment's left door (round 37): hoop, squat rack, bench press, treadmill, dip station +
  * speed bag, the van. The left door leads back into the apartment.
- * Round 38: workouts — ✕ at the squat rack, bench, push-up mat, jump rope or treadmill plays its animation; the bar
+ * Round 38: workouts, ✕ at the squat rack, bench, push-up mat, jump rope or treadmill plays its animation; the bar
  * comes off the hooks / uprights and moves with you, the rope turns around you.
  */
 export class GarageScene extends RoomScene {
@@ -120,7 +120,7 @@ export class GarageScene extends RoomScene {
 
   /**
    * Jump shots from the red square (driven by the shooting mini-game): the ball sits in your hands while you load the
-   * meter, then arcs at the rim — a make drops through the net and bounces back out to you, a miss clanks off the front
+   * meter, then arcs at the rim, a make drops through the net and bounces back out to you, a miss clanks off the front
    * of the rim, kicks out and rolls back.
    */
   drawShot(st: Station) {
@@ -185,7 +185,7 @@ export class GarageScene extends RoomScene {
 
   /**
    * 2K-style curved shot meter: a thick arc beside you (it rides up with your jump) that fills from the bottom along the
-   * curve, with the green window near the top. On release it freezes where you let go — green flashes "GREEN!".
+   * curve, with the green window near the top. On release it freezes where you let go, green flashes "GREEN!".
    */
   drawShotMeter(m: ShootGame) {
     const since = m.t - m.shotAt; // mini-game clock

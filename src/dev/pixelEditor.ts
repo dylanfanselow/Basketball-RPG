@@ -270,7 +270,7 @@ class Editor {
   setMode(m: 'celebs' | 'parts') {
     this.doc = this.docs[m];
     this.modeBtns.forEach((b, i) => b.classList.toggle('on', (i === 0) === (m === 'celebs')));
-    this.titleEl.textContent = `Pixel editor — ${this.doc.title}`;
+    this.titleEl.textContent = `Pixel editor: ${this.doc.title}`;
     this.zoom = Math.max(3, Math.min(m === 'parts' ? 16 : 10, Math.floor((window.innerHeight - 140) / this.doc.FH)));
     this.framesEl.innerHTML = '';
     if (this.doc.frames.length > 1) this.doc.frames.forEach((n, f) => this.framesEl.append(h('button', { textContent: `${f + 1} ${n}`, onclick: () => this.setFrame(f) })));
@@ -441,7 +441,7 @@ class Editor {
     this.status('Saving…');
     try {
       const r = await fetch('/__dev/save-art', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: this.doc.repoName(this.id), png: this.sheet.toDataURL('image/png') }) });
-      this.status(r.ok ? `Saved ${this.doc.repoPath(this.id)} — commit and push it.` : `Couldn't save (${r.status}).`);
+      this.status(r.ok ? `Saved ${this.doc.repoPath(this.id)}. Commit and push it.` : `Couldn't save (${r.status}).`);
     } catch { this.status("Couldn't save: no dev server. Run the game with npm run dev, or use Download PNG."); }
   }
   download() { const a = document.createElement('a'); a.href = this.sheet.toDataURL('image/png'); a.download = `${this.doc.repoName(this.id).replace(/\//g, '_')}.png`; a.click(); }

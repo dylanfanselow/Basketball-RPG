@@ -8,7 +8,7 @@
  */
 
 export interface V { x: number; y: number }
-/** A convex polygon on the floor (feet), counter-clockwise or clockwise — either works. */
+/** A convex polygon on the floor (feet), counter-clockwise or clockwise, either works. */
 export type Poly = V[];
 
 export const RS = 22;   // scene px per foot across (and per foot of height)
@@ -135,7 +135,7 @@ export interface RoomDef {
   id: string; furniture: Piece[]; doors: Door[]; spawn: V; rightX?: number; stations?: Station[];
   /** round 57: an open left side, cut off at this x (outdoors) instead of the slanted left wall */
   leftX?: number;
-  /** round 57: how high you stand here (ft) — walking up steps */
+  /** round 57: how high you stand here (ft), walking up steps */
   liftAt?: (p: V) => number;
 }
 export const APARTMENT: RoomDef = { id: 'apartment', furniture: FURNITURE, doors: DOORS, spawn: SPAWN };

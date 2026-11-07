@@ -250,7 +250,7 @@ export class GameSim {
     L.runs++; L.pts += this.teams[c.team].score - c.score0;
     this.curCall = null;
   }
-  /** Round 47: dev switch — no smart matchups and no extra attention (old role-based matchups). */
+  /** Round 47: dev switch, no smart matchups and no extra attention (old role-based matchups). */
   attentionOff = false;
   /** Dev / stats: smart matchups only, no keyed in / doubles / triples. */
   tiersOff = false;
@@ -394,7 +394,7 @@ export class GameSim {
     const up = afterShot(h, scorerRep(s), s.box, { fga: teamFga, pts: this.teams[s.team].score }, made, this.tierCap, shot);
     if (up) {
       // the new matchups (his weight went up) take over at the next inbound / change of possession
-      const how = up >= 2 ? ` — ${COVERAGE_NAME[coverage(s, h)]}` : '';
+      const how = up >= 2 ? `, ${COVERAGE_NAME[coverage(s, h)]}` : '';
       this.emit({ kind: 'attention', text: `${TIER_NAME[up]} on ${s.name}${how}`, team: s.team, pid: s.id, big: up >= 2, data: { tier: up } });
     }
   }
@@ -874,7 +874,7 @@ export class GameSim {
       // round 54: you're the go-to scorer and the coach trusts you: your number gets called at closing time
       isoFor(this.user); why = 'closing time';
     } else if (!this.randomCalls[this.possession]) {
-      // round 49: the coach scores every (play, focus) and picks one — lab values + matchups + what's working tonight
+      // round 49: the coach scores every (play, focus) and picks one, lab values + matchups + what's working tonight
       const best = small ? [...off].sort((a, b) => b.overall - a.overall)[0] : null;
       const avgUse = off.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, off.length);
       const plays = Object.keys(PLAYS).filter((pid) => allowed(pid));
@@ -901,8 +901,8 @@ export class GameSim {
     this.runner.call(id, swap, focus?.id ?? null);
     this.phaseStartedAt = this.time;
     const fp = focus as Player | null;
-    const tail = (fp && !isIso(id) && PLAYS[id].focus && this.byRole(this.possession, PLAYS[id].focus!) !== fp ? ` for ${fp.name}` : '') + (why ? ` — ${why}` : '');
-    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"${why ? ` — ${why}` : ''}` : `Coach: "${this.runner.play!.name}"${tail}`, team: this.possession });
+    const tail = (fp && !isIso(id) && PLAYS[id].focus && this.byRole(this.possession, PLAYS[id].focus!) !== fp ? ` for ${fp.name}` : '') + (why ? `, ${why}` : '');
+    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"${why ? `, ${why}` : ''}` : `Coach: "${this.runner.play!.name}"${tail}`, team: this.possession });
     this.curCall = { team: this.possession, play: id, score0: this.teams[this.possession].score };
     const rc = this.recentCalls[this.possession]; rc.push(id); if (rc.length > 3) rc.shift();
   }
@@ -1062,7 +1062,7 @@ export class GameSim {
     if (rn.done && rn.resetUntil === -1 && h && h.team === this.possession) {
       if (this.shotClock > 7) {
         rn.resetUntil = this.time + 1.2;
-        this.emit({ kind: 'play', text: 'Coach: "Reset — swing it!"', team: this.possession });
+        this.emit({ kind: 'play', text: 'Coach: "Reset, swing it!"', team: this.possession });
       } else rn.resetUntil = -2;
     }
     if (rn.resetUntil > 0 && this.time >= rn.resetUntil) {
@@ -1422,7 +1422,7 @@ export class GameSim {
           const go = !!this.ult.active!.level.swatAndGo;
           this.giveBall(d); this.changePossessionLive(d.team);
           if (go) {
-            // Swat & Go: grab it and run — the break is on, and his next finish is boosted
+            // Swat & Go: grab it and run, the break is on, and his next finish is boosted
             this.transitionUntil = Math.max(this.transitionUntil, this.time + 5);
             d.mods.removeHooks('swatGo');
             d.mods.addHook('shot', 'swatGo', (c) => (['layup', 'dunk', 'euro', 'floater', 'alleyOop', 'alleyOopLayup', 'push'].includes(c.type) ? { label: 'ULT Swat & Go', mult: 1.2 } : null), this.time + 6);
@@ -1627,7 +1627,7 @@ export class GameSim {
   dribbleMove(p: Player, stick: Vec) {
     if (this.holder() !== p || p.busy) return;
     if (p.deadDribble) {
-      if (!p.deadWarned) { p.deadWarned = true; this.emit({ kind: 'dead', text: 'Dribble picked up — pass or shoot', pid: p.id }); }
+      if (!p.deadWarned) { p.deadWarned = true; this.emit({ kind: 'dead', text: 'Dribble picked up: pass or shoot', pid: p.id }); }
       return;
     }
     // input buffer: pressing during a move queues the next one (makes chains feel responsive)
@@ -1655,7 +1655,7 @@ export class GameSim {
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
     this.emit({ kind: 'move', text: m.name, pid: p.id });
 
-    // round 49: the defense learns a human's moves — the same move again and again works less, and they shade his side
+    // round 49: the defense learns a human's moves, the same move again and again works less, and they shade his side
     const human = !this.isAI(p) && !this.attentionOff;
     const read = human ? this.moveRead(p, id) : 1;
     if (human) {
@@ -1776,11 +1776,11 @@ export class GameSim {
       this.shotClock = Math.max(this.shotClock, 14);
       this.deadBall(h.team, 1.0);
     } else if (p.mods.pAdd('killDribble') > 0 && this.liveDribble(h) && this.rng.chance(this.pickUpChance(p, h) * front)) {
-      // Pick-Up Pressure (round 50): no steal, but he's so tight the dribbler has to pick it up — pass or shoot
+      // Pick-Up Pressure (round 50): no steal, but he's so tight the dribbler has to pick it up, pass or shoot
       h.deadDribble = true; h.deadDribbleAt = this.time; h.deadWarned = true;
       if (h.state === 'dribbleMove') { h.state = 'idle'; h.move = null; h.bufferedMove = null; }
       h.flickDir = 0;
-      this.emit({ kind: 'pickup', text: `${p.name} kills the dribble — ${h.name} has to pick it up`, team: p.team, pid: p.id, big: p === this.user || h === this.user, good: p.team === this.user?.team });
+      this.emit({ kind: 'pickup', text: `${p.name} kills the dribble, ${h.name} has to pick it up`, team: p.team, pid: p.id, big: p === this.user || h === this.user, good: p.team === this.user?.team });
       if (p === this.user) applyTrust(this.trust, 'stop', 0.5);
       this.rhythmGain(p, 'pickup');
     }
@@ -1822,11 +1822,11 @@ export class GameSim {
     const after = notchOf(p.rhythm);
     if (after !== before) {
       p.boost = rhythmBoost(p.core, after); p.recompute();
-      if (after > before) this.emit({ kind: 'rhythm', text: `RHYTHM ${after} — ${p.name} ${['', 'is warming up', 'is heating up', 'is on fire'][after]}`, pid: p.id, team: p.team, quiet: !this.isHuman(p), data: { notch: after } });
+      if (after > before) this.emit({ kind: 'rhythm', text: `RHYTHM ${after}: ${p.name} ${['', 'is warming up', 'is heating up', 'is on fire'][after]}`, pid: p.id, team: p.team, quiet: !this.isHuman(p), data: { notch: after } });
     }
     if (p.rhythm >= 100 && amount > 0 && !this.ultsUsed[p.id] && this.ultOf(p) && !this.rhythmReadySaid[p.id]) {
       this.rhythmReadySaid[p.id] = true;
-      this.emit({ kind: 'rhythm', text: this.isHuman(p) ? 'RHYTHM MAXED — ultimate ready (□)' : `${p.name} is in full rhythm`, pid: p.id, team: p.team, big: this.isHuman(p), data: { ready: true } });
+      this.emit({ kind: 'rhythm', text: this.isHuman(p) ? 'RHYTHM MAXED: ultimate ready (□)' : `${p.name} is in full rhythm`, pid: p.id, team: p.team, big: this.isHuman(p), data: { ready: true } });
     }
     if (this.isHuman(p)) this.quiet('rhythmDelta', { amount: applied, why, math, ...extra }, p.id);
   }
@@ -1987,7 +1987,7 @@ export class GameSim {
   }
 
   /**
-   * Round 49: a switch left a mismatch — go at it. A slow or much worse defender now on the handler: the AI handler
+   * Round 49: a switch left a mismatch, go at it. A slow or much worse defender now on the handler: the AI handler
    * drives. A big now guarded by a small: he's the mismatch (teammates look for him, and he posts once he has it).
    */
   private attackSwitch(h: Player, scr: Player, onH: Player, onScr: Player) {
@@ -2302,7 +2302,7 @@ export class GameSim {
       this.assistCand = null;
       if (this.cfg.oneOnOne) {
         // make it, take it: scorer checks it again (fouls just count the bucket, no free throws)
-        if (st.foul) this.emit({ kind: 'foul', text: 'Foul — bucket counts', team });
+        if (st.foul) this.emit({ kind: 'foul', text: 'Foul! The bucket counts', team });
         if (this.checkWin()) return;
         this.deadBall(team, 1.1);
         return;
@@ -2310,10 +2310,10 @@ export class GameSim {
       if (st.foul) { this.emit({ kind: 'foul', text: 'And-one!', team, big: true }); this.freeThrows(s, 1); }
       this.deadBall((1 - team) as 0 | 1, this.cfg.mode === 'practice' ? 1.8 : 1.1, 'baseline');
     } else if (st.foul && this.cfg.oneOnOne) {
-      this.emit({ kind: 'foul', text: 'Foul — ball back', team });
+      this.emit({ kind: 'foul', text: 'Foul, ball back', team });
       this.deadBall(team, 1.1);
     } else if (st.foul) {
-      this.emit({ kind: 'foul', text: `Shooting foul — ${st.pts} free throws`, team });
+      this.emit({ kind: 'foul', text: `Shooting foul: ${st.pts} free throws`, team });
       const made = this.freeThrows(s, st.pts);
       this.deadBall((1 - team) as 0 | 1, made ? 1.1 : 1.4, 'baseline');
     } else {
@@ -2342,13 +2342,13 @@ export class GameSim {
     return last;
   }
 
-  /** Round 53: only a real lapse — nobody contested the shot, and not right after a switch. */
+  /** Round 53: only a real lapse, nobody contested the shot, and not right after a switch. */
   private checkLeftMan(scorer: Player, contest = 0) {
     const u = this.user;
     if (this.cfg.oneOnOne) return; // no team trust in 1v1
     if (!u || !this.userOnCourt || u.team === scorer.team || u.guarding !== scorer.id) return;
     if (contest >= 0.2 || this.time - this.userGuardChangedAt < 1.5) return;
-    if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.rhythmLoss(u, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored — you left him', good: false, pid: u.id }); }
+    if (dist(u.p, scorer.p) > 10) { applyTrust(this.trust, 'leftMan'); this.rhythmLoss(u, 'leftMan'); this.emit({ kind: 'grade', text: '✗ Your man scored: you left him', good: false, pid: u.id }); }
   }
 
   // ---------- HUD support ----------

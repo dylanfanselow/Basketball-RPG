@@ -12,7 +12,7 @@ export const app = {
     debug: { cone: true, lanes: false, paths: true, hitboxes: false, aiTargets: false, post: false, room: false, equation: false },
     timeScale: 1,
     benchSpeed: 6,
-    /** dev: treat the next game as a big game (playoffs) — home crowd in team colors */
+    /** dev: treat the next game as a big game (playoffs), home crowd in team colors */
     bigGame: false,
     /** round 56: venue for the next game (dev): arena / school court / school court, rainy night */
     venue: 'arena' as import('./sim/game').Venue,

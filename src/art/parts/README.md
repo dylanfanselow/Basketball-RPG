@@ -1,6 +1,6 @@
 # Hand-drawn face parts
 
-`<type>/<variant>_<view>.png` — one picture per face part, per view. Types: `hair` (over the skull), `hairBack`
+`<type>/<variant>_<view>.png`, one picture per face part, per view. Types: `hair` (over the skull), `hairBack`
 (behind it: afro volume, dreads…), `beard`, `brows`, `eyes`, `nose`, `mouth`. Views: `side` (profile, also used
 for the back of the head) and `front` (front and three-quarter). 44×44, centered on the head center.
 

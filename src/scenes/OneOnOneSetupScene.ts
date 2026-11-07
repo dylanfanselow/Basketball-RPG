@@ -119,7 +119,7 @@ export class OneOnOneSetupScene extends Phaser.Scene {
     const p2 = this.roster(this.o.p2Team)[this.o.p2Idx];
     const line = (tag: string, p?: RosterEntry) => p
       ? `${tag} ${p.name} #${p.number} · ${p.pos} ${Math.floor(p.heightFt)}'${Math.round((p.heightFt % 1) * 12)}" · SHT ${p.core.shooting} FIN ${p.core.finishing} STR ${p.core.strength} MOB ${p.core.mobility} PLY ${p.core.playmaking}${p.perks.includes('fi_stepthru') ? ' · Step-Through' : ''}`
-      : `${tag} —`;
+      : `${tag} -`;
     const same = p1 && p2 && this.o.p1Team === this.o.p2Team && this.o.p1Idx === this.o.p2Idx;
     this.info.setText([line('P1', p1), line(this.o.p2Human ? 'P2' : 'CPU', p2), same ? '(mirror match: same player on both sides)' : ''].join('\n'));
   }

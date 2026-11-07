@@ -42,9 +42,14 @@ export interface CareerState {
    */
   story?: StoryState;
 }
-export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'done';
+export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'done';
 export interface RivalInfo { first: string; last: string; pos: Position; number: number; heightIn: number; appearance: Appearance }
-export interface StoryState { stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment' }
+export interface StoryState {
+  stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment';
+  /** round 60d: how the big game went (Mom's scene after it) */
+  bigGame?: BigGameResult;
+}
+export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
 
 export const SKILL_START = 40, SKILL_MAX = 99;
 export const newSkills = () => Object.fromEntries(CORE_STATS.map((s) => [s, { level: SKILL_START, xp: 0 }])) as CareerState['skills'];
@@ -96,7 +101,7 @@ export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerSt
 }
 
 /**
- * Round 59: the character builder. Starter skills by position — never below 40 (the baseline), and every position gets
+ * Round 59: the character builder. Starter skills by position, never below 40 (the baseline), and every position gets
  * the same total, just spread differently: guards lean shooting / playmaking / mobility, bigs lean strength and
  * finishing (a PG has far more playmaking than a C, a C far more strength than a PG).
  */
@@ -110,7 +115,7 @@ export const STARTER_CORE: Record<Position, CoreStats> = {
 /** Height range by position, in inches (inclusive). */
 export const HEIGHT_RANGE: Record<Position, [number, number]> = { PG: [72, 77], SG: [75, 79], SF: [77, 81], PF: [79, 83], C: [81, 87] };
 export const fmtHeight = (inches: number) => `${Math.floor(inches / 12)}'${Math.round(inches % 12)}"`;
-/** Round 59b: a name as typed in the builder — letters, spaces, - and ' only, trimmed, at most 12 characters. */
+/** Round 59b: a name as typed in the builder, letters, spaces, - and ' only, trimmed, at most 12 characters. */
 export const NAME_MAX = 12;
 export const cleanName = (s: string) => s.replace(/[^A-Za-z '\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX).trim();
 /**
@@ -241,7 +246,7 @@ export function addEnergy(c: CareerState, n: number) { c.life.energy = Math.min(
 /** Sleep: the next day starts (energy comes back through the orbs the room sends). */
 export function advanceDay(c: CareerState) { c.life.day++; }
 /**
- * Round 60b: the schedule card while you're in high school — the big game against Jefferson (tomorrow until the
+ * Round 60b: the schedule card while you're in high school, the big game against Jefferson (tomorrow until the
  * night before, today on game day, played after). Null once the story isn't in the prologue (the NBA schedule).
  */
 export function storyKeyGame(c: CareerState): { when: string; what: string } | null {
@@ -249,6 +254,7 @@ export function storyKeyGame(c: CareerState): { when: string; what: string } | n
   if (!st) return null;
   const what = 'Big game vs JEF';
   if (st.stage === 'bigGame') return { when: 'TODAY', what };
+  if (st.stage === 'after') return { when: 'PLAYED', what };
   if (st.stage === 'done') return st.home === 'trailer' ? { when: 'PLAYED', what } : null;
   return { when: '1 DAY', what };
 }

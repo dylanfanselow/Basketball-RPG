@@ -1,5 +1,5 @@
 {
-  "_doc": "Ultimates are a separate system unlocked by story flag ult_unlocked. Each has evolution levels bought with milestone points (50-pt game, game winner, triple-double...). Round 55: the owner's set — Double Step-Back (PG/SG), Free-Throw-Line Dunk (SG/SF/PF), Chase-Down Block (PF/C). While your ult is active, the ult button (square) again = its fake, triangle = pass out (top levels).",
+  "_doc": "Ultimates are a separate system unlocked by story flag ult_unlocked. Each has evolution levels bought with milestone points (50-pt game, game winner, triple-double...). Round 55: the owner's set, Double Step-Back (PG/SG), Free-Throw-Line Dunk (SG/SF/PF), Chase-Down Block (PF/C). While your ult is active, the ult button (square) again = its fake, triangle = pass out (top levels).",
   "deepStepback": {
     "name": "Double Step-Back", "positions": ["PG", "SG"], "context": "ball",
     "desc": "Around the 3PT line: two explosive step-backs into deep range; the three out of it ignores most of the contest.",

@@ -23,7 +23,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Sprint = tap** for a timed burst, then a cooldown driven by stats; gust/speed lines while active.
 - **Pump fake = short tap of ✕** (< ~0.18s); **hold ✕ past that = shoot**. Repeatable fakes.
 - **A pump fake picks up the dribble:** no moving or dribbling; you can **pass or shoot** (Step-Through still works).
-  **Round 20:** except a fake **on the catch, before the first dribble** — that keeps the dribble (attack the closeout).
+  **Round 20:** except a fake **on the catch, before the first dribble**: that keeps the dribble (attack the closeout).
 - **○ moves:** press ○ with the stick pushed = move now; **hold ○ and drag** = move per flick (chains on later
   flicks while held); quick neutral ○ tap = **Jab Step** (keeps dribble).
 - **Side Drive** (lateral ○) is a hard, long drive that creates real separation; **flicking the stick the other way
@@ -90,7 +90,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 15:** defenders in their stance are drawn **three-quarter / open to the camera** (owner's pick over a
   profile stance) with live motion (active hands, weight shifts, bounce); head in profile toward the man.
 - **Round 16: multi-angle players** (owner's idea, approved from a turntable preview): 5 drawn yaws + mirror; turning
-  clips only (locomotion, stances, dribbles, hold) — shots/moves stay side view toward the rim; defenders face their
+  clips only (locomotion, stances, dribbles, hold), shots/moves stay side view toward the rim; defenders face their
   man turned toward the camera; angled frames drawn on demand (never block, side view until ready). Supersedes the
   round-15 front-view stance.
 - **Round 17:** defensive stance is calm (small hand drift, no flicker between stance/shuffle or between views);
@@ -120,7 +120,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Hold ○ on defense = stay set for the charge** until released (mirrors held screens). Screen / charge / box-out arms
   use the defense's elbows-down, fixed-length arms (no backwards-bending forearms).
 - **Eyes (round 26, applies to every face, now and in future art):** follow the owner's hand-drawn celebs. Front /
-  three-quarter: `W I · · · · I W` — each eye one white pixel on the **outside** and the iris on the **inside**,
+  three-quarter: `W I · · · · I W`, each eye one white pixel on the **outside** and the iris on the **inside**,
   mirrored exactly, the same white on both eyes, looking straight ahead (wide-set = 6 px gap). Profile: both irises in
   front of their whites (looking forward). Eyes are **plotted pixel by pixel, snapped symmetrically**
   (`faceParts.plotEyeCells` / `snapCell`), never scaled with drawImage. `tests/faceParts.test.ts` fails if an eye
@@ -158,6 +158,14 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60d (owner): Mom after the big game; no em dashes.**
+  - **No em dashes, ever** (U+2014): not in code, comments, in-game text, docs, commit messages or replies. Use a
+    comma, colon, period or parentheses. All existing ones were removed; `tests/style.test.ts` fails on any new one.
+  - **After the big game** (the same day, daytime trailer yard): you walk up the path, Mom comes out ("Sad Story"
+    plays). **Great game** = Lincoln won AND your points + rebounds + assists + blocks + steals is the highest of anyone
+    in the game (a tie counts): she's so proud you got your opportunity and made the most of it. **Otherwise**: she
+    talked to the scout after the game and he said you have promise (he wrote your name down). Either way she ends
+    with "go check on Kingston. That poor boy was sick as a dog." Then she goes inside and the yard is yours.
 - **Round 60c (owner): polish, preloading, music.**
   - **Music** (royalty-free, the owner's files in `public/music/`): mondamusic "Retro Arcade Game Music" loops in
     **every basketball game**; alexgrohl "Sad Story" plays in the **scene with Mom** (it fades in on the walk up,
@@ -180,11 +188,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Schedule card in high school:** "1 DAY · Big game vs JEF" until game day, "TODAY" on it, "PLAYED" after; the
     NBA schedule comes back only outside the prologue (older saves).
 - **Round 60: the prologue (high school).** After the builder you're on the **rainy school court** (night) in a
-  **2v2** with your best friend **Kingston Williams** — same position as you, he's the starter ahead of you. Your
+  **2v2** with your best friend **Kingston Williams**: same position as you, he's the starter ahead of you. Your
   teammate and his are a complementary position (PG / SG → a C; SF / PF / C → a PG).
   - **Tutorial:** a nameless text box at the bottom (no tutor character); Kingston talks in the same box with his name
     (big game tomorrow, scouts in the stands, his chance to get out of this shithole, his game-day morning: lucky
-    breakfast and his **pregame coffee** — the coffee is a Chekhov's gun: later the story reveals **you poisoned him**,
+    breakfast and his **pregame coffee**: the coffee is a Chekhov's gun: later the story reveals **you poisoned him**,
     to him and to you). Each lesson: Kingston demos the move on his ball, then you try it. Order: move / sprint →
     shoot (shot chance line + cone explained) → pass + call for it (trust, never on demand) → dribble move → post up
     (L2) → pump fake + Step-Through → icon pass (R1) → screens → plays: follow the circles → defense (+ rhythm).
@@ -196,8 +204,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     playmaking are 99. After it: "See you tomorrow. Don't be late." He leaves and you think: you want out too, but
     he's so much better, the scout will never notice you.
   - **Home is the trailer** (you're in high school): night, go inside → the next day.
-  - **The big game** (school court, day, 5v5 vs Jefferson): the coach throws a fit — Kingston is out with a
-    **stomach virus** — then names you the starter and tells everyone to lock in and play good fundamental ball
+  - **The big game** (school court, day, 5v5 vs Jefferson): the coach throws a fit, Kingston is out with a
+    **stomach virus**: then names you the starter and tells everyone to lock in and play good fundamental ball
     because a **scout** is here (drawn by the bleachers with a clipboard). You're **LOCKED IN: +10 all stats**
     (high-schoolers are ~38-52), clearly the best player on the floor.
   - The stage is saved; Load Save resumes it. Older saves skip the prologue (home stays the apartment).
@@ -240,7 +248,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Cinematic:** slow-mo (0.38×, game clock too; ≤ 1.7 sim s, 2.2 for the chase-down), screen darkened around the ult
     player (+ ball, chase target), sound ducked with a deep whoosh. For **your ult and any ult against your team**; a
     CPU teammate's ult gets aura + banner only. Every ult gets a banner. Only stars have ults.
-  - **Aura by position:** PG blue, SG purple, SF yellow, PF green, C red — a thick pixel outline glow with flame wisps
+  - **Aura by position:** PG blue, SG purple, SF yellow, PF green, C red, a thick pixel outline glow with flame wisps
     rising (owner's reference image).
   - **Double Step-Back** (PG, SG): Lv2 fake (□ again) into Step-Through, Lv3 pass out (△). **Free-Throw-Line Dunk**
     (SG, SF, PF): posterizes everyone in its lane; Lv2 Hang Time stall (□ in the air), Lv3 Kick-Out (△ in the air).
@@ -332,7 +340,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   Finishing · dribbling 1 Playmaking + 1 Shooting**. Each orb = 20 XP; **higher levels need more XP** (40 → 6 orbs,
   60 → 12, 80 → 18). **The card numbers are the real ratings**: a skill's level is its `core` rating (new careers start
   every stat at 40; spending stat points or dev sliders move both).
-- **Round 41: skill cards on the room HUD** (from the owner's reference): the red LV box became a level block — "LVL n"
+- **Round 41: skill cards on the room HUD** (from the owner's reference): the red LV box became a level block, "LVL n"
   + a long orange XP bar, then five chunky cards left to right: **Shooting** (green, ball on a shooting hand),
   **Finishing** (blue, ball through the rim + net), **Strength** (red, pink kettlebell with a 5), **Mobility** (light
   blue, winged sneaker), **Playmaking** (yellow, clipboard play). Each card: icon + level number on top, a darker
@@ -345,11 +353,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   back), ○ between the legs (and back), □ behind the back, △ in-and-out**; between moves you keep a pound dribble.
   Bounce sounds on every floor hit, a squeak + blip per move. The mat is a dark rubber mat with a white border, a ball
   logo and worn foot marks (Claude's design). Push-ups are gone.
-- **Round 39e: Fade Away smoother** — the `shot_fade` clip is resampled from the jumper at 21 points with a smoothly
+- **Round 39e: Fade Away smoother**: the `shot_fade` clip is resampled from the jumper at 21 points with a smoothly
   easing lean and drawn with 24 frames (was 14 with a stepped lean). The fade's smaller cone (3.5 ft, 0.45 rad) was
   already used; the user's cone now **eases to its new size** (~0.2 s) so you can see it shrink when you pull back.
 - **Round 39: workout mini-games** (controls shown on a card when one starts, then a hint line; panel by the player
-  with reps + the game's widget; a wrong input = red ✗ and a 1 s lock; **L1 is the only way out** — ✕ / ○ are game
+  with reps + the game's widget; a wrong input = red ✗ and a 1 s lock; **L1 is the only way out**: ✕ / ○ are game
   buttons):
   - **Jump rope:** spin the L-stick to swing the rope, ○ when it's under your feet (miss / mistime = trip).
   - **Squat:** alternate L2 / R2 to push up a bar that keeps falling; full = a rep.
@@ -357,7 +365,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     up, a press outside = ✗ and slower.
   - **Push-ups** (a dribbling mat since round 40)**:** press the random button shown (✕ ○ □ △) to fill a falling bar; wrong button = ✗ for a second.
   - **Shooting (red square):** a **shot meter** on ✕ (hold to load, release in the green = make, else it clanks off
-    the front rim). This is the garage practice spot only — **games still have no shot meter**.
+    the front rim). This is the garage practice spot only, **games still have no shot meter**.
   - **Bench press (Claude's design, "keep it level"):** hold ✕ to press while the bar wobbles; keep the level gauge
     centred with the L-stick (it tips faster the more it leans); tipping over drops the bar.
   No stat / energy rewards yet.
@@ -368,7 +376,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     swish / clank, ball bounces.
   - **Round 39c:** the garage's **back-wall door** is the one to the apartment (the left-wall door = outside, soon);
     the **jump rope is removed**; push-ups and bench are **easier**; the shot meter has a **tiny red "perfect" slice**
-    in the middle of the green — releasing there plays a bigger success sound and **sets the meter on fire** for a
+    in the middle of the green, releasing there plays a bigger success sound and **sets the meter on fire** for a
     second ("PERFECT!"); the ball now visibly drops **through** the rim and net (front of the rim + net drawn over it,
     the net stretches on a swish).
 - **Round 38: garage workouts.** Animations for the player using the **squat rack, push-up mat, jump rope, bench
@@ -379,10 +387,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Round 38b:** push-up face stays in frame; squat hands grip the bar from below (elbows down, bar through the
     hands); bench press: back of the head on the bench, looking up, feet pointing away, and the torso drawn with its
     full rounded volume when lying (chest / belly protrudes); **shooting**: a **red square** on the floor straight out
-    from the garage rim — ✕ there loops jump shots at the hoop (ball arcs in, through the net, bounces back).
+    from the garage rim, ✕ there loops jump shots at the hoop (ball arcs in, through the net, bounces back).
 - **Round 37: the garage gym + an art rule.**
   - **Rule (owner):** for this and all future drawings, **follow the reference material's orientation** for every
-    object — don't draw things facing the camera by default. (Also in CLAUDE.md.)
+    object, don't draw things facing the camera by default. (Also in CLAUDE.md.)
   - The apartment's left door leads to a **garage gym** built from the owner's reference, with these changes: the
     cupboard → a **hoop like the arena's** (base, padded pole, arm, glass board, orange rim, net; facing right from
     the left wall); the wing-chun dummy → a **squat rack**; posters: keep **STONEY**, add **KG** and **ADMIRAL 50**
@@ -391,7 +399,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     hanging lamps, door to the house, gym mat, jump rope, kettlebells, boxes, an old van along the right wall (our own
     design), outdoor pull-up bars in the yard.
   - **Round 37b/c:** keep the **slanted right wall** (the owner likes that angle) but show **nothing past the right
-    brick post** — the post is where the picture ends (no house siding outside). The van → a **super broken classic fastback** (our own drawing, no badges: faded red, primer,
+    brick post**: the post is where the picture ends (no house siding outside). The van → a **super broken classic fastback** (our own drawing, no badges: faded red, primer,
     rust, a front wheel gone and the drum on cinder blocks, flat tyre, cracked windshield, missing headlight, hanging
     bumper), parked along the right wall nose toward us; the **door from the apartment is on the left wall** (the
     back-wall door = outside, coming soon); **posters hang under the lamps** (lamps and duct in front); the gym mat

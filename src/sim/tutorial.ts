@@ -2,7 +2,7 @@
  * Round 60: the prologue tutorial (rainy school court, 2v2). Phaser-free: a `Director` that runs every possession.
  * Each lesson: blocking lines (✕ to continue), Kingston demos the move on his ball (scripted), then your ball with a
  * prompt in the box until the sim shows you did it (✓). The narrator is a nameless text box; Kingston talks in his
- * own named box (the big game tomorrow, the scouts, getting out — and his game-day coffee, which matters later).
+ * own named box (the big game tomorrow, the scouts, getting out, and his game-day coffee, which matters later).
  */
 import type { GameSim, GameEvent, Director } from './game';
 import type { Player } from './player';
@@ -19,7 +19,7 @@ type Holder = 'me' | 'mate' | 'kingston';
 interface Ctx { sim: GameSim; me: Player; mate: Player; king: Player; other: Player; d: TutorialDirector }
 interface Step {
   prompt: string; check: (c: Ctx, e: GameEvent | null) => boolean;
-  /** round 60c: you blew this step (e.g. a plain jumper after the fake) — back to the lesson's first step */
+  /** round 60c: you blew this step (e.g. a plain jumper after the fake), back to the lesson's first step */
   fail?: (c: Ctx, e: GameEvent | null) => boolean;
 }
 export interface Lesson {
@@ -70,7 +70,7 @@ export function buildLessons(): Lesson[] {
       after: [
         N('Hold ✕ to shoot. A quick tap is a pump fake.'),
         N('No shot meter. Top right is your shot chance: the shot\'s base % × what\'s in the way = your odds.'),
-        N('The cone in front of you shows who\'s contesting. Tonight everything falls so you get the feel — in real games that number is the truth.'),
+        N('The cone in front of you shows who\'s contesting. Tonight everything falls so you get the feel. In real games that number is the truth.'),
       ],
       ball: 'me',
       steps: [{ prompt: 'Hold ✕ to shoot', check: madeShot }],
@@ -85,9 +85,9 @@ export function buildLessons(): Lesson[] {
       steps: [
         { prompt: 'Point the stick at {mate} and tap △', check: (c, e) => mine(c, e, 'pass') },
         { prompt: 'Get open and call for it: △ without the ball', check: (c, e) => mine(c, e, 'call') },
-        { prompt: 'Here it comes — catch it', check: (c, e) => mine(c, e, 'catch') },
+        { prompt: 'Here it comes: catch it', check: (c, e) => mine(c, e, 'catch') },
       ],
-      outro: [N('Teammates pass on trust and openness, never just because you asked. Get open, run the plays, make good decisions — the ball finds you.')],
+      outro: [N('Teammates pass on trust and openness, never just because you asked. Get open, run the plays, make good decisions, and the ball finds you.')],
     },
     {
       id: 'dribble', title: 'DRIBBLE MOVES',
@@ -104,7 +104,7 @@ export function buildLessons(): Lesson[] {
       id: 'post', title: 'POST UP',
       before: [K('Got somebody small on you? Put him in the basement.')],
       demo: 'post', demoTalk: K('Back him down, turn, done.'),
-      after: [N('Hold L2 to post up (inside ~20 ft). Push the stick to back him down, then ✕ shoots out of the post — the stick picks hook, fade or drop.')],
+      after: [N('Hold L2 to post up (inside ~20 ft). Push the stick to back him down, then ✕ shoots out of the post (the stick picks hook, fade or drop).')],
       ball: 'me',
       steps: [
         { prompt: 'Hold L2 to post up', check: (c, e) => mine(c, e, 'post') && /^POST UP/.test(e!.text) },
@@ -117,11 +117,11 @@ export function buildLessons(): Lesson[] {
     {
       id: 'step', title: 'STEP-THROUGH',
       before: [
-        K('Tomorrow\'s all planned out. Up at six, lucky breakfast, then my pregame coffee — same order every big game.'),
+        K('Tomorrow\'s all planned out. Up at six, lucky breakfast, then my pregame coffee. Same order every big game.'),
         K('Don\'t laugh. It\'s a ritual. Now the move that\'s getting me a scholarship.'),
       ],
       demo: 'stepThrough', demoTalk: K('He jumps, I go right under him.'),
-      after: [N('Tap ✕ to pump fake. If he bites: push the stick at the rim and hold ✕ — a Step-Through, one long step past him. Everyone can do it.')],
+      after: [N('Tap ✕ to pump fake. If he bites: push the stick at the rim and hold ✕ for a Step-Through: one long step past him. Everyone can do it.')],
       ball: 'me',
       steps: [
         { prompt: 'Tap ✕ to pump fake', check: (c, e) => mine(c, e, 'move') && !!e!.data?.clip },
@@ -134,7 +134,7 @@ export function buildLessons(): Lesson[] {
     },
     {
       id: 'icon', title: 'ICON PASS',
-      before: [N('Hold R1 and every teammate wears a button. Press his button to pass straight to him — no aiming.')],
+      before: [N('Hold R1 and every teammate wears a button. Press his button to pass straight to him. No aiming.')],
       ball: 'me',
       steps: [{ prompt: 'Hold R1, then press {mate}\'s button', check: (c, e) => mine(c, e, 'iconPass') }],
     },
@@ -152,12 +152,12 @@ export function buildLessons(): Lesson[] {
       id: 'play', title: 'PLAYS',
       before: [
         N('In games the coach calls sets. When one\'s on, a yellow circle and a dashed line show where your job is, and the bar at the bottom says what it is.'),
-        N('Do your part and you\'ll see ✓. Running plays earns trust — teammates give you the ball, the coach gives you minutes.'),
+        N('Do your part and you\'ll see ✓. Running plays earns trust: teammates give you the ball, the coach gives you minutes.'),
       ],
       ball: 'mate', play: true,
       steps: [
         { prompt: 'Follow the circle: set the screen', check: (c, e) => mine(c, e, 'grade') && !!e!.good },
-        { prompt: 'Roll to the rim — follow the circle', check: (c, e) => (mine(c, e, 'grade') && !!e!.good) || madeShot(c, e) },
+        { prompt: 'Roll to the rim: follow the circle', check: (c, e) => (mine(c, e, 'grade') && !!e!.good) || madeShot(c, e) },
       ],
     },
     {
@@ -206,7 +206,7 @@ export class TutorialDirector implements Director {
     const c = this.ctx();
     this.names = { you: first(c.me), mate: first(c.mate), other: first(c.other), king: first(c.king) };
     this.ending = [
-      { who: 'kingston', text: '{mate}, {other} — y\'all can head home. Me and {you} gon\' finish with some 1s.' },
+      { who: 'kingston', text: '{mate}, {other}, y\'all can head home. Me and {you} gon\' finish with some 1s.' },
       { who: 'narrator', text: '1s: make it take it. Inside the arc is 1, a three is 2. First to 11, win by 2.' },
     ];
     this.startLesson(0);
@@ -240,7 +240,7 @@ export class TutorialDirector implements Director {
     if (this.phase === 'try' || this.phase === 'done') {
       const st = L.steps[Math.min(this.step, L.steps.length - 1)];
       const missed = this.sim.time - this.failAt < 2 && this.step === 0;
-      return { who: 'narrator', text: (missed ? 'Missed it — ' : '') + fill(st.prompt, this.names), blocking: false, title: L.title, step: Math.min(this.step + 1, L.steps.length), steps: L.steps.length, doneAt: this.checkAt, failAt: this.failAt };
+      return { who: 'narrator', text: (missed ? 'Missed it: ' : '') + fill(st.prompt, this.names), blocking: false, title: L.title, step: Math.min(this.step + 1, L.steps.length), steps: L.steps.length, doneAt: this.checkAt, failAt: this.failAt };
     }
     return null;
   }

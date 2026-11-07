@@ -133,7 +133,7 @@ class Sfx {
   private ok() { return !!this.ctx && this.ctx.state === 'running' && !this.settings.muted; }
 
   /**
-   * Round 55: ultimate cinematic — everything goes quiet (sfx + crowd buses ducked) and a deep whoosh plays on the
+   * Round 55: ultimate cinematic, everything goes quiet (sfx + crowd buses ducked) and a deep whoosh plays on the
    * master (so it isn't ducked with them); off brings the arena back.
    */
   duck(on: boolean) {
@@ -195,7 +195,7 @@ class Sfx {
   }
 
   /**
-   * Net sound. big = a clean SWISH (nothing but net): loud and crisp — a sharp cord snap, a long airy "shhhh" sweeping
+   * Net sound. big = a clean SWISH (nothing but net): loud and crisp, a sharp cord snap, a long airy "shhhh" sweeping
    * up through the net, a cord rattle tail and the ball's soft whump. Otherwise a quieter net brush (rim-ins, kisses).
    */
   swish(pan = 0, big = true) {
@@ -323,7 +323,7 @@ class Sfx {
     g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 1 : 0, t + 0.6);
   }
   /**
-   * Round 56: rain on the school court at night — a looping band of filtered noise with a slow swell, on the crowd
+   * Round 56: rain on the school court at night, a looping band of filtered noise with a slow swell, on the crowd
    * bus (so it ducks with the arena in an ult cinematic). Remembered until audio is unlocked.
    */
   rain(on: boolean) {
@@ -467,7 +467,7 @@ class Sfx {
     if (!this.ok()) return;
     this.tone({ type: 'triangle', f: 500 + 900 * Math.max(0, Math.min(1, level)), peak: 0.045, a: 0.002, d: 0.035 });
   }
-  /** The red-slice perfect release: a bigger fanfare — rising bright arpeggio, sparkle, and a whoosh of fire. */
+  /** The red-slice perfect release: a bigger fanfare, rising bright arpeggio, sparkle, and a whoosh of fire. */
   perfect() {
     if (!this.ok()) return;
     const notes = [784, 1046.5, 1318.5, 1568, 2093];
@@ -497,7 +497,7 @@ class Sfx {
     if (!this.ok()) return;
     const pan = foot ? 0.12 : -0.12, k = rand(0.92, 1.08), v = run ? 1.25 : 1;
     if (concrete === 'grass') {
-      // round 57: grass and dirt — a soft swish and a dull thud
+      // round 57: grass and dirt, a soft swish and a dull thud
       this.noiseHit({ type: 'highpass', f: 2600 * k, peak: 0.035 * v, a: 0.01, d: 0.09, pan });
       this.tone({ f: 70 * k, f2: 45, peak: 0.06 * v, a: 0.004, d: 0.06, pan });
     } else if (concrete) {
@@ -509,7 +509,7 @@ class Sfx {
     }
   }
   /**
-   * Round 57: the generator at the trailer chugging away — a low uneven engine drone; `level` 0..1 (by distance).
+   * Round 57: the generator at the trailer chugging away, a low uneven engine drone; `level` 0..1 (by distance).
    * Call with 0 (or leave the scene) to stop it.
    */
   genHum(level: number) {

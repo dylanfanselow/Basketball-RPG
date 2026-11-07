@@ -42,7 +42,7 @@ export const ORB_COL: Record<OrbTo, { rim: number; body: number; light: number; 
  * A walkable cutaway room (apartment, garage, …): you walk around (stick / WASD, R2 / Shift to hurry), walls and
  * furniture are solid, ✕ at a door goes through it, L1 leaves to the menu. Subclasses supply the room and its art.
  */
-/** Round 60c: you in the rooms — a plain tee and your team-colour shorts (shared with the preloader). */
+/** Round 60c: you in the rooms, a plain tee and your team-colour shorts (shared with the preloader). */
 export function roomPlayerKit(c: { teamId: string }): Kit {
   const team = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[0];
   return { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
@@ -378,7 +378,7 @@ export abstract class RoomScene extends Phaser.Scene {
     const moved = Math.hypot(this.pos.x - before.x, this.pos.y - before.y);
     if (mag > 0.2) this.face = { x: m.x, y: m.y };
     this.dist += moved;
-    // round 52: footsteps — one per stride while walking (concrete in the garage, wood in the apartment)
+    // round 52: footsteps, one per stride while walking (concrete in the garage, wood in the apartment)
     if (moved > 0.001) {
       const run = Math.hypot(this.vel.x, this.vel.y) > WALK * 1.15, stride = run ? 3.1 : 2.4;
       if (this.dist - this.stepAt >= stride) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.footSurface(), this.stepFoot, run); }

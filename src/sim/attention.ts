@@ -5,7 +5,7 @@ import { clamp, clamp01 } from './math';
  * Round 47: how a defense reacts to scorers, the way real defenses do.
  *  - Who guards whom: the best-fitting defender goes on the biggest threat, the weakest defender hides on the least
  *    dangerous man (Brunson doesn't guard Luka). Works for 3v3 and 5v5 (every pairing is tried).
- *  - Heat: the outliers — a player taking a huge share of his team's shots (and scoring on them) draws more
+ *  - Heat: the outliers, a player taking a huge share of his team's shots (and scoring on them) draws more
  *    attention: keyed in, then doubles, then triples. A star taking ~30% of the shots is normal and is left alone.
  *    Heat never cools in a game; if his efficiency drops under the current coverage, the coverage is working and
  *    the defense doesn't send another man.
@@ -62,7 +62,7 @@ export const threatWeight = (rep: number, heatScore = 0) => ((rep + heatScore * 
  * Who guards whom: tries every pairing (5! = 120, 3! = 6) and keeps the one that maximises
  * Σ weight(o) × fit(d, o) − mismatch(d, o). Returns defender id → offensive player id.
  */
-/** `distW` > 0 (round 48, live changes of possession): weigh how far each defender is from each man (per ft) — in
+/** `distW` > 0 (round 48, live changes of possession): weigh how far each defender is from each man (per ft), in
  *  transition you pick up the nearest man, the scouting matchups come back at the next dead ball. */
 export function assignGuards(defs: Player[], offs: Player[], weight: (o: Player) => number, distW = 0): Map<string, string> {
   const n = Math.min(defs.length, offs.length), out = new Map<string, string>();
@@ -136,7 +136,7 @@ export function coverage(p: Player, h: Heat | undefined): Coverage {
 
 /**
  * The heat score from this game so far (before the never-cools max): mostly his share of the team's shots (70%) and
- * points (30%), ×100 — ~30 for a normal star, 50+ for someone taking half the shots, 70+ for a ball hog — plus a
+ * points (30%), ×100, ~30 for a normal star, 50+ for someone taking half the shots, 70+ for a ball hog, plus a
  * little for reputation (up to 5) and a hot streak (up to 4).
  */
 export function heatScore(rep: number, box: { fga: number; pts: number }, team: { fga: number; pts: number }, recent: boolean[]): number {

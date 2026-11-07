@@ -295,7 +295,7 @@ function drawJunk(c: C) {
   for (let y = -10; y <= 10; y++) for (let x = -14; x <= 14; x++) { const d = Math.hypot(x / 14, y / 10); if (d < 1) P(c, Xa(-3.2) + x, Gy(12.6) + y - 8, d > 0.85 ? '#9aa0a4' : x + y < -6 ? '#ffffff' : '#dfe3e6'); }
   R(c, Xa(4.5), Gy(14) - 16, 14, 16, '#c9cdd0'); R(c, Xa(4.5), Gy(14) - 16, 14, 2, '#eef0f2'); R(c, Xa(4.5) + 12, Gy(14) - 15, 2, 15, '#9da2a6');
   for (const [bx, by] of [[Xa(12.5), Gy(15.5)], [Xa(26), Gy(9)], [Xa(31.5), Gy(13)], [Xa(1), Gy(7)], [Xa(9.5), Gy(19)], [Xa(38), Gy(11)]]) { R(c, bx, by - 3, 9, 3, '#3a7a4a'); R(c, bx + 9, by - 2, 3, 1, '#3a7a4a'); P(c, bx + 2, by - 3, '#8ac89a'); }
-  // round 57b: the yard is a dump — tyres, trash bags, soggy boxes, cans, paper, a broken lawn chair, a bike frame
+  // round 57b: the yard is a dump, tyres, trash bags, soggy boxes, cans, paper, a broken lawn chair, a bike frame
   const tyre = (x: number, y: number, rx: number, ry: number) => { for (let a = 0; a < 64; a++) for (let t = 0; t < 4; t++) { const ang = a / 64 * Math.PI * 2, rr = 1 - t * 0.12; P(c, Math.round(x + Math.cos(ang) * rx * rr), Math.round(y + Math.sin(ang) * ry * rr), t === 0 ? '#3a3a3a' : '#161616'); } };
   tyre(Xa(-1.8), Gy(4.6) - 4, 16, 6); tyre(Xa(-1.6), Gy(4.6) - 10, 16, 6); tyre(Xa(6.5), Gy(6.2) - 12, 7, 13);
   const bag = (x: number, y: number, col: string) => { for (let yy = -12; yy <= 0; yy++) for (let xx = -10; xx <= 10; xx++) { const d = Math.hypot(xx / 10, (yy + 6) / 7); if (d < 1 - hn(xx, yy, 105) * 0.1) P(c, x + xx, y + yy, xx + yy < -8 ? tint(col, 0.35) : d > 0.8 ? shade(col, 0.6) : col); } R(c, x - 2, y - 15, 4, 4, shade(col, 0.7)); };
@@ -370,7 +370,7 @@ function drawBarrel(c: C, p: Piece) {
  * grey power cord zig-zagging up from it and drooping across to the trailer's inlet. Frame 1: shaken a pixel, run light on. */
 function drawGenerator(c: C, p: Piece, f: number) {
   const x0 = Xa(p.x), x1 = Xa(p.x + p.w), yb = Gy(p.y), yf = Gy(p.y + p.d), H = up(2.5), j = f;
-  // round 57c: run down — an oil stain under it, a bent rusty frame, a flat mismatched wheel, rust and dents,
+  // round 57c: run down, an oil stain under it, a bent rusty frame, a flat mismatched wheel, rust and dents,
   // the side panel gone (engine showing), duct tape, a peeling logo, a red fuel can beside it
   for (let y = -5; y <= 5; y++) for (let x = -26; x <= 26; x++) if ((x / 26) ** 2 + (y / 5) ** 2 < 1 - hn(x, y, 126) * 0.2) P(c, Math.round((x0 + x1) / 2) + x, yf + 2 + y, (x + y) % 5 === 0 ? '#2a2a2e' : '#1a1a1e');
   const b = box(c, x0, x1, yb - j, yf - j, H, '#1e1f22', { top: '#34363a' });
@@ -394,7 +394,7 @@ function drawGenerator(c: C, p: Piece, f: number) {
   // wheels: one fine, one flat (a different tyre)
   for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 25) P(c, x0 + 9 + x, yf + y - 3, x * x + y * y > 12 ? '#111' : '#555');
   for (let y = -3; y <= 3; y++) for (let x = -6; x <= 6; x++) if ((x / 6) ** 2 + (y / 3) ** 2 <= 1) P(c, x1 - 9 + x, yf + y - 1, (x / 6) ** 2 + (y / 3) ** 2 > 0.5 ? '#1a1a1a' : '#6a5a4a');
-  // the logo: a yellow triangle (point down) with a lightning bolt, like the sketch — faded and peeling
+  // the logo: a yellow triangle (point down) with a lightning bolt, like the sketch, faded and peeling
   const lx = Math.round((x0 + x1) / 2) + 4, ly = b.faceTop + 8 - j, LOGO = '#e8cc48';
   for (let y = 0; y < 18; y++) { const hw = Math.round(11 - y * 0.62); for (let x = -hw; x <= hw; x++) { const edge = Math.abs(x) >= hw - 1 || y < 2; if (edge && hn(x, y, 131) > 0.12 && !(x > 4 && y < 5)) P(c, lx + x, ly + y, LOGO); } }
   const bolt: [number, number][] = [[2, 3], [1, 4], [0, 5], [-1, 6], [0, 7], [1, 7], [2, 7], [1, 8], [0, 9], [-1, 10], [-2, 11]];

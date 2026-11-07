@@ -106,6 +106,7 @@ export function storyScene(stage: StoryStage): [string, object | undefined] {
     case 'ones': return ['Game', { mode: 'story', story: 'ones', venue: 'schoolRain' }];
     case 'night': return ['Trailer', { night: true, story: 'night' }];
     case 'bigGame': return ['Game', { mode: 'story', story: 'bigGame', venue: 'school' }];
+    case 'after': return ['Trailer', { story: 'after' }]; // round 60d: Mom, the day of the big game
     default: return c.story?.home === 'trailer' ? ['Trailer', undefined] : ['Apartment', undefined];
   }
 }

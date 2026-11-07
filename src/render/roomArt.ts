@@ -254,7 +254,7 @@ function drawWallDecor(c: C) {
   // living-room window with half-drawn blinds
   drawWindow(c, Math.round(AX(24.4)), 120, Math.round(AX(30.4) - AX(24.4)), 82, 0.28);
   drawPosters(c);
-  // wall calendar on the left wall, next to the fridge (round 46: the same parchment page as the calendar screen —
+  // wall calendar on the left wall, next to the fridge (round 46: the same parchment page as the calendar screen:
   // month at the top, 7-day grid, a pennant on a key game, a few days crossed off, a torn top-left corner)
   const K = CALENDAR;
   const bite = (a: number, v: number, r: number) => a + (1 - v) * 0.8 < r;   // a = 0 on screen-left, v = 1 at the top
@@ -453,7 +453,7 @@ export const ball = (c: C, x: number, y: number) => { R(c, x - 1, y, 3, 1, '#e07
 
 /** Tributes on the back wall (original art, no real logos): Be Like Ike, and nods to Curry, Kobe and LeBron. */
 function drawPosters(c: C) {
-  // BE LIKE IKE: the classic ad look — a soaring dunker on a sunset-orange sky, bold type
+  // BE LIKE IKE: the classic ad look, a soaring dunker on a sunset-orange sky, bold type
   hang(c, 458, 117, 38, 56, 0.035, (c) => { const x = 1, y = 1, w = 38, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => (v > 0.86 ? '#1d1d1d' : mix('#f6a53a', '#e2462c', v / 0.86)));
     for (let k = 0; k < 9; k++) P(c, x + 4 + Math.round(hn(k, 9) * 30), y + 4 + Math.round(hn(k, 8) * 10), '#ffe7b0');
@@ -461,7 +461,7 @@ function drawPosters(c: C) {
     ball(c, x + 29, y + 11);
     text3(c, x + Math.round((w - textW('BE LIKE')) / 2), y + 3, 'BE LIKE', '#ffffff', '#5a1a10');
     text3(c, x + Math.round((w - textW('IKE')) / 2), y + 49, 'IKE', '#f6a53a'); });
-  // KING 23: chalk toss — arms flung up in a cloud of white, wine and gold
+  // KING 23: chalk toss, arms flung up in a cloud of white, wine and gold
   hang(c, 639, 97, 34, 56, 0.07, (c) => { const x = 1, y = 1, w = 34, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => mix('#5a1a2e', '#2a0d18', v));
     for (let k = 0; k < 40; k++) { const a = hn(k, 1) * Math.PI * 2, r = 3 + hn(k, 2) * 10; P(c, x + 17 + Math.round(Math.cos(a) * r), y + 15 + Math.round(Math.sin(a) * r * 0.7), k % 3 ? '#f4f1e8' : '#cfc8b8'); }
@@ -475,7 +475,7 @@ function drawPosters(c: C) {
     ball(c, x + 20, y + 10);
     text3(c, x + Math.round((w - textW('MAMBA')) / 2), y + 2, 'MAMBA', '#f5b521');
     text3(c, x + Math.round((w - textW('24')) / 2), y + 43, '24', '#f4f1e8'); });
-  // CHEF 30: night night — hands pressed together by a tilted head, deep blue and gold, a long-range arc
+  // CHEF 30: night night, hands pressed together by a tilted head, deep blue and gold, a long-range arc
   hang(c, 648, 162, 38, 56, -0.025, (c) => { const x = 1, y = 1, w = 38, h = 56;
     posterFrame(c, x, y, w, h, (u, v) => mix('#1d428a', '#0f2350', v));
     for (let k = 0; k < 14; k++) P(c, x + 3 + k * 2, y + 22 - Math.round(Math.sin((k / 13) * Math.PI) * 10), '#ffc72c');
@@ -814,7 +814,7 @@ function drawCouch(c: C, p: Piece, f = 0) {
   }
   // feet
   for (const fx of [Math.round(AX(x0)) + 3, Math.round(AX(x1)) - 6]) R(c, fx, Math.round(AY(p.y + p.d)) - 1, 3, 3, '#3a2418');
-  // rust blanket: one sheet of fabric draped over the right half — over the top of the back cushion, down its face,
+  // rust blanket: one sheet of fabric draped over the right half, over the top of the back cushion, down its face,
   // across the seat and over the seat's front edge. Volume comes from how each surface catches the light (tops lit,
   // faces mid, the hanging part in shade), soft wrinkles running out from where it bunches, and a woven border.
   if (f === 0) drawCouchBlanket(c, Math.round(AX(x0 + p.w * 0.44)), Math.round(AX(x1 - arm)) + 1, back.top + 2, back.faceTop, seat.top, seat.faceTop, seat.yf);

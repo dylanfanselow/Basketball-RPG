@@ -58,9 +58,9 @@ function showToast(text: string) {
 }
 window.addEventListener('gamepadconnected', (e) => {
   const g = (e as GamepadEvent).gamepad;
-  showToast(`🎮 Controller connected: ${g.id.replace(/\(.*\)/, '').trim() || 'Gamepad'}${g.mapping === 'standard' ? '' : ' (non-standard mapping — buttons may differ)'}`);
+  showToast(`🎮 Controller connected: ${g.id.replace(/\(.*\)/, '').trim() || 'Gamepad'}${g.mapping === 'standard' ? '' : ' (non-standard mapping, buttons may differ)'}`);
 });
-window.addEventListener('gamepaddisconnected', () => showToast('Controller disconnected — keyboard still works'));
+window.addEventListener('gamepaddisconnected', () => showToast('Controller disconnected, keyboard still works'));
 
 // Fullscreen: F key or the ⛶ button (browsers only allow it from a key press or click, not a controller button)
 export function toggleFullscreen(): boolean {

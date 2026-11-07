@@ -43,7 +43,7 @@ export const ULT_MILESTONES: Record<string, { name: string; points: number }> = 
 };
 
 /**
- * Use the ultimate (round 51: it runs on rhythm — a full meter, once a game; using it drops the meter to the 3rd notch).
+ * Use the ultimate (round 51: it runs on rhythm, a full meter, once a game; using it drops the meter to the 3rd notch).
  * Returns true when it fired. CPU stars call this from the AI when the moment fits.
  */
 export function tryActivateUlt(sim: GameSim, p: Player): boolean {
@@ -52,8 +52,8 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
   const say = (text: string) => { if (human) sim.emit({ kind: 'ult', text, pid: p.id }); };
   if (!st || !st.id) { say('Ultimate: ??? (locked)'); return false; }
   if ((sim.ultsUsed[p.id] ?? 0) >= 1) { say('Ultimate used this game'); return false; }
-  if (p.rhythm < 100) { say(`Rhythm ${p.rhythm.toFixed(0)}% — fill it to ult`); return false; }
-  if (sim.ult.active) { say('Not now — another ultimate is in play'); return false; }
+  if (p.rhythm < 100) { say(`Rhythm ${p.rhythm.toFixed(0)}%: fill it to ult`); return false; }
+  if (sim.ult.active) { say('Not now: another ultimate is in play'); return false; }
   const def = ULTIMATES[st.id];
   const level = def.levels[Math.min(st.level, def.levels.length - 1)];
   const rim = sim.rim(p.team);
@@ -91,7 +91,7 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
   if (ok) {
     p.rhythm = AFTER_ULT; // keep the three notches; only the last stretch rebuilds (and there's no second ult tonight)
     sim.ultsUsed[p.id] = (sim.ultsUsed[p.id] ?? 0) + 1;
-    sim.emit({ kind: 'ult', text: human ? `ULTIMATE: ${level.name}!` : `${p.name} — ULTIMATE: ${level.name}!`, pid: p.id, team: p.team, big: true, good: human,
+    sim.emit({ kind: 'ult', text: human ? `ULTIMATE: ${level.name}!` : `${p.name}: ULTIMATE ${level.name}!`, pid: p.id, team: p.team, big: true, good: human,
       data: { id: st.id, level: st.level, pos: p.pos, name: level.name, cinematic } });
   } else say(`${def.name}: not available from here`);
   return ok;
@@ -126,7 +126,7 @@ export function ultAction(sim: GameSim, p: Player, kind: 'fake' | 'pass', target
         if (dist(d.p, p.p) > 8 || d.z > 0 || d.state === 'fallen') continue;
         if (sim.isAI(d)) { d.lastBitAt = sim.time; sim.jump(d, 0.9); }
       }
-      sim.emit({ kind: 'move', text: 'ULT FAKE — they all bit! (stick to the rim + ✕)', pid: p.id, big: true });
+      sim.emit({ kind: 'move', text: 'ULT FAKE, they all bit! (stick to the rim + ✕)', pid: p.id, big: true });
       return true;
     }
     if (a.id === 'ftTakeoff' && lv.stall && !a.stalled && p.state === 'shoot' && p.pendingShot) {

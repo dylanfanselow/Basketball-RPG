@@ -177,7 +177,7 @@ export class GameScene extends Phaser.Scene {
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
     this.inputP2 = twoHumans ? new InputMapper(this, 2) : null;
     const [t0, t1] = this.sim.teams;
-    // round 56: the venue — the arena, or the school court (day / rainy night) for story events
+    // round 56: the venue, the arena, or the school court (day / rainy night) for story events
     const venue = this.initData?.venue ?? app.settings.venue ?? 'arena';
     this.sim.cfg.venue = venue;
     this.school = venue === 'arena' ? null : venue === 'schoolRain' ? 'rain' : 'day';
@@ -789,7 +789,7 @@ export class GameScene extends Phaser.Scene {
     this.drops = Array.from({ length: 150 }, () => ({ x: Math.random() * (VIEW_W + 200), y: Math.random() * VIEW_H, len: 10 + Math.random() * 14, sp: 900 + Math.random() * 500 }));
     this.nextLightning = this.time.now + 6000 + Math.random() * 8000;
   }
-  /** Round 56: per frame at the school court — the flag waves (day), the rain falls (night). */
+  /** Round 56: per frame at the school court, the flag waves (day), the rain falls (night). */
   renderSchool() {
     const now = this.time.now;
     if (this.flag) this.flag.setFrame(this.school === 'day' ? Math.floor(now / 160) % 4 : 0);
@@ -1317,8 +1317,8 @@ export class GameScene extends Phaser.Scene {
   popEnds: number[] = [];
   /**
    * A rhythm change for you, below the top bars (round 54: held ~3.5 s). Scoring pops are two lines: the gain and the
-   * method, then the math with the move's status in its own colour — `FRESH MOVE ×1.00` (green) or
-   * `×0.36 STALE — 3rd time tonight` (orange). Flat gains / losses are one line ("+4 assist", "−6 turnover").
+   * method, then the math with the move's status in its own colour, `FRESH MOVE ×1.00` (green) or
+   * `×0.36 STALE, 3rd time tonight` (orange). Flat gains / losses are one line ("+4 assist", "−6 turnover").
    */
   rhythmPop(amount: number, why: string, d: { base?: string; times?: number; decay?: number } = {}) {
     const u = this.sim.user; if (!u || app.settings.debug.equation || Math.abs(amount) < 0.5) return;
@@ -1335,7 +1335,7 @@ export class GameScene extends Phaser.Scene {
       const times = d.times ?? 0, ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
       const base = this.add.text(0, 21, `${d.base}  `, st(14, '#ffffff')).setOrigin(0, 0);
       const tag = times > 0
-        ? this.add.text(0, 21, `×${(d.decay ?? 1).toFixed(2)} STALE — ${ord(times + 1)} time tonight`, st(14, '#ffa040')).setOrigin(0, 0)
+        ? this.add.text(0, 21, `×${(d.decay ?? 1).toFixed(2)} STALE, ${ord(times + 1)} time tonight`, st(14, '#ffa040')).setOrigin(0, 0)
         : this.add.text(0, 21, 'FRESH MOVE ×1.00', st(14, '#7dff9a')).setOrigin(0, 0);
       const w = base.width + tag.width;
       base.setX(-w / 2); tag.setX(-w / 2 + base.width);
@@ -1357,8 +1357,8 @@ export class GameScene extends Phaser.Scene {
     let eq = '';
     if (prev && showEq) eq = `SHOT CHANCE  ${fmtEq(prev)}`;
     else if (ls && sim.time - ls.at < 4 && showEq) eq = `${ls.user ? 'YOUR SHOT' : ls.name}: ${fmtEq(ls.ev)}  →  ${ls.blocked ? 'BLOCKED' : ls.made ? 'MADE' : 'MISSED'}`;
-    else if (sim.cfg.oneOnOne) eq = 'MAKE IT, TAKE IT — score and you keep it; stops and defensive boards check it back up top.  Pump fake = tap ✕';
-    else if (sim.cfg.halfCourt && !sim.live) eq = 'HALF COURT 3v3 — after every score, stop or dead ball the team with the ball checks it up top.';
+    else if (sim.cfg.oneOnOne) eq = 'MAKE IT, TAKE IT: score and you keep it; stops and defensive boards check it back up top.  Pump fake = tap ✕';
+    else if (sim.cfg.halfCourt && !sim.live) eq = 'HALF COURT 3v3: after every score, stop or dead ball the team with the ball checks it up top.';
     else eq = sim.userOnCourt ? (sim.user!.team === sim.possession ? 'Get open. Run your assignment. △ = call for the ball (teammates decide based on trust).' : 'Defense: ✕ = block/contest  △ = swipe/deflect  ○ = take a charge') : '';
     // round 51: without the dev equation the top bar is the rhythm meter, with the short hints on the left
     this.eqText.setWordWrapWidth(showEq || !sim.user ? VIEW_W - 24 : VIEW_W / 2 - 236).setFontSize(showEq || !sim.user ? 15 : 12).setText(eq);
@@ -1392,7 +1392,7 @@ export class GameScene extends Phaser.Scene {
     // lob sets: when you have the ball in the lob phase, the hint names the lob man
     const lobRole = sim.runner.cur?.lob, lobMan = lobRole && sim.user && sim.holder() === sim.user ? sim.byPlayRole(sim.possession, lobRole) : null;
     const lobHint = lobMan && lobMan !== sim.user ? `   ·   hold △ = LOB to ${lobMan.name}` : '';
-    this.playText.setText(playName ? `PLAY: ${playName}${forYou ? ' — for YOU' : ''}${asg ? `   —   YOU: ${asg.act.toUpperCase()}` : ''}${lobHint}` : '');
+    this.playText.setText(playName ? `PLAY: ${playName}${forYou ? ' (for YOU)' : ''}${asg ? `  ·  YOU: ${asg.act.toUpperCase()}` : ''}${lobHint}` : '');
 
     // trust bars (top left, under the score)
     const tr = sim.trust;
@@ -1420,7 +1420,7 @@ export class GameScene extends Phaser.Scene {
       const plan = sim.cfg.rotation;
       const next = plan?.stints.find(([s]) => s > sim.elapsed);
       const q = next ? Math.floor(next[0] / sim.cfg.quarterLen) + 1 : null;
-      this.benchText.setVisible(true).setText(`ON THE BENCH  (${plan?.role ?? ''})\nCoach trust ${sim.trust.coach.toFixed(0)} — earn minutes with good basketball\n${q ? `Coach plans to sub you in during Q${Math.min(4, q)}` : 'No more minutes planned tonight'}\n\nSimulating at ${app.settings.benchSpeed}x`);
+      this.benchText.setVisible(true).setText(`ON THE BENCH  (${plan?.role ?? ''})\nCoach trust ${sim.trust.coach.toFixed(0)}. Earn minutes with good basketball\n${q ? `Coach plans to sub you in during Q${Math.min(4, q)}` : 'No more minutes planned tonight'}\n\nSimulating at ${app.settings.benchSpeed}x`);
     } else this.benchText.setVisible(false);
 
   }

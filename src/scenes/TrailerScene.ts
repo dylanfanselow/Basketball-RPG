@@ -22,7 +22,7 @@ import { prepareStory } from './preload';
 export const TRAILER_DOOR_STORY: ((at: 'trailerDoor') => void)[] = [];
 
 /**
- * Round 57: the trailer yard — the "Lights on a generator" backstory place (the owner's photo + sketch). Walk the yard,
+ * Round 57: the trailer yard, the "Lights on a generator" backstory place (the owner's photo + sketch). Walk the yard,
  * climb the steps, ✕ at the door: it opens, you go in and the day ends (night, "DAY n", morning on the top step,
  * energy orbs refill the bar). The generator chugs away beside the steps (louder as you get close).
  */
@@ -31,11 +31,11 @@ export class TrailerScene extends RoomScene {
   /** Round 57c: the night version (Menu → Trailer (night); story events can ask for it). */
   night = false;
   /** Round 60: 'night' = home after the 1s with Kingston (the next day is the big game). */
-  story: 'night' | null = null;
+  story: 'night' | 'after' | null = null;
   private box: StoryBox | null = null;
   private lines: { who: BoxSpeaker; text: string; name?: string }[] = [];
   /**
-   * Round 60b: the night after the 1s — you walk up the path, Mom comes out on the steps, you talk, she waves you in
+   * Round 60b: the night after the 1s, you walk up the path, Mom comes out on the steps, you talk, she waves you in
    * and you follow her inside (→ the next day: the big game).
    */
   private cut: 'walkIn' | 'momOut' | 'talk' | 'usher' | 'walkUp' | null = null;
@@ -43,7 +43,7 @@ export class TrailerScene extends RoomScene {
   private leg = 0;
   private shown = true;
   private mom: Phaser.GameObjects.Sprite | null = null;
-  init(data?: { at?: string; night?: boolean; story?: 'night' }) { super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; }
+  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' }) { super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; }
   room(): RoomDef { return TRAILER_YARD; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm, this.night); }
   extraObstacles(): Poly[] { return [TRAILER_SOLID]; }
@@ -54,7 +54,7 @@ export class TrailerScene extends RoomScene {
 
   onCreate() {
     this.box = null; this.lines = []; this.cut = null; this.cutT = 0; this.leg = 0; this.mom = null;
-    if (this.story === 'night') {
+    if (this.story === 'night' || this.story === 'after') {
       this.box = new StoryBox(this, { y: 590 });
       this.mom = this.buildMom();
       this.cut = 'walkIn';
@@ -105,10 +105,35 @@ export class TrailerScene extends RoomScene {
   }
 
   /**
-   * ✕ at the door: it opens, you step in, night falls and the day ends (the owner: a story element goes here later —
+   * ✕ at the door: it opens, you step in, night falls and the day ends (the owner: a story element goes here later:
    * TRAILER_DOOR_STORY). In the morning you're back on the top step with the door shut and your energy refilled.
    */
-  /** Round 60b: Mom — a standing front-view figure (the fans' drawing): your skin, long hair, a plain hoodie. */
+  /**
+   * Round 60d: Mom the day of the big game. A great game (Lincoln won, your stat sum the best on the floor): she's so
+   * proud you got your opportunity and made the most of it. Otherwise: she talked to the scout, and he said you have
+   * promise. Either way: go check on Kingston.
+   */
+  private afterLines(you: string): { who: BoxSpeaker; text: string; name?: string }[] {
+    const r = app.career.story?.bigGame ?? { great: false, won: false, pts: 0, reb: 0, ast: 0 };
+    const kingston = { who: 'mom' as const, text: 'Now go check on Kingston. That poor boy was sick as a dog.' };
+    if (r.great) return [
+      { who: 'mom', text: 'There\'s my baby! The whole street\'s talking about you.' },
+      { who: 'me', name: you, text: `Ma... we won. I had ${r.pts} points, ${r.reb} boards, ${r.ast} assists.` },
+      { who: 'mom', text: 'You got your opportunity and you made the most of it. I am so proud of you.' },
+      { who: 'mom', text: 'That\'s what I told you. Be ready, and when it comes, you take it.' },
+      kingston,
+    ];
+    return [
+      { who: 'mom', text: 'Hey, come here. How you feeling?' },
+      { who: 'me', name: you, text: r.won ? 'I blew it, Ma. First real chance and I blew it.' : 'We lost, Ma. First real chance and I blew it.' },
+      { who: 'mom', text: 'Mm-mm. I talked to that scout after the game.' },
+      { who: 'mom', text: 'He said you have promise. He wrote your name down, baby. Your name.' },
+      { who: 'mom', text: 'So you keep working. This isn\'t the end. It\'s the start.' },
+      kingston,
+    ];
+  }
+
+  /** Round 60b: Mom, a standing front-view figure (the fans' drawing): your skin, long hair, a plain hoodie. */
   private buildMom(): Phaser.GameObjects.Sprite {
     const c = app.career, key = `story_mom_${c.appearance.skin}_v1`;
     if (!this.textures.exists(key)) {
@@ -120,7 +145,7 @@ export class TrailerScene extends RoomScene {
     }
     const door = this.piece('door');
     return this.add.sprite(sxOf(DOOR_SPOT.x), syOf(DOOR_SPOT.y - 0.35) - liftAt(DOOR_SPOT) * RS, key, 0)
-      .setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setTint(0x9aa4d4).setAlpha(0).setDepth((door?.depth ?? 0) + 1);
+      .setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setTint(this.night ? 0x9aa4d4 : 0xffffff).setAlpha(0).setDepth((door?.depth ?? 0) + 1);
   }
 
   /** Round 60b: the cutscene with Mom, step by step (busy the whole time). */
@@ -135,7 +160,7 @@ export class TrailerScene extends RoomScene {
         if (!this.playerReady()) return;
         this.shown = true; this.drawPlayer(0);
         this.cameras.main.fadeIn(600, 0, 0, 0);
-        prepareStory(this, 'bigGame');
+        if (this.story === 'night') prepareStory(this, 'bigGame');
         return;
       }
       // up the dirt path to the foot of the steps
@@ -150,7 +175,7 @@ export class TrailerScene extends RoomScene {
       this.drawPlayer(0);
       if (this.cutT > 0.7) {
         this.cut = 'talk';
-        this.lines = [
+        this.lines = this.story === 'after' ? this.afterLines(you) : [
           { who: 'mom', text: 'There you are. Look at you, you\'re soaked. How\'d it go?' },
           { who: 'me', name: you, text: 'He cooked me again, Ma. Kingston\'s just... better. Way better.' },
           { who: 'me', name: you, text: 'Scouts are coming for him tomorrow. Nobody\'s gonna be looking at me.' },
@@ -165,11 +190,20 @@ export class TrailerScene extends RoomScene {
       mom.setFrame(this.lines[0]?.who === 'mom' && Math.sin(this.t * 2.2) > 0.6 ? 4 : 0);
       if (!this.lines.length) { this.cut = 'usher'; this.cutT = 0; }
     } else if (this.cut === 'usher') {
-      // waves you in, then heads inside ahead of you
+      // waves you in (night) / waves, then heads back inside (after the game)
       this.drawPlayer(0);
       mom.setFrame(this.cutT < 1.3 ? (Math.floor(this.cutT / 0.22) % 2 ? 5 : 4) : 0);
       if (this.cutT > 1.3 && mom.alpha === 1) this.tweens.add({ targets: mom, alpha: 0, duration: 380 });
-      if (this.cutT > 1.8) { this.cut = 'walkUp'; this.cutT = 0; }
+      if (this.cutT > 1.8) {
+        if (this.story === 'after') {
+          // round 60d: she goes back in; the yard is yours (the prologue is over)
+          door?.setFrame(0); sfx.doorClose();
+          this.cut = null; this.busy = false; this.box?.hide();
+          setStage('done'); sfx.music(null);
+          return;
+        }
+        this.cut = 'walkUp'; this.cutT = 0;
+      }
     } else if (this.cut === 'walkUp') {
       if (this.walkTowards(DOOR_SPOT, dt) || this.cutT > 4) {
         this.cut = null; this.busy = false;

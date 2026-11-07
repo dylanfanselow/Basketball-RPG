@@ -21,7 +21,7 @@ const COACH_X = 41;
 interface Say { who: BoxSpeaker; text: string; /** tag override (your name, a teammate's) */ name?: string; /** coach throws a fit during this line */ fit?: boolean; then?: () => void }
 
 /**
- * Round 60: runs a prologue game inside GameScene — the tutorial's box (from the TutorialDirector), the 1s (intro,
+ * Round 60: runs a prologue game inside GameScene, the tutorial's box (from the TutorialDirector), the 1s (intro,
  * Kingston's goodbye, your thought as he leaves), and the big game (the coach's fit about Kingston's stomach virus,
  * "you're starting", the scout on the bleachers, LOCKED IN). `update` returns true when the sim must not step (a
  * line is up). Stage changes are saved on the career so Load Save picks the story up here.
@@ -62,10 +62,10 @@ export class StoryRun {
         { who: 'me', name: you, text: 'Didn\'t get much sleep last night.' },
         { who: 'mate', name: mateName, text: 'Well wake up. Coach is looking for Kingston and he ain\'t here.' },
         { who: 'coach', text: `Where's ${kn}? WHERE IS ${kn.toUpperCase()}?!`, fit: true },
-        { who: 'coach', text: 'A stomach virus?! TODAY?! The one day — the ONE day — a scout drives three hours to watch him!', fit: true },
+        { who: 'coach', text: 'A stomach virus?! TODAY?! The one day, the ONE day, a scout drives three hours to watch him!', fit: true },
         { who: 'coach', text: 'Unbelievable. Un-be-lievable.', fit: true },
         { who: 'coach', text: `...Fine. #${c.number}. ${last}. You're starting.` },
-        { who: 'coach', text: 'Everybody locked in! Good fundamental ball — box out, talk on D, make the extra pass. There\'s a scout in the stands today.' },
+        { who: 'coach', text: 'Everybody locked in! Good fundamental ball: box out, talk on D, make the extra pass. There\'s a scout in the stands today.' },
         { who: 'narrator', text: `LOCKED IN: you're +${LOCKED_IN} on every stat this game. Show him.`, then: () => this.banner('LOCKED IN', `+${LOCKED_IN} ALL STATS  ·  THE SCOUT IS WATCHING`) },
       ]);
     }
@@ -77,7 +77,7 @@ export class StoryRun {
   /** Per frame, before the sim steps. True = hold the sim (a line is up, or we're leaving). */
   update(): boolean {
     const gs = this.gs, inp = gs.input2;
-    // round 60c: this game's sheets are drawn — start on the next scene's (no "Lacing up" / no missing player later)
+    // round 60c: this game's sheets are drawn, start on the next scene's (no "Lacing up" / no missing player later)
     if (!this.prepped) {
       this.prepped = true;
       if (this.which === 'tutorial') prepareStory(gs, 'ones');
@@ -160,7 +160,7 @@ export class StoryRun {
 
   /**
    * "See you tomorrow": he turns and walks off into the rain, away from the hoop and out of the picture (round 60b;
-   * GameScene animates him from his velocity — the same stride rooms use for walking). Your thoughts play meanwhile.
+   * GameScene animates him from his velocity, the same stride rooms use for walking). Your thoughts play meanwhile.
    */
   private kingstonLeaves() {
     const sim = this.gs.sim, king = sim.players.find((p) => p.id === RIVAL_ID);

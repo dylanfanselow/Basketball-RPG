@@ -47,7 +47,7 @@ describe('round 49: the CPU coach', () => {
     for (let t = 0; t < 1500 && !g.over; t += 1 / 30) g.update(1 / 30, inp);
     const runs = Object.values(g.playLog[0]).reduce((n, l) => n + l.runs, 0) + Object.values(g.playLog[1]).reduce((n, l) => n + l.runs, 0);
     expect(runs).toBeGreaterThan(20);
-    expect(g.events.filter((e) => e.kind === 'play').some((e) => /—/.test(e.text))).toBe(true);
+    expect(g.events.filter((e) => e.kind === 'play').some((e) => /", \w/.test(e.text))).toBe(true);
     for (const e of g.events.filter((e) => e.kind === 'play')) expect(e.text).not.toMatch(/3v3/);
   });
 });

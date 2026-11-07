@@ -27,6 +27,8 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: 1s vs Kingston', action: () => this.story('ones'), hint: 'To 11, 1s & 2s, win by 2. His offense is all 99s.' },
       { label: 'Story: Trailer (that night)', action: () => this.story('night'), hint: 'Home after the 1s; ✕ at the door → the next day.' },
       { label: 'Story: Big game (scout)', action: () => this.story('bigGame'), hint: 'Kingston is out sick: the coach starts you. Locked in: +10 all stats.' },
+      { label: 'Story: After the game (great)', action: () => this.after(true), hint: 'Round 60d: Mom the day of the big game, after a great game (won + best stat sum).' },
+      { label: 'Story: After the game (promise)', action: () => this.after(false), hint: 'Round 60d: Mom says the scout told her you have promise.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -34,7 +36,7 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
       { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
-    ], 15);
+    ], 13);
     this.add.text(640, 140, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
     this.add.text(640, 168, [
       'CONTROLS (gamepad)                    KEYBOARD',
@@ -53,6 +55,13 @@ export class MenuScene extends Phaser.Scene {
   }
   /** Round 60: jump to a story stage (sets it on the career, like Load Save would resume it). */
   private story(stage: StoryStage) { setStage(stage); const [scene, data] = storyScene(stage); this.scene.start(scene, data); }
+  /** Round 60d: Mom's after-game scene with a made-up result. */
+  private after(great: boolean) {
+    setStage('after');
+    app.career.story!.bigGame = great ? { great, won: true, pts: 31, reb: 9, ast: 6 } : { great, won: false, pts: 12, reb: 4, ast: 2 };
+    app.changed();
+    const [scene, data] = storyScene('after'); this.scene.start(scene, data);
+  }
   padText!: Phaser.GameObjects.Text;
   soundText!: Phaser.GameObjects.Text;
   update() {

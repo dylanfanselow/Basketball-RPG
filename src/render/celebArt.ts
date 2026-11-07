@@ -31,7 +31,7 @@ export function castLook(i: number): CelebLook {
     Object.assign(look, { outfit: 'gown', color: '#8e1324', accent: '#b8182c', chain: false });
   }
   if (i === 17) {
-    // #17: the cane man — black suit, top hat, silver skull mask, gold dragon-head cane
+    // #17: the cane man, black suit, top hat, silver skull mask, gold dragon-head cane
     Object.assign(look.a, { skin: 3, facial: 'none' });
     Object.assign(look, { outfit: 'suit', color: '#121216', accent: '#121216', hat: 'tophat', shades: null, chain: false, longHair: null, cane: true });
   }

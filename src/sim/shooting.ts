@@ -237,7 +237,7 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const noteLabel = con.notes.length ? ` (${con.notes.join(', ')})` : '';
   terms.push({ label: top ? `contest ${(contest * 100).toFixed(0)}%: ${top.name} ${top.dist.toFixed(1)}ft${cinLabel}${noteLabel}` : con.notes.length ? `contest 0%: ${con.notes.join(', ')}` : 'open', value: 1 - contest, kind: 'contest' });
 
-  // round 48: finishing through a crowd — every real contester past the first makes it harder (and a dunk over a
+  // round 48: finishing through a crowd, every real contester past the first makes it harder (and a dunk over a
   // crowd is a poster attempt, harder still). On screen like every other term.
   const crowd = crowdAt(type, con.by);
   if (crowd >= 2) {

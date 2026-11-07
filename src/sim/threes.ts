@@ -1,5 +1,5 @@
 /**
- * Quick 3v3: three a side from the real rosters. Slots: Guard (PG/SG), Wing (SG/SF/PF), Big (PF/C) — on the court
+ * Quick 3v3: three a side from the real rosters. Slots: Guard (PG/SG), Wing (SG/SF/PF), Big (PF/C), on the court
  * they're roles 1 / 3 / 5 (GameSim.refreshOnCourt), which the 3v3 playbook (plays tagged '3v3') is written for.
  * Full court (like Quick 5v5) or half court (one basket, check it up top after every score / stop / dead ball).
  * Phaser-free; no state.ts.

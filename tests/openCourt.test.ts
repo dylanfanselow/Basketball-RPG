@@ -3,13 +3,13 @@ import { makeGame } from './helpers';
 import { emptyInput } from '../src/sim/game';
 import { clearPath } from '../src/sim/ai/offense';
 
-describe('round 48: open court — finish the run', () => {
+describe('round 48: open court, finish the run', () => {
   const setup = (blocker: boolean) => {
     const g = makeGame({ seed: 5 });
     const inp = emptyInput();
     for (let t = 0; t < 30 && !(g.live && g.holder()); t += 1 / 30) g.update(1 / 30, inp);
     const team = g.possession, rim = g.rim(team), sgn = Math.sign(rim.x - 47);
-    const runner = g.teams[team].onCourt.find((p) => p.role === '5')!; // a big — the old outlet rule threw it back to the PG
+    const runner = g.teams[team].onCourt.find((p) => p.role === '5')!; // a big, the old outlet rule threw it back to the PG
     g.transitionUntil = g.time + 5; g.shotClock = 24;
     runner.p = { x: 47 + sgn * 4, y: 22 }; runner.vel = { x: sgn * 14, y: 0 };
     // everyone else is behind the play (toward the other basket)

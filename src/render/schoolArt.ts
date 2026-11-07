@@ -7,11 +7,11 @@ import { shade, tint } from './sprites';
 /**
  * Round 56: the school court (the owner's sketch + reference photo), a game venue for story events.
  * Side-on like the arena: the asphalt court in front, a chain-link fence along the back of the court, and behind it
- * the school — tan portable classrooms (long side to us, white AC units on the wall, barred windows, a ramp), the
+ * the school, tan portable classrooms (long side to us, white AC units on the wall, barred windows, a ramp), the
  * main brick building further back, a flag pole and schoolyard stuff (lunch tables, bike rack, trash cans, tetherball,
  * a "GO EAGLES" banner). Drawn in the apartment / garage pixel style (art-pixel grid, hn noise shading, dark outlines)
  * at the room art's density (0.75 art px per scene unit), baked once per variant into one texture.
- * Variants: 'day' (blue sky, kids by the fence — see crowd.ts SchoolKids) and 'rain' (night, wet asphalt, light poles,
+ * Variants: 'day' (blue sky, kids by the fence, see crowd.ts SchoolKids) and 'rain' (night, wet asphalt, light poles,
  * a few lit windows; the falling rain itself is a live layer in GameScene).
  */
 export type SchoolVariant = 'day' | 'rain';

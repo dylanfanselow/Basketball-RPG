@@ -702,7 +702,7 @@ CLIPS.push({ name: 'benchPress', frames: 12, loop: true, keys: [{ t: 0, pose: BP
 // sleeping on the couch (round 45): on his back along the seat (side view, head at -x on the pillow, looking up like the
 // bench press), one hand on his belly, the other hanging off the cushion, legs out with soft knees; the chest rises.
 // Round 46: propped up on the pillow (torso reclined, head tipped back) with the knees a little bent, so
-// the whole figure (hair included) fits inside the 96-px frame even for a 7-footer — the head used to be cut off.
+// the whole figure (hair included) fits inside the 96-px frame even for a 7-footer, the head used to be cut off.
 const SL_BODY = (breath: number) => legs({ head: [-23, 50 + breath * 0.5], neck: [-20, 45 + breath], sF: [-16, 41 + breath], sB: [-16, 42 + breath], eF: [-16, 41], eB: [-16, 42], hF: [-16, 41], hB: [-16, 42], hip: [2, 24], kF: [0, 0], kB: [0, 0], fF: [0, 0], fB: [0, 0], ball: null, lat: {}, headTurn: -0.85 }, [37, 23], [36, 21]);
 const SL = (breath: number) => arms(SL_BODY(breath), [-1, 32 + breath], [-19, 17], [-1, 1]);
 CLIPS.push({ name: 'sleep', frames: 8, loop: true, keys: [{ t: 0, pose: SL(0) }, { t: 0.5, pose: SL(1.4) }, { t: 1, pose: SL(0) }] });

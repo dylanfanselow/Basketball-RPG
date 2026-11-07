@@ -29,7 +29,7 @@ export const GARAGE_DOORS: Door[] = [
   // the back-wall door goes back into the apartment (you come in through it too)
   { id: 'apartment', label: 'Apartment', spot: { x: 31.8, y: 1.4 }, side: 'B', span: [30.4, 33.2], to: { scene: 'Apartment', at: 'garage' } },
   // the left-wall door: outside (not yet)
-  { id: 'outside', label: 'Outside', spot: { x: 7.6, y: 5.6 }, side: 'L', span: [4.2, 7.0], soon: 'Outside — coming soon' },
+  { id: 'outside', label: 'Outside', spot: { x: 7.6, y: 5.6 }, side: 'L', span: [4.2, 7.0], soon: 'Outside: coming soon' },
 ];
 
 export const GARAGE_SPAWN: V = { x: 20.0, y: 12.6 };

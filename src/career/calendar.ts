@@ -2,7 +2,7 @@ import { CareerState, isKeyGame, gameDay } from './career';
 
 /**
  * The season calendar (round 46): career days mapped onto real dates. Day 1 is Monday 19 Oct 2026, so the opener
- * (game 0, day 2) falls on Tuesday 20 Oct 2026 — the 2026-27 opening night. Dates are UTC so time zones can't shift
+ * (game 0, day 2) falls on Tuesday 20 Oct 2026, the 2026-27 opening night. Dates are UTC so time zones can't shift
  * them. Pure: no Phaser, no `state.ts`.
  */
 export const SEASON_DAY1 = Date.UTC(2026, 9, 19);

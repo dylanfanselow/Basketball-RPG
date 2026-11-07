@@ -5,7 +5,7 @@
   The owner sometimes edits files on GitHub, so **`git pull --rebase origin main` before pushing**.
 - **Browser link (private artifact):** https://claude.ai/artifact/Vfg8WiUU3S3ACrfuEDx4qX
   Rebuild with `npm run build:single` → `dist/hoop-career.html`, then republish that file to the same URL
-  (Artifact tool with `url`). Round 60c: the music isn't inlined — publish `public/music/arcade.mp3` and
+  (Artifact tool with `url`). Round 60c: the music isn't inlined, publish `public/music/arcade.mp3` and
   `public/music/sad-story.mp3` alongside as `files` (`music/…`); they persist across republishes.
 - Owner plays locally on a Mac in Chrome: `cd Basketball-RPG && git pull` then `npm run dev`
   (http://localhost:5173). No new npm packages so far; tell the owner to `npm install` if one is added.
@@ -20,7 +20,7 @@ npm run build:single # single-file build for the browser link
 
 ## How each round goes
 1. Owner sends feedback → plan in plan mode (ask only genuinely open questions; see DECISIONS.md first).
-   **Once the plan is written, build it — don't wait for a separate "go"** (owner, round 22). If a session restart
+   **Once the plan is written, build it, don't wait for a separate "go"** (owner, round 22). If a session restart
    drops plan mode before approval, carry on with the written plan.
 2. Implement sim first, tests next, then render/HUD/audio.
 3. Verify: `npm test`, headless stats (`scripts/stats.test.ts`, `scripts/scoring.test.ts`); after changing plays or
@@ -42,7 +42,7 @@ npm run build:single # single-file build for the browser link
   scene's `create()`. Don't `setBounds` the main camera (with origin 0 its clamp is off); clamp scroll manually.
 - Sprite sheets are built **asynchronously** (workers). Anything that needs a sheet must handle `null` until ready
   (`GameScene.sheetFor`). Sheet-drawing code must work on an `OffscreenCanvas` (no `document` in workers).
-- **Angled frames are lazy** (`FrameCache`): never assume an angled frame exists — go through `cache.get` and fall
+- **Angled frames are lazy** (`FrameCache`): never assume an angled frame exists, go through `cache.get` and fall
   back to the side-view sheet frame. New turning clips must be added to `ANGLED` in GameScene; a pose's sideways
   spread goes in `Pose.lat` (invisible at yaw 0). Headless draws ~4 ms per angled frame (software canvas).
 - Headless Chromium renders WebGL in software here: fps/load numbers from Playwright are far worse than on a real

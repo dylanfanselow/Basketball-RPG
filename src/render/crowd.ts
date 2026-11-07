@@ -213,7 +213,7 @@ export interface CrowdLike {
 }
 
 /**
- * Round 56: the school court's spectators — a handful of kids in hoodies and tees standing along the fence and on the
+ * Round 56: the school court's spectators, a handful of kids in hoodies and tees standing along the fence and on the
  * little bleacher at midcourt (none on the rainy night). They cheer every big play (it's a pickup crowd: both sides).
  */
 export class SchoolKids implements CrowdLike {

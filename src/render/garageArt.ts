@@ -80,7 +80,7 @@ function drawShell(c: C) {
     for (let x = Math.round(rx); x < POST_R[0]; x++) P(c, x, y, x <= Math.round(rx) + 1 ? '#a08f70' : hn(x, y, 13) < 0.05 ? '#a99878' : y < WALL_TOP + 8 ? '#a49374' : '#b5a383');
     for (let x = POST_L[1]; x < Math.round(lx); x++) P(c, x, y, x >= Math.round(lx) - 2 ? '#857761' : hn(x, y, 12) < 0.05 ? '#8f8169' : y < WALL_TOP + 8 ? '#867862' : '#9b8d74');
   }
-  // concrete floor: mottled, darker toward the walls, a few cracks (round 52: no oil stain — it read as a shadow)
+  // concrete floor: mottled, darker toward the walls, a few cracks (round 52: no oil stain, it read as a shadow)
   for (let y = FLOOR_ROW; y < ART_H; y++) {
     const yf = yOfRow(y), lx = Math.round(AX(wallL(yf))), rx = Math.round(AX(wallR(yf)));
     for (let x = lx; x < rx; x++) {
@@ -238,7 +238,7 @@ export function drawGarageBackground(): HTMLCanvasElement {
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   // nothing is drawn past the right brick post: that's where the picture ends
-  drawYardLeft(c); drawShell(c); drawWallStuff(c); drawHouseDoor(c); drawFloorStuff(c); // (round 52: no baked footprint shadows — they read as grey slabs)
+  drawYardLeft(c); drawShell(c); drawWallStuff(c); drawHouseDoor(c); drawFloorStuff(c); // (round 52: no baked footprint shadows, they read as grey slabs)
   drawPost(c, POST_L[0], POST_L[1]); drawPost(c, POST_R[0], POST_R[1]);
   return cv;
 }
@@ -342,8 +342,8 @@ function drawHoop(c: C, p: Piece) {
   const bxs = Math.round(AX(boardX)), armY = Math.round(pf - 12.75 * HF);
   R(c, ps, armY - 1, bxs - ps, 6, '#2a2f3e'); R(c, ps, armY, bxs - ps, 4, '#3e4359'); R(c, ps, armY, bxs - ps, 1, '#5a6280');
   for (let k = 0; k <= 30; k++) { const t = k / 30; R(c, Math.round(ps + (bxs - 10 - ps) * t), Math.round(pf - (9.6 + 2.6 * t) * HF), 3, 3, '#3e4359'); }
-  // the backboard in pure side view (no perspective): it faces straight right, so we see only its edge — a thin
-  // vertical slab — with the rim sticking straight out to the right and the net hanging under it
+  // the backboard in pure side view (no perspective): it faces straight right, so we see only its edge, a thin
+  // vertical slab, with the rim sticking straight out to the right and the net hanging under it
   const bx = Math.round(AX(boardX)), bTop = Math.round(AY(yc) - 13.1 * HF), bBot = Math.round(AY(yc) - 9.6 * HF);
   R(c, bx - 3, bTop - 1, 7, bBot - bTop + 2, '#3a4660');                 // outline
   R(c, bx - 2, bTop, 5, bBot - bTop, '#dfeaf7'); R(c, bx - 2, bTop, 1, bBot - bTop, '#ffffff'); R(c, bx + 2, bTop, 1, bBot - bTop, '#a9bdd6'); // glass edge
@@ -397,7 +397,7 @@ function drawCar(c: C, p: Piece) {
       if (u > 0.85 && h > 1.6 && h < 2.6 && rust < 0.3) col = RUST[1];                            // dented fender rust
       if (u > 0.86 && u < 0.9 && h > 1.4 && h < 2.2) col = shade(col, 0.7);                       // the dent
       if (h < 0.45) col = '#2a1a14';
-      // rear wheel: flat tyre (squashed), front wheel: gone — drum on cinder blocks
+      // rear wheel: flat tyre (squashed), front wheel: gone, drum on cinder blocks
       const dR = Math.hypot((u - rearW) / 0.085, (h - 0.95) / 0.95);
       if (dR < 1 && h < 1.85) col = dR < 0.38 ? '#9aa2a6' : dR < 0.5 ? '#55595c' : h < 0.35 ? '#141414' : '#1a1a1a';
       const dF = Math.hypot((u - frontW) / 0.085, (h - 1.2) / 1.0);

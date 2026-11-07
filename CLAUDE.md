@@ -4,21 +4,24 @@ Browser 5v5 NBA career basketball RPG (TypeScript + Phaser 3 + Vite). 90s arcade
 reference image) rendered at 1920×1080 with the original framing, Dunk City Dynasty-style controls, Skyrim-style
 progression, earn-the-ball team basketball. Modes: Practice, Quick 5v5, Quick 3v3 (full or half court), 1v1 Make It Take It, Career.
 
-**Before changing anything, read `docs/` — start with `docs/README.md`.** Especially:
+**Before changing anything, read `docs/`. Start with `docs/README.md`.** Especially:
 - `docs/DECISIONS.md`: choices the owner already made (don't re-ask).
 - `docs/STATUS.md` + `docs/ARCHITECTURE.md`: what exists and where.
 - `docs/WORKFLOW.md`: build/test/publish routine, browser link, gotchas.
 - `docs/BACKLOG.md`: open work.
 
 Key rules from the owner:
+- **Never use em dashes (U+2014) anywhere**: code, comments, in-game text, docs, commit messages, PR text and replies
+  to the owner. Use a comma, colon, period or parentheses instead (round 60d; `tests/style.test.ts` enforces it in
+  the repo). En dashes in number ranges (6'0"–6'5") are fine.
 - Gameplay feel comes first; dev tools must make testing fast.
 - You control only your player; teammates pass based on trust/openness, never on demand.
 - PlayStation button labels. No shot meter: the contest cone stays on screen; the full shot equation is a dev toggle
-  (round 51 — the top bar is the **rhythm** meter, which powers the once-a-game ultimate). Round 53: a short
+  (round 51: the top bar is the **rhythm** meter, which powers the once-a-game ultimate). Round 53: a short
   shot-chance line (`3PT 37 ×.85 ×.67 = 21%`) is always shown top-right while you have the ball.
 - Real 2026-27 rosters are intentionally committed.
 - Eyes on every face (players, fans, celebs, coaches…) match the owner's celeb art: `W I · · · · I W` (white outside,
-  iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells` — never cross-eyed or uneven.
+  iris inside, mirrored, straight ahead), pixel-snapped via `faceParts.plotEyeCells`, never cross-eyed or uneven.
 - **Art from a reference: match each object's orientation in the given material** (which way it faces / points, e.g.
   a treadmill console at the back, a hoop facing right, a van nose toward the camera). Never default to drawing
   everything front-facing.
@@ -33,5 +36,5 @@ Code rules that bite (details in WORKFLOW.md "Gotchas"):
 Commands: `npm run dev`, `npm test`, `npx tsc --noEmit`, `npm run build:single`.
 After each change: test → commit → `git pull --rebase origin main` → push → rebuild + republish the browser link
 (see WORKFLOW.md) → update the docs (STATUS/HISTORY/BACKLOG/DECISIONS) if anything changed.
-Also update the root `README.md` automatically when a change affects it — skim only the relevant section and make a
+Also update the root `README.md` automatically when a change affects it: skim only the relevant section and make a
 minimal edit; don't re-review the whole file.

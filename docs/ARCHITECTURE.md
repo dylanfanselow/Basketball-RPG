@@ -77,7 +77,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `dev/pixelEditor.ts` | Pixel editor overlay (dev panel buttons or `?editor` / `?editor=parts`): one editor, two documents (`CelebDoc`, `PartsDoc`); "Save to repo" POSTs to the dev-only `/__dev/save-art` endpoint in `vite.config.ts`. |
 | `dev/partSeeds.ts` | Exports the code-drawn face parts as gray pictures (`renderSeedParts`, `seedLook`, `renderPartCanvas`); used once to seed `src/art/parts` and for the editor's head guide. |
 
-## Data (`src/data`) — tune feel here
+## Data (`src/data`), tune feel here
 `statInfluence.json`, `shotTypes.json`, `moves.json` (dist/plantAt/dur/ankle/chains), `trees/*.json`,
 `ultimates.json`, `plays/plays.json` (with `focus`), `league.json`, `rosters.json`, `backstories.json`, `events.json`.
 

@@ -340,13 +340,13 @@ export class CreateScene extends Phaser.Scene {
   }
 
   /**
-   * Round 60c: on READY, make the career you're about to confirm (not saved yet) and start building the tutorial —
+   * Round 60c: on READY, make the career you're about to confirm (not saved yet) and start building the tutorial:
    * its players' sprites are drawn while you read the summary, so the rainy court opens without "Lacing up".
    */
   private candidate: CareerState | null = null;
   private makeCareer(): CareerState {
     const c = createCareer({ firstName: this.first, lastName: this.last, number: this.number, pos: this.pos, heightIn: this.heightIn, appearance: this.look });
-    c.story = newStory(c); // round 60: high school — the prologue starts on the rainy court
+    c.story = newStory(c); // round 60: high school, the prologue starts on the rainy court
     return c;
   }
   private prepare() { this.candidate = this.makeCareer(); prepareStory(this, 'tutorial', this.candidate); }

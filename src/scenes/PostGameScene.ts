@@ -6,7 +6,8 @@ import { applyGameResult, xpToNext } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
 import type { GameInit } from './setup';
-import { setStage, storyScene } from './setup';
+import { setStage, storyScene, ensureStory } from './setup';
+import { bigGameVerdict } from '../sim/story';
 
 export class PostGameScene extends Phaser.Scene {
   inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null; replay?: GameInit;
@@ -41,9 +42,13 @@ export class PostGameScene extends Phaser.Scene {
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);
       for (const e of r.evo) lines.push(`Ultimate evolution: ${e}`);
     } else if (this.mode === 'story') {
-      // round 60: the big game — the prologue is done (what the scout thought comes later in the story)
-      setStage('done');
-      lines.push(won ? 'Lincoln wins. The man with the clipboard is still writing.' : 'Lincoln lost. The man with the clipboard is still writing.');
+      // round 60d: the big game. How it went decides Mom's scene back home (great: won + the best stat sum)
+      const v = bigGameVerdict(sim);
+      ensureStory();
+      app.career.story!.bigGame = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
+      setStage('after');
+      lines.push(`Your night: ${v.mine} (pts + reb + ast + blk + stl), best on the floor: ${v.best}.`);
+      lines.push('The man with the clipboard is still writing.');
     } else {
       lines.push('(Quick games don\'t affect your career save.)');
     }
@@ -79,7 +84,7 @@ export class PostGameScene extends Phaser.Scene {
       return;
     }
     if (this.inp.confirm()) {
-      if (this.mode === 'story') { const [scene, data] = storyScene('done'); this.scene.start(scene, data); return; }
+      if (this.mode === 'story') { const [scene, data] = storyScene('after'); this.scene.start(scene, data); return; }
       this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
     }
   }

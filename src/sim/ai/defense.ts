@@ -50,7 +50,7 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     const toRim = norm(sub(rim, h.p)), pr = { x: -toRim.y, y: toRim.x };
     const hi = trap.helpers.indexOf(d.id);
     if (hi >= 0) {
-      // round 48: help by how he scores (not a blob that mirrors him — one move would beat them all)
+      // round 48: help by how he scores (not a blob that mirrors him, one move would beat them all)
       const first = sim.players.find((q) => q.id === trap.helpers[0]);
       const s0 = first && dot(sub(first.p, h.p), pr) >= 0 ? 1 : -1;
       const sideSign = hi === 0 ? s0 : -s0;
@@ -131,7 +131,7 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       target = add(man.p, scale(lane, low ? 1.3 : 1.8));
       urgent = true;
     } else if (load && load.helpers.includes(d.id) && load.hot !== man) {
-      // loaded up: this defender is one of the hot scorer's doublers — sit where the scheme wants him before the catch:
+      // loaded up: this defender is one of the hot scorer's doublers, sit where the scheme wants him before the catch:
       // under a shooter (between him and the rim), in the drive lane of a rim scorer, or in the gap otherwise
       const hr = norm(sub(rim, load.hot.p)), hd = dist(load.hot.p, rim);
       if (load.scheme === 'chase' && load.helpers[0] === d.id) target = add(load.hot.p, scale(hr, Math.min(5, hd * 0.4)));
@@ -180,9 +180,9 @@ function isClosestHelper(sim: GameSim, d: Player, h: Player, onBall: Player | nu
 
 /**
  * Round 48: where a double / triple helper stands, by coverage scheme (hi = 0 first helper, 1 second):
- *  - wall (rim scorer): on his line to the rim, deep — about halfway (at least 7 ft in front) and at the edge of the
+ *  - wall (rim scorer): on his line to the rim, deep, about halfway (at least 7 ft in front) and at the edge of the
  *    restricted area. A crossover or burst beats his own man, not the wall.
- *  - chase (shooter): one "over" — tight on his high side (cutting off where his burst is heading) — and one "under",
+ *  - chase (shooter): one "over", tight on his high side (cutting off where his burst is heading), and one "under",
  *    ~5 ft between him and the rim.
  *  - post: the round 44 dig from the top, and one at the rim on the baseline side.
  *  - mixed: one high and tight, one deep at the restricted area.

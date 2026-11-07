@@ -18,7 +18,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 - **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
-- Round 46: season calendar — `career/calendar.ts` (`dateOfDay`: day 1 = Mon 19 Oct 2026, `monthGrid` Monday-first,
+- Round 46: season calendar, `career/calendar.ts` (`dateOfDay`: day 1 = Mon 19 Oct 2026, `monthGrid` Monday-first,
   `keyGamesByDay`, `seasonMonths`); ✕ Calendar at `SPOTS.calendar` → `ApartmentScene.openCalendar()` overlay (page baked
   by `roomArt.drawCalendarPage` + `CAL` layout, text on top; ◀ ▶ / L2 R1 / stick = month, L1 / ○ close). Sleep pose
   re-fit inside the 96-px frame (head was cut off; test in anim.test.ts); couch has 2 frames (1 = bare) and
@@ -155,8 +155,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `render/trailerArt.ts` (background + pieces: door closed/open, hitch, barrel, generator 2 frames + cord, cooler,
   bush); `scenes/TrailerScene.ts` (`goInside` → day ends, `TRAILER_DOOR_STORY` hooks, generator hum by distance
   `sfx.genHum`); Menu entry.
-  Round 58 main menu: `scenes/TitleScene.ts` (first scene; three background cameras — arena (`drawCourt` + hoops +
-  `Crowd`), school rain (`addSchoolCourt` + rain + lightning), home (`buildRoomArt` + lamp glow) — cross-faded, each
+  Round 58 main menu: `scenes/TitleScene.ts` (first scene; three background cameras, arena (`drawCourt` + hoops +
+  `Crowd`), school rain (`addSchoolCourt` + rain + lightning), home (`buildRoomArt` + lamp glow), cross-faded, each
   ignoring the others' objects, plus a menu camera with gradients and a colour wash; New Game confirm; settings panel:
   volumes, mute, quarter length, fullscreen, dev menu); `MenuScene` = dev menu (L1 → Title).
   Round 59 builder: `scenes/CreateScene.ts` (LOOK rows over every `Appearance` field + `partVariants`, preview drawn
@@ -169,17 +169,20 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `LOCKED_IN` 10, `complementPos`, `newStory` (Kingston Williams, your position, random saved look), `rivalPlayer`
   (tutorial / ones = 99 offense), `storyMe`, `extraPlayer`, `buildTutorial` (practice 2v2, half court, `story` flags),
   `buildOnes` (1v1 to 11, 1s & 2s, win by 2), `buildBigGame` (5v5 school day, rosters of 5)); `sim/tutorial.ts`
-  (`buildLessons` — 10 lessons, `TutorialDirector` implements `Director`: blocking lines queue, Kingston demos
+  (`buildLessons`, 10 lessons, `TutorialDirector` implements `Director`: blocking lines queue, Kingston demos
   pull-up / cross / post hook / fake → step-through, teammate scripts, `tut_pnr` play with you as screener, step
   checks on events (`iconPass`, `tutorialCheck` quiet events added), `view()` for the box, `skipLesson` / `skipAll`);
-  `GameConfig.story` (`forceMake` — roll kept, real `ev` shown — `noBlocks`, `noFouls`, `softD`: no CPU swipes,
+  `GameConfig.story` (`forceMake`, roll kept, real `ev` shown, `noBlocks`, `noFouls`, `softD`: no CPU swipes,
   charges or interceptions), `GameSim.director` (`tick`, `think`, `onReset` from `practiceReset`, `onEvent` from
   `emit`), 2-man teams = roles 1 / 5, plays tagged `tutorial` only when `allowedPlays` names them;
   `render/storyBox.ts` (`StoryBox`: speaker tag KINGSTON / COACH / YOU (thinking), typewriter, ✕ next, slim prompt
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
-  Round 60c: `scenes/preload.ts` (`playerKit` shared with GameScene, `prewarmSim`, `prepareStory` / `takeStory` — a
+  Round 60d: `story.bigGameVerdict` (stat sum vs everyone, great = won + best sum), `StoryStage` `'after'`,
+  `StoryState.bigGame`, PostGame story branch saves it → Trailer `{ story: 'after' }` (`afterLines`, daytime Mom,
+  control back + stage `done`), dev menu *Story: After the game (great / promise)*; `tests/style.test.ts` (no em dashes).
+  Round 60c: `scenes/preload.ts` (`playerKit` shared with GameScene, `prewarmSim`, `prepareStory` / `takeStory`, a
   story sim built ahead and handed to GameScene once, `prewarmRoom`; CreateScene READY prepares the tutorial for the
   candidate career, StoryRun prepares the next stage once its game is ready, the trailer prepares the big game);
   `RoomScene.roomPlayerKit` / `roomSheetKey` / `playerReady`; `sfx.music('game' | 'mom' | null)` (HTMLAudio through a
@@ -231,7 +234,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 ## Garage gym (round 37)
 - `Garage` scene (`GarageScene` → `RoomScene`, layout `world/garage.ts`, art `render/garageArt.ts`): reached through the
   apartment's left door (you arrive at the garage's back-wall door, which takes you back; the left-wall door is
-  "Outside — coming soon"), or the dev menu "Garage (gym)". Slanted right wall as in the apartment, nothing drawn past
+  "Outside, coming soon"), or the dev menu "Garage (gym)". Slanted right wall as in the apartment, nothing drawn past
   the right brick post; the broken fastback is parked nose-first along the right wall (`RoomDef.rightX` exists for
   an open side but isn't used). Hoop (arena style, facing
   right from the left wall), squat rack, bench press, treadmill, dip station + speed bag, shelves, duct + three
@@ -267,7 +270,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `MiniGame.jumpFt()` (the shot jump: `RoomScene.drawPlayer` lifts the sprite, the shadow stays down);
   `GarageScene.drawShotMeter` (curved 2K-style arc).
 - Round 38b: `Pose.headTurn` (head drawn rotated: the bench press looks up), lying torsos drawn along the body
-  (`drawTorso` turns the upright torso when it's > ~45° from vertical — push-ups, bench, dives), shooting station
+  (`drawTorso` turns the upright torso when it's > ~45° from vertical, push-ups, bench, dives), shooting station
   (`SHOT_MARK` red square, `shot_jumper` held via `stationU` / `shotDur`, ball flight to `garageRim()` and back).
 
 ## Apartment (round 36)
@@ -288,7 +291,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   (`newSkills`, `SKILL_START = 40`, `skillXpToNext`, `addSkillXp`, migration v3 → v4); dev panel → Core stats →
   "+25 SHO/FIN/STR/MOB/PLA" and "Skills → 40".
 - `Apartment` scene (dev menu "Apartment (career home)", Career Hub "Go Home"): cutaway starter apartment drawn in
-  code on the players' pixel grid — kitchen (fridge, counter + sink + dish rack, peninsula joined to it with left-side
+  code on the players' pixel grid, kitchen (fridge, counter + sink + dish rack, peninsula joined to it with left-side
   cabinet doors, cooktop, fume hood + duct to the ceiling, bonsai), floor lamp with a warm glow,
   couch (plump pillow on seat + back, blanket draped as a sheet over back cushion + seat) → coffee table → TV facing the couch (seen from behind), aquarium (animated),
   armchair facing left, bookshelf standing off the slanted right wall, wardrobe against the left wall (doors facing right), dining table + chairs, moving box, ball, ceiling
@@ -300,7 +303,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   left, tree + fence on the right. `SPOTS` (calendar, fridge, couch) mark where you'll use things later.
 - Your career player (casual tee + team-colour shorts, warm room tint) walks with multi-angle frames; walls (slanted
   sides) and furniture are solid (circle vs polygon, slides along edges). Draw order: furniture keeps a fixed depth (front edge of its footprint, `pieceDepthFt`);
-  you and the cat get `actorDepthFt` — in front of every overlapping piece you're behind or beside, behind every piece
+  you and the cat get `actorDepthFt`, in front of every overlapping piece you're behind or beside, behind every piece
   that starts in front of your feet (footprint polygons, so the slanted shelf / wardrobe work).
 - Doors: ✕ at the garage door = the garage gym (round 37); ✕ at the front door or L1 / Esc = back to the menu.
 - Sleeping pulls the couch's blanket off the couch and over your legs (the couch shows bare until you wake).
@@ -354,7 +357,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Angled-view clothing: legs always draw under the torso; the shorts' waistband is drawn with the shorts (same
   shading, full width); an inseam line and a soft notch (only when the legs touch) split the shorts' legs; side-seam
   stripes in front/back views. Defensive elbows are placed (not solved) so both point at the floor from any angle.
-- Defensive stance: profile squat with a `lat` spread (feet wide, knees out, arms out to the sides) — reads as an
+- Defensive stance: profile squat with a `lat` spread (feet wide, knees out, arms out to the sides), reads as an
   open stance when turned; `defend` is alive (bounce, weight shift, hands); `slide` steps sideways.
 - Defensive movement (`GameScene.defStance`): near their man and slower than a walk, defenders face him (render-only
   facing with hysteresis) and play the `slide` shuffle (planted trail foot, lead foot steps out) from 0.4 ft/s,
@@ -384,8 +387,8 @@ buttons, presets, big-game crowd toggle. When playing as a real NBA player, edit
 fill, picker, line, undo/redo, zoom, grid, copy frame to all, mirror, in-game preview; drafts in localStorage (used by
 the game, dropped when the art underneath changes); "Save to repo" (dev server) → `src/art/celebs/celeb_NN.png`.
 
-**Face parts** (round 24): heads in `drawHead` (side/back) and `frontHead` (front/¾) are layered parts — hairBack, base
-head, eyes, brows, nose, mouth, beard, hair — each drawn from a picture in `src/art/parts` when one exists (recolored
+**Face parts** (round 24): heads in `drawHead` (side/back) and `frontHead` (front/¾) are layered parts, hairBack, base
+head, eyes, brows, nose, mouth, beard, hair, each drawn from a picture in `src/art/parts` when one exists (recolored
 per player by `faceParts.recolorPixels`), else by the original code. 59 built-in pictures were exported from the code
 (`partSeeds.ts`). Looks can use drawn variants (`hair: 'hair_1'`, optional `eyes` / `brows` fields); the dev panel's
 look editor lists them. Pictures reach the sheet workers with each job (`sheetPool` → `partsFor`).

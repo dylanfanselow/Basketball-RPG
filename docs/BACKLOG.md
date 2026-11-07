@@ -28,7 +28,7 @@
 - **Calendar games + day loop:** what happens when you sleep past a game day (play it / miss it), the food bar
   (fridge, eating); games could send skill orbs too; stat points from level-ups
   vs skill XP may need a balance pass.
-- **Garage follow-ups (round 39):** the mini-games score reps but don't train yet — tune difficulty with the owner, stat gains / energy + food cost per rep or
+- **Garage follow-ups (round 39):** the mini-games score reps but don't train yet, tune difficulty with the owner, stat gains / energy + food cost per rep or
   session, speed bag and dip station, the hoop for shooting practice, maybe fix up the car.
 - **Apartment follow-ups (round 36):** fridge = eat
   (food bar), special events on the calendar (the screen + key games are in, round 46), pet the cat, energy / food drain and money income, **Start Game / Load Game** front end that drops you in
@@ -62,10 +62,10 @@
 - Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).
 - Long-session performance of the animated crowd on slower machines.
 - **School court (round 56):** maybe a thunder sound for the lightning.
-- **Prologue follow-ups (round 60):** what the scout thinks after the big game (and where the career goes from high
-  school to the NBA life / apartment); the **coffee / poisoning reveal** (Kingston finds out, then you do); Kingston
+- **Prologue follow-ups (round 60):** Mom tells you the scout's first reaction (round 60d); still open: where the
+  career goes from high school to the NBA life / apartment, what the scout does next; the **coffee / poisoning reveal** (Kingston finds out, then you do); Kingston
   as the high-school rival in the ult-unlock 1v1 (VISION). The trailer's roof HUD still shows NBA key games ("Opener
-  vs ATL") — fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
+  vs ATL"), fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
   ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.
