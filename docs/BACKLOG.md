@@ -62,6 +62,8 @@
 - Two-player 1v1 on two real controllers (pad slot split is unit-free logic; only keyboard + CPU were driven in the browser).
 - Long-session performance of the animated crowd on slower machines.
 - **School court (round 56):** maybe a thunder sound for the lightning.
+- **Draft (later):** when you join an NBA team, if your number is already worn on that roster, ask for a new one
+  (`takenNumbers()` in roster.ts is ready for it).
 - **Prologue follow-ups (round 60):** Mom tells you the scout's first reaction (round 60d); still open: where the
   career goes from high school to the NBA life / apartment, what the scout does next; the **coffee / poisoning reveal** (Kingston finds out, then you do); Kingston
   as the high-school rival in the ult-unlock 1v1 (VISION). The trailer's roof HUD still shows NBA key games ("Opener

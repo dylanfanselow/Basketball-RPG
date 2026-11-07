@@ -3,13 +3,12 @@ import { InputMapper } from '../input/input';
 import { FONT, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { newStory } from '../sim/story';
+import { newStory, LINCOLN } from '../sim/story';
 import { prepareStory } from './preload';
 import type { CareerState } from '../career/career';
 import { storyScene } from './setup';
 import { NODES } from '../sim/data';
 import { createCareer, STARTER_PERKS, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
-import { takenNumbers } from '../career/roster';
 import { POSITIONS, Position } from '../sim/attributes';
 import { CORE_STATS, TEAMS } from '../sim/data';
 import {
@@ -83,10 +82,12 @@ export class CreateScene extends Phaser.Scene {
     Object.assign(this.look, { headband: null, armSleeve: 'none', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false });
     this.pos = 'SG'; this.heightIn = this.midHeight('SG');
     const teamId = app.career?.teamId ?? 'LAL', team = TEAMS.find((t) => t.id === teamId) ?? TEAMS[0];
-    this.taken = takenNumbers(team.id);
-    this.number = 7; if (this.taken.has(this.number)) this.number = this.freeFrom(7, 1);
+    // round 60g: you're in high school, not on an NBA team yet, so every number is free
+    this.taken = new Map();
+    this.number = 7;
     this.tee = { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
-    this.jersey = { jersey: team.colors[0], jerseyShade: shade(team.colors[0], 0.75), trim: team.colors[1] ?? '#ffffff', shorts: shade(team.colors[0], 0.9), number: this.number };
+    const hs = LINCOLN.colors; // the number preview: your Lincoln High jersey
+    this.jersey = { jersey: hs[0], jerseyShade: shade(hs[0], 0.75), trim: hs[1], shorts: shade(hs[0], 0.9), number: this.number };
     // backdrop: a dark purple studio with a spotlight on the floor under you
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x07081a, 0x07081a, 0x2a1650, 0x1a0e34, 1); bg.fillRect(0, 0, 1280, 720);
@@ -270,7 +271,7 @@ export class CreateScene extends Phaser.Scene {
     } else if (this.step === 4) {
       this.head.setText('JERSEY NUMBER');
       this.big.setText(`◀ ${this.number} ▶`).setPosition(940, 300);
-      this.body.setText('Any number from 0 to 99 that nobody on your team wears.');
+      this.body.setText('Any number from 0 to 99.');
       this.rowTexts[0].setText(this.numNote).setPosition(684, 400).setColor('#ff9a8a').setFontSize(16);
       this.help.setText('←→ ±1   ↑↓ ±10   ✕ next   ○ back');
     } else {

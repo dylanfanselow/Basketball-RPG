@@ -158,6 +158,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60g (owner): any jersey number.** You start in high school, not on an NBA team, so the builder lets you
+  pick any number 0-99 (no team's numbers are skipped); the preview jersey is Lincoln's maroon and gold.
 - **Round 60f (owner): perks.** In the 1s Kingston has **every perk in every tree**. Every new career starts with
   the first perk of two trees that fit the position (free): PG Shooter's Touch + Floor General, SG Shooter's Touch +
   Tight Handle, SF Shooter's Touch + Rim Instincts, PF Rim Instincts + Brick Wall, C Glass Cleaner + Rim Instincts.
