@@ -5,7 +5,14 @@
  */
 const SETTINGS_KEY = 'hoopcareer.audio';
 
-export interface AudioSettings { master: number; sfx: number; crowd: number; muted: boolean }
+export interface AudioSettings { master: number; sfx: number; crowd: number; muted: boolean; /** round 60c: music volume */ music?: number }
+
+export type MusicTrack = 'game' | 'mom';
+/** Round 60c: the owner's royalty-free tracks (mondamusic "Retro Arcade Game Music", alexgrohl "Sad Story"). */
+const MUSIC: Record<MusicTrack, { src: string; vol: number }> = {
+  game: { src: './music/arcade.mp3', vol: 0.35 },
+  mom: { src: './music/sad-story.mp3', vol: 0.7 },
+};
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -20,7 +27,8 @@ class Sfx {
   /** gate for the arena murmur: open in games, shut in menus */
   private arenaGate!: GainNode;
   private arenaOn = false;
-  settings: AudioSettings = { master: 0.8, sfx: 0.9, crowd: 0.45, muted: false };
+  settings: AudioSettings = { master: 0.8, sfx: 0.9, crowd: 0.45, muted: false, music: 0.5 };
+  private musicBus!: GainNode;
 
   constructor() {
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')); } catch { /* defaults */ }
@@ -32,7 +40,7 @@ class Sfx {
   unlock() {
     try {
       if (!this.ctx) this.build();
-      if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
+      if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().then(() => { if (this.wantTrack) this.music(this.wantTrack); }); // play() was blocked until now
     } catch { /* audio unavailable */ }
   }
 
@@ -46,7 +54,8 @@ class Sfx {
     this.crowdBus = ctx.createGain();
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4;
-    this.sfxBus.connect(this.master); this.crowdBus.connect(this.master);
+    this.musicBus = ctx.createGain();
+    this.sfxBus.connect(this.master); this.crowdBus.connect(this.master); this.musicBus.connect(this.master);
     this.master.connect(comp).connect(ctx.destination);
     // 2s of white noise reused by every noise-based sound
     this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -55,6 +64,7 @@ class Sfx {
     this.applySettings();
     this.startCrowd();
     if (this.rainOn) this.rain(true);
+    if (this.wantTrack) this.music(this.wantTrack);
   }
 
   applySettings() {
@@ -64,6 +74,7 @@ class Sfx {
     this.master.gain.value = s.muted ? 0 : s.master;
     this.sfxBus.gain.value = s.sfx;
     this.crowdBus.gain.value = s.crowd;
+    this.musicBus.gain.value = s.music ?? 0.5;
   }
   toggleMute() { this.settings.muted = !this.settings.muted; this.applySettings(); return this.settings.muted; }
 
@@ -128,7 +139,7 @@ class Sfx {
   duck(on: boolean) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime, s = this.settings;
-    for (const [bus, base] of [[this.sfxBus, s.sfx], [this.crowdBus, s.crowd]] as [GainNode, number][]) {
+    for (const [bus, base] of [[this.sfxBus, s.sfx], [this.crowdBus, s.crowd], [this.musicBus, s.music ?? 0.5]] as [GainNode, number][]) {
       bus.gain.cancelScheduledValues(t);
       bus.gain.setTargetAtTime(on ? base * 0.12 : base, t, on ? 0.05 : 0.18);
     }
@@ -323,8 +334,8 @@ class Sfx {
       const src = ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
-      const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(0.32, t + 1.2);
-      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.07;
+      const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(0.22, t + 1.2); // round 60c: quieter
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.05;
       lfo.connect(lg).connect(g.gain); lfo.start();
       src.connect(hp).connect(lp).connect(g).connect(this.crowdBus); src.start();
       this.rainNodes = { src, g, lfo };
@@ -335,6 +346,44 @@ class Sfx {
     }
   }
   private rainOn = false;
+
+  // ---------- music (round 60c) ----------
+  /** The track that should be playing (kept until audio is unlocked). */
+  private wantTrack: MusicTrack | null = null;
+  private tracks = new Map<MusicTrack, { el: HTMLAudioElement; gain: GainNode }>();
+  /**
+   * Royalty-free music (public/music, published next to the page): the retro arcade loop in every basketball game,
+   * "Sad Story" for the scenes with Mom. Crossfades ~1 s; null fades out. Goes through the music bus (master / mute /
+   * the ult duck apply). Missing files or blocked autoplay just stay silent.
+   */
+  music(track: MusicTrack | null) {
+    this.wantTrack = track;
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (const [id, tr] of this.tracks) {
+      if (id === track) continue;
+      tr.gain.gain.cancelScheduledValues(t); tr.gain.gain.setValueAtTime(tr.gain.gain.value, t); tr.gain.gain.linearRampToValueAtTime(0, t + 1);
+      const el = tr.el;
+      setTimeout(() => { if (this.wantTrack !== id) el.pause(); }, 1100);
+    }
+    if (!track) return;
+    let tr = this.tracks.get(track);
+    if (!tr) {
+      try {
+        const el = new Audio(MUSIC[track].src);
+        el.loop = true; el.preload = 'auto';
+        const gain = ctx.createGain(); gain.gain.value = 0;
+        ctx.createMediaElementSource(el).connect(gain).connect(this.musicBus);
+        tr = { el, gain };
+        this.tracks.set(track, tr);
+      } catch { return; }
+    }
+    const g = tr.gain.gain;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(MUSIC[track].vol, t + 1);
+    if (tr.el.paused) void tr.el.play().catch(() => { /* blocked or missing: silent */ });
+  }
+  /** Which track is meant to be playing (tests / dev panel). */
+  get musicTrack() { return this.wantTrack; }
   private rainNodes: { src: AudioBufferSourceNode; g: GainNode; lfo: OscillatorNode } | null = null;
   /** Cheer swell (intensity 0..1). */
   /** Round 56: crowd size for cheers / groans (1 = arena, ~0.35 = a few kids at the school court, 0 = nobody). */

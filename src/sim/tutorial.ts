@@ -8,7 +8,7 @@ import type { GameSim, GameEvent, Director } from './game';
 import type { Player } from './player';
 import { hc, spot } from './court';
 import { add, dist, norm, scale, sub, v, Vec } from './math';
-import { selectShotType } from './shooting';
+import { selectShotType, STEP_THROUGH_WINDOW } from './shooting';
 import { postIntent } from './post';
 import { RIVAL_ID } from './story';
 
@@ -17,7 +17,11 @@ export interface Line { who: Speaker; text: string }
 type Demo = 'pullup' | 'cross' | 'post' | 'stepThrough';
 type Holder = 'me' | 'mate' | 'kingston';
 interface Ctx { sim: GameSim; me: Player; mate: Player; king: Player; other: Player; d: TutorialDirector }
-interface Step { prompt: string; check: (c: Ctx, e: GameEvent | null) => boolean }
+interface Step {
+  prompt: string; check: (c: Ctx, e: GameEvent | null) => boolean;
+  /** round 60c: you blew this step (e.g. a plain jumper after the fake) — back to the lesson's first step */
+  fail?: (c: Ctx, e: GameEvent | null) => boolean;
+}
 export interface Lesson {
   id: string; title: string;
   /** blocking lines when the lesson starts */
@@ -32,6 +36,8 @@ export interface Lesson {
   outro?: Line[];
   /** run the tutorial play (follow the circles) during the try */
   play?: boolean;
+  /** round 60c: a new possession mid-lesson starts the steps over (multi-step moves: fake → step-through, post → score) */
+  restartOnNewBall?: boolean;
 }
 
 const mine = (c: Ctx, e: GameEvent | null, kind: string) => !!e && e.kind === kind && e.pid === c.me.id;
@@ -102,8 +108,11 @@ export function buildLessons(): Lesson[] {
       ball: 'me',
       steps: [
         { prompt: 'Hold L2 to post up', check: (c, e) => mine(c, e, 'post') && /^POST UP/.test(e!.text) },
-        { prompt: 'Score out of the post: ✕', check: madeShot },
+        { prompt: 'Score out of the post: ✕', check: madeShot,
+          // shot without being in the post (or the post window): start over
+          fail: (c, e) => mine(c, e, 'gather') && c.sim.time - c.d.lastPostAt > 0.25 && c.sim.time >= c.me.postWindowUntil },
       ],
+      restartOnNewBall: true,
     },
     {
       id: 'step', title: 'STEP-THROUGH',
@@ -116,8 +125,12 @@ export function buildLessons(): Lesson[] {
       ball: 'me',
       steps: [
         { prompt: 'Tap ✕ to pump fake', check: (c, e) => mine(c, e, 'move') && !!e!.data?.clip },
-        { prompt: 'Stick to the rim + hold ✕: Step-Through', check: (c, e) => mine(c, e, 'move') && /step-through/i.test(e!.text) },
+        { prompt: 'Stick to the rim + hold ✕: Step-Through', check: (c, e) => mine(c, e, 'move') && /step-through/i.test(e!.text),
+          // a plain shot after the fake, or the fake's window ran out: start over from the fake
+          fail: (c, e) => (mine(c, e, 'gather') && !String(e!.data?.type ?? '').startsWith('stepThrough'))
+            || (!e && c.me.state !== 'shoot' && c.sim.time - c.me.pumpFakeAt > STEP_THROUGH_WINDOW + 0.25) },
       ],
+      restartOnNewBall: true,
     },
     {
       id: 'icon', title: 'ICON PASS',
@@ -152,7 +165,6 @@ export function buildLessons(): Lesson[] {
       before: [
         K('My ball. Guard me.'),
         N('On defense the red ring is your man. Stay between him and the rim: △ swipes at the ball, ✕ jumps to contest or block. Your cone shrinks his odds.'),
-        N('The bar on top is your rhythm: buckets, assists, stops and running plays fill it. Fill it and your ultimate goes off, once a game — when you\'ve earned one.'),
       ],
       ball: 'kingston', kingScript: 'cross',
       steps: [{ prompt: 'Guard Kingston', check: (c, e) => (!!e && e.kind === 'score' && e.pid === c.king.id) || mine(c, e, 'steal') }],
@@ -162,7 +174,7 @@ export function buildLessons(): Lesson[] {
 }
 
 /** What the box shows: a blocking line (✕ to continue) or the current prompt. */
-export interface BoxView { who: Speaker; text: string; blocking: boolean; title?: string; step?: number; steps?: number; doneAt?: number }
+export interface BoxView { who: Speaker; text: string; blocking: boolean; title?: string; step?: number; steps?: number; doneAt?: number; /** round 60c: when you last blew a step */ failAt?: number }
 
 type Phase = 'demoWait' | 'demo' | 'tryWait' | 'try' | 'done' | 'finished';
 
@@ -176,8 +188,12 @@ export class TutorialDirector implements Director {
   line: Line | null = null;
   /** sim time of the last ✓ (UI flash) */
   checkAt = -9;
+  /** sim time of the last miss (back to step 1; UI: red flash, "Missed it") */
+  failAt = -9;
   /** progress counters for tick-based checks */
   moved = 0; sprintT = 0;
+  /** last sim time you were in the post (a post shot ends the post just before its gather event) */
+  lastPostAt = -9;
   private demoT = 0; private demoMoved = false; private demoFaked = -1; private postT = 0;
   private doneAt = 0;
   private lastPos: Vec | null = null;
@@ -223,7 +239,8 @@ export class TutorialDirector implements Director {
     if (this.phase === 'demo' && L.demoTalk) return { who: 'kingston', text: fill(L.demoTalk.text, this.names), blocking: false, title: L.title };
     if (this.phase === 'try' || this.phase === 'done') {
       const st = L.steps[Math.min(this.step, L.steps.length - 1)];
-      return { who: 'narrator', text: fill(st.prompt, this.names), blocking: false, title: L.title, step: Math.min(this.step + 1, L.steps.length), steps: L.steps.length, doneAt: this.checkAt };
+      const missed = this.sim.time - this.failAt < 2 && this.step === 0;
+      return { who: 'narrator', text: (missed ? 'Missed it — ' : '') + fill(st.prompt, this.names), blocking: false, title: L.title, step: Math.min(this.step + 1, L.steps.length), steps: L.steps.length, doneAt: this.checkAt, failAt: this.failAt };
     }
     return null;
   }
@@ -283,7 +300,7 @@ export class TutorialDirector implements Director {
   onReset(): boolean {
     const L = this.lesson;
     if (L && this.phase === 'demo') this.setup('kingston');            // the demo got broken up: run it again
-    else if (L && this.phase === 'try') { this.setup(L.ball); if (L.play) this.startPlay(); }
+    else if (L && this.phase === 'try') { this.setup(L.ball); if (L.play) this.startPlay(); if (L.restartOnNewBall && this.step > 0) this.miss(); }
     // otherwise wait (lines up, or between lessons): tick() sets up the next possession
     return true;
   }
@@ -302,6 +319,7 @@ export class TutorialDirector implements Director {
       if (this.lastPos) this.moved += dist(this.lastPos, c.me.p);
       this.lastPos = { ...c.me.p };
       if (c.me.sprinting) this.sprintT += dt;
+      if (c.me.post) this.lastPostAt = sim.time;
       this.check(null);
       // the set ran out: call it again (you stay the screener)
       if (L.play && sim.runner.done && sim.holder()?.team === 0) this.startPlay();
@@ -325,11 +343,18 @@ export class TutorialDirector implements Director {
     const L = this.lesson;
     if (!L) return;
     const st = L.steps[this.step];
+    if (st && this.step > 0 && st.fail?.(this.ctx(), e)) { this.miss(); return; }
     if (st && st.check(this.ctx(), e)) {
       this.step++; this.checkAt = this.sim.time;
       this.sim.quiet('tutorialCheck', { lesson: L.id, step: this.step });
       if (this.step >= L.steps.length) { this.phase = 'done'; this.doneAt = this.sim.time + 1.3; }
     }
+  }
+
+  /** You blew a step: back to the lesson's first step. */
+  private miss() {
+    this.step = 0; this.failAt = this.sim.time;
+    this.sim.quiet('tutorialMiss', { lesson: this.lesson?.id });
   }
 
   // ---------- scripted players ----------

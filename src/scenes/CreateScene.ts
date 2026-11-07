@@ -4,6 +4,8 @@ import { FONT, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { newStory } from '../sim/story';
+import { prepareStory } from './preload';
+import type { CareerState } from '../career/career';
 import { storyScene } from './setup';
 import { createCareer, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
 import { takenNumbers } from '../career/roster';
@@ -74,7 +76,7 @@ export class CreateScene extends Phaser.Scene {
   create() {
     hiRes(this);
     this.inp = new InputMapper(this);
-    this.step = 0; this.row = 0; this.view = 0; this.leaving = false; this.rowTexts = []; this.tabs = []; this.keyTexts = [];
+    this.step = 0; this.candidate = null; this.row = 0; this.view = 0; this.leaving = false; this.rowTexts = []; this.tabs = []; this.keyTexts = [];
     this.first = ''; this.last = ''; this.field = 0; this.gi = 0; this.numNote = ''; this.typedFrame = -1;
     this.look = randomAppearance(Math.random);
     Object.assign(this.look, { headband: null, armSleeve: 'none', wristband: null, legSleeve: 'none', kneePad: false, goggles: false, mask: false });
@@ -141,6 +143,7 @@ export class CreateScene extends Phaser.Scene {
     if (this.step === 0 && !this.nameOk()) { sfx.blip(false); this.numNote = ''; this.refresh(); return; }
     if (this.step === 5) { this.finish(); return; }
     this.step = (this.step + 1) as Step;
+    if (this.step === 5) this.prepare();
     if (this.step === 4) this.view = 0; // the number: face the camera so it's on the jersey
     this.redrawPreview(); this.refresh();
   }
@@ -336,11 +339,22 @@ export class CreateScene extends Phaser.Scene {
     if (lookChanged || changed) this.refresh();
   }
 
-  /** Make the career and walk into your apartment. */
+  /**
+   * Round 60c: on READY, make the career you're about to confirm (not saved yet) and start building the tutorial —
+   * its players' sprites are drawn while you read the summary, so the rainy court opens without "Lacing up".
+   */
+  private candidate: CareerState | null = null;
+  private makeCareer(): CareerState {
+    const c = createCareer({ firstName: this.first, lastName: this.last, number: this.number, pos: this.pos, heightIn: this.heightIn, appearance: this.look });
+    c.story = newStory(c); // round 60: high school — the prologue starts on the rainy court
+    return c;
+  }
+  private prepare() { this.candidate = this.makeCareer(); prepareStory(this, 'tutorial', this.candidate); }
+
+  /** Make the career and walk onto the rainy court (round 60). */
   private finish() {
     this.leaving = true;
-    app.career = createCareer({ firstName: this.first, lastName: this.last, number: this.number, pos: this.pos, heightIn: this.heightIn, appearance: this.look });
-    app.career.story = newStory(app.career); // round 60: high school — the prologue starts on the rainy court
+    app.career = this.candidate ?? this.makeCareer();
     app.changed();
     sfx.greenChime();
     this.cameras.main.fadeOut(400, 0, 0, 0);

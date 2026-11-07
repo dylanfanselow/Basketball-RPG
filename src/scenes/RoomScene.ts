@@ -9,6 +9,7 @@ import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } 
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
 import { sheetFor, angleCache, angPage, pumpSheet, playerSheetKey } from '../render/playerBank';
+import type { Appearance } from '../render/appearance';
 import { buildIcons, ArtPiece, AS } from '../render/roomArt';
 import { MiniGame, MiniInput, makeMiniGame } from '../world/minigames';
 import { V, Piece, RoomDef, Station, stationU, actorDepthFt, pieceDepthFt, PLAYER_R, RS, solids, moveWithCollision, doorNear, stationNear, sxOf, syOf, Poly, footprint } from '../world/apartment';
@@ -41,6 +42,13 @@ export const ORB_COL: Record<OrbTo, { rim: number; body: number; light: number; 
  * A walkable cutaway room (apartment, garage, …): you walk around (stick / WASD, R2 / Shift to hurry), walls and
  * furniture are solid, ✕ at a door goes through it, L1 leaves to the menu. Subclasses supply the room and its art.
  */
+/** Round 60c: you in the rooms — a plain tee and your team-colour shorts (shared with the preloader). */
+export function roomPlayerKit(c: { teamId: string }): Kit {
+  const team = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[0];
+  return { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
+}
+export const roomSheetKey = (c: { teamId: string; appearance: Appearance; height: number }) => playerSheetKey('HOME', c.appearance, c.height, roomPlayerKit(c));
+
 export abstract class RoomScene extends Phaser.Scene {
   inp!: InputMapper;
   pos: V = { x: 0, y: 0 };
@@ -129,9 +137,9 @@ export abstract class RoomScene extends Phaser.Scene {
       this.pieces.push({ art, img });
     }
     // you, in a plain tee and your team-colour shorts
-    const c = app.career, team = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[0];
-    this.kit = { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
-    this.sheetKey = playerSheetKey('HOME', c.appearance, c.height, this.kit);
+    const c = app.career;
+    this.kit = roomPlayerKit(c);
+    this.sheetKey = roomSheetKey(c);
     this.shadow = this.add.graphics().setDepth(-500);
     this.player = this.add.sprite(0, 0, '__DEFAULT').setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE).setTint(ROOM_TINT).setVisible(false);
     this.prompt = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(9500).setVisible(false);
@@ -468,6 +476,12 @@ export abstract class RoomScene extends Phaser.Scene {
     if (this.dist - this.stepAt >= 2.4) { this.stepAt = this.dist; this.stepFoot ^= 1; sfx.footstep(this.footSurface(), this.stepFoot, false); }
     this.drawPlayer(moved / Math.max(dt, 1e-3));
     return moved < step * 0.05; // blocked: call it arrived rather than walking in place forever
+  }
+
+  /** Round 60c: is your sprite sheet drawn yet (cutscenes wait for it so you never see an empty room)? */
+  playerReady(): boolean {
+    const c = app.career;
+    return !!sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
   }
 
   drawPlayer(speed: number) {

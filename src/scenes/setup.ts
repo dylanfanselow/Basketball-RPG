@@ -8,7 +8,7 @@ import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
 import { ThreeSetup, buildThrees } from '../sim/threes';
 import { buildTutorial, buildOnes, buildBigGame, newStory } from '../sim/story';
 import { TutorialDirector } from '../sim/tutorial';
-import type { StoryStage } from '../career/career';
+import type { StoryStage, CareerState } from '../career/career';
 export type { ThreeSetup } from '../sim/threes';
 export type { OneOnOneSetup } from '../sim/oneOnOne';
 export { DEFAULT_1V1 } from '../sim/oneOnOne';
@@ -82,9 +82,9 @@ export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOn
 }
 
 /** Round 60: build a prologue game (the tutorial gets its director). */
-export function createStorySim(which: StoryGame): GameSim {
-  const c = app.career, seed = Math.floor(Math.random() * 1e9);
-  ensureStory();
+export function createStorySim(which: StoryGame, c: CareerState = app.career): GameSim {
+  const seed = Math.floor(Math.random() * 1e9);
+  ensureStory(c);
   if (which === 'ones') return buildOnes(c, seed);
   if (which === 'bigGame') return buildBigGame(c, seed, app.settings.quarterLen);
   const sim = buildTutorial(c, seed);
@@ -93,8 +93,7 @@ export function createStorySim(which: StoryGame): GameSim {
 }
 
 /** A story (with Kingston) on the current career, for dev shortcuts on older saves. */
-export function ensureStory() {
-  const c = app.career;
+export function ensureStory(c: CareerState = app.career) {
   if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' };
   if (!c.story.rival) c.story.rival = newStory(c).rival;
 }

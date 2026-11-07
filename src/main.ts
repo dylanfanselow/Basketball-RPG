@@ -39,6 +39,7 @@ const game = new Phaser.Game({
   scene: [TitleScene, CreateScene, MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, ThreeSetupScene, OneOnOneSetupScene, ApartmentScene, GarageScene, TrailerScene],
 });
 (window as any).__phaser = game;
+(window as any).__sfx = sfx; // dev / tests: audio state (round 60c)
 void loadFaceParts(); // hand-drawn face parts (src/art/parts + editor drafts)
 initDevPanel();
 // ?editor opens the celeb pixel editor straight away

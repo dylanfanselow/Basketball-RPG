@@ -13,6 +13,7 @@ import { buildCelebSheet, CelebLook, CELEB_W, CELEB_H, CELEB_FRAMES } from '../r
 import { randomAppearance } from '../render/appearance';
 import { SPRITE_SCALE } from '../render/sprites';
 import { setStage, storyScene } from './setup';
+import { prepareStory } from './preload';
 
 /**
  * Hooks for the story element at the trailer door (round 57: the owner will add one). Each runs when you go inside,
@@ -40,6 +41,7 @@ export class TrailerScene extends RoomScene {
   private cut: 'walkIn' | 'momOut' | 'talk' | 'usher' | 'walkUp' | null = null;
   private cutT = 0;
   private leg = 0;
+  private shown = true;
   private mom: Phaser.GameObjects.Sprite | null = null;
   init(data?: { at?: string; night?: boolean; story?: 'night' }) { super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; }
   room(): RoomDef { return TRAILER_YARD; }
@@ -56,6 +58,10 @@ export class TrailerScene extends RoomScene {
       this.box = new StoryBox(this, { y: 590 });
       this.mom = this.buildMom();
       this.cut = 'walkIn';
+      sfx.music('mom'); // round 60c: "Sad Story" for the scene with Mom
+      this.events.once('shutdown', () => sfx.music(null));
+      this.cameras.main.fadeOut(0, 0, 0, 0); // dark until your sprite is drawn (round 60c)
+      this.shown = false;
       this.busy = true; // a cutscene: the stick does nothing until you're inside
     }
     this.cameras.main.setBackgroundColor(this.night ? '#0b1020' : '#4f97e2');
@@ -124,6 +130,14 @@ export class TrailerScene extends RoomScene {
     const c = app.career, you = c.firstName || c.name.split(' ')[0];
     const door = this.piece('door'), mom = this.mom!;
     if (this.cut === 'walkIn') {
+      // round 60c: wait for your sprite, then fade in and start walking; build tomorrow's big game meanwhile
+      if (!this.shown) {
+        if (!this.playerReady()) return;
+        this.shown = true; this.drawPlayer(0);
+        this.cameras.main.fadeIn(600, 0, 0, 0);
+        prepareStory(this, 'bigGame');
+        return;
+      }
       // up the dirt path to the foot of the steps
       const legs: V[] = [{ x: 20.6, y: 9 }, { x: 20.6, y: 5.0 }];
       if (this.walkTowards(legs[this.leg], dt) && ++this.leg >= legs.length) {

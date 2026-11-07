@@ -38,10 +38,9 @@ function botInput(sim: GameSim, d: TutorialDirector, t: number): UserInput {
       break;
     case 'post':
       if (!hasBall) break;
-      inp.postHeld = d.step === 0 || !me.post ? true : true;
+      inp.postHeld = true;
       inp.move = scale(toRim, 0.6);
-      if (d.step === 1 && me.post && Math.floor(t * 30) % 45 === 0) { inp.a = true; inp.aHeld = true; inp.postHeld = false; }
-      else if (d.step === 1 && !me.post && dist(me.p, rim) < 20) hold(v(-toRim.y, toRim.x));
+      if (d.step === 1 && me.post && sim.time - me.post.since > 0.6) hold(v(-toRim.y, toRim.x)); // hold ✕ in the post: a post shot
       break;
     case 'step':
       if (!hasBall) break;
@@ -106,7 +105,7 @@ describe('round 60 story', () => {
       if (d.lesson && d.lesson.id !== last) { last = d.lesson.id; seen.push(last); lessonT = 0; }
       sim.update(dt, botInput(sim, d, t)); t += dt; lessonT += dt;
       if (sim.lastShot !== lastShot && sim.lastShot && !sim.lastShot.blocked) { shots.push({ made: sim.lastShot.made, pct: sim.lastShot.ev.pct }); lastShot = sim.lastShot; }
-      if (lessonT > 90) { d.skipLesson(); seen.push(`SKIPPED:${last}`); }
+      if (lessonT > 90) { if ((globalThis as any).process?.env?.DBG) console.log(sim.events.filter((e) => e.t > sim.time - 90 && /post|gather|tutorial|score|move/.test(e.kind)).slice(0, 40).map((e) => `${e.t.toFixed(1)} ${e.kind} ${e.pid} ${e.text} ${JSON.stringify(e.data ?? {})}`).join('\n')); d.skipLesson(); seen.push(`SKIPPED:${last}`); }
     }
     if ((globalThis as any).process?.env?.DBG) console.log(pos, t.toFixed(1), seen.join(" "), shots.length);
     expect(seen.filter((s) => s.startsWith("SKIPPED"))).toEqual([]);
@@ -155,5 +154,35 @@ describe('round 60 story', () => {
     const old = migrateCareer(JSON.parse(JSON.stringify({ ...newCareer('Old', 'SG'), story: undefined })))!;
     expect(storyKeyGame(old)).toBeNull();
     expect(nextKeyGame(old)).not.toBeNull();
+  });
+  it('round 60c: Kingston is Black with goggles (new and old saves)', () => {
+    const c = career('SF');
+    const k = rivalPlayer(c, 'tutorial');
+    expect(k.appearance.skin).toBeGreaterThanOrEqual(3);
+    expect(k.appearance.goggles).toBe(true);
+    c.story!.rival!.appearance = { ...c.story!.rival!.appearance, skin: 0, goggles: false }; // a save from before
+    expect(rivalPlayer(c, 'ones').appearance.skin).toBeGreaterThanOrEqual(3);
+    expect(rivalPlayer(c, 'ones').appearance.goggles).toBe(true);
+  });
+
+  it('round 60c: blowing the Step-Through after the fake goes back to the fake', () => {
+    const sim = buildTutorial(career('SG'), 21);
+    const d = new TutorialDirector(sim); sim.director = d;
+    d.skipLesson(); d.skipLesson(); d.skipLesson(); d.skipLesson(); d.skipLesson(); // → step-through
+    expect(d.lesson!.id).toBe('step');
+    const dt = 1 / 30;
+    let t = 0;
+    const run = (secs: number, inp: (s: GameSim) => UserInput) => { for (let k = 0; k < secs / dt; k++) { if (d.blocking) { d.nextLine(); continue; } sim.update(dt, inp(sim)); t += dt; } };
+    // wait out the demo until it's your try
+    for (let k = 0; k < 2000 && !(d.phase === 'try'); k++) { if (d.blocking) { d.nextLine(); continue; } sim.update(dt, emptyInput()); }
+    expect(d.phase).toBe('try');
+    // fake (tap ✕)
+    run(0.1, () => ({ ...emptyInput(), a: true }));
+    run(0.4, () => emptyInput());
+    expect(d.step).toBe(1);
+    // then a plain jumper (hold ✕ with no stick): back to step 1
+    run(0.8, (s) => ({ ...emptyInput(), a: s.time % 1 < dt, aHeld: true }));
+    expect(d.step).toBe(0);
+    expect(d.failAt).toBeGreaterThan(0);
   });
 });

@@ -34,6 +34,7 @@ import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from 
 import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
 import { StoryRun } from './storyRun';
+import { playerKit, takeStory } from './preload';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
  * players, courtside celebs (regular-height people) smaller again. */
@@ -169,7 +170,8 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     hiRes(this);
-    this.sim = createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
+    // round 60c: a story game built (and its sheets drawn) ahead of time skips most of "Lacing up…"
+    this.sim = (this.mode === 'story' ? takeStory(this.initData?.story ?? 'tutorial') : null) ?? createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
@@ -203,7 +205,8 @@ export class GameScene extends Phaser.Scene {
     this.makeHud();
     // round 60: a prologue game (the tutorial box, the 1s, the big game's coach + scout)
     this.story = this.mode === 'story' ? new StoryRun(this, this.initData.story ?? 'tutorial') : null;
-    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; });
+    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; sfx.music(null); });
+    sfx.music('game'); // round 60c: the retro arcade loop in every basketball game
     sfx.setArena(!this.school); // crowd murmur only while an arena game is on
     sfx.rain(this.school === 'rain');
     sfx.crowdSize = this.school === 'rain' ? 0 : this.school === 'day' ? 0.35 : 1;
@@ -214,12 +217,7 @@ export class GameScene extends Phaser.Scene {
   private onAppChanged = () => { this.buildSprites(); };
 
   /** Team uniform for a player (home = team colors, away = white with team trim). */
-  kitFor(p: Player): Kit {
-    const t = this.sim.teams[p.team].def;
-    return p.team === 0
-      ? { jersey: t.colors[0], jerseyShade: shade(t.colors[0], 0.75), trim: t.colors[1], shorts: shade(t.colors[0], 0.9), number: p.number }
-      : { jersey: '#f2f2f2', jerseyShade: '#cfcfcf', trim: t.colors[0], shorts: '#e6e6e6', number: p.number };
-  }
+  kitFor(p: Player): Kit { return playerKit(this.sim, p); }
 
   /** Build (or rebuild after a dev-panel change) the sprite sheets for players on the court. */
   buildSprites() {

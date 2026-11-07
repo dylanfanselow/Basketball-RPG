@@ -5,6 +5,7 @@ import { StoryBox, BoxContent, BoxSpeaker } from '../render/storyBox';
 import { TutorialDirector } from '../sim/tutorial';
 import { RIVAL_ID, LOCKED_IN } from '../sim/story';
 import { setStage, storyScene, StoryGame } from './setup';
+import { prepareStory, prewarmRoom } from './preload';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
@@ -31,6 +32,7 @@ export class StoryRun {
   private queue: Say[] = [];
   private line: Say | null = null;
   private lastCheck = -9;
+  private prepped = false;
   private leaving = false;
   private overHandled = false;
   private coach: { sprite: Phaser.GameObjects.Sprite; x: number; cheerUntil: number } | null = null;
@@ -75,6 +77,12 @@ export class StoryRun {
   /** Per frame, before the sim steps. True = hold the sim (a line is up, or we're leaving). */
   update(): boolean {
     const gs = this.gs, inp = gs.input2;
+    // round 60c: this game's sheets are drawn — start on the next scene's (no "Lacing up" / no missing player later)
+    if (!this.prepped) {
+      this.prepped = true;
+      if (this.which === 'tutorial') prepareStory(gs, 'ones');
+      else if (this.which === 'ones') prewarmRoom(gs);
+    }
     const ok = inp.pressed('a');
     let content: BoxContent | null = null;
     let hold = false;
@@ -116,7 +124,7 @@ export class StoryRun {
         youWon
           ? { who: 'kingston', text: 'Rain got in my eyes. ...Nah, that was nice. Don\'t get used to it.' }
           : { who: 'kingston', text: `Good run, ${you}. You're gettin' there. Just not there.` },
-        { who: 'kingston', text: 'Big day tomorrow. See you tomorrow. Don\'t be late.', then: () => this.kingstonLeaves() },
+        { who: 'kingston', text: 'Big day tomorrow. See you tomorrow. Don\'t be late.', then: () => { sfx.music(null); this.kingstonLeaves(); } }, // the game music fades as he goes
         { who: 'you', text: 'Everybody wants out of here. Me too.' },
         { who: 'you', text: 'But he\'s so much better than me... The scout\'s never even gonna notice me.', then: () => this.goTo('night') },
       ]);

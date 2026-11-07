@@ -179,6 +179,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 60c: `scenes/preload.ts` (`playerKit` shared with GameScene, `prewarmSim`, `prepareStory` / `takeStory` — a
+  story sim built ahead and handed to GameScene once, `prewarmRoom`; CreateScene READY prepares the tutorial for the
+  candidate career, StoryRun prepares the next stage once its game is ready, the trailer prepares the big game);
+  `RoomScene.roomPlayerKit` / `roomSheetKey` / `playerReady`; `sfx.music('game' | 'mom' | null)` (HTMLAudio through a
+  music bus, crossfades, remembered until unlock, ducked with ults; `settings.music`; `window.__sfx`); tutorial
+  `Step.fail`, `Lesson.restartOnNewBall`, `failAt` / "Missed it", `lastPostAt`; `story.kingstonLook`.
   Round 60b: `StoryRun.kingstonLeaves` / `walkOff` (he walks off from his velocity, removed once off-camera);
   `RoomScene.walkTowards` (cutscene walking with collision + footsteps); TrailerScene story `'night'` cutscene with
   Mom (`buildMom`: a standing celeb/fan sheet, your skin, long hair, hoodie; `momScene` walkIn → momOut → talk →

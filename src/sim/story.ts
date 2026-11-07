@@ -9,7 +9,7 @@ import { Player } from './player';
 import { TeamDef, CoreStats, CORE_STATS } from './data';
 import { Position, HEIGHTS } from './attributes';
 import { Rng, clamp } from './math';
-import { randomAppearance } from '../render/appearance';
+import { randomAppearance, Appearance } from '../render/appearance';
 import { AI_PERKS, BIAS, FIRST, LAST } from '../career/roster';
 import { CareerState, RivalInfo, StoryState, STARTER_CORE, HEIGHT_RANGE, careerPlayer } from '../career/career';
 
@@ -44,9 +44,15 @@ export function newStory(c: Pick<CareerState, 'pos' | 'number' | 'height'>, rnd:
   const nums = [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 15, 21, 22, 23, 24, 30, 32, 33, 34, 35].filter((n) => n !== c.number);
   const rival: RivalInfo = {
     first: 'Kingston', last: 'Williams', pos: c.pos, heightIn,
-    number: nums[Math.floor(rnd() * nums.length)], appearance: randomAppearance(rnd),
+    number: nums[Math.floor(rnd() * nums.length)], appearance: kingstonLook(randomAppearance(rnd), rnd() < 0.5 ? 3 : 4),
   };
   return { stage: 'tutorial', rival, home: 'trailer' };
+}
+
+/** Round 60c (owner): Kingston is Black and wears goggles. Applied to new and already-saved rivals alike. */
+export function kingstonLook(a: Appearance, skin = Math.max(3, a.skin)): Appearance {
+  const dark = ['#141010', '#2b1d14', '#4a3020'];
+  return { ...a, skin: Math.max(3, skin), hairColor: dark.includes(a.hairColor) ? a.hairColor : '#141010', goggles: true, mask: false };
 }
 
 function fallbackRival(c: CareerState): RivalInfo {
@@ -62,7 +68,7 @@ export function rivalPlayer(c: CareerState, mode: 'tutorial' | 'ones', team: 0 |
   const nodes = [...new Set([...AI_PERKS[r.pos], 'dr_handle', 'dr_cross', 'sh_root', 'fi_root'])];
   return new Player({
     id: RIVAL_ID, name: `${r.first} ${r.last}`, team, pos: r.pos, core, nodes, number: r.number,
-    skin: r.appearance.skin, height: r.heightIn / 12, appearance: r.appearance,
+    skin: Math.max(3, r.appearance.skin), height: r.heightIn / 12, appearance: kingstonLook(r.appearance),
   });
 }
 

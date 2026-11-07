@@ -158,6 +158,17 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 60c (owner): polish, preloading, music.**
+  - **Music** (royalty-free, the owner's files in `public/music/`): mondamusic "Retro Arcade Game Music" loops in
+    **every basketball game**; alexgrohl "Sad Story" plays in the **scene with Mom** (it fades in on the walk up,
+    the game music fades out as Kingston walks off). Music volume in Settings (default 50%).
+  - **Kingston is Black and wears goggles** (also applied to rivals already in saves).
+  - The tutorial no longer mentions the ultimate (the rhythm / ult line is gone).
+  - **Multi-step lessons start over on a miss:** in the Step-Through lesson a plain shot after the fake (or letting
+    the fake's window run out) goes back to "pump fake" with a red "Missed it"; same for shooting outside the post in
+    the post-up lesson, and when a new possession starts mid-lesson.
+  - **No waiting between story scenes:** the next game / sprite is built while you're still in the current one; the
+    trailer walk starts only once you're drawn. Rain is a little quieter.
 - **Round 60b (owner): prologue follow-ups.**
   - After "See you tomorrow. Don't be late." **Kingston turns and walks off** the court into the rain (no dip to
     black); your thoughts play while he goes.
