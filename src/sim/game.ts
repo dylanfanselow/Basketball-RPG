@@ -138,6 +138,10 @@ export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1
  *  (ft/s; lobs and overhead passes slower), how far it may drift from its first aim (ft), and the early-catch reach. */
 export const PASS = { leadMax: 1.0, home: 24, homeSlow: 12, homeMax: 12, earlyR: 2.4, /** dev / stats: early catches on */ early: true };
 
+/** Round 62: a midrange jumper (Mid-Range Rhythm): a 2-point pull-up, fade or step-through pull-up from 10 ft out. */
+export const isMidrange = (ev: { type: string; pts: number; dist: number }) =>
+  ev.pts === 2 && (ev.type === 'mid' || ((ev.type === 'fade' || ev.type === 'stepThroughJumper') && ev.dist >= 10));
+
 /** Longest a held screen lasts (s). */
 export const SCREEN_HOLD_MAX = 6;
 
@@ -2359,8 +2363,11 @@ export class GameSim {
       const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
       const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
       const flash = dk && dk.kind === 'flash';
-      this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1), methodLabel(mk), scoreMath(val, used) + (flash ? ' ×1.15' : ''),
-        { base: `${val}pts ×${POINT_GAIN}${flash ? ' ×1.15' : ''}`, times: used, decay: REPEAT_DECAY ** used }); // round 54: the pop shows fresh / stale clearly
+      // round 62: Mid-Range Rhythm (Shooting perk): made midrange jumpers build more rhythm
+      const midR = isMidrange(st.ev) ? s.mods.pMult('midRhythm') : 1;
+      const extra = (flash ? ' ×1.15' : '') + (midR !== 1 ? ` ×${midR} mid` : '');
+      this.addRhythm(s, scoreGain(val, used) * (flash ? 1.15 : 1) * midR, methodLabel(mk), scoreMath(val, used) + extra,
+        { base: `${val}pts ×${POINT_GAIN}${extra}`, times: used, decay: REPEAT_DECAY ** used }); // round 54: the pop shows fresh / stale clearly
       // round 53: you ran your part of the play and the team scored off it (no shot or assist needed)
       const u = this.user;
       if (u && this.ranPlay && this.ranPlay.team === team && u.team === team && s !== u && ast !== u && this.userOnCourt) this.addRhythm(u, RHYTHM_GAIN.playRun, 'ran the play');

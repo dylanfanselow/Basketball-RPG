@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-07 (round 61b: passes go to the receiver, not to where he was).
+Last updated: 2026-11-07 (round 62: Mid-Range Rhythm perk).
 Next session: start with BACKLOG.md → "Start here next session".

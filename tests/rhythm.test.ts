@@ -182,3 +182,30 @@ describe('round 53: rhythm tuning', () => {
     expect(g.events.some((e) => e.kind === 'switch' && e.data?.to === b.name)).toBe(true);
   });
 });
+
+describe('round 62: Mid-Range Rhythm (Shooting perk)', () => {
+  /** Score a made jumper of this type from d ft (resolved directly) and return the rhythm it gave. */
+  const scoreFrom = (nodes: string[], type: string, d: number) => {
+    const u = new Player({ id: 'USER', name: 'You', team: 0, pos: 'SG', core: { shooting: 70, finishing: 60, strength: 60, mobility: 60, playmaking: 60 }, nodes, isUser: true });
+    const g = live(u);
+    const rim = rimPos(g.side(u.team));
+    u.p = { x: rim.x - Math.sign(rim.x - 47) * d, y: rim.y };
+    g.possession = u.team; g.setRhythm(u, 0);
+    const ev = evaluateShot(u, g.opp(u.team), g.side(u.team), type, { now: g.time, clutch: false });
+    (g as any).resolveShot({ kind: 'shot', shooter: u, made: true, pts: ev.pts, ev, foul: false });
+    return { gain: u.rhythm, pop: g.events.filter((e) => e.kind === 'rhythmDelta').pop() };
+  };
+  it('made midrange jumpers build x1.5 rhythm with the perk (and say so in the pop)', () => {
+    const base = scoreFrom(['sh_root', 'sh_mid'], 'mid', 16);
+    const perk = scoreFrom(['sh_root', 'sh_mid', 'sh_midrhythm'], 'mid', 16);
+    expect(base.gain).toBeGreaterThan(0);
+    expect(perk.gain).toBeCloseTo(base.gain * 1.5, 5);
+    expect(perk.pop?.data?.math).toContain('×1.5 mid');
+  });
+  it('fades and step-through pull-ups from 10 ft out count; layups and threes do not', () => {
+    const nodes = ['sh_root', 'sh_mid', 'sh_midrhythm', 'sh_fade'];
+    expect(scoreFrom(nodes, 'fade', 14).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid', 'sh_fade'], 'fade', 14).gain * 1.5, 5);
+    expect(scoreFrom(nodes, 'layup', 3).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid'], 'layup', 3).gain, 5);
+    expect(scoreFrom(nodes, 'three', 24).gain).toBeCloseTo(scoreFrom(['sh_root', 'sh_mid'], 'three', 24).gain, 5);
+  });
+});

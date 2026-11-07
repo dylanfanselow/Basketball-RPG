@@ -179,6 +179,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 62: Shooting perk **Mid-Range Rhythm** (`sh_midrhythm`, passive, cost 1, after Mid-Range Maestro): param
+  `midRhythm` ×1.5 on the rhythm from a made midrange jumper (`game.isMidrange`: a 2-point `mid`, or a fade /
+  step-through pull-up from 10 ft out); the pop's math shows `×1.5 mid`.
   Round 61b (passes find the receiver): `passSafety` aims at `receiverAt(to, flight time)` (the real flight time,
   capped by `PASS.leadMax`; velocity eased a little; a screener where he stands), every pass homes in on the receiver
   in flight (`PASS.home` 24 ft/s, lobs / overhead `homeSlow` 12, at most `homeMax` 12 ft from `aim0`), catches on the
