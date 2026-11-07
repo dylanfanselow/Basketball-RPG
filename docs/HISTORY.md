@@ -88,7 +88,7 @@
 | 60f | `83d615a` | Kingston has every perk in the 1s; new careers start with two perks by position (PG: shooting + passing) | `STARTER_PERKS`, `rivalPlayer` all `NODES`, builder line |
 | 60g | `fb7da4e` | Pick any jersey number (you're in high school, not on the Lakers) | CreateScene: no taken numbers, Lincoln jersey preview |
 | 61 | `ed43f6c` | A much smarter 1v1 CPU (combos, sprint, options in a row, counters, shoots when you can't contest in time, uses the clock) with Easy / Medium / Hard on offense and defense | `ai/forecast.ts`, `ai/oneOnOne.ts`, `ai/levels.ts`, defense levels, setup CPU box, dev "1v1 CPU thoughts" |
-| 61b | `TBD` | Passes went to where the receiver was (or was supposed to be) and turned into turnovers, inbounds too | flight-time aim, in-flight homing, early catch, screener comes off the screen, `canCatch` |
+| 61b | `a40555b` | Passes went to where the receiver was (or was supposed to be) and turned into turnovers, inbounds too | flight-time aim, in-flight homing, early catch, screener comes off the screen, `canCatch` |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
