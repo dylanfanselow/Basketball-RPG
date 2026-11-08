@@ -2363,6 +2363,12 @@ export class GameSim {
     return ang <= coneHalf(type) && sizeScore(d) > sizeScore(p);
   }
 
+  /** How many times he already scored this way tonight (the rhythm STALE decay). Round 67: Mamba's midrange never goes stale. */
+  staleTimes(p: Player, mk: string, ev: { type: string; pts: number; dist: number }): number {
+    if (isMidrange(ev) && p.mods.pAdd('mamba') > 0) return 0;
+    return p.methods.get(mk) ?? 0;
+  }
+
   /**
    * Round 65: a shot that would miss can still go in. Lethal Shooter (free): every other green jumper (contest under
    * GREEN_CONTEST). Mamba: every other miss of any shot, paid with rhythm (more for a worse shot), if he has it.
@@ -2484,7 +2490,7 @@ export class GameSim {
       const dk = st.ev.dunk ? DUNK[st.ev.dunk] : null;
       // rhythm: points × 4, less each time you score the same way tonight (round 51)
       const mk = methodKey(st.ev.type, st.ev.conds, { stepback: s.lastMove?.id === 'stepback' && this.time - s.lastMove.endAt < 1.2, transition: this.inTransition(team) });
-      const used = s.methods.get(mk) ?? 0; s.methods.set(mk, used + 1);
+      const used = this.staleTimes(s, mk, st.ev); s.methods.set(mk, (s.methods.get(mk) ?? 0) + 1);
       const flash = dk && dk.kind === 'flash';
       // round 62: Rhythm Shooter (Shooting perk, was Mid-Range Rhythm): made midrange jumpers build more rhythm
       const midR = isMidrange(st.ev) ? s.mods.pMult('midRhythm') : 1;

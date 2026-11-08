@@ -94,6 +94,7 @@
 | 64 | `f95f09e` | Perk rework: tree renames (Post, Perimeter, Handles), Way Down Town / Bang!, a perk needs all its lines, Dime Vision merged into Floor General, new Magic, Popper, Roller, Iron Nate, Gimme That!, Foresight | `canUnlock` every-prereq, tree JSON, `pass()` `passStyle` + `MAGIC`, `slipUntil` + `SLIP_S`, Iron Nate in the ankle check, snatch block, `predictLanding` + `foresightSpot`, `passBehind` clip, `tests/perks.test.ts` |
 | 65 | `214b2c7` | Owner's sketches: Shooting as a hand under a ball, Perimeter as the court, Post as the key, Screens as a brick wall; GOAT skills; Chef, Mamba, Lethal Shooter, Finger Wag, Block Party; Lockdown Stance / Floor Burn / Swat Team removed | tree JSON layouts + `shape`, `TreeNode.goat`, `PerkTreeScene.drawBackdrop`, `missSaved` / `mambaCost`, `blockPartyOn` / `sizeScore`, `FINGER_WAG`, Chef in `windupFor` / `evaluateShot`, `fingerWag` clip, roster owners, save migration |
 | 66 | `73dfa23` | Bang! = clutch 3s; no quarter length option; big game in two 4-minute halves; scout weighs a block more than a point | `sh_pullup3` clutch, TitleScene settings, `GameConfig.periods` / `qEquiv` / `periodLabel`, `buildBigGame` halves, `bigGameVerdict` with `STAT_WEIGHTS` |
+| 67 | `TBD` | Mamba: midranges don't go stale | `staleTimes`, Mamba desc |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

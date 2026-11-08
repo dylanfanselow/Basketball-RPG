@@ -179,6 +179,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 67: `GameSim.staleTimes` (the rhythm repeat count for a make) returns 0 for a midrange make (`isMidrange`)
+  by a Mamba owner, so it never goes STALE; the method is still counted.
   Round 66: Bang! (`sh_pullup3`) is a `clutch` 3 term x1.15; Options (TitleScene) has no Quarter length row;
   `GameConfig.periods` (default 4) with `GameSim.periods`, `qEquiv` (quarterLen x periods / 4: rhythm `gainScale`,
   scaled minutes) and `periodLabel()` (Q1 / H1 / OT); end of game, clutch, late press, coach `late` / `endgame`,

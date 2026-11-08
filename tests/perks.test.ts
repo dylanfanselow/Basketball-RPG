@@ -299,3 +299,17 @@ describe('round 65: Finger Wag and Block Party', () => {
     }
   });
 });
+
+describe('round 67: Mamba midrange never goes stale', () => {
+  it('a repeated midrange counts as fresh with Mamba, stale without; threes still go stale', () => {
+    const g = live();
+    const p = g.holder()!;
+    const mid = { type: 'mid', pts: 2, dist: 15 }, three = { type: 'three', pts: 3, dist: 24 };
+    p.methods.set('mid|dribble', 3); p.methods.set('three|catch', 2);
+    withNode(p, 'sh_mamba', false);
+    expect(g.staleTimes(p, 'mid|dribble', mid)).toBe(3);
+    withNode(p, 'sh_mamba', true);
+    expect(g.staleTimes(p, 'mid|dribble', mid)).toBe(0);
+    expect(g.staleTimes(p, 'three|catch', three)).toBe(2);
+  });
+});
