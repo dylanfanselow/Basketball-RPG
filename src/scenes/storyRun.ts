@@ -65,8 +65,8 @@ export class StoryRun {
         { who: 'coach', text: 'A stomach virus?! TODAY?! The one day, the ONE day, a scout drives three hours to watch him!', fit: true },
         { who: 'coach', text: 'Unbelievable. Un-be-lievable.', fit: true },
         { who: 'coach', text: `...Fine. #${c.number}. ${last}. You're starting.` },
-        { who: 'coach', text: 'Everybody locked in! Good fundamental ball: box out, talk on D, make the extra pass. There\'s a scout in the stands today.' },
-        { who: 'narrator', text: `LOCKED IN: you're +${LOCKED_IN} on every stat this game. Show him.`, then: () => this.banner('LOCKED IN', `+${LOCKED_IN} ALL STATS  ·  THE SCOUT IS WATCHING`) },
+        // owner: no narrator box for LOCKED IN, just the pop text when the coach's last line closes
+        { who: 'coach', text: 'Everybody locked in! Good fundamental ball: box out, talk on D, make the extra pass. There\'s a scout in the stands today.', then: () => this.banner('LOCKED IN', `+${LOCKED_IN} ALL STATS  ·  THE SCOUT IS WATCHING`) },
       ]);
     }
   }
@@ -140,6 +140,9 @@ export class StoryRun {
     if (!this.coach) return;
     if (e.kind === 'score' && e.team === 0) this.coach.cheerUntil = this.gs.time.now + 1600;
   }
+
+  /** The tutorial's shot-chance lines: GameScene shows an example number top right meanwhile. */
+  get shotExample(): boolean { return !this.line && this.dir?.view()?.example === 'shot'; }
 
   pauseOptions(): string[] { return this.dir ? ['Skip lesson', 'Skip to the 1s'] : this.which === 'ones' ? ['Skip to that night'] : []; }
   pauseAction(i: number) {

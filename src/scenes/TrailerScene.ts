@@ -118,7 +118,7 @@ export class TrailerScene extends RoomScene {
     const kingston = { who: 'mom' as const, text: 'Now go check on Kingston. That poor boy was sick as a dog.' };
     if (r.great) return [
       { who: 'mom', text: 'There\'s my baby! The whole street\'s talking about you.' },
-      { who: 'me', name: you, text: `Ma... we won. I had ${r.pts} points, ${r.reb} boards, ${r.ast} assists.` },
+      { who: 'me', name: you, text: 'Ma...' },
       { who: 'mom', text: 'You got your opportunity and you made the most of it. I am so proud of you.' },
       { who: 'mom', text: 'That\'s what I told you. Be ready, and when it comes, you take it.' },
       kingston,

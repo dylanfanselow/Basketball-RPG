@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { hiRes } from './ui';
 import { GameSim, GameEvent, UserInput } from '../sim/game';
 import { Player } from '../sim/player';
-import { CPU_LEVEL_NAMES } from '../sim/ai/levels';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { createSim, Mode, MatchSetup, OneOnOneSetup, GameInit } from './setup';
@@ -1088,8 +1087,8 @@ export class GameScene extends Phaser.Scene {
       const p2 = sim.teams[1].onCourt[0];
       if (p2) {
         g.lineStyle(3, 0xff8a3d, 0.95); g.strokeEllipse(sx(p2.p.x), sy(p2.p.y), 2.6 * S, 2.6 * D);
-        const lv = sim.cpuLevel(p2);
-        this.label(sx(p2.p.x), sy(p2.p.y, p2.z + p2.height + 1.0) - 14, sim.user2 ? 'P2' : `CPU · ${lv ? CPU_LEVEL_NAMES[lv].toUpperCase() : ''}`, '#ff9f6a', 14);
+        // owner: no CPU level tag over his head, only a human P2 gets a tag
+        if (sim.user2) this.label(sx(p2.p.x), sy(p2.p.y, p2.z + p2.height + 1.0) - 14, 'P2', '#ff9f6a', 14);
       }
       if (u) this.label(sx(u.p.x), sy(u.p.y, u.z + u.height + 1.0) - 22, 'P1', '#7dffb8', 14);
       // round 61 dev: what each CPU is reading and why he shot
@@ -1387,7 +1386,8 @@ export class GameScene extends Phaser.Scene {
     // round 53: the short shot chance, top right (always on; the full equation is the dev toggle)
     const lsU = ls && ls.user && sim.time - ls.at < 3 ? ls : null;
     const short = showEq ? null : prev ? { ev: prev, tail: '' } : lsU ? { ev: lsU.ev, tail: lsU.blocked ? '  ✗ BLK' : lsU.made ? '  ✓' : '  ✗' } : null;
-    if (short) { const f = fmtShort(short.ev); this.shotText.setText(f.text + short.tail).setColor(f.color); } else this.shotText.setText('');
+    if (this.story?.shotExample) this.shotText.setText('3PT 37 ×.85 ×.67 = 21%').setColor('#ff8a7a'); // tutorial: what the number looks like
+    else if (short) { const f = fmtShort(short.ev); this.shotText.setText(f.text + short.tail).setColor(f.color); } else this.shotText.setText('');
     // High IQ (Perimeter D): on defense, read their set and who it's for
     const iq = this.highIQ();
     this.iqText.setText(iq ? `HIGH IQ · ${iq.play}${iq.target ? `  →  for ${iq.target.name}` : ''}` : '');

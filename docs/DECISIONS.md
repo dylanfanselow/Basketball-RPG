@@ -220,7 +220,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **The big game** (school court, day, 5v5 vs Jefferson): the coach throws a fit, Kingston is out with a
     **stomach virus**: then names you the starter and tells everyone to lock in and play good fundamental ball
     because a **scout** is here (drawn by the bleachers with a clipboard). You're **LOCKED IN: +10 all stats**
-    (high-schoolers are ~38-52), clearly the best player on the floor.
+    (high-schoolers are ~38-52), clearly the best player on the floor. Round 70 (owner): LOCKED IN is the pop-text
+    banner only (shown when the coach's last line closes), no narrator box.
   - The stage is saved; Load Save resumes it. Older saves skip the prologue (home stays the apartment).
 - **Round 59: character builder** (New Game → it). Steps: **LOOK** (every appearance option: skin, hair incl. the
   hand-drawn parts, colours, face, gear; live front / 3-4 / side preview), **POSITION**, **HEIGHT** (a range per
@@ -544,5 +545,6 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   can't get a meaningful contest up by the release** (a forecast of the release, not the contest now). It strings
   options together (dribble combos, sprint drives, post up → let go → step back, pump fake → Step-Through if he
   jumps), counters what the defender gives it, takes open looks at once, settles at a clock time drawn per possession
-  (not always the last second) and throws one up before the buzzer. **The prologue 1s vs Kingston uses Hard.** The
+  (not always the last second) and throws one up before the buzzer. **The prologue 1s vs Kingston uses Medium** (round 70, owner; was Hard). **No CPU level tag over
+  the CPU's head** (round 70, owner): only a human P2 gets a tag. The
   brain is **1v1 only** for now; 3v3/5v5 isos can use it later.

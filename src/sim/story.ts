@@ -125,7 +125,7 @@ export function buildOnes(c: CareerState, seed: number): GameSim {
     teams: [LINCOLN, LINCOLN], rosters: [[me], [king]], userId: me.id,
     trust: { team: 60, coach: 60 }, ult: { unlocked: false, id: null, level: 0 },
     featureUser: false, venue: 'schoolRain',
-    oneOnOne: { target: 11, scoring: '1s2s', winBy2: true, cpu: 'hard' }, // round 61 (owner): Kingston plays on Hard
+    oneOnOne: { target: 11, scoring: '1s2s', winBy2: true, cpu: 'medium' }, // owner: Kingston plays on Medium (was Hard in round 61)
   });
 }
 

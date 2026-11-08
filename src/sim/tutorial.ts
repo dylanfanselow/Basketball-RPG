@@ -13,7 +13,7 @@ import { postIntent } from './post';
 import { RIVAL_ID } from './story';
 
 export type Speaker = 'narrator' | 'kingston' | 'coach' | 'you';
-export interface Line { who: Speaker; text: string }
+export interface Line { who: Speaker; text: string; /** show an example shot chance top right while this line is up */ example?: 'shot' }
 type Demo = 'pullup' | 'cross' | 'post' | 'stepThrough';
 type Holder = 'me' | 'mate' | 'kingston';
 interface Ctx { sim: GameSim; me: Player; mate: Player; king: Player; other: Player; d: TutorialDirector }
@@ -49,13 +49,14 @@ const fill = (t: string, n: Record<string, string>) => t.replace(/\{(\w+)\}/g, (
 export function buildLessons(): Lesson[] {
   const K = (text: string): Line => ({ who: 'kingston', text });
   const N = (text: string): Line => ({ who: 'narrator', text });
+  const X = (text: string): Line => ({ who: 'narrator', text, example: 'shot' }); // with the example number top right
   return [
     {
       id: 'move', title: 'MOVE',
       before: [
-        K('Rain or no rain, we run it. Big game tomorrow, {you}. Scouts in the stands.'),
+        K('Rain or shine, we run it. Big game tomorrow, {you}. Scouts in the stands.'),
         K('Real scouts. This is my shot to get out of this shithole, and I ain\'t missing it.'),
-        N('You control only your player. Everyone else plays their own game.'),
+        N('You control only your player.'),
       ],
       ball: 'me',
       steps: [
@@ -69,9 +70,9 @@ export function buildLessons(): Lesson[] {
       demo: 'pullup', demoTalk: K('Same jumper I\'m hitting tomorrow.'),
       after: [
         N('Hold ✕ to shoot. A quick tap is a pump fake.'),
-        N('There\'s no shot meter. The number in the top right is your chance to make the shot you\'re lined up for.'),
-        N('It starts from that shot\'s base % and moves with your rating, how open you are and how tired you are.'),
-        N('The cone in front of you is where a defender has to be to contest it. Keep defenders out of it to keep that number up.'),
+        X('There\'s no shot meter. The number in the top right is your chance to make the shot you\'re lined up for.'),
+        X('It starts from that shot\'s base % and moves with your rating, how open you are and how tired you are.'),
+        X('The cone in front of you is where a defender has to be to contest it. Keep defenders out of it to keep that number up.'),
       ],
       ball: 'me',
       steps: [{ prompt: 'Hold ✕ to shoot', check: madeShot }],
@@ -94,7 +95,7 @@ export function buildLessons(): Lesson[] {
       id: 'dribble', title: 'DRIBBLE MOVES',
       before: [K('Now try to stay in front of me.')],
       demo: 'cross', demoTalk: K('Too slow!'),
-      after: [N('○ + the stick = a dribble move. The direction picks the move: toward him, away, side to side. Unlock more (and chains) in the Dribbling tree.')],
+      after: [N('○ + the stick = a dribble move. The direction picks the move: toward him, away, side to side. You can unlock more later.')],
       ball: 'me',
       steps: [
         { prompt: 'Push the stick and press ○ for a dribble move', check: (c, e) => mine(c, e, 'move') && !e!.data?.clip && !/step-through/i.test(e!.text) },
@@ -118,11 +119,11 @@ export function buildLessons(): Lesson[] {
     {
       id: 'step', title: 'STEP-THROUGH',
       before: [
-        K('Tomorrow\'s all planned out. Up at six, lucky breakfast, then my pregame coffee. Same order every big game.'),
+        K('Man, I can\'t wait to fry those losers tomorrow. When I get a pregame coffee, no one\'s stopping me.'),
         K('Don\'t laugh. It\'s a ritual. Now the move that\'s getting me a scholarship.'),
       ],
       demo: 'stepThrough', demoTalk: K('He jumps, I go right under him.'),
-      after: [N('Tap ✕ to pump fake. If he bites: push the stick at the rim and hold ✕ for a Step-Through: one long step past him. Everyone can do it.')],
+      after: [N('Tap ✕ to pump fake. If he bites: push the stick at the rim and hold ✕ for a Step-Through.')],
       ball: 'me',
       steps: [
         { prompt: 'Tap ✕ to pump fake', check: (c, e) => mine(c, e, 'move') && !!e!.data?.clip },
@@ -135,7 +136,7 @@ export function buildLessons(): Lesson[] {
     },
     {
       id: 'icon', title: 'ICON PASS',
-      before: [N('Hold R1 and every teammate wears a button. Press his button to pass straight to him. No aiming.')],
+      before: [N('Hold R1 to icon pass.')],
       ball: 'me',
       steps: [{ prompt: 'Hold R1, then press {mate}\'s button', check: (c, e) => mine(c, e, 'iconPass') }],
     },
@@ -175,7 +176,7 @@ export function buildLessons(): Lesson[] {
 }
 
 /** What the box shows: a blocking line (✕ to continue) or the current prompt. */
-export interface BoxView { who: Speaker; text: string; blocking: boolean; title?: string; step?: number; steps?: number; doneAt?: number; /** round 60c: when you last blew a step */ failAt?: number }
+export interface BoxView { who: Speaker; text: string; blocking: boolean; example?: 'shot'; title?: string; step?: number; steps?: number; doneAt?: number; /** round 60c: when you last blew a step */ failAt?: number }
 
 type Phase = 'demoWait' | 'demo' | 'tryWait' | 'try' | 'done' | 'finished';
 
@@ -227,7 +228,7 @@ export class TutorialDirector implements Director {
   get finished() { return this.phase === 'finished' && !this.line; }
 
   private say(lines: Line[] | undefined) {
-    for (const l of lines ?? []) this.queue.push({ who: l.who, text: fill(l.text, this.names) });
+    for (const l of lines ?? []) this.queue.push({ ...l, text: fill(l.text, this.names) });
     if (!this.line) this.line = this.queue.shift() ?? null;
   }
   /** ✕ on a blocking line: the next one (or back to play). */
