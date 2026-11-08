@@ -95,7 +95,7 @@
 | 65 | `214b2c7` | Owner's sketches: Shooting as a hand under a ball, Perimeter as the court, Post as the key, Screens as a brick wall; GOAT skills; Chef, Mamba, Lethal Shooter, Finger Wag, Block Party; Lockdown Stance / Floor Burn / Swat Team removed | tree JSON layouts + `shape`, `TreeNode.goat`, `PerkTreeScene.drawBackdrop`, `missSaved` / `mambaCost`, `blockPartyOn` / `sizeScore`, `FINGER_WAG`, Chef in `windupFor` / `evaluateShot`, `fingerWag` clip, roster owners, save migration |
 | 66 | `73dfa23` | Bang! = clutch 3s; no quarter length option; big game in two 4-minute halves; scout weighs a block more than a point | `sh_pullup3` clutch, TitleScene settings, `GameConfig.periods` / `qEquiv` / `periodLabel`, `buildBigGame` halves, `bigGameVerdict` with `STAT_WEIGHTS` |
 | 67 | `4a3f5a9` | Mamba: midranges don't go stale | `staleTimes`, Mamba desc |
-| 68 | `TBD` | Pump fake + shot isn't off the dribble for the stale counter | `afterFake` cond, `methodKey` `fake` |
+| 68 | `86c2482` | Pump fake + shot isn't off the dribble for the stale counter | `afterFake` cond, `methodKey` `fake` |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
