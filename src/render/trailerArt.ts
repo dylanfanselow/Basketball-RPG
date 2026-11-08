@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TRAILER_FURNITURE, TRAILER, DOOR_X, STEPS, PATH_END } from '../world/trailer';
+import { TRAILER_FURNITURE, TRAILER, DOOR_X, STEPS, MAILBOX } from '../world/trailer';
 import { Piece } from '../world/apartment';
 import { C, R, P, hn, mix, canvas, bake, ArtPiece, AX, AY, HF, ART_W, ART_H, box } from './roomArt';
 import { shade, tint } from './sprites';
@@ -307,12 +307,6 @@ function drawJunk(c: C) {
   for (const [dx, dy, len, sl, col] of [[0, 0, 44, -0.2, '#7a5a3a'], [6, -4, 38, 0.15, '#93714c'], [-4, -8, 30, -0.35, '#6a4a2e'], [14, -10, 26, 0.3, '#8a6a48']] as [number, number, number, number, string][]) for (let i = 0; i < len; i++) R(c, sh.x + dx + i, sh.y + dy + Math.round(i * sl), 1, 4, i === 0 || i === len - 1 ? '#4a321e' : col);
   for (let i = 0; i < 40; i++) R(c, sh.x + 4 + i, sh.y - 18 + Math.round(i * 0.12), 1, 9, i % 4 < 2 ? '#9aa0a4' : '#6a7074');
   R(c, sh.x + 40, sh.y - 12, 10, 12, '#c9cdd0'); R(c, sh.x + 40, sh.y - 12, 10, 2, '#e6e8ea'); R(c, sh.x + 42, sh.y - 8, 6, 5, '#3070b0');
-  // round 57c: a dented mailbox on a leaning post at the end of the path (where you leave)
-  const mb = { x: Xa(PATH_END.x) - 70, y: Gy(PATH_END.y) };
-  for (let i = 0; i < 44; i++) R(c, mb.x + Math.round(i * 0.12), mb.y - i, 4, 1, i % 7 === 0 ? '#5a3e26' : '#7a5838');
-  R(c, mb.x - 4, mb.y - 58, 22, 13, '#4a4e52'); R(c, mb.x - 4, mb.y - 58, 22, 3, '#6a7074'); R(c, mb.x - 5, mb.y - 52, 1, 6, '#2a2c2e');
-  R(c, mb.x + 4, mb.y - 50, 6, 2, '#2a2c2e'); R(c, mb.x + 19, mb.y - 66, 2, 12, '#b03030'); R(c, mb.x + 19, mb.y - 66, 6, 4, '#b03030'); // the flag's up
-  for (let x = mb.x - 4; x < mb.x + 18; x++) if (hn(x, 1, 125) < 0.4) P(c, x, mb.y - 46, '#9a5a32');
   // a broken white plastic lawn chair on its side, and a rusty bike frame in the weeds
   const ch = { x: Xa(3), y: Gy(16) }; R(c, ch.x, ch.y - 14, 20, 4, '#e8e8e2'); R(c, ch.x + 16, ch.y - 26, 4, 16, '#e8e8e2'); R(c, ch.x + 2, ch.y - 10, 2, 10, '#d0d0ca'); R(c, ch.x + 12, ch.y - 10, 2, 8, '#d0d0ca');
   const bk = { x: Xa(36.5), y: Gy(14) };
@@ -427,6 +421,16 @@ function drawCooler(c: C, p: Piece) {
   R(c, b.x0 + 8, b.faceTop + 10, 10, 3, '#6a6e70');
 }
 
+/** Round 57c: a dented mailbox on a leaning post at the end of the path (where you leave). Round 71: its own piece
+ *  (depth-sorted, solid, ✕ checks it). */
+function drawMailbox(c: C) {
+  const mb = { x: Xa(MAILBOX.x), y: Gy(MAILBOX.y) };
+  for (let i = 0; i < 44; i++) R(c, mb.x + Math.round(i * 0.12), mb.y - i, 4, 1, i % 7 === 0 ? '#5a3e26' : '#7a5838');
+  R(c, mb.x - 4, mb.y - 58, 22, 13, '#4a4e52'); R(c, mb.x - 4, mb.y - 58, 22, 3, '#6a7074'); R(c, mb.x - 5, mb.y - 52, 1, 6, '#2a2c2e');
+  R(c, mb.x + 4, mb.y - 50, 6, 2, '#2a2c2e'); R(c, mb.x + 17, mb.y - 52, 2, 2, '#6a2020'); R(c, mb.x + 18, mb.y - 52, 11, 2, '#b03030'); R(c, mb.x + 25, mb.y - 54, 4, 4, '#b03030'); // round 71: the flag's down (no mail)
+  for (let x = mb.x - 4; x < mb.x + 18; x++) if (hn(x, 1, 125) < 0.4) P(c, x, mb.y - 46, '#9a5a32');
+}
+
 function drawBush(c: C, p: Piece) {
   const cx = Xa(p.x + p.w / 2), base = Gy(p.y + p.d);
   const blobs: [number, number, number][] = [[cx, base - 40, 46], [cx - 50, base - 24, 34], [cx + 40, base - 60, 40], [cx + 12, base - 80, 30], [cx - 34, base - 56, 28], [cx + 70, base - 30, 30]];
@@ -441,7 +445,7 @@ function drawBush(c: C, p: Piece) {
 
 const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
   trailerDoor: drawDoor, hitch: (c) => drawHitch(c), barrel: (c, p) => drawBarrel(c, p), generator: drawGenerator,
-  cooler: (c, p) => drawCooler(c, p), bush: (c, p) => drawBush(c, p),
+  cooler: (c, p) => drawCooler(c, p), bush: (c, p) => drawBush(c, p), mailbox: (c) => drawMailbox(c),
 };
 const FRAMES: Record<string, number> = { trailerDoor: 2, generator: 2 };
 const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
@@ -449,12 +453,12 @@ const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
 /** Round 57c: `night` = the night version (darkened, moon and stars, the trailer's lamps lit by the generator). */
 export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false): { bg: string; pieces: ArtPiece[] } {
   const sfx = night ? '_n' : '';
-  const bg = `trailer_bg${sfx}_v2`;
+  const bg = `trailer_bg${sfx}_v3`; // v3: the mailbox moved out to a piece (round 71)
   if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night));
   const pieces: ArtPiece[] = [];
   for (const p of TRAILER_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
-    const key = `trailer_${p.id}${sfx}_v3`;
+    const key = `trailer_${p.id}${sfx}_v4`;
     const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => {
       NIGHT = night; EMIT = [];
       draw(c, p, f);

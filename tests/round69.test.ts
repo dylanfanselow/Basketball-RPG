@@ -64,5 +64,5 @@ describe('round 69: CPU star ultimates', () => {
       }
     }
     expect(offensive).toBeGreaterThan(0);
-  });
+  }, 15000); // full headless games: slow under the parallel suite
 });

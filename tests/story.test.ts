@@ -156,14 +156,15 @@ describe('round 60 story', () => {
     expect(storyKeyGame(old)).toBeNull();
     expect(nextKeyGame(old)).not.toBeNull();
   });
-  it('round 60c: Kingston is Black with goggles (new and old saves)', () => {
+  it('round 71: Kingston is skin tone 4 with a face mask and a high top (new and old saves)', () => {
     const c = career('SF');
     const k = rivalPlayer(c, 'tutorial');
-    expect(k.appearance.skin).toBeGreaterThanOrEqual(3);
-    expect(k.appearance.goggles).toBe(true);
-    c.story!.rival!.appearance = { ...c.story!.rival!.appearance, skin: 0, goggles: false }; // a save from before
-    expect(rivalPlayer(c, 'ones').appearance.skin).toBeGreaterThanOrEqual(3);
-    expect(rivalPlayer(c, 'ones').appearance.goggles).toBe(true);
+    const look = (a: typeof k.appearance) => [a.skin, a.hair, a.mask, a.goggles];
+    expect(look(k.appearance)).toEqual([3, 'hightop', true, false]);
+    expect(k.skin).toBe(3);
+    // a save from before (round 60c: goggles, skin 3 or 4)
+    c.story!.rival!.appearance = { ...c.story!.rival!.appearance, skin: 4, hair: 'afro', goggles: true, mask: false };
+    expect(look(rivalPlayer(c, 'ones').appearance)).toEqual([3, 'hightop', true, false]);
   });
 
   it('round 60c: blowing the Step-Through after the fake goes back to the fake', () => {

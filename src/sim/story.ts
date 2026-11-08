@@ -45,15 +45,20 @@ export function newStory(c: Pick<CareerState, 'pos' | 'number' | 'height'>, rnd:
   const nums = [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 15, 21, 22, 23, 24, 30, 32, 33, 34, 35].filter((n) => n !== c.number);
   const rival: RivalInfo = {
     first: 'Kingston', last: 'Williams', pos: c.pos, heightIn,
-    number: nums[Math.floor(rnd() * nums.length)], appearance: kingstonLook(randomAppearance(rnd), rnd() < 0.5 ? 3 : 4),
+    number: nums[Math.floor(rnd() * nums.length)], appearance: kingstonLook(randomAppearance(rnd)),
   };
   return { stage: 'tutorial', rival, home: 'trailer' };
 }
 
-/** Round 60c (owner): Kingston is Black and wears goggles. Applied to new and already-saved rivals alike. */
-export function kingstonLook(a: Appearance, skin = Math.max(3, a.skin)): Appearance {
+/** Round 71 (owner): Kingston's skin is tone 4 in the builder (index 3). */
+export const KINGSTON_SKIN = 3;
+/**
+ * Round 60c / 71 (owner): Kingston is Black (skin tone 4), wears a face mask (not goggles) and a high top. Applied to
+ * new and already-saved rivals alike.
+ */
+export function kingstonLook(a: Appearance): Appearance {
   const dark = ['#141010', '#2b1d14', '#4a3020'];
-  return { ...a, skin: Math.max(3, skin), hairColor: dark.includes(a.hairColor) ? a.hairColor : '#141010', goggles: true, mask: false };
+  return { ...a, skin: KINGSTON_SKIN, hair: 'hightop', hairColor: dark.includes(a.hairColor) ? a.hairColor : '#141010', goggles: false, mask: true };
 }
 
 function fallbackRival(c: CareerState): RivalInfo {
@@ -70,7 +75,7 @@ export function rivalPlayer(c: CareerState, mode: 'tutorial' | 'ones', team: 0 |
   const nodes = mode === 'ones' ? Object.keys(NODES) : [...new Set([...AI_PERKS[r.pos], 'dr_handle', 'dr_cross', 'sh_root', 'fi_root'])];
   return new Player({
     id: RIVAL_ID, name: `${r.first} ${r.last}`, team, pos: r.pos, core, nodes, number: r.number,
-    skin: Math.max(3, r.appearance.skin), height: r.heightIn / 12, appearance: kingstonLook(r.appearance),
+    skin: KINGSTON_SKIN, height: r.heightIn / 12, appearance: kingstonLook(r.appearance),
   });
 }
 

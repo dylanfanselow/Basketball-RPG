@@ -83,5 +83,8 @@
   vs ATL"), fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
   ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
+- **Check on Kingston (round 71):** the door blocks with "I should check on Kingston." after Mom's second talk, but
+  that visit doesn't exist yet: build it and clear `StoryState.checkKingston` there (until then the trailer's day loop
+  can't continue in a story save). Real mail for the mailbox later.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.
 - **Character builder (round 59):** the backstory pick (VISION) as another step.

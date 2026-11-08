@@ -14,6 +14,8 @@ export interface UltActive {
   at: number; nextAt?: number; stalled?: boolean; from?: { x: number; y: number };
   /** round 55: slow-mo + darken + quiet (your ult, or one used against your team) */
   cinematic: boolean;
+  /** round 71: the Free-Throw-Line Dunk's flight is over (his speed came off at the rim) */
+  flown?: boolean;
 }
 export interface UltRuntime { state: UltState; active: UltActive | null }
 
@@ -81,9 +83,12 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
     const override = { base: level.makePct * 0.92, contestMult: level.contestMult, label: `ULT ${level.name}` };
     const from = { ...p.p };
     sim.startShot(p, 'dunk', override);
-    p.stateDur = 0.75;
-    p.vel = scale(norm(sub(rim, p.p)), (d - 1.2) / 0.75);
-    p.vz = 13;
+    p.stateDur = FT_FLIGHT;
+    p.vel = scale(norm(sub(rim, p.p)), (d - 1.2) / FT_FLIGHT);
+    // round 71 (owner: he was way below the ball): a floating rise (hang gravity, x0.25 of 32) that puts him at rim
+    // height, ball in his hands, right at the release; a normal jump peaked at 0.4 s and he was falling by the rim
+    p.hangUntil = sim.time + FT_FLIGHT;
+    p.vz = (FT_DUNK_Z + 4 * FT_FLIGHT * FT_FLIGHT) / FT_FLIGHT;
     sim.ult.active = { ...base, until: sim.time + 1.6, shotOverride: override, from };
     ok = true;
   } else if (st.id === 'chaseDown' && p.team !== sim.possession) {
@@ -100,6 +105,10 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
   } else say(`${def.name}: not available from here`);
   return ok;
 }
+
+/** Free-Throw-Line Dunk: the flight from take-off to the release (s), and how high his feet are then (ft): the held
+ *  ball sits ~7 ft above his feet, so 3 ft = the ball at the rim. */
+export const FT_FLIGHT = 0.75, FT_DUNK_Z = 3.0;
 
 /** One ult step-back: an explosive hop straight back from the rim. */
 function stepBack(sim: GameSim, p: Player, ft: number) {
@@ -178,6 +187,14 @@ export function tickUlt(sim: GameSim, _dt: number) {
       stepBack(sim, p, a.level.stepFt);
       sim.emit({ kind: 'move', text: 'Double step-back!', pid: p.id });
     }
+  }
+  if (a.id === 'ftTakeoff' && p.state === 'shoot' && p.pendingShot && sim.holder() === p) {
+    // round 71: carry all the way to the rim (in the air his speed bled off and he let go ~4.5 ft short)
+    const rim = sim.rim(p.team), left = p.stateDur - p.stateT;
+    if (left > 0.02) p.vel = scale(norm(sub(rim, p.p)), Math.max(0, dist(p.p, rim) - 1.2) / left);
+  } else if (a.id === 'ftTakeoff' && !a.flown && p.state !== 'shoot' && sim.time - a.at > 0.1) {
+    a.flown = true; // let go at the rim: stop there and come down (don't sail on under it)
+    p.vel = scale(p.vel, 0.12);
   }
   if (a.id === 'ftTakeoff' && !sim.isHuman(p) && a.level.stall && !a.stalled && p.state === 'shoot') {
     // CPU Hang Time: stall when a defender has gone up with him

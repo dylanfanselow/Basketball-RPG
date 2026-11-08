@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { solids, moveWithCollision, PLAYER_R, footprint, V } from '../src/world/apartment';
-import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, STEPS, liftAt, TRAILER } from '../src/world/trailer';
+import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, STEPS, liftAt, TRAILER, MAILBOX, MAILBOX_SPOT, GENERATOR_SPOT } from '../src/world/trailer';
 
 const polys = solids([TRAILER_SOLID], TRAILER_YARD);
 const blocked = (p: V) => moveWithCollision(p, { x: 0, y: 0 }, PLAYER_R, polys);
@@ -42,5 +42,19 @@ describe('round 57: the trailer yard', () => {
     const top = walk(end, DOOR_SPOT);
     expect(Math.hypot(top.x - DOOR_SPOT.x, top.y - DOOR_SPOT.y)).toBeLessThan(0.3);
     expect(liftAt(top)).toBeGreaterThan(1.5);
+  });
+});
+
+describe('round 71: the mailbox and the generator', () => {
+  it('the mailbox is solid; you can walk up to it and to the generator to look at them', () => {
+    const inside = { x: MAILBOX.x, y: MAILBOX.y - 0.3 }, out = blocked(inside);
+    expect(Math.hypot(out.x - inside.x, out.y - inside.y)).toBeGreaterThan(0.3);
+    // walking along the front of the yard, the mailbox stops you
+    const end = walk({ x: 12, y: MAILBOX.y }, { x: 20, y: MAILBOX.y });
+    expect(end.x).toBeLessThan(MAILBOX.x);
+    for (const spot of [MAILBOX_SPOT, GENERATOR_SPOT]) {
+      const at = walk({ x: 24, y: 14 }, spot);
+      expect(Math.hypot(at.x - spot.x, at.y - spot.y)).toBeLessThan(0.3);
+    }
   });
 });

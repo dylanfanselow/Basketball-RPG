@@ -183,7 +183,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **Music** (royalty-free, the owner's files in `public/music/`): mondamusic "Retro Arcade Game Music" loops in
     **every basketball game**; alexgrohl "Sad Story" plays in the **scene with Mom** (it fades in on the walk up,
     the game music fades out as Kingston walks off). Music volume in Settings (default 50%).
-  - **Kingston is Black and wears goggles** (also applied to rivals already in saves).
+  - **Kingston is Black and wears goggles** (also applied to rivals already in saves). Round 71 (owner): skin
+    **tone 4** (builder numbering), a **face mask** (no goggles) and a **high top**, saved rivals too.
   - The tutorial no longer mentions the ultimate (the rhythm / ult line is gone).
   - **Multi-step lessons start over on a miss:** in the Step-Through lesson a plain shot after the fake (or letting
     the fake's window run out) goes back to "pump fake" with a red "Missed it"; same for shooting outside the post in
@@ -248,6 +249,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   foliage, trees with trunks.
   Round 57c (owner): the generator is run down and sits further right / back (by the trailer's right end); a night
   version (the generator keeps the trailer's lamps on); ✕ at the end of the path (the mailbox) leaves.
+  Round 71 (owner): ✕ at the **generator**: "I'm surprised this piece of junk still works, but I'm glad it does."
+  The **mailbox** is solid and ✕ checks it: "No mail." for now (its flag is down). After Mom's talk following the
+  big game, ✕ at the **door** only says "I should check on Kingston." (`StoryState.checkKingston`) until that part
+  of the story exists. These are your thoughts in the story box (YOU, thinking).
 - **Round 56: the school court venue** (owner's sketch + photo), a real game venue for story events.
   - Side-on like the arena: asphalt court, a chain-link fence along the back of the court (posts, top rail, knuckled
     top), then the school: tan portable classrooms long side to us with white wall AC units, barred windows, a ramp
@@ -266,6 +271,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     rising (owner's reference image).
   - **Double Step-Back** (PG, SG): Lv2 fake (□ again) into Step-Through, Lv3 pass out (△). **Free-Throw-Line Dunk**
     (SG, SF, PF): posterizes everyone in its lane; Lv2 Hang Time stall (□ in the air), Lv3 Kick-Out (△ in the air).
+    Round 71 (owner): he floats up to the rim with the ball in his hands and lets go there (he used to be falling,
+    feet ~1 ft up and short of the rim, while the ball flew on alone).
     **Chase-Down** (PF, C): lock-on, speed ×1.9, ~93% block from any angle; Lv2 Pinned to the Glass, Lv3 Swat & Go.
   - Owner: the fake uses the ult button (□); passing out is △.
 - **Round 54: lobs, oop dunks, dunk variety, closing time, rhythm pop.**

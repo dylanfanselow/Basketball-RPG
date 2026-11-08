@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { buildTrailerArt } from '../render/trailerArt';
 import { buildGlow } from '../render/roomArt';
 import { RoomDef, Poly, V, sxOf, syOf, RS } from '../world/apartment';
-import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, PATH_END, DOOR_X, TRAILER, liftAt } from '../world/trailer';
+import { TRAILER_YARD, TRAILER_SOLID, DOOR_SPOT, PATH_END, DOOR_X, TRAILER, liftAt, MAILBOX_SPOT, GENERATOR_SPOT } from '../world/trailer';
 import { RoomScene, ART } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
@@ -43,6 +43,8 @@ export class TrailerScene extends RoomScene {
   private leg = 0;
   private shown = true;
   private mom: Phaser.GameObjects.Sprite | null = null;
+  /** Round 71: a thought from looking at something in the yard is up (✕ closes it). */
+  private thinking = false;
   init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' }) { super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; }
   room(): RoomDef { return TRAILER_YARD; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm, this.night); }
@@ -53,7 +55,7 @@ export class TrailerScene extends RoomScene {
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img as Phaser.GameObjects.Sprite | undefined; }
 
   onCreate() {
-    this.box = null; this.lines = []; this.cut = null; this.cutT = 0; this.leg = 0; this.mom = null;
+    this.box = null; this.lines = []; this.cut = null; this.cutT = 0; this.leg = 0; this.mom = null; this.thinking = false;
     if (this.story === 'night' || this.story === 'after') {
       this.box = new StoryBox(this, { y: 590 });
       this.mom = this.buildMom();
@@ -80,10 +82,20 @@ export class TrailerScene extends RoomScene {
 
   actions() {
     return [
-      { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => this.goInside() },
+      // round 71: after Mom's talk following the big game, the door waits until you've checked on Kingston
+      { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => (app.career.story?.checkKingston ? this.think('I should check on Kingston.') : this.goInside()) },
+      { label: 'Generator', spot: GENERATOR_SPOT, reach: 1.6, run: () => this.think('I\'m surprised this piece of junk still works, but I\'m glad it does.') },
+      { label: 'Mailbox', spot: MAILBOX_SPOT, reach: 1.3, run: () => { sfx.blip(true); this.think('No mail.'); } },
       // round 57c: the end of the path (by the mailbox) leaves
       { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Title'); } },
     ];
+  }
+
+  /** Round 71: your thought in the story box (YOU, thinking); you stand still until ✕ closes it. */
+  private think(text: string) {
+    if (!this.box) this.box = new StoryBox(this, { y: 590 });
+    this.lines = [{ who: 'you', text }];
+    this.thinking = true; this.busy = true;
   }
 
   onUpdate(dt = 1 / 60) {
@@ -95,6 +107,7 @@ export class TrailerScene extends RoomScene {
         if (this.inp.pressed('a')) { if (this.box.typing) this.box.finishTyping(); else { this.lines.shift(); sfx.blip(true); } }
       } else this.box.hide();
       this.box.draw();
+      if (this.thinking && !this.lines.length) { this.thinking = false; this.busy = false; }
     }
     this.momScene(dt);
     // the generator runs: shakes a pixel and its light blinks; the hum grows as you walk up to it
@@ -200,6 +213,7 @@ export class TrailerScene extends RoomScene {
           door?.setFrame(0); sfx.doorClose();
           this.cut = null; this.busy = false; this.box?.hide();
           setStage('done'); sfx.music(null);
+          c.story!.checkKingston = true; app.changed(); // round 71: the door reminds you until you've seen him
           return;
         }
         this.cut = 'walkUp'; this.cutT = 0;

@@ -48,6 +48,8 @@ export interface StoryState {
   stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment';
   /** round 60d: how the big game went (Mom's scene after it) */
   bigGame?: BigGameResult;
+  /** round 71: Mom said to go check on Kingston (after the big game); until then the trailer door says so */
+  checkKingston?: boolean;
 }
 export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
 

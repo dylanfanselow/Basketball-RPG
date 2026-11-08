@@ -154,7 +154,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   `solids()` / `RoomScene.drawPlayer`; `RoomScene.footSurface()` (grass / wood / concrete footsteps);
   `render/trailerArt.ts` (background + pieces: door closed/open, hitch, barrel, generator 2 frames + cord, cooler,
   bush); `scenes/TrailerScene.ts` (`goInside` → day ends, `TRAILER_DOOR_STORY` hooks, generator hum by distance
-  `sfx.genHum`); Menu entry.
+  `sfx.genHum`); Menu entry. Round 71: the mailbox is a solid piece (`MAILBOX`, `drawMailbox`), `actions()` adds
+  Generator / Mailbox (`GENERATOR_SPOT`, `MAILBOX_SPOT`) and `think(text)` (your thought in the StoryBox, `busy`
+  until ✕); the door says "I should check on Kingston." while `StoryState.checkKingston` (set when Mom's
+  after-the-big-game scene ends). Free-Throw-Line Dunk flight: `FT_FLIGHT` / `FT_DUNK_Z` (hang-gravity rise to rim
+  height at the release), `tickUlt` keeps him carrying to 1.2 ft from the rim and takes his speed off after.
   Round 58 main menu: `scenes/TitleScene.ts` (first scene; three background cameras, arena (`drawCourt` + hoops +
   `Crowd`), school rain (`addSchoolCourt` + rain + lightning), home (`buildRoomArt` + lamp glow), cross-faded, each
   ignoring the others' objects, plus a menu camera with gradients and a colour wash; New Game confirm; settings panel:

@@ -15,6 +15,11 @@ export const STEPS = { x0: 18.5, x1: 22.6, rows: [[1.0, 2.2, 1.8], [2.2, 3.2, 1.
 /** Where you stand to open the door: on the top step. */
 export const DOOR_SPOT: V = { x: 20.5, y: 1.95 };
 
+/** Round 57c: the end of the path (front edge of the yard): ✕ here leaves. A mailbox marks it. */
+export const PATH_END: V = { x: 20.6, y: 22.3 };
+/** Round 71: the mailbox's post foot (ft), left of the path's end. */
+export const MAILBOX: V = { x: 16.4, y: PATH_END.y };
+
 export const TRAILER_FURNITURE: Piece[] = [
   // the door is its own picture (closed / open) on the trailer's face; not solid (the trailer is)
   { id: 'door', kind: 'trailerDoor', x: DOOR_X[0], y: 0, w: DOOR_X[1] - DOOR_X[0], d: TRAILER.front, solid: false },
@@ -24,6 +29,8 @@ export const TRAILER_FURNITURE: Piece[] = [
   { id: 'generator', kind: 'generator', x: 31.0, y: 1.3, w: 4.0, d: 2.2, solid: true },
   { id: 'cooler', kind: 'cooler', x: 36.2, y: 17.2, w: 5.0, d: 3.2, solid: true },
   { id: 'bush', kind: 'bush', x: 40.5, y: 0.2, w: 7.0, d: 8.0, solid: true },
+  // round 71: the mailbox at the path's end is its own (solid) piece, so you can walk behind it; ✕ checks it
+  { id: 'mailbox', kind: 'mailbox', x: MAILBOX.x - 0.4, y: MAILBOX.y - 0.5, w: 1.6, d: 0.7, solid: true },
 ];
 
 /** How high you stand (ft): on one of the steps, else the ground. */
@@ -34,8 +41,10 @@ export function liftAt(p: V): number {
 }
 
 export const TRAILER_SPAWN: V = { x: 24.0, y: 18.0 };
-/** Round 57c: the end of the path (front edge of the yard): ✕ here leaves. A mailbox marks it. */
-export const PATH_END: V = { x: 20.6, y: 22.3 };
+/** Round 71: where you stand to check the mailbox (beside it, on the path side) and to look at the generator (its
+ *  front left corner, so you don't cover it). */
+export const MAILBOX_SPOT: V = { x: 18.5, y: 22.0 };
+export const GENERATOR_SPOT: V = { x: 30.0, y: 4.2 };
 export const TRAILER_YARD: RoomDef = {
   id: 'trailer', furniture: TRAILER_FURNITURE, doors: [], spawn: TRAILER_SPAWN, leftX: -6.2, rightX: 47.5, liftAt,
 };

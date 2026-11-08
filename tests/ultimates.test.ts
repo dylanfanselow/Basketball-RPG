@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
 import { emptyInput, GameSim } from '../src/sim/game';
 import { Player } from '../src/sim/player';
-import { tryActivateUlt, ultAction, cpuUltFor, posterLane, STALL_S, AURA_COLOR } from '../src/sim/ultimates';
+import { tryActivateUlt, ultAction, cpuUltFor, posterLane, STALL_S, AURA_COLOR, FT_DUNK_Z } from '../src/sim/ultimates';
 import { ULTIMATES } from '../src/sim/data';
 import { dist } from '../src/sim/math';
 
@@ -83,6 +83,26 @@ describe('round 55: ultimates', () => {
     expect(u.pendingShot?.override?.contestMult).toBeLessThan(0.1);
     expect(u.anim?.name).toBe('shot_dunk_clutch');
     expect(ultAction(g, u, 'fake')).toBe(false); // one stall
+  });
+
+  it('round 71: Free-Throw-Line Dunk: up at the rim with the ball in his hands at the release, then he stops there', () => {
+    const { g, u } = game('SF', 'ftTakeoff', 0);
+    const { rim } = withBall(g, u, 15);
+    for (const d of g.opp(u.team)) d.p = { x: d.p.x, y: 2 };
+    expect(tryActivateUlt(g, u)).toBe(true);
+    let atRelease: { z: number; d: number; held: boolean } | null = null;
+    const inp = emptyInput();
+    for (let t = 0; t < 1.5 && !atRelease; t += 1 / 60) {
+      const held = g.holder() === u, z = u.z, d = dist(u.p, rim);
+      g.update(1 / 60, inp);
+      if (u.state !== 'shoot') atRelease = { z, d, held };
+    }
+    expect(atRelease).not.toBeNull();
+    expect(atRelease!.held).toBe(true);
+    expect(atRelease!.z).toBeGreaterThan(FT_DUNK_Z - 0.5);
+    expect(atRelease!.d).toBeLessThan(2);
+    step(g, 0.3);
+    expect(dist(u.p, rim)).toBeLessThan(3); // doesn't sail on under the rim
   });
 
   it('Lv3: △ in the air passes out right before the slam; the receiver is wide open', () => {

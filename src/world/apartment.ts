@@ -31,7 +31,7 @@ export type Kind =
   | 'bookshelf' | 'wardrobe' | 'diningTable' | 'chairL' | 'chairR' | 'chairBack' | 'box' | 'ball' | 'plant' | 'trash'
   // garage (round 37)
   | 'bench' | 'squatRack' | 'treadmill' | 'hoop' | 'van' | 'car' | 'boxes' | 'kettlebells' | 'jumpRope'
-  | 'trailerDoor' | 'hitch' | 'barrel' | 'generator' | 'cooler' | 'bush';
+  | 'trailerDoor' | 'hitch' | 'barrel' | 'generator' | 'cooler' | 'bush' | 'mailbox';
 
 /** x/y/w/d = bounding footprint; `poly` (optional) = the real footprint when it isn't a rectangle (along a slanted wall). */
 export interface Piece { id: string; kind: Kind; x: number; y: number; w: number; d: number; solid: boolean; poly?: Poly }
