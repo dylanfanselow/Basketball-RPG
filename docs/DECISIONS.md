@@ -501,6 +501,16 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 65 (shaped trees, owner's sketches):** Shooting = a shooting hand under a ball (threes along the bottom
+  and up the left to **Chef**, midrange up the right to **Mamba**, both into **Lethal Shooter**), Perimeter = the
+  court perimeter (start **Hand in Face** under the basket; possession perks Charge Magnet, Quick Hands,
+  Interceptor, High IQ up the left; Closeout King, Screen Navigator, Off Night, Pick-Up Pressure up the right; Iron
+  Nate at the top of the arc), Post = the key (Gimme That! / Foresight / Finger Wag on the free-throw line, Block
+  Party at the top of the circle), Screens = a brick wall. Lockdown Stance and Floor Burn removed, Swat Team folded
+  into Anchor. **GOAT skills** cost 5 and only a few CPU players have them: Block Party = Wembanyama only, Iron
+  Nate = Kawhi Leonard, Lethal Shooter = SGA, Curry, Luka, Brunson. Mamba pays with **rhythm** (the game's
+  "morale"); a **green** jumper = the contest cone is green (barely contested). Lethal Shooter says
+  "I understand it now".
 - **Round 64 (perks):** a perk with two or more lines into it needs **all** of them (was any). Trees: **Post** (was Post
   D & Rebounding), **Perimeter** (was Perimeter Defense), **Handles** (was Dribbling); Limitless Range = **Way Down
   Town**, Pull-Up Threat = **Bang!**. Dime Vision merged into **Floor General**. New: **Magic** (fancy passes,

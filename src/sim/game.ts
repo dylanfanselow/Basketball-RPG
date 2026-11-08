@@ -4,7 +4,7 @@ import { Player } from './player';
 import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
+import { coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -151,6 +151,13 @@ export const isMidrange = (ev: { type: string; pts: number; dist: number }) =>
 
 /** Longest a held screen lasts (s). */
 export const SCREEN_HOLD_MAX = 6;
+/** Round 65 GOAT / shooting perks: green = the cone's green (barely contested); Mamba's rhythm price; Finger Wag. */
+export const GREEN_CONTEST = 0.15, FINGER_WAG = 2;
+export const MAMBA = { base: 10, perMiss: 30 };
+export const mambaCost = (pct: number) => MAMBA.base + MAMBA.perMiss * (1 - clamp01(pct));
+const JUMPERS = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'];
+/** Round 65 Block Party size: height in inches plus a quarter of strength. */
+export const sizeScore = (p: Player) => p.height * 12 + p.core.strength * 0.25;
 /** Round 64: how long after a screen Roller / Popper speed you up (s). */
 export const SLIP_S = 2.0;
 
@@ -1457,10 +1464,12 @@ export class GameSim {
 
     // blocks
     for (const d of this.cfg.story?.noBlocks ? [] : this.opp(p.team)) {
-      if (d.z < 0.6 || d.state === 'fallen' || postLocked(this, d)) continue;
+      const party = this.blockPartyOn(d, p, ps.type); // round 65 Block Party: rises and swats it, every time
+      if (party && d.z < 0.6) this.jump(d, 0.9);
+      if ((d.z < 0.6 && !party) || d.state === 'fallen' || postLocked(this, d)) continue;
       if (isStepThrough(ps.type) && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
       const dd = dist(d.p, p.p);
-      if (dd > 4.8) continue;
+      if (dd > 4.8 && !party) continue;
       const toRim = norm(sub(rim, p.p));
       const along = dot(norm(sub(d.p, p.p)), toRim);
       const chase = this.ult.active?.id === 'chaseDown' && this.ult.active.pid === d.id;
@@ -1471,12 +1480,16 @@ export class GameSim {
       if (ps.windmill) chance *= WINDMILL_BLOCK; // the ball swung away from him
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
       if (chase) chance = Math.max(chance, this.ult.active!.level.blockChance); // round 55: from any angle, almost no matter what
+      if (party) chance = 1;
       if (this.rng.chance(chance)) {
         d.box.blk++; p.box.fga++; this.heatAfterShot(p, false, ev);
         if (ev.pts === 3) p.box.tpa++;
         this.lastShot = { ev, made: false, name: p.name, user: p === this.user, blocked: true, at: this.time };
-        this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
-        this.rhythmGain(d, 'block'); this.rhythmLoss(p, 'blocked');
+        this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : party ? 'BLOCK PARTY! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
+        // round 65 Finger Wag: twice the rhythm both ways
+        const wag = d.mods.pAdd('fingerWag') > 0 ? FINGER_WAG : 1;
+        this.rhythmGain(d, 'block', wag); this.addRhythm(p, -RHYTHM_LOSS.blocked * wag, 'blocked', wag > 1 ? `×${wag} Finger Wag` : '');
+        if (wag > 1) { d.fingerWagAt = this.time; this.emit({ kind: 'move', text: 'Finger wag! Not in here.', pid: d.id }); }
         if (d === this.user) applyTrust(this.trust, 'stop');
         const snatch = !chase && d.mods.pAdd('snatchBlock') > 0; // round 64 Gimme That!: plucked out of the air, his ball
         if (snatch) {
@@ -1508,7 +1521,8 @@ export class GameSim {
     const def = SHOT_TYPES[ps.type];
     const foul = (!!def.contact || ps.type === 'floater') && ev.contest > 0.3 && this.rng.chance(0.06 + 0.16 * ev.contest) && !this.cfg.story?.noFouls;
     const roll = this.rng.next(); // rolled either way, so a forced make doesn't change the rest of the game's RNG
-    const made = !!this.cfg.story?.forceMake || roll < ev.pct;
+    let made = !!this.cfg.story?.forceMake || roll < ev.pct;
+    if (!made) made = this.missSaved(p, ps.type, ev);
     const d = ev.dist;
     const dur = ps.type === 'dunk' ? 0.16 : 0.6 + d * 0.03; // slower flight = more time to fight for rebounding position
     const jumper = ['mid', 'three', 'deep3', 'stepThroughJumper'].includes(ps.type);
@@ -2325,6 +2339,40 @@ export class GameSim {
         break;
       }
     }
+  }
+
+  /**
+   * Round 65 Block Party: a rim dunk with him inside the dunker's contest cone (in front, within reach) and bigger
+   * (height in inches + a quarter of his strength beats the dunker's) is a sure block.
+   */
+  blockPartyOn(d: Player, p: Player, type: string): boolean {
+    if ((type !== 'dunk' && type !== 'alleyOop') || d.mods.pAdd('blockParty') <= 0) return false;
+    if (d.state === 'fallen' || postLocked(this, d) || this.time < d.stunnedUntil) return false;
+    const rel = sub(d.p, p.p), dd = len(rel);
+    if (dd > contestReach(type) || dd < 0.05) return false;
+    const ang = Math.acos(clamp(dot(norm(rel), norm(sub(this.rim(p.team), p.p))), -1, 1));
+    return ang <= coneHalf(type) && sizeScore(d) > sizeScore(p);
+  }
+
+  /**
+   * Round 65: a shot that would miss can still go in. Lethal Shooter (free): every other green jumper (contest under
+   * GREEN_CONTEST). Mamba: every other miss of any shot, paid with rhythm (more for a worse shot), if he has it.
+   */
+  missSaved(p: Player, type: string, ev: ShotEval): boolean {
+    if (p.mods.pAdd('lethal') > 0 && JUMPERS.includes(type) && ev.contest < GREEN_CONTEST) {
+      p.lethalMisses++;
+      if (p.lethalMisses % 2 === 0) { this.emit({ kind: 'move', text: 'Lethal shooter', pid: p.id, team: p.team }); return true; }
+    }
+    if (p.mods.pAdd('mamba') > 0) {
+      p.mambaMisses++;
+      const cost = mambaCost(ev.pct);
+      if (p.mambaMisses % 2 === 0 && p.rhythm >= cost) {
+        this.addRhythm(p, -cost, 'mamba', `Mamba ${Math.round(ev.pct * 100)}% shot`);
+        this.emit({ kind: 'move', text: 'Mamba', pid: p.id, team: p.team });
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

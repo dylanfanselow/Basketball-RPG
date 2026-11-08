@@ -1,4 +1,4 @@
-import { CoreStat, CoreStats, CORE_STATS, TEAMS, BACKSTORIES } from '../sim/data';
+import { CoreStat, CoreStats, CORE_STATS, TEAMS, BACKSTORIES, NODES } from '../sim/data';
 import { Position, HEIGHTS } from '../sim/attributes';
 import { Player } from '../sim/player';
 import { ModSource } from '../sim/modifiers';
@@ -227,6 +227,16 @@ export function migrateCareer(c: any): CareerState | null {
   if (Array.isArray(c.nodes) && c.nodes.includes('pa_vision')) {
     if (c.nodes.includes('pa_root')) c.perkPoints = (c.perkPoints ?? 0) + 1;
     c.nodes = [...new Set(c.nodes.map((id: string) => (id === 'pa_vision' ? 'pa_root' : id)))];
+  }
+  // round 65: Lockdown Stance folded into Hand in Face, Swat Team into Anchor, Floor Burn removed (points back)
+  if (Array.isArray(c.nodes)) {
+    const OLD: Record<string, { cost: number; to: string | null }> = { pd_root: { cost: 1, to: 'pd_contest' }, in_swat: { cost: 2, to: 'in_anchor' }, pd_flop: { cost: 2, to: null } };
+    for (const [id, o] of Object.entries(OLD)) {
+      if (!c.nodes.includes(id)) continue;
+      c.nodes = c.nodes.filter((n: string) => n !== id);
+      c.perkPoints = (c.perkPoints ?? 0) + o.cost;
+      if (o.to && !c.nodes.includes(o.to)) { c.nodes.push(o.to); c.perkPoints -= NODES[o.to]?.cost ?? 1; }
+    }
   }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);

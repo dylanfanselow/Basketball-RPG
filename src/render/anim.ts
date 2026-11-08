@@ -425,6 +425,13 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: chest },
     { t: 0.5, pose: P({ hF: [17, 63], eF: [10, 66], hB: [16, 61], eB: [8, 64], kF: [6, 26], fF: [9, 0], head: [3, 90] }) },
     { t: 1, pose: P({ hF: [14, 60], eF: [9, 64], hB: [12, 58], eB: [6, 62] }) }] },
+  // round 65 Finger Wag: after the block, the ball arm straight up and the hand wagging side to side
+  { name: 'fingerWag', frames: 8, keys: [
+    { t: 0, pose: P({ hF: [9, 100], eF: [7, 88], hB: [-3, 56], eB: [-2, 66], head: [2, 90] }) },
+    { t: 0.25, pose: P({ hF: [3, 106], eF: [5, 92], hB: [-3, 56], eB: [-2, 66], head: [2, 90] }) },
+    { t: 0.5, pose: P({ hF: [11, 105], eF: [6, 92], hB: [-3, 56], eB: [-2, 66], head: [2, 90] }) },
+    { t: 0.75, pose: P({ hF: [3, 106], eF: [5, 92], hB: [-3, 56], eB: [-2, 66], head: [2, 90] }) },
+    { t: 1, pose: P({ hF: [11, 105], eF: [6, 92], hB: [-3, 56], eB: [-2, 66], head: [2, 90] }) }] },
   // round 64 Magic: behind-the-back / wraparound pass: the ball hand swings it around the hip and flicks it out behind him
   { name: 'passBehind', frames: 5, keys: [
     { t: 0, pose: P({ hB: [8, 50], eB: [5, 62], ball: [9, 48], hF: [6, 58], eF: [5, 66] }) },

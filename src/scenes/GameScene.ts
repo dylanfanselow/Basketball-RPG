@@ -576,6 +576,7 @@ export class GameScene extends Phaser.Scene {
     const post = this.postClip(p, hasBall);
     if (post) return post;
     if (now < p.bumpedUntil) return { clip: 'bumped', u: a?.name === 'bumped' ? bumpedU(now - a.start, a.dur ?? 0.5) : 0.5 };
+    if (p.z <= 0.3 && now - p.fingerWagAt < 1.5 && now - p.fingerWagAt > 0.35) return { clip: 'fingerWag', u: (now - p.fingerWagAt - 0.35) / 1.15 }; // round 65
     if (a?.name === 'rebound' && now - a.start < 0.7) return { clip: 'rebound', u: (now - a.start) / 0.7 };
     if (a?.name === 'scoop' && now - a.start < (a.dur ?? 0.55)) return { clip: 'scoop', u: (now - a.start) / (a.dur ?? 0.55) };
     if (a?.name === 'reboundChest' && now - a.start < (a.dur ?? 0.35)) return { clip: 'catch', u: (now - a.start) / (a.dur ?? 0.35) };

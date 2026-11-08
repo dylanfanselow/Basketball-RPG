@@ -26,9 +26,9 @@ export const BIAS: Record<Position, Partial<CoreStats>> = {
 
 /** Default perks AI players get so their moves/defense aren't totally vanilla. */
 export const AI_PERKS: Record<Position, string[]> = {
-  PG: ['dr_handle', 'dr_cross', 'pa_root', 'pd_root'],
+  PG: ['dr_handle', 'dr_cross', 'pa_root', 'pd_contest'],
   SG: ['sh_root', 'sh_catch', 'dr_handle', 'dr_cross'],
-  SF: ['sh_root', 'fi_root', 'pd_root'],
+  SF: ['sh_root', 'fi_root', 'pd_contest'],
   PF: ['fi_root', 'sc_root', 'in_root'],
   C: ['sc_root', 'in_root', 'in_wall', 'fi_root'],
 };

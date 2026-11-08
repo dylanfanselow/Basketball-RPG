@@ -179,6 +179,19 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 65 (shaped trees): trees take the owner's drawings: Shooting `shape: "ball"` (ring of 12 + the hand: Quick
+  Release / Shot Creator inside), Perimeter `court` (baseline + arc, start Hand in Face at the baseline middle),
+  Post `key` (paint + free-throw circle), Screens `bricks` (1-4-2-1 wall); `PerkTreeScene.drawBackdrop` draws the
+  faint picture. Removed: Lockdown Stance (its +6 Perimeter D / +4 Ankle Resist moved into Hand in Face, saves and
+  rosters map `pd_root` to `pd_contest`), Floor Burn (2 points back), Swat Team (its x1.35 block chance moved into
+  Anchor, `in_swat` to `in_anchor`). **GOAT skills** (`TreeNode.goat`, cost 5, gold stars): Iron Nate (Kawhi
+  Leonard), **Lethal Shooter** (`sh_lethal`: SGA, Curry, Doncic, Brunson), **Block Party** (`in_blockparty`:
+  Wembanyama). New: **Chef** (`sh_chef`: 3-pt windup x`CHEF_WINDUP` 0.8, deep 3 to `CHEF_RANGE` 34 ft uses the 3PT
+  base), **Mamba** (`sh_mamba`) and Lethal Shooter in `GameSim.missSaved` right after the make roll (every 2nd
+  would-be miss; Lethal: green jumpers, contest under `GREEN_CONTEST` 0.15, free; Mamba: any shot, `mambaCost` =
+  10 + 30 x (1 - pct) rhythm), **Finger Wag** (`in_fingerwag`: block rhythm x`FINGER_WAG` 2 both ways, callout,
+  `fingerWag` clip after landing via `p.fingerWagAt`), Block Party (`blockPartyOn`: dunk / alleyOop, defender inside
+  the dunker's cone within `contestReach`, `sizeScore` = height in inches + strength / 4 bigger: he rises, chance 1).
   Round 64 (perk rework): trees renamed **Post** (`interior`), **Perimeter** (`perimeter`), **Handles** (`dribbling`)
   (ids kept, the tab bar uses the names); `sh_range` = **Way Down Town**, `sh_pullup3` = **Bang!**. `canUnlock` needs
   **every** prereq (reason lists the missing ones with "and"); owned nodes from older saves are grandfathered.

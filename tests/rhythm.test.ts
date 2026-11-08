@@ -231,7 +231,7 @@ describe('round 63: rebounds, Off Night, tree changes', () => {
     expect(o.u.rhythm).toBeGreaterThan(d.u.rhythm);
   });
   it('Off Night: the man you guard builds x0.6 rhythm, the rest of his team x0.85; the pop says so', () => {
-    const u = new Player({ id: 'U', name: 'Stopper', team: 0, pos: 'SG', core: { shooting: 60, finishing: 60, strength: 60, mobility: 70, playmaking: 60 }, nodes: ['pd_root', 'pd_contest', 'pd_offnight'], isUser: true });
+    const u = new Player({ id: 'U', name: 'Stopper', team: 0, pos: 'SG', core: { shooting: 60, finishing: 60, strength: 60, mobility: 70, playmaking: 60 }, nodes: ['pd_contest', 'pd_close', 'pd_navigate', 'pd_offnight'], isUser: true });
     const g = live(u), opp = g.opp(u.team);
     const [man, other] = [opp[0], opp[1]];
     u.guarding = man.id;

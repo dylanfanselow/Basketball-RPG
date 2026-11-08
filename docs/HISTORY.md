@@ -92,6 +92,7 @@
 | 62 | `9ab3366` | A Shooting perk that gives extra rhythm for made midrange shots | `sh_midrhythm` (Mid-Range Rhythm), `midRhythm` param, `isMidrange` |
 | 63 | `c90ada1` | Rhythm from rebounds, Off Night (Perimeter D), no hooks from three, Rhythm Shooter / Killer renames, Mid-Range Maestro removed | `RHYTHM_GAIN.oreb/dreb`, `pd_offnight` + `OFF_NIGHT`, `postShotType` jumper past the arc, shooting.json, rosters + save migration |
 | 64 | `f95f09e` | Perk rework: tree renames (Post, Perimeter, Handles), Way Down Town / Bang!, a perk needs all its lines, Dime Vision merged into Floor General, new Magic, Popper, Roller, Iron Nate, Gimme That!, Foresight | `canUnlock` every-prereq, tree JSON, `pass()` `passStyle` + `MAGIC`, `slipUntil` + `SLIP_S`, Iron Nate in the ankle check, snatch block, `predictLanding` + `foresightSpot`, `passBehind` clip, `tests/perks.test.ts` |
+| 65 | `TBD` | Owner's sketches: Shooting as a hand under a ball, Perimeter as the court, Post as the key, Screens as a brick wall; GOAT skills; Chef, Mamba, Lethal Shooter, Finger Wag, Block Party; Lockdown Stance / Floor Burn / Swat Team removed | tree JSON layouts + `shape`, `TreeNode.goat`, `PerkTreeScene.drawBackdrop`, `missSaved` / `mambaCost`, `blockPartyOn` / `sizeScore`, `FINGER_WAG`, Chef in `windupFor` / `evaluateShot`, `fingerWag` clip, roster owners, save migration |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

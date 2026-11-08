@@ -31,6 +31,8 @@ export interface TreeNode {
   id: string; name: string; type: 'passive' | 'move' | 'ability';
   x: number; y: number; prereqs: string[]; cost: number; desc: string;
   effects: Effect[]; posLock?: string[]; req?: Partial<CoreStats>;
+  /** round 65: a GOAT skill (5 points, drawn as a gold star; one or a few CPU players in the league have it) */
+  goat?: boolean;
 }
 export interface Tree { id: string; name: string; shape: string; color: string; desc: string; nodes: TreeNode[] }
 

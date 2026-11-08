@@ -36,8 +36,11 @@ export function contestReach(type: string): number {
 /** Seconds from the gather to the release for this shot (the type's windup x the shooter's release / gather perks). */
 export function windupFor(p: Player, type: string): number {
   const jumper = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'].includes(type);
-  return SHOT_TYPES[type].windup * (jumper ? p.mods.pMult('release') : p.mods.pMult('gather'));
+  const chef = (type === 'three' || type === 'deep3') && p.mods.pAdd('chef') > 0 ? CHEF_WINDUP : 1; // round 65 Chef
+  return SHOT_TYPES[type].windup * chef * (jumper ? p.mods.pMult('release') : p.mods.pMult('gather'));
 }
+/** Round 65 Chef: 3-point windup multiplier and how far out a deep 3 still shoots like a normal 3 (ft). */
+export const CHEF_WINDUP = 0.8, CHEF_RANGE = 34;
 
 /** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
 export const STEP_THROUGH_WINDOW = 1.5;
@@ -221,8 +224,11 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const conds = shotConditions(shooter, side, type, ctx.now, ctx.clutch);
   const pts = def.pts === 3 && isThree(side, shooter.p) ? 3 : 2;
 
-  const base = ctx.override?.base ?? curve(def.base, d);
-  terms.push({ label: `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
+  let base = ctx.override?.base ?? curve(def.base, d);
+  // round 65 Chef: a deep 3 out to CHEF_RANGE shoots like a normal 3 (heaves stay heaves)
+  const chef = !ctx.override?.base && type === 'deep3' && d <= CHEF_RANGE && shooter.mods.pAdd('chef') > 0;
+  if (chef) base = Math.max(base, curve(SHOT_TYPES.three.base, d));
+  terms.push({ label: chef ? `Chef 3PT ${d.toFixed(0)}ft` : `${def.name} ${d.toFixed(0)}ft`, value: base, kind: 'base' });
   if (type === 'fade') terms.push({ label: `fade ${d.toFixed(0)}ft`, value: fadeFalloff(d), kind: 'fade' });
   if (type === 'jelly') terms.push({ label: 'Jelly Fake', value: JELLY_MULT, kind: 'perk' }); // finger-roll at the top of a hang
   if (ctx.oopTiming !== undefined && ctx.oopTiming < 0.995) terms.push({ label: 'oop timing', value: ctx.oopTiming, kind: 'perk' });

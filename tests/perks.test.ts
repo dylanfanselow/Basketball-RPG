@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
-import { emptyInput, MAGIC, SLIP_S } from '../src/sim/game';
+import { emptyInput, MAGIC, SLIP_S, GREEN_CONTEST, FINGER_WAG, mambaCost } from '../src/sim/game';
+import { evaluateShot, windupFor, CHEF_WINDUP } from '../src/sim/shooting';
 import { TREES, NODES } from '../src/sim/data';
 import { Player } from '../src/sim/player';
 import { newCareer, migrateCareer } from '../src/career/career';
@@ -26,7 +27,7 @@ describe('round 64: perk trees', () => {
     expect(NODES.sh_pullup3.name).toBe('Bang!');
     expect(NODES.pa_vision).toBeUndefined();
     expect(NODES.pa_root.effects.some((e) => e.t === 'param' && e.key === 'laneVision')).toBe(true);
-    expect(NODES.pd_ironnate.prereqs.sort()).toEqual(['pd_iq', 'pd_navigate', 'pd_pickup']);
+    expect(NODES.pd_ironnate.prereqs.sort()).toEqual(['pd_iq', 'pd_pickup']);
     for (const id of ['pa_magic', 'sc_roller', 'sc_popper', 'in_gimme', 'in_foresight']) expect(NODES[id]).toBeDefined();
   });
   it('a perk with two lines into it needs both', () => {
@@ -167,5 +168,134 @@ describe('round 64: Roller / Popper', () => {
     const baseAway = speedAfterScreen(null, false), pop = speedAfterScreen('sc_popper', false);
     expect(pop).toBeGreaterThan(baseAway * 1.1);
     expect(speedAfterScreen('sc_popper', true)).toBeCloseTo(base, 1);
+  });
+});
+
+describe('round 65: shaped trees and GOAT skills', () => {
+  it('GOAT skills cost 5 and sit where the owner drew them', () => {
+    const goats = TREES.flatMap((t) => t.nodes.filter((n) => n.goat).map((n) => n.id)).sort();
+    expect(goats).toEqual(['in_blockparty', 'pd_ironnate', 'sh_lethal']);
+    for (const id of goats) expect(NODES[id].cost).toBe(5);
+    expect(NODES.sh_lethal.prereqs.sort()).toEqual(['sh_chef', 'sh_mamba']);
+    expect(NODES.sh_lethal.desc).toContain('I understand it now');
+    expect(NODES.in_blockparty.prereqs.sort()).toEqual(['in_fingerwag', 'in_foresight', 'in_gimme']);
+    expect(NODES.in_foresight.prereqs.sort()).toEqual(['in_fingerwag', 'in_gimme']);
+    expect(NODES.pd_contest.prereqs).toEqual([]);
+    for (const id of ['pd_root', 'pd_flop', 'in_swat']) expect(NODES[id]).toBeUndefined();
+    expect(TREES.find((t) => t.id === 'shooting')!.shape).toBe('ball');
+  });
+  it('only the chosen players have the GOAT skills', () => {
+    const all = JSON.stringify(rosters);
+    for (const id of ['pd_root', 'pd_flop', 'in_swat']) expect(all).not.toContain(`"${id}"`);
+    const flat: any[] = [];
+    const walk = (o: any) => { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (Array.isArray(o.perks)) flat.push(o); Object.values(o).forEach(walk); } };
+    walk(rosters);
+    const who = (id: string) => flat.filter((p) => p.perks.includes(id)).map((p) => p.name).sort();
+    expect(who('in_blockparty')).toEqual(['Victor Wembanyama']);
+    expect(who('pd_ironnate')).toEqual(['Kawhi Leonard']);
+    expect(who('sh_lethal')).toEqual(['Jalen Brunson', 'Luka Dončić', 'Shai Gilgeous-Alexander', 'Stephen Curry']);
+  });
+  it('old saves: Lockdown Stance -> Hand in Face, Swat Team -> Anchor, Floor Burn refunded', () => {
+    const old: any = { ...newCareer('A', 'SF'), nodes: ['pd_root', 'pd_contest', 'pd_flop', 'in_root', 'in_wall', 'in_anchor', 'in_swat'], perkPoints: 0 };
+    const m = migrateCareer(old)!;
+    expect(m.nodes.sort()).toEqual(['in_anchor', 'in_root', 'in_wall', 'pd_contest']);
+    expect(m.perkPoints).toBe(1 + 2 + 2);
+    const only: any = { ...newCareer('B', 'SF'), nodes: ['pd_root'], perkPoints: 0 };
+    const m2 = migrateCareer(only)!;
+    expect(m2.nodes).toEqual(['pd_contest']);
+    expect(m2.perkPoints).toBe(0);
+  });
+});
+
+describe('round 65: Chef', () => {
+  it('deep 3s out to 34 ft shoot like a normal 3, with a quicker windup', () => {
+    const g = live();
+    const sh = g.holder()!, side = g.side(sh.team), rim = g.rim(sh.team), dir = Math.sign(47 - rim.x);
+    sh.p = { x: rim.x + dir * 30, y: rim.y };
+    const base = () => evaluateShot(sh, [], side, 'deep3', { now: g.time, clutch: false }).terms[0].value;
+    withNode(sh, 'sh_chef', false);
+    const off = base(), w0 = windupFor(sh, 'three');
+    withNode(sh, 'sh_chef', true);
+    expect(base()).toBeCloseTo(0.36, 3);
+    expect(off).toBeLessThan(0.3);
+    expect(windupFor(sh, 'three')).toBeCloseTo(w0 * CHEF_WINDUP, 5);
+    sh.p = { x: rim.x + dir * 38, y: rim.y }; // a heave stays a heave
+    expect(base()).toBeLessThan(0.2);
+  });
+});
+
+describe('round 65: Mamba and Lethal Shooter', () => {
+  const ev = (pct: number, contest: number) => ({ pct, contest } as any);
+  it('Mamba: every other miss goes in for rhythm, more for a worse shot, none when broke', () => {
+    const g = live();
+    const p = g.holder()!;
+    withNode(p, 'sh_mamba', true);
+    g.setRhythm(p, 100);
+    expect(g.missSaved(p, 'mid', ev(0.45, 0.3))).toBe(false);
+    expect(g.missSaved(p, 'mid', ev(0.45, 0.3))).toBe(true);
+    const spentGood = 100 - p.rhythm;
+    g.setRhythm(p, 100);
+    g.missSaved(p, 'three', ev(0.1, 0.6));
+    expect(g.missSaved(p, 'three', ev(0.1, 0.6))).toBe(true);
+    expect(100 - p.rhythm).toBeGreaterThan(spentGood);
+    expect(mambaCost(0.1)).toBeGreaterThan(mambaCost(0.45));
+    g.setRhythm(p, 5);
+    g.missSaved(p, 'mid', ev(0.4, 0.3));
+    expect(g.missSaved(p, 'mid', ev(0.4, 0.3))).toBe(false);
+  });
+  it('Lethal Shooter: every other green jumper miss goes in, free; contested or not a jumper, no', () => {
+    const g = live();
+    const p = g.holder()!;
+    withNode(p, 'sh_lethal', true);
+    g.setRhythm(p, 0);
+    const res = [0, 1, 2, 3].map(() => g.missSaved(p, 'three', ev(0.4, GREEN_CONTEST / 2)));
+    expect(res).toEqual([false, true, false, true]);
+    expect(p.rhythm).toBe(0);
+    expect([0, 1].map(() => g.missSaved(p, 'three', ev(0.4, 0.5)))).toEqual([false, false]);
+    expect([0, 1].map(() => g.missSaved(p, 'layup', ev(0.4, 0)))).toEqual([false, false]);
+  });
+});
+
+describe('round 65: Finger Wag and Block Party', () => {
+  const setup = (seed = 6) => {
+    const g = live(undefined, seed);
+    const sh = g.holder()!, d = g.opp(sh.team)[0];
+    const rim = g.rim(sh.team), dir = Math.sign(47 - rim.x);
+    for (const o of g.players) if (o !== sh && o !== d) o.p = { x: 47, y: 2 };
+    sh.p = { x: rim.x + dir * 4, y: rim.y }; d.p = { x: rim.x + dir * 2, y: rim.y };
+    return { g, sh, d };
+  };
+  it('Finger Wag: twice the rhythm both ways on a block', () => {
+    const swing = (wag: boolean) => {
+      const { g, sh, d } = setup();
+      withNode(d, 'in_fingerwag', wag);
+      g.setRhythm(d, 20); g.setRhythm(sh, 50); d.z = 2;
+      g.rng.chance = () => true;
+      sh.pendingShot = { type: 'layup' } as any;
+      (g as any).releaseShot(sh);
+      expect(g.events.some((e) => e.kind === 'block')).toBe(true);
+      return { gain: d.rhythm - 20, loss: 50 - sh.rhythm, wagAt: d.fingerWagAt, said: g.events.some((e) => /Finger wag/.test(e.text)) };
+    };
+    const off = swing(false), on = swing(true);
+    expect(on.gain).toBeCloseTo(off.gain * FINGER_WAG, 5);
+    expect(on.loss).toBeCloseTo(off.loss * FINGER_WAG, 5);
+    expect(on.said).toBe(true);
+    expect(off.said).toBe(false);
+  });
+  it('Block Party: a smaller dunker in front of him is blocked every time, a bigger one is not', () => {
+    const trial = (seed: number, bigger: boolean, perk = true) => {
+      const { g, sh, d } = setup(seed);
+      withNode(d, 'in_blockparty', perk);
+      d.height = 7.3; d.core.strength = 50; d.z = 0;
+      sh.height = bigger ? 7.5 : 6.5; sh.core.strength = bigger ? 90 : 60;
+      sh.pendingShot = { type: 'dunk' } as any;
+      (g as any).releaseShot(sh);
+      return g.events.some((e) => e.kind === 'block' && /BLOCK PARTY/.test(e.text));
+    };
+    for (let s = 1; s <= 10; s++) {
+      expect(trial(s, false)).toBe(true);
+      expect(trial(s, true)).toBe(false);
+      expect(trial(s, false, false)).toBe(false);
+    }
   });
 });

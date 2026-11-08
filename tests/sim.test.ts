@@ -560,7 +560,7 @@ describe('round 20: net, screens, passing reads, stars', () => {
     expect(a.knock).toBeGreaterThan(b.knock);
     const wall = mk({ core: scr.core, nodes: ['sc_root'] });
     expect(screenImpact(wall, strong).stun).toBeGreaterThan(b.stun * 1.25);
-    const nav = mk({ core: weak.core, nodes: ['pd_root', 'pd_contest', 'pd_close', 'pd_navigate'] });
+    const nav = mk({ core: weak.core, nodes: ['pd_contest', 'pd_close', 'pd_navigate'] });
     expect(screenImpact(scr, nav).stun).toBeLessThan(a.stun * 0.7);
     expect(screenImpact(scr, nav).knock).toBeLessThan(a.knock * 0.7);
   });

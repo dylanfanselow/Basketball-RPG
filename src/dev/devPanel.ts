@@ -407,7 +407,7 @@ export function initDevPanel() {
     }
     pz.append(el('div', { class: 'row' },
       btn('Built-in: Shooter guard', () => { Object.assign(c.core, { shooting: 88, finishing: 60, strength: 45, mobility: 75, playmaking: 70 }); c.nodes = ['sh_root', 'sh_catch', 'sh_corner', 'sh_range', 'sh_release', 'dr_handle', 'dr_cross', 'dr_btb', 'dr_stepback', 'dr_spin', 'dr_inout']; syncLive(); }),
-      btn('Built-in: Rim-running big', () => { Object.assign(c.core, { shooting: 40, finishing: 85, strength: 88, mobility: 65, playmaking: 50 }); c.nodes = ['fi_root', 'fi_fork', 'fi_power', 'fi_lob', 'fi_poster', 'sc_root', 'sc_roll', 'sc_slip', 'in_root', 'in_getlow', 'in_wall', 'in_anchor', 'in_swat']; syncLive(); }),
+      btn('Built-in: Rim-running big', () => { Object.assign(c.core, { shooting: 40, finishing: 85, strength: 88, mobility: 65, playmaking: 50 }); c.nodes = ['fi_root', 'fi_fork', 'fi_power', 'fi_lob', 'fi_poster', 'sc_root', 'sc_roll', 'sc_slip', 'in_root', 'in_getlow', 'in_wall', 'in_anchor']; syncLive(); }),
     ));
     // round 58: the game opens on the real main menu; the old every-mode menu is here
     pz.append(el('div', { class: 'row' }, btn('Dev menu (every mode)', () => { const g = (window as any).__phaser as Phaser.Game; const cur = g.scene.getScenes(true)[0]; cur?.scene.start('Menu'); })));

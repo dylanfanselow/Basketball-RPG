@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-08 (round 64: perk rework, all-prereqs rule, Magic, Popper, Roller, Iron Nate, Gimme That!, Foresight).
+Last updated: 2026-11-08 (round 65: shaped perk trees, GOAT skills, Chef, Mamba, Lethal Shooter, Finger Wag, Block Party).
 Next session: start with BACKLOG.md → "Start here next session".

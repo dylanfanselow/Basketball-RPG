@@ -31,7 +31,7 @@ describe('round 50: Pick-Up Pressure', () => {
   it('is a high-level ability in the perimeter tree', () => {
     const n = NODES['pd_pickup'];
     expect(n.type).toBe('ability');
-    expect(n.prereqs).toContain('pd_flop');
+    expect(n.prereqs).toContain('pd_offnight');
   });
   it('a missed swipe sometimes kills the dribble, only with the ability', () => {
     let s = setup(true);

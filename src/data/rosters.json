@@ -71,9 +71,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -120,9 +119,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -277,9 +275,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 4,
@@ -373,9 +370,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -569,9 +565,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -725,7 +720,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -1066,7 +1061,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -1455,7 +1450,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -1502,7 +1497,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -1900,9 +1895,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -1998,7 +1992,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -2242,9 +2236,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -2492,7 +2485,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -2539,9 +2532,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -2838,9 +2830,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -2887,7 +2878,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -2993,9 +2983,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -3336,9 +3325,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -3385,7 +3373,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -3640,9 +3627,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 0,
@@ -3890,9 +3876,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 0,
@@ -4292,7 +4277,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -4791,7 +4776,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -4891,7 +4876,8 @@
      "sh_corner",
      "sh_release",
      "sh_range",
-     "sh_pullup3"
+     "sh_pullup3",
+     "sh_lethal"
     ],
     "appearance": {
      "skin": 2,
@@ -5144,7 +5130,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle"
     ],
@@ -5193,9 +5178,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -5242,9 +5226,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -5340,7 +5323,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 2,
@@ -5654,7 +5637,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -5705,9 +5687,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -6051,9 +6032,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -6308,7 +6288,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle"
     ],
@@ -6853,7 +6832,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -7050,7 +7029,8 @@
      "pa_lob",
      "pa_dimes",
      "dr_inout",
-     "pa_bullet"
+     "pa_bullet",
+     "sh_lethal"
     ],
     "appearance": {
      "skin": 0,
@@ -7150,9 +7130,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -7350,7 +7329,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -7445,7 +7424,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -7587,7 +7566,7 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -7685,9 +7664,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -7887,9 +7865,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -8082,7 +8059,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -8179,9 +8156,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -8276,7 +8252,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -8383,7 +8358,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -8534,7 +8508,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 1,
@@ -8581,7 +8555,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -8628,7 +8602,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -8982,7 +8956,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -9377,9 +9351,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -9534,9 +9507,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -9726,7 +9698,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -9775,7 +9747,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -10127,9 +10098,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 4,
@@ -10279,7 +10249,8 @@
      "dr_spin",
      "dr_btb",
      "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "sh_lethal"
     ],
     "appearance": {
      "skin": 2,
@@ -10326,7 +10297,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -10377,9 +10347,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -10428,9 +10397,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -10530,9 +10498,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -10829,7 +10796,8 @@
      "dr_spin",
      "dr_btb",
      "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "sh_lethal"
     ],
     "appearance": {
      "skin": 3,
@@ -10876,9 +10844,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -10925,7 +10892,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -10984,7 +10950,6 @@
      "in_wall",
      "fi_fork",
      "in_anchor",
-     "in_swat",
      "sh_range"
     ],
     "appearance": {
@@ -11085,9 +11050,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 0,
@@ -11232,7 +11196,7 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -11375,9 +11339,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
      "pd_contest",
+     "sh_corner",
      "pd_hands",
      "pd_close"
     ],
@@ -11634,9 +11597,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -11733,7 +11695,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -11827,7 +11789,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 1,
@@ -12288,7 +12250,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -12538,9 +12500,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -12833,7 +12794,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -12880,7 +12841,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -12927,7 +12888,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -13082,9 +13043,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 4,
@@ -13235,7 +13195,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle"
     ],
@@ -13435,7 +13394,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -13582,9 +13541,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 3,
@@ -13834,7 +13792,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -14238,9 +14196,9 @@
      "in_wall",
      "fi_fork",
      "in_anchor",
-     "in_swat",
      "sh_range",
-     "dr_spin"
+     "dr_spin",
+     "in_blockparty"
     ],
     "appearance": {
      "skin": 4,
@@ -14387,7 +14345,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -14528,7 +14486,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -14728,13 +14686,13 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
      "in_root",
      "pd_close",
-     "fi_fork"
+     "fi_fork",
+     "pd_ironnate"
     ],
     "appearance": {
      "skin": 4,
@@ -14887,7 +14845,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle"
     ],
@@ -14936,7 +14893,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -15278,7 +15235,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -15572,7 +15528,7 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root"
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -15673,9 +15629,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 1,
@@ -15773,7 +15728,6 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_root",
      "pd_contest",
      "dr_handle",
      "pd_hands",
@@ -15974,9 +15928,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_root",
-     "sh_corner",
-     "pd_contest"
+     "pd_contest",
+     "sh_corner"
     ],
     "appearance": {
      "skin": 4,
