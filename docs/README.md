@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-08 (round 68: pump fake shots are their own scoring method).
+Last updated: 2026-11-08 (round 69: CPU star ults without rhythm, saved for the 4th with an iso).
 Next session: start with BACKLOG.md → "Start here next session".

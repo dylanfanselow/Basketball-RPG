@@ -207,10 +207,13 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   // round 51: the Deep Step-Back ult was used, let the three fly out of it
   if (p.ultShotAt > 0 && sim.time >= p.ultShotAt) { p.ultShotAt = 0; sim.startShot(p, selectShotType(p, side, v(), sim.time)); return; }
   // round 51: a CPU star in full rhythm uses his ultimate when the moment fits (once a game)
-  const ult = p.rhythm >= 100 && !sim.ultsUsed[p.id] ? sim.ultOf(p) : null;
+  // round 69: CPU stars don't need the meter, and save offensive ults for the last period (an iso gets called for it)
+  const ult = sim.ultReady(p) && sim.quarter >= sim.periods ? sim.ultOf(p) : null;
+  const isoUlt = sim.ultIso === p.id;
   if (ult && !p.deadDribble && inFrontcourt(side, p.p)) {
-    if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && sim.rng.chance(0.12) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.75; return; } // round 55: after both step-backs
-    if (ult.id === 'ftTakeoff' && d >= 9 && d <= 19 && dot(p.vel, norm(sub(rim, p.p))) > 5 && tryActivateUlt(sim, p)) return;
+    if (ult.id === 'deepStepback' && d >= 17 && d <= 29 && (isoUlt || sim.rng.chance(0.12)) && tryActivateUlt(sim, p)) { p.ultShotAt = sim.time + 0.75; return; } // round 55: after both step-backs
+    if (ult.id === 'ftTakeoff' && d >= 9 && d <= 19 && dot(p.vel, norm(sub(rim, p.p))) > (isoUlt ? 0 : 5) && tryActivateUlt(sim, p)) return;
+    if (ult.id === 'ftTakeoff' && isoUlt && d > 19 && d <= 32) { sim.steer(p, rim, true); if (len(p.vel) > 6) sim.startBurst(p); p.aiMode = 'drive'; p.aiModeUntil = sim.time + 0.6; return; } // attack for the take-off
   }
   // round 48: open floor on the run (transition / coming up the floor, moving toward the rim), nobody in front of him
   // or alongside his path to the rim: keep going and finish (no pass back to the point guard). Re-checked every tick: the moment a defender gets in the way, the normal reads take over.

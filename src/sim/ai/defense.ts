@@ -37,7 +37,7 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
     }
   }
   // round 51: a CPU star in full rhythm with Chase-Down runs down a break from behind (once a game)
-  if (h && h.team !== d.team && d.rhythm >= 100 && !sim.ultsUsed[d.id] && sim.isAI(d) && sim.inTransition(h.team)) {
+  if (h && h.team !== d.team && sim.isAI(d) && sim.ultReady(d) && sim.inTransition(h.team)) {
     const u = sim.ultOf(d), hr = dist(h.p, rim);
     if (u?.id === 'chaseDown' && hr < 30 && dist(d.p, rim) > hr + 2 && tryActivateUlt(sim, d)) return;
   }

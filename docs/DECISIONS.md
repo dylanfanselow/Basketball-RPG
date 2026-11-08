@@ -501,6 +501,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
+  Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
+  and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
 - **Round 68:** a shot off a pump fake is its own scoring method for the rhythm STALE count (`mid · pump fake`),
   not "off dribble".
 - **Round 67:** Mamba also keeps made midrange jumpers from going **stale** (no repeat decay on their rhythm).

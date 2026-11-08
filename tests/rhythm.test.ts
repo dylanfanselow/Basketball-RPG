@@ -82,15 +82,16 @@ describe('round 51: rhythm', () => {
     expect(tryActivateUlt(g, u)).toBe(false); // one per game
     expect(g.events.some((e) => e.text === 'Ultimate used this game')).toBe(true);
   });
-  it('CPU stars have a fitting ultimate (role players have none) and use it in full rhythm', () => {
+  it('CPU stars have a fitting ultimate (role players have none) and use it in the 4th (round 69: no rhythm needed)', () => {
     const g = live();
     const stars = g.players.filter((p) => p.star && g.isAI(p));
     expect(stars.length).toBeGreaterThan(0);
     for (const s of stars) expect(['chaseDown', 'deepStepback', 'ftTakeoff']).toContain(g.ultOf(s)!.id);
     const role = g.players.find((p) => !p.star)!;
     expect(g.ultOf(role)).toBeNull();
-    // a shooter star in full rhythm with the ball out deep pulls the Deep Step-Back
+    // a shooter star with the ball out deep in the 4th pulls the Deep Step-Back (round 69: any rhythm)
     const s = stars[0];
+    g.quarter = 4;
     g.cpuUlts[s.id] = { unlocked: true, id: 'deepStepback', level: 0 };
     const rim = rimPos(g.side(s.team));
     for (const d of g.opp(s.team)) d.sub.steal = 0;
@@ -99,7 +100,7 @@ describe('round 51: rhythm', () => {
     for (let tries = 0; tries < 8 && !g.ultsUsed[s.id]; tries++) {
       g.possession = s.team; g.transitionUntil = 0; g.shotClock = 24; g.live = true;
       s.p = { x: rim.x - Math.sign(rim.x - 47) * 22, y: 25 }; s.vel = { x: 0, y: 0 }; s.state = 'idle';
-      g.giveBall(s); g.setRhythm(s, 100);
+      g.giveBall(s); g.setRhythm(s, 30);
       for (let t = 0; t < 3 && !g.ultsUsed[s.id] && g.holder() === s; t += 1 / 30) { s.aiNextThink = 0; g.update(1 / 30, inp); }
     }
     expect(g.ultsUsed[s.id]).toBe(1);

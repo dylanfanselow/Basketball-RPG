@@ -35,6 +35,9 @@ export function cpuUltFor(p: Player): UltState {
   return { unlocked: true, id, level: p.overall >= 82 ? 1 : 0 };
 }
 
+/** Round 69: ultimates used on offense (CPU stars save these for the last period); Chase-Down is defense. */
+export const OFFENSIVE_ULTS = ['deepStepback', 'ftTakeoff'];
+
 /** Career milestone -> evolution points. */
 export const ULT_MILESTONES: Record<string, { name: string; points: number }> = {
   fiftyBall: { name: '50-point game', points: 2 },
@@ -52,7 +55,7 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
   const say = (text: string) => { if (human) sim.emit({ kind: 'ult', text, pid: p.id }); };
   if (!st || !st.id) { say('Ultimate: ??? (locked)'); return false; }
   if ((sim.ultsUsed[p.id] ?? 0) >= 1) { say('Ultimate used this game'); return false; }
-  if (p.rhythm < 100) { say(`Rhythm ${p.rhythm.toFixed(0)}%: fill it to ult`); return false; }
+  if (p.rhythm < 100 && !sim.isAI(p)) { say(`Rhythm ${p.rhythm.toFixed(0)}%: fill it to ult`); return false; } // round 69: CPU stars don't need rhythm
   if (sim.ult.active) { say('Not now: another ultimate is in play'); return false; }
   const def = ULTIMATES[st.id];
   const level = def.levels[Math.min(st.level, def.levels.length - 1)];
@@ -89,7 +92,8 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
   }
 
   if (ok) {
-    p.rhythm = AFTER_ULT; // keep the three notches; only the last stretch rebuilds (and there's no second ult tonight)
+    p.rhythm = Math.min(p.rhythm, AFTER_ULT); // keep the three notches; only the last stretch rebuilds (and there's no second ult tonight); a CPU star's never goes up
+    if (sim.ultIso === p.id) sim.ultIso = null;
     sim.ultsUsed[p.id] = (sim.ultsUsed[p.id] ?? 0) + 1;
     sim.emit({ kind: 'ult', text: human ? `ULTIMATE: ${level.name}!` : `${p.name}: ULTIMATE ${level.name}!`, pid: p.id, team: p.team, big: true, good: human,
       data: { id: st.id, level: st.level, pos: p.pos, name: level.name, cinematic } });

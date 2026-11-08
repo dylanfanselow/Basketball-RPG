@@ -179,6 +179,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 69: `GameSim.ultReady(p)` (has an ult, unused, and AI or rhythm 100); `tryActivateUlt` skips the rhythm
+  check for AI and leaves a CPU's rhythm at `min(rhythm, AFTER_ULT)`. `OFFENSIVE_ULTS` (ultimates.ts) only fire from
+  `ai/offense.ts` when `quarter >= periods`; `callPlay` first calls an iso for `ultIsoCandidate(off)` (chance 0.5,
+  1 in clutch / endgame, `ULT_ISO_TRIES` 3 unless clutch), sets `sim.ultIso`; in it the Deep Step-Back fires as soon
+  as he's 17-29 ft out and the FT-Line Dunk star drives from up to 32 ft. Chase-Down (`ai/defense.ts`) uses
+  `ultReady`. Headless: ~2.8 CPU ults a game, all in the 4th (were ~1.8 at full rhythm).
   Round 68: `shotConditions` adds `afterFake` (pump fake since the catch, within 2.5 s); `methodKey` turns it into
   `|fake` (after post / transition / step-back, before catch / drive / pull-up), label "pump fake".
   Round 67: `GameSim.staleTimes` (the rhythm repeat count for a make) returns 0 for a midrange make (`isMidrange`)

@@ -16,7 +16,7 @@ import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
 import { CPU_LEVELS, CpuLevel, CpuLevelCfg } from './ai/levels';
 import type { IsoMemory } from './ai/oneOnOne';
-import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane } from './ultimates';
+import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane, OFFENSIVE_ULTS } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
@@ -160,6 +160,8 @@ export const mambaCost = (pct: number) => MAMBA.base + MAMBA.perMiss * (1 - clam
 const JUMPERS = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'];
 /** Round 65 Block Party size: height in inches plus a quarter of strength. */
 export const sizeScore = (p: Player) => p.height * 12 + p.core.strength * 0.25;
+/** Round 69: forced isos for a CPU star's saved ult (more only in the clutch). */
+export const ULT_ISO_TRIES = 3;
 /** Round 64: how long after a screen Roller / Popper speed you up (s). */
 export const SLIP_S = 2.0;
 
@@ -905,7 +907,11 @@ export class GameSim {
     let why = '';
     this.closeCall();
     const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
-    if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
+    // round 69: a CPU star saving his offensive ult gets an iso in the last period to use it
+    this.ultIso = null;
+    const ultStar = isos.length ? this.ultIsoCandidate(off) : null;
+    if (ultStar && this.rng.chance(this.clutch || endgame(this) ? 1 : 0.5)) { isoFor(ultStar); why = 'ultimate'; this.ultIso = ultStar.id; this.ultIsoTries[ultStar.id] = (this.ultIsoTries[ultStar.id] ?? 0) + 1; }
+    else if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
       focus = off.find((p) => p.id === fid) ?? null;
@@ -1983,6 +1989,21 @@ export class GameSim {
   }
   /** Ultimates used this game per player (one each). */
   ultsUsed: Record<string, number> = {};
+  /** Round 69: can he ult right now? Has one, unused tonight, and a full rhythm meter (CPU stars don't need the meter). */
+  ultReady(p: Player): boolean {
+    const u = this.ultOf(p);
+    return !!u?.id && !this.ultsUsed[p.id] && (this.isAI(p) || p.rhythm >= 100);
+  }
+  /** Round 69: a CPU star whose offensive ult is saved for the last period: the iso called for it (this possession). */
+  ultIso: string | null = null;
+  /** isos called so far for each star's ult (at most ULT_ISO_TRIES forced ones, unlimited in the clutch) */
+  ultIsoTries: Record<string, number> = {};
+  /** The CPU star (best first) on offense who still has an offensive ult to use, in the last period. */
+  ultIsoCandidate(off: Player[]): Player | null {
+    if (this.quarter < this.periods) return null;
+    const c = off.filter((p) => this.isAI(p) && p.star && p.state !== 'fallen' && this.ultReady(p) && OFFENSIVE_ULTS.includes(this.ultOf(p)!.id!) && ((this.ultIsoTries[p.id] ?? 0) < ULT_ISO_TRIES || this.clutch));
+    return c.sort((a, b) => b.overall - a.overall)[0] ?? null;
+  }
   private rhythmReadySaid: Record<string, boolean> = {};
 
   // ---------- physics ----------

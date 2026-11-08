@@ -96,6 +96,7 @@
 | 66 | `73dfa23` | Bang! = clutch 3s; no quarter length option; big game in two 4-minute halves; scout weighs a block more than a point | `sh_pullup3` clutch, TitleScene settings, `GameConfig.periods` / `qEquiv` / `periodLabel`, `buildBigGame` halves, `bigGameVerdict` with `STAT_WEIGHTS` |
 | 67 | `4a3f5a9` | Mamba: midranges don't go stale | `staleTimes`, Mamba desc |
 | 68 | `86c2482` | Pump fake + shot isn't off the dribble for the stale counter | `afterFake` cond, `methodKey` `fake` |
+| 69 | `TBD` | CPU stars: ultimate without rhythm, offensive ones saved for the 4th, iso called for it | `ultReady`, `OFFENSIVE_ULTS`, `ultIsoCandidate` / `ultIso` / `ULT_ISO_TRIES`, offense / defense AI |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
