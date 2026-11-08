@@ -223,6 +223,11 @@ export function migrateCareer(c: any): CareerState | null {
   if (c.version === 3) { c.skills = newSkills(); c.version = 4; }
   // round 63: Mid-Range Maestro was removed; owners get Rhythm Shooter (same cost, same slot) instead
   if (Array.isArray(c.nodes)) c.nodes = [...new Set(c.nodes.map((id: string) => (id === 'sh_mid' ? 'sh_midrhythm' : id)))];
+  // round 64: Dime Vision merged into Floor General; owners keep the lanes (Floor General) and get the point back if they had both
+  if (Array.isArray(c.nodes) && c.nodes.includes('pa_vision')) {
+    if (c.nodes.includes('pa_root')) c.perkPoints = (c.perkPoints ?? 0) + 1;
+    c.nodes = [...new Set(c.nodes.map((id: string) => (id === 'pa_vision' ? 'pa_root' : id)))];
+  }
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
   if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' }; // round 60: saves from before the prologue

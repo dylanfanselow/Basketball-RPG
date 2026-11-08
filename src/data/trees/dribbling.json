@@ -1,5 +1,5 @@
 {
-  "id": "dribbling", "name": "Dribbling", "shape": "chain", "color": "#4ecdc4",
+  "id": "dribbling", "name": "Handles", "shape": "chain", "color": "#4ecdc4",
   "desc": "Mostly moves. Crossover = dribble up or down the screen, then ○ with the stick the other way. Moves chain: Crossover then Double Crossover, Behind-the-Back or Shammgod.",
   "nodes": [
     { "id": "dr_handle", "name": "Tight Handle", "type": "passive", "x": 50, "y": 92, "prereqs": [], "cost": 1, "desc": "+4 Ball Speed and Ankle Break.", "effects": [{ "t": "sub", "key": "ballSpeed", "add": 4 }, { "t": "sub", "key": "ankleBreak", "add": 4 }] },

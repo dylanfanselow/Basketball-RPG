@@ -1,5 +1,5 @@
 {
-  "id": "interior", "name": "Post D & Rebounding", "shape": "branch", "color": "#b2bec3",
+  "id": "interior", "name": "Post", "shape": "branch", "color": "#b2bec3",
   "desc": "Box-outs, rim protection, verticality.",
   "nodes": [
     { "id": "in_root", "name": "Glass Cleaner", "type": "passive", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+6 Rebound.", "effects": [{ "t": "sub", "key": "rebound", "add": 6 }] },
@@ -7,6 +7,8 @@
     { "id": "in_tip", "name": "Putback Instinct", "type": "passive", "x": 22, "y": 44, "prereqs": ["in_getlow"], "cost": 1, "desc": "Rebound grab radius x1.3.", "effects": [{ "t": "param", "key": "grabRadius", "mult": 1.3 }] },
     { "id": "in_wall", "name": "Verticality", "type": "passive", "x": 72, "y": 68, "prereqs": ["in_root"], "cost": 1, "desc": "Your contests on shots near the rim x1.2.", "effects": [{ "t": "contestOut", "types": ["layup", "euro", "dunk", "floater", "hook", "push"], "mult": 1.2 }] },
     { "id": "in_anchor", "name": "Anchor", "type": "passive", "x": 78, "y": 44, "prereqs": ["in_wall"], "cost": 1, "desc": "+8 Post D, +8 Block.", "effects": [{ "t": "sub", "key": "postD", "add": 8 }, { "t": "sub", "key": "block", "add": 8 }] },
-    { "id": "in_swat", "name": "Swat Team", "type": "ability", "x": 50, "y": 24, "prereqs": ["in_tip", "in_anchor"], "cost": 2, "desc": "Block chance x1.35.", "effects": [{ "t": "param", "key": "blockMult", "mult": 1.35 }] }
+    { "id": "in_swat", "name": "Swat Team", "type": "ability", "x": 50, "y": 24, "prereqs": ["in_tip", "in_anchor"], "cost": 2, "desc": "Block chance x1.35.", "effects": [{ "t": "param", "key": "blockMult", "mult": 1.35 }] },
+    { "id": "in_gimme", "name": "Gimme That!", "type": "ability", "x": 50, "y": 6, "prereqs": ["in_swat"], "cost": 2, "desc": "Your blocks are snatch blocks: you pluck the ball out of the air and it's your ball.", "effects": [{ "t": "param", "key": "snatchBlock", "add": 1 }] },
+    { "id": "in_foresight", "name": "Foresight", "type": "ability", "x": 10, "y": 24, "prereqs": ["in_tip"], "cost": 1, "desc": "A shadow on the floor shows where a missed shot or a loose ball is going to come down.", "effects": [{ "t": "param", "key": "foresight", "add": 1 }] }
   ]
 }

@@ -211,3 +211,18 @@ export function samplePlan(plan: ShotSim, t: number): V3 {
   const a = s[i], b = s[Math.min(s.length - 1, i + 1)];
   return v3(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
 }
+
+/**
+ * Round 64 Foresight: where a free ball first comes down to the floor, stepped with the sim's loose-ball physics
+ * (drag 0.8/s on the floor plane, gravity 32, floor contact at z 0.4). Null if it doesn't land within maxT.
+ */
+export function predictLanding(p0: V3, vel: { x: number; y: number }, vz0: number, dt = 1 / 60, maxT = 4): V3 | null {
+  let x = p0.x, y = p0.y, z = p0.z, vx = vel.x, vy = vel.y, vz = vz0;
+  for (let t = 0; t < maxT; t += dt) {
+    x += vx * dt; y += vy * dt;
+    const k = 1 - dt * 0.8; vx *= k; vy *= k;
+    vz -= GRAVITY * dt; z += vz * dt;
+    if (z <= 0.4 && vz < 0) return v3(x, y, 0);
+  }
+  return null;
+}

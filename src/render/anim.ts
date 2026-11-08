@@ -425,6 +425,11 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: chest },
     { t: 0.5, pose: P({ hF: [17, 63], eF: [10, 66], hB: [16, 61], eB: [8, 64], kF: [6, 26], fF: [9, 0], head: [3, 90] }) },
     { t: 1, pose: P({ hF: [14, 60], eF: [9, 64], hB: [12, 58], eB: [6, 62] }) }] },
+  // round 64 Magic: behind-the-back / wraparound pass: the ball hand swings it around the hip and flicks it out behind him
+  { name: 'passBehind', frames: 5, keys: [
+    { t: 0, pose: P({ hB: [8, 50], eB: [5, 62], ball: [9, 48], hF: [6, 58], eF: [5, 66] }) },
+    { t: 0.45, pose: P({ head: [3, 89], hip: [0, 49], hB: [-9, 46], eB: [-5, 58], ball: [-11, 45], hF: [8, 60], eF: [6, 67] }) },
+    { t: 1, pose: P({ head: [2, 89], hB: [-15, 50], eB: [-9, 60], ball: null, hF: [7, 59], eF: [5, 66] }) }] },
   { name: 'catch', frames: 3, keys: [
     { t: 0, pose: P({ hF: [12, 66], eF: [8, 68], hB: [10, 65], eB: [5, 67], ball: [14, 66] }) },
     { t: 1, pose: chest }] },

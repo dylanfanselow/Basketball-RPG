@@ -501,6 +501,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 64 (perks):** a perk with two or more lines into it needs **all** of them (was any). Trees: **Post** (was Post
+  D & Rebounding), **Perimeter** (was Perimeter Defense), **Handles** (was Dribbling); Limitless Range = **Way Down
+  Town**, Pull-Up Threat = **Bang!**. Dime Vision merged into **Floor General**. New: **Magic** (fancy passes,
+  **automatic** when they fit, no button; harder to pick off, track harder, easier to catch), **Popper** / **Roller**
+  (speed away from / toward the rim right after a screen), **Iron Nate** (end of Perimeter, needs all three branch
+  ends; no ankle breaks), **Gimme That!** (blocks are snatch blocks), **Foresight** (shadow where the ball will land).
 - **Round 63:** rebounds build rhythm (offensive boards more). **Off Night** (Perimeter D, after Hand in Face, cost 2):
   the man you guard builds rhythm ×0.6, the rest of his team ×0.85, while you're on the floor. **Threes are always
   jumpers** (a post shot from beyond the arc is a jumper, never a hook). Shooting tree: **Mid-Range Maestro removed**,

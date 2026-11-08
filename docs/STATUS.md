@@ -179,6 +179,20 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 64 (perk rework): trees renamed **Post** (`interior`), **Perimeter** (`perimeter`), **Handles** (`dribbling`)
+  (ids kept, the tab bar uses the names); `sh_range` = **Way Down Town**, `sh_pullup3` = **Bang!**. `canUnlock` needs
+  **every** prereq (reason lists the missing ones with "and"); owned nodes from older saves are grandfathered.
+  **Floor General** (`pa_root`) now carries `laneVision`; `pa_vision` removed (rosters map to `pa_root`, saves too, +1
+  point back if they had both). **Magic** (`pa_magic`, after Bullet Passer): `GameSim.passStyle` picks `behindBack`
+  (receiver > 120 deg off his facing), `wrap` (driving, man within 4 ft in front) or `noLook` (> 55 deg); a fancy pass
+  has `riskMult` x0.6, homing x1.5 and +1 ft catch radius (`MAGIC`), callout every 6 s at most, `passBehind` clip, a
+  no-look keeps his facing. **Roller / Popper** (`sc_roller` / `sc_popper`): a screen ending sets `p.slipUntil`
+  (`SLIP_S` 2 s); off the ball, `want` toward the own rim x`roller`, away x`popper`. **Iron Nate** (`pd_ironnate`,
+  needs High IQ + Pick-Up Pressure + Screen Navigator; perimeter tree relaid out): no `ankles` knockdown, stagger only.
+  **Gimme That!** (`in_gimme`, after Swat Team): a block with `snatchBlock` gives the blocker the ball. **Foresight**
+  (`in_foresight`, after Putback Instinct): `ballPhysics.predictLanding` steps the loose-ball physics to the first
+  floor contact; `GameSim.foresightSpot()` (loose ball now, or a planned miss from `plan.end`); GameScene draws a
+  pulsing ghost shadow (dev toggle `debug.foresight`).
   Round 63: rebounds build rhythm (`RHYTHM_GAIN.oreb` 2.5 / `dreb` 1.5, in the rebound pickup); Perimeter D perk
   **Off Night** (`pd_offnight`, cost 2, after Hand in Face, param `offNight`): in `addRhythm`, while an opponent with
   it is on the floor his man gains ×0.6 and the rest ×0.85 (`OFF_NIGHT`, pop math `×0.6 Off Night`); post shots from

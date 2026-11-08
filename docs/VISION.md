@@ -17,7 +17,7 @@ A **5v5 NBA career basketball RPG** in the browser.
      (each influences many sub-ratings with weights: e.g. Shooting mostly 3s/mid, less floaters/step-throughs).
   2. Then spend perk points in **constellation trees**: Screens, Shooting (a **V**: 3PT arm / 2PT arm / shared
      inside), Driving, Dribbling (move chains: Crossover → Behind-the-Back …), Passing, Finishing (a **trident**:
-     dunks / layups / floaters-hooks-push), Perimeter D (incl. charges), Post D & Rebounding (e.g. **Get Low**).
+     dunks / layups / floaters-hooks-push), Perimeter (incl. charges), Post (e.g. **Get Low**).
      Trees mix passives and abilities differently.
 - **Ultimates:** a **separate system**, unlocked by a **story event in the first season**, then evolved with
   milestone points (50-pt game, game-winner, triple-double…). Example unlock: "Generator Kid" plays 1s against a

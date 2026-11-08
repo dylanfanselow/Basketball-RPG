@@ -386,6 +386,7 @@ export function initDevPanel() {
     const d = app.settings.debug;
     dd.append(check('Contest cone', d.cone, (v) => (d.cone = v)));
     dd.append(check('Passing lanes', d.lanes, (v) => (d.lanes = v)));
+    dd.append(check('Foresight shadow', d.foresight, (v) => (d.foresight = v)));
     dd.append(check('Play assignment path', d.paths, (v) => (d.paths = v)));
     dd.append(check('AI targets', d.aiTargets, (v) => (d.aiTargets = v)));
     dd.append(check('1v1 CPU thoughts (what he reads, why he shoots)', !!d.aiThoughts, (v) => (d.aiThoughts = v)));

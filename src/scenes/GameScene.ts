@@ -589,7 +589,7 @@ export class GameScene extends Phaser.Scene {
     // kicked out of the post: overhead outlet (picks up from the wind-up, the ball is already on its way)
     if (sim.lastPasser === p && sim.lastPostPassAt === sim.lastPassAt && now - sim.lastPassAt < 0.42) return { clip: 'postPass', u: 0.25 + 0.75 * (now - sim.lastPassAt) / 0.42 };
     if (sim.lastPasser === p && sim.lastLobAt === sim.lastPassAt && now - sim.lastPassAt < 0.4) return { clip: 'passLob', u: (now - sim.lastPassAt) / 0.4 }; // lob
-    if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: 'pass', u: (now - sim.lastPassAt) / 0.3 };
+    if (sim.lastPasser === p && now - sim.lastPassAt < 0.3) return { clip: sim.lastPassStyle === 'behindBack' || sim.lastPassStyle === 'wrap' ? 'passBehind' : 'pass', u: (now - sim.lastPassAt) / 0.3 };
     if (hasBall && now - p.receivedAt < 0.18) return { clip: 'catch', u: (now - p.receivedAt) / 0.18 };
     const sp = len(p.vel);
     if (hasBall && p.bHolding && p.state !== 'dribbleMove') return { clip: 'dribbleReady', u: now * 1.3 };
@@ -768,6 +768,16 @@ export class GameScene extends Phaser.Scene {
     if (this.ultFx.lifted.length) this.ballG.setDepth(LIFT_DEPTH + 3); // the ball stays lit in an ult cinematic
     const bx = inHand ? this.heldBall!.x : sx(b.p.x), by = inHand ? this.heldBall!.y : sy(b.p.y, b.z);
     this.shadows.fillStyle(0x000000, 0.3); this.shadows.fillEllipse(sx(b.p.x), sy(b.p.y), 16, 5);
+    // round 64 Foresight: a ghost shadow where a missed shot / loose ball will come down
+    const fu = sim.user;
+    if (fu && (fu.mods.pAdd('foresight') > 0 || app.settings.debug.foresight)) {
+      const fs = sim.foresightSpot();
+      if (fs) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 140);
+        this.shadows.fillStyle(0x000000, 0.22 + 0.12 * pulse); this.shadows.fillEllipse(sx(fs.x), sy(fs.y), 22 + pulse * 4, 7 + pulse);
+        this.shadows.lineStyle(2, 0x9fe8ff, 0.55 + 0.35 * pulse); this.shadows.strokeEllipse(sx(fs.x), sy(fs.y), 30 + pulse * 4, 10 + pulse);
+      }
+    }
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);
     this.ballG.fillStyle(0xff9a4a, 1); this.ballG.fillRect(bx - 5, by - 6, 4, 3);
     this.ballG.lineStyle(1.5, 0x5a2a0a, 1); this.ballG.lineBetween(bx - 8, by, bx + 8, by); this.ballG.lineBetween(bx, by - 8, bx, by + 8);
@@ -1160,7 +1170,7 @@ export class GameScene extends Phaser.Scene {
         const pts = [new Phaser.Math.Vector2(sx(u.p.x), sy(u.p.y)), new Phaser.Math.Vector2(sx(u.p.x + l.x * L), sy(u.p.y + l.y * L)), new Phaser.Math.Vector2(sx(u.p.x + r.x * L), sy(u.p.y + r.y * L))];
         g.fillPoints(pts, true); g.strokePoints(pts, true);
       }
-      // dime vision lanes (perk) or debug lanes
+      // Floor General lanes (perk) or debug lanes
       if (u.mods.pAdd('laneVision') > 0 || dbg.lanes) {
         for (const m of sim.mates(u)) {
           let risk = 0;

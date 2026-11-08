@@ -91,6 +91,7 @@
 | 61b | `a40555b` | Passes went to where the receiver was (or was supposed to be) and turned into turnovers, inbounds too | flight-time aim, in-flight homing, early catch, screener comes off the screen, `canCatch` |
 | 62 | `9ab3366` | A Shooting perk that gives extra rhythm for made midrange shots | `sh_midrhythm` (Mid-Range Rhythm), `midRhythm` param, `isMidrange` |
 | 63 | `c90ada1` | Rhythm from rebounds, Off Night (Perimeter D), no hooks from three, Rhythm Shooter / Killer renames, Mid-Range Maestro removed | `RHYTHM_GAIN.oreb/dreb`, `pd_offnight` + `OFF_NIGHT`, `postShotType` jumper past the arc, shooting.json, rosters + save migration |
+| 64 | `TBD` | Perk rework: tree renames (Post, Perimeter, Handles), Way Down Town / Bang!, a perk needs all its lines, Dime Vision merged into Floor General, new Magic, Popper, Roller, Iron Nate, Gimme That!, Foresight | `canUnlock` every-prereq, tree JSON, `pass()` `passStyle` + `MAGIC`, `slipUntil` + `SLIP_S`, Iron Nate in the ankle check, snatch block, `predictLanding` + `foresightSpot`, `passBehind` clip, `tests/perks.test.ts` |
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.

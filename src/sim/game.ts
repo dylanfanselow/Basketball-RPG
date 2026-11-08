@@ -20,7 +20,7 @@ import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, po
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
-import { ShotPlan, planShot, samplePlan } from './ballPhysics';
+import { ShotPlan, planShot, samplePlan, predictLanding, V3 } from './ballPhysics';
 
 export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
@@ -117,7 +117,9 @@ export type BallState =
       /** overhead lead pass over the defense (transition / to a runner): high arc, only catchable near the ends */
       overhead?: boolean;
       /** round 61b: where it was first aimed (homing drifts at most PASS_HOME_MAX ft from it) */
-      aim0?: Vec }
+      aim0?: Vec;
+      /** round 64 Magic: a fancy pass (harder to pick off, homes harder, easier to catch) */
+      fancy?: PassStyle }
   | { kind: 'shot'; shooter: Player; a: Vec; z0: number; t: number; dur: number; made: boolean; pts: number; ev: ShotEval; foul: boolean;
       /** live-rim sequence played after the ball reaches the hoop */ rim?: RimPath; rimT?: number; rimKey?: number;
       airball?: boolean; target?: Vec; exit?: { vel: Vec; vz: number };
@@ -136,6 +138,11 @@ export interface GameEvent { t: number; kind: string; text: string; team?: 0 | 1
 
 /** Round 61b passing: how far ahead a pass is aimed at most (s), how fast it re-aims at the receiver in flight
  *  (ft/s; lobs and overhead passes slower), how far it may drift from its first aim (ft), and the early-catch reach. */
+/** Round 64 Magic: fancy pass styles and what they buy. */
+export type PassStyle = 'noLook' | 'behindBack' | 'wrap';
+export const PASS_STYLE_TEXT: Record<PassStyle, string> = { noLook: 'No-look!', behindBack: 'Behind the back!', wrap: 'Wraparound!' };
+export const MAGIC = { risk: 0.6, home: 1.5, catchR: 1.0, sideDeg: 55, behindDeg: 120, wrapR: 4 };
+
 export const PASS = { leadMax: 1.0, home: 24, homeSlow: 12, homeMax: 12, earlyR: 2.4, /** dev / stats: early catches on */ early: true };
 
 /** Round 62: a midrange jumper (Rhythm Shooter): a 2-point pull-up, fade or step-through pull-up from 10 ft out. */
@@ -144,6 +151,8 @@ export const isMidrange = (ev: { type: string; pts: number; dist: number }) =>
 
 /** Longest a held screen lasts (s). */
 export const SCREEN_HOLD_MAX = 6;
+/** Round 64: how long after a screen Roller / Popper speed you up (s). */
+export const SLIP_S = 2.0;
 
 /**
  * How hard a screen lands: stun (s) and knock-back (ft). Grows with the screener's screen rating and strength over
@@ -184,7 +193,7 @@ export class GameSim {
   lastShot: { ev: ShotEval; made: boolean; name: string; user: boolean; blocked?: boolean; at: number } | null = null;
   passTarget: Player | null = null;
   assistCand: { passer: Player; receiver: Player; at: number } | null = null;
-  lastPasser: Player | null = null; lastPassAt = -99;
+  lastPasser: Player | null = null; lastPassAt = -99; lastPassStyle: PassStyle | null = null; lastFancyMsg = -9;
   /** the last pass was a kick-out from a post (round 44: drawn with the `postPass` clip) */
   lastPostPassAt = -99;
   trust: TrustState;
@@ -1469,7 +1478,12 @@ export class GameSim {
         this.emit({ kind: 'block', text: `${chase ? 'CHASE-DOWN! ' : ''}BLOCKED by ${d.name}!`, team: d.team, pid: d.id, big: true });
         this.rhythmGain(d, 'block'); this.rhythmLoss(p, 'blocked');
         if (d === this.user) applyTrust(this.trust, 'stop');
-        if (chase && this.ult.active!.level.keepPossession) {
+        const snatch = !chase && d.mods.pAdd('snatchBlock') > 0; // round 64 Gimme That!: plucked out of the air, his ball
+        if (snatch) {
+          this.giveBall(d); this.changePossessionLive(d.team);
+          this.emit({ kind: 'move', text: `Gimme that! ${d.name} snatches it`, pid: d.id, big: true });
+          this.stun(p, 1.0, 'blockedLand');
+        } else if (chase && this.ult.active!.level.keepPossession) {
           const go = !!this.ult.active!.level.swatAndGo;
           this.giveBall(d); this.changePossessionLive(d.team);
           if (go) {
@@ -1654,15 +1668,35 @@ export class GameSim {
     const lob = from.mods.pAdd('lob') > 0 && dist(lead, this.rim(from.team)) < 10 && len(to.vel) > 4;
     const dur = (d / speed) * (lob ? 1.6 : overhead ? 1.15 : 1) + 0.06;
     const magnet = !lob && !overhead && d <= safe * 0.6;
-    const riskMult = magnet ? 0.15 : d <= safe ? (overhead ? 0.5 : 0.6) : 1.8 + (d - safe) / 20;
-    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead, aim0: { ...lead } };
+    const fancy = lob || overhead ? null : this.passStyle(from, lead, driving);
+    const riskMult = (magnet ? 0.15 : d <= safe ? (overhead ? 0.5 : 0.6) : 1.8 + (d - safe) / 20) * (fancy ? MAGIC.risk : 1);
+    this.ball.st = { kind: 'pass', from, to, a: { ...this.ball.p }, b: lead, t: 0, dur, lob, risky: d > safe, checked: new Set(), magnet, riskMult, overhead, aim0: { ...lead }, fancy: fancy ?? undefined };
     if (to.state === 'screen') { to.state = 'idle'; to.stateT = 0; } // round 61b: the ball's coming: off the screen to go get it
-    this.lastPasser = from; this.lastPassAt = this.time;
+    this.lastPasser = from; this.lastPassAt = this.time; this.lastPassStyle = fancy;
+    if (fancy && this.time - this.lastFancyMsg > 6) { this.lastFancyMsg = this.time; this.emit({ kind: 'move', text: PASS_STYLE_TEXT[fancy], pid: from.id }); }
     if (from.post || this.time < from.postWindowUntil) this.lastPostPassAt = this.time; // kicked out of the post: its own animation
     from.deadDribble = false;
-    this.quiet('pass', { lob, dist: d }, from.id);
+    this.quiet('pass', { lob, dist: d, fancy }, from.id);
     from.state = from.state === 'dribbleMove' ? from.state : 'idle';
-    from.face = norm(sub(lead, from.p));
+    if (fancy !== 'noLook') from.face = norm(sub(lead, from.p)); // a no-look keeps his eyes where they were
+  }
+
+  /**
+   * Round 64 Magic: the fancy version of a pass, picked on its own when it fits. Receiver behind him = behind the back,
+   * off to his side = no-look, on a drive with a man right in front = wraparound. Null without Magic or when none fits.
+   */
+  passStyle(from: Player, lead: Vec, driving: boolean): PassStyle | null {
+    if (from.mods.pAdd('magic') <= 0) return null;
+    const rel = sub(lead, from.p);
+    if (len(rel) < 3) return null;
+    const ang = Math.acos(clamp(dot(norm(rel), norm(from.face)), -1, 1)) * 180 / Math.PI;
+    if (ang > MAGIC.behindDeg) return 'behindBack';
+    if (driving) {
+      const nd = this.nearestDefender(from);
+      if (nd.d && nd.dist < MAGIC.wrapR && dot(norm(sub(nd.d.p, from.p)), norm(from.face)) > 0.5) return 'wrap';
+    }
+    if (ang > MAGIC.sideDeg) return 'noLook';
+    return null;
   }
 
   /** Tap sprint: a timed speed burst, then a cooldown. Returns false while recharging. */
@@ -1741,7 +1775,7 @@ export class GameSim {
       const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox * read;
       if (m.pumpFake) {
         if (this.rng.chance(Math.min(0.95, (0.25 + 0.3 * ratio * prox) * (LD?.bite ?? 1)))) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
-      } else if (this.rng.chance(chance)) {
+      } else if (def.mods.pAdd('ironNate') <= 0 && this.rng.chance(chance)) { // round 64: Iron Nate can't be dropped
         this.knockDown(def, 1.3, 'ankles');
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });
         this.rhythmLoss(def, 'ankles');
@@ -1941,6 +1975,7 @@ export class GameSim {
       if (p.state === 'shoot' && p.stateT >= p.stateDur) this.releaseShot(p);
       if ((p.state === 'screen' || p.state === 'charge' || p.state === 'fallen' || p.state === 'dribbleMove' || p.state === 'dive') && p.stateT >= p.stateDur) {
         const wasMove = p.state === 'dribbleMove';
+        if (p.state === 'screen') p.slipUntil = this.time + SLIP_S; // round 64: Roller / Popper window
         if (wasMove && p.move) { p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.vel = scale(p.vel, 0.3); } // moves end where they're meant to
         p.state = 'idle';
         if (wasMove && p.bufferedMove) {
@@ -1963,6 +1998,11 @@ export class GameSim {
       if (this.time < p.stunnedUntil) want = scale(want, 0.1);
       if (p.boxingOut) want = scale(want, 0.35); // low, wide shuffle
       if (p.boxedOut) { want = scale(want, p.boxedOut); p.boxedOut = 0; }
+      // round 64: Roller (toward the rim) / Popper (away from it) right after a screen, off the ball
+      if (this.time < p.slipUntil && this.holder() !== p && len(want) > 0.5) {
+        const al = dot(norm(want), norm(sub(this.rim(p.team), p.p)));
+        if (al > 0.3) want = scale(want, p.mods.pMult('roller')); else if (al < -0.3) want = scale(want, p.mods.pMult('popper'));
+      }
 
       switch (p.state) {
         case 'screen': case 'charge': case 'fallen': p.vel = v(); break;
@@ -2165,7 +2205,7 @@ export class GameSim {
           // round 61b: every pass homes in on the receiver (where he'll be when it arrives), at a capped rate, so a
           // route that turns or a man who keeps moving still gets the ball; it only misses if he runs far from it
           const want = clampToCourt(this.receiverAt(st.to, Math.max(0, st.dur - st.t)));
-          const step = (st.lob || st.overhead ? PASS.homeSlow : PASS.home) * dt;
+          const step = (st.lob || st.overhead ? PASS.homeSlow : PASS.home) * (st.fancy ? MAGIC.home : 1) * dt;
           const to = sub(want, st.b), dd = len(to);
           let nb = dd <= step ? want : add(st.b, scale(to, step / dd));
           const a0 = st.aim0 ?? st.b, off = sub(nb, a0);
@@ -2197,9 +2237,9 @@ export class GameSim {
         }
         if (k >= 1 && st.oop) { this.oopArrive(st); break; }
         // round 61b: caught on the way when it comes within his reach (not only where it was aimed)
-        const early = PASS.early && !st.oop && k >= 0.5 && k < 1 && st.to.state !== 'fallen' && dist(st.to.p, b.p) < PASS.earlyR && b.z < st.to.reach + st.to.z + 1;
+        const early = PASS.early && !st.oop && k >= 0.5 && k < 1 && st.to.state !== 'fallen' && dist(st.to.p, b.p) < PASS.earlyR + (st.fancy ? MAGIC.catchR : 0) && b.z < st.to.reach + st.to.z + 1;
         if (k >= 1 || early) {
-          if (early || (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) && st.to.state !== 'fallen')) {
+          if (early || (dist(st.to.p, b.p) < (st.magnet ? 4.5 : 3.5) + (st.fancy ? MAGIC.catchR : 0) && st.to.state !== 'fallen')) {
             this.giveBall(st.to);
             this.scrambleOnCatch(st.from, st.to);
             this.quiet('catch', {}, st.to.id);
@@ -2285,6 +2325,25 @@ export class GameSim {
         break;
       }
     }
+  }
+
+  /**
+   * Round 64 Foresight: where the ball comes down next (a missed shot from its planned exit off the rim, a loose
+   * ball from where it is now). Null while it's held, being passed, going in, or already rolling on the floor.
+   */
+  foresightSpot(): Vec | null {
+    const b = this.ball, st = b.st;
+    if (st.kind === 'loose') {
+      if (st.vz <= 0 && b.z <= 0.45) return null;
+      const q = predictLanding({ x: b.p.x, y: b.p.y, z: b.z }, st.vel, st.vz);
+      return q && v(q.x, q.y);
+    }
+    if (st.kind === 'shot' && !st.made && st.plan && !st.plan.timedOut) {
+      const e: { p: V3; v: V3 } = st.plan.end;
+      const q = predictLanding(e.p, v(e.v.x, e.v.y), e.v.z);
+      return q && v(q.x, q.y);
+    }
+    return null;
   }
 
   private tryGrab() {

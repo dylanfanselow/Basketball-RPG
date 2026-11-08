@@ -1,12 +1,12 @@
 {
   "id": "passing", "name": "Passing", "shape": "branch", "color": "#55efc4",
-  "desc": "Lobs, skips, vision.",
+  "desc": "Vision, lobs, skips and fancy passes.",
   "nodes": [
-    { "id": "pa_root", "name": "Floor General", "type": "passive", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+4 Pass Speed and Range.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 4 }, { "t": "sub", "key": "passRange", "add": 4 }] },
-    { "id": "pa_vision", "name": "Dime Vision", "type": "ability", "x": 30, "y": 68, "prereqs": ["pa_root"], "cost": 1, "desc": "Passing lanes are drawn: green = safe, red = risky.", "effects": [{ "t": "param", "key": "laneVision", "add": 1 }] },
+    { "id": "pa_root", "name": "Floor General", "type": "ability", "x": 50, "y": 90, "prereqs": [], "cost": 1, "desc": "+4 Pass Speed and Range. Passing lanes are drawn: green = safe, red = risky.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 4 }, { "t": "sub", "key": "passRange", "add": 4 }, { "t": "param", "key": "laneVision", "add": 1 }] },
     { "id": "pa_lob", "name": "Lob City", "type": "ability", "x": 70, "y": 68, "prereqs": ["pa_root"], "cost": 1, "desc": "Lobs (hold △) are more accurate, harder to tip and reach further (alley-oops from 50 ft instead of 35). Passes to cutters near the rim also go over the top on their own.", "effects": [{ "t": "param", "key": "lob", "add": 1 }] },
-    { "id": "pa_skip", "name": "Skip Pass", "type": "passive", "x": 30, "y": 46, "prereqs": ["pa_vision"], "cost": 1, "desc": "Long cross-court passes are safe from further away.", "effects": [{ "t": "sub", "key": "passRange", "add": 10 }] },
+    { "id": "pa_skip", "name": "Skip Pass", "type": "passive", "x": 30, "y": 68, "prereqs": ["pa_root"], "cost": 1, "desc": "Long cross-court passes are safe from further away.", "effects": [{ "t": "sub", "key": "passRange", "add": 10 }] },
     { "id": "pa_dimes", "name": "Dimer", "type": "passive", "x": 70, "y": 46, "prereqs": ["pa_lob"], "cost": 1, "desc": "Teammates shooting right off your pass get x1.06.", "effects": [{ "t": "param", "key": "dimer", "mult": 1.06 }] },
-    { "id": "pa_bullet", "name": "Bullet Passer", "type": "passive", "x": 50, "y": 24, "prereqs": ["pa_skip", "pa_dimes"], "cost": 2, "desc": "+10 Pass Speed.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 10 }] }
+    { "id": "pa_bullet", "name": "Bullet Passer", "type": "passive", "x": 50, "y": 24, "prereqs": ["pa_skip", "pa_dimes"], "cost": 2, "desc": "+10 Pass Speed.", "effects": [{ "t": "sub", "key": "passSpeed", "add": 10 }] },
+    { "id": "pa_magic", "name": "Magic", "type": "ability", "x": 50, "y": 6, "prereqs": ["pa_bullet"], "cost": 2, "desc": "Fancy passes, on their own when they fit: a receiver off to your side gets a no-look, one behind you gets a behind-the-back, and on a drive with a man in front you wrap it around him. Fancy passes are harder to pick off (x0.6), track the receiver harder and are easier to catch.", "effects": [{ "t": "param", "key": "magic", "add": 1 }] }
   ]
 }

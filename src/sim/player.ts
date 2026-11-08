@@ -38,6 +38,8 @@ export class Player {
   move: { id: string; dir: Vec; t: number } | null = null;
   lastMove: { id: string; endAt: number; dir: Vec } | null = null;
   receivedAt = -99; dribbledSinceCatch = false; catchReadFor = -99; lastScreenAt = -99; screenCdUntil = 0;
+  /** round 64: Roller / Popper speed window after a screen ends */
+  slipUntil = -99;
   pumpFakeAt = -99; openShotUntil = -99; openShotMult = 1;
   staggerUntil = 0; screenedUntil = -9; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
   /** Round 51: rhythm 0-100 (notches at 25 / 50 / 75; 100 powers the ultimate). */

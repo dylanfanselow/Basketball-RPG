@@ -172,7 +172,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -922,7 +921,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -1116,7 +1114,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -1265,7 +1262,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -2144,7 +2140,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -2399,7 +2394,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -2737,7 +2731,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -3193,7 +3186,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -4051,7 +4043,6 @@
      "fi_root",
      "sc_root",
      "in_root",
-     "pa_vision",
      "fi_fork",
      "in_getlow",
      "pa_skip",
@@ -4157,7 +4148,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -4397,7 +4387,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -4948,7 +4937,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -5056,7 +5044,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -5456,7 +5443,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -5614,7 +5600,6 @@
      "fi_root",
      "sc_root",
      "in_root",
-     "pa_vision",
      "fi_fork",
      "in_getlow",
      "pa_skip",
@@ -5964,7 +5949,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -6017,7 +6001,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -6224,7 +6207,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -6965,7 +6947,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -7062,7 +7043,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -7804,7 +7784,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -8505,7 +8484,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -9292,7 +9270,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -11301,7 +11278,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -12109,7 +12085,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -12406,7 +12381,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -13158,7 +13132,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -13510,7 +13483,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -13710,7 +13682,6 @@
      "fi_root",
      "sc_root",
      "in_root",
-     "pa_vision",
      "fi_fork",
      "in_getlow",
      "pa_skip",
@@ -14462,7 +14433,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],
@@ -14812,7 +14782,6 @@
      "pa_root",
      "fi_root",
      "dr_handle",
-     "pa_vision",
      "fi_fork",
      "dv_first",
      "dv_bump",
@@ -15651,7 +15620,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross",
      "pa_skip",
@@ -15958,7 +15926,6 @@
     },
     "perks": [
      "pa_root",
-     "pa_vision",
      "dr_handle",
      "dr_cross"
     ],

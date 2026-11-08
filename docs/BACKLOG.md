@@ -61,6 +61,9 @@
   search snippets; official roster pages are blocked from the cloud environment).
 - Coaches/officials/fans are simple; no animated referees on court.
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
+- Round 64 perks: no CPU player owns Magic, Roller/Popper, Iron Nate, Gimme That! yet (only the user, via perk points or
+  the dev panel). No-look passes reuse the plain pass clip (the head stays forward); a wraparound shares the
+  behind-the-back clip. Foresight only shows planned (physical) misses and loose balls, not scripted dunk misses.
 
 ## Not verified in this environment
 - Frame rate and sheet-build time at 1920×1080 on real hardware (headless here: software GL, 4 cores).

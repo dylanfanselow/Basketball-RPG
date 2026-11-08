@@ -71,8 +71,7 @@ export class PerkTreeScene extends Phaser.Scene {
     for (const s of this.stars) { g.fillStyle(0xffffff, 0.25 + 0.25 * Math.sin(t / 700 + s.tw)); g.fillRect(s.x, s.y, 2, 2); }
     const col = Phaser.Display.Color.HexStringToColor(tree.color).color;
     this.header.setText(`${tree.name.toUpperCase()}   ·   perk points: ${c.perkPoints}`);
-    const SHORT: Record<string, string> = { perimeter: 'Perimeter D', interior: 'Post D / Reb' };
-    this.tabs.setText(TREES.map((tr, i) => { const n = SHORT[tr.id] ?? tr.name; return (i === this.treeIdx ? `[${n}]` : ` ${n} `).padEnd(15); }).join(''));
+    this.tabs.setText(TREES.map((tr, i) => (i === this.treeIdx ? `[${tr.name}]` : ` ${tr.name} `).padEnd(15)).join(''));
     // constellation lines
     for (const n of tree.nodes) for (const pr of n.prereqs) {
       const a = this.pos(n), b = this.pos(tree.nodes.find((m) => m.id === pr)!);

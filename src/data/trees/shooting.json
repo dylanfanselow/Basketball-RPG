@@ -6,8 +6,8 @@
 
     { "id": "sh_catch", "name": "Catch & Shoot", "type": "passive", "x": 38, "y": 72, "prereqs": ["sh_root"], "cost": 1, "desc": "Catch-and-shoot jumpers x1.08.", "effects": [{ "t": "shot", "types": ["three", "deep3", "mid"], "cond": "catchShoot", "mult": 1.08 }] },
     { "id": "sh_corner", "name": "Corner Specialist", "type": "passive", "x": 28, "y": 52, "prereqs": ["sh_catch"], "cost": 1, "desc": "Corner 3s x1.10.", "effects": [{ "t": "shot", "types": ["three"], "cond": "corner", "mult": 1.10 }] },
-    { "id": "sh_range", "name": "Limitless Range", "type": "passive", "x": 20, "y": 32, "prereqs": ["sh_corner"], "cost": 2, "desc": "Deep 3s x1.25.", "effects": [{ "t": "shot", "types": ["deep3"], "mult": 1.25 }] },
-    { "id": "sh_pullup3", "name": "Pull-Up Threat", "type": "passive", "x": 12, "y": 12, "prereqs": ["sh_range"], "cost": 2, "desc": "Off-the-dribble 3s x1.10.", "effects": [{ "t": "shot", "types": ["three", "deep3"], "cond": "pullUp", "mult": 1.10 }] },
+    { "id": "sh_range", "name": "Way Down Town", "type": "passive", "x": 20, "y": 32, "prereqs": ["sh_corner"], "cost": 2, "desc": "Deep 3s x1.25.", "effects": [{ "t": "shot", "types": ["deep3"], "mult": 1.25 }] },
+    { "id": "sh_pullup3", "name": "Bang!", "type": "passive", "x": 12, "y": 12, "prereqs": ["sh_range"], "cost": 2, "desc": "Off-the-dribble 3s x1.10.", "effects": [{ "t": "shot", "types": ["three", "deep3"], "cond": "pullUp", "mult": 1.10 }] },
 
     { "id": "sh_midrhythm", "name": "Rhythm Shooter", "type": "passive", "x": 62, "y": 72, "prereqs": ["sh_root"], "cost": 1, "desc": "Made midrange jumpers (pull-ups, fades, step-through pull-ups from 10 ft out) build x1.5 rhythm.", "effects": [{ "t": "param", "key": "midRhythm", "mult": 1.5 }] },
     { "id": "sh_fade", "name": "Fade Away", "type": "ability", "x": 72, "y": 52, "prereqs": ["sh_midrhythm"], "cost": 1, "desc": "Hold the stick away from the basket + shoot = Fade Away (anywhere; replaces the floater). Much smaller contest cone (3.5 ft, narrow), but accuracy falls off exponentially the farther you are from the rim (x0.88 at 10 ft, x0.61 at 16, x0.47 at 20).", "effects": [{ "t": "shotType", "shot": "fade" }] },
