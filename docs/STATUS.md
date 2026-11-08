@@ -179,6 +179,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 68: `shotConditions` adds `afterFake` (pump fake since the catch, within 2.5 s); `methodKey` turns it into
+  `|fake` (after post / transition / step-back, before catch / drive / pull-up), label "pump fake".
   Round 67: `GameSim.staleTimes` (the rhythm repeat count for a make) returns 0 for a midrange make (`isMidrange`)
   by a Mamba owner, so it never goes STALE; the method is still counted.
   Round 66: Bang! (`sh_pullup3`) is a `clutch` 3 term x1.15; Options (TitleScene) has no Quarter length row;

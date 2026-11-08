@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
 import { emptyInput, MAGIC, SLIP_S, GREEN_CONTEST, FINGER_WAG, mambaCost } from '../src/sim/game';
-import { evaluateShot, windupFor, CHEF_WINDUP } from '../src/sim/shooting';
+import { evaluateShot, windupFor, CHEF_WINDUP, shotConditions } from '../src/sim/shooting';
+import { methodKey, methodLabel } from '../src/sim/rhythm';
 import { TREES, NODES } from '../src/sim/data';
 import { Player } from '../src/sim/player';
 import { newCareer, migrateCareer } from '../src/career/career';
@@ -311,5 +312,21 @@ describe('round 67: Mamba midrange never goes stale', () => {
     withNode(p, 'sh_mamba', true);
     expect(g.staleTimes(p, 'mid|dribble', mid)).toBe(0);
     expect(g.staleTimes(p, 'three|catch', three)).toBe(2);
+  });
+});
+
+describe('round 68: a shot off a pump fake is its own scoring method', () => {
+  it('pump fake then shoot is "fake", not off the dribble, for the STALE count', () => {
+    expect(methodKey('mid', new Set(['pullUp', 'afterFake']))).toBe('mid|fake');
+    expect(methodKey('three', new Set(['catchShoot', 'afterFake']))).toBe('three|fake');
+    expect(methodKey('mid', new Set(['pullUp']))).toBe('mid|dribble');
+    expect(methodLabel('mid|fake')).toBe('mid · pump fake');
+    const g = live();
+    const p = g.holder()!;
+    p.dribbledSinceCatch = true; p.receivedAt = g.time - 3; p.pumpFakeAt = g.time - 0.5;
+    const c = shotConditions(p, g.side(p.team), 'mid', g.time, false);
+    expect(c.has('afterFake')).toBe(true);
+    p.pumpFakeAt = g.time - 5; // a fake before this catch doesn't count
+    expect(shotConditions(p, g.side(p.team), 'mid', g.time, false).has('afterFake')).toBe(false);
   });
 });

@@ -207,6 +207,8 @@ export function shotConditions(p: Player, side: Side, type: string, now: number,
   if (isCorner(side, p.p)) c.add('corner');
   if (now - p.receivedAt < 1.2 && !p.dribbledSinceCatch) c.add('catchShoot');
   if (p.dribbledSinceCatch) c.add('pullUp');
+  // round 68: shot off a pump fake (since the catch): its own way of scoring for the rhythm STALE count
+  if (p.pumpFakeAt > p.receivedAt && now - p.pumpFakeAt < 2.5) c.add('afterFake');
   if (dot(p.vel, norm(sub(rim, p.p))) > 8) c.add('drive');
   if (clutch) c.add('clutch');
   if (p.lastMove && now - p.lastMove.endAt < 0.8) c.add('afterMove');

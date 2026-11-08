@@ -501,6 +501,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 68:** a shot off a pump fake is its own scoring method for the rhythm STALE count (`mid · pump fake`),
+  not "off dribble".
 - **Round 67:** Mamba also keeps made midrange jumpers from going **stale** (no repeat decay on their rhythm).
 - **Round 66:** **Bang!** = clutch 3s x1.15 (was pull-up 3s). **Quarter length is not a player option** (Options
   lost it; 3-minute quarters, the dev panel slider stays). The story's **big game is two 4-minute halves**

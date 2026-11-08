@@ -45,6 +45,7 @@ export function methodKey(type: string, conds: Set<string>, ctx: { stepback?: bo
     : conds.has('post') ? 'post'
     : ctx.transition ? 'transition'
     : ctx.stepback ? 'stepback'
+    : conds.has('afterFake') ? 'fake' // round 68: pump fake then shoot is not an off-dribble shot
     : conds.has('catchShoot') ? 'catch'
     : conds.has('drive') ? 'drive'
     : conds.has('pullUp') ? 'dribble'
@@ -63,7 +64,7 @@ export function scoreMath(pts: number, times: number): string {
 export function methodLabel(key: string): string {
   const [type, how] = key.split('|');
   const T: Record<string, string> = { mid: 'mid', three: '3', deep3: 'deep 3', fade: 'fade', floater: 'floater', hook: 'hook', layup: 'layup', dunk: 'dunk', euro: 'euro', push: 'push', alleyOop: 'oop', alleyOopLayup: 'oop', stepThrough: 'step-through', stepThroughJumper: 'step-through', jelly: 'jelly' };
-  const H: Record<string, string> = { lob: '', post: 'post', transition: 'break', stepback: 'step-back', catch: 'catch', drive: 'drive', dribble: 'off dribble', set: '' };
+  const H: Record<string, string> = { lob: '', post: 'post', transition: 'break', stepback: 'step-back', fake: 'pump fake', catch: 'catch', drive: 'drive', dribble: 'off dribble', set: '' };
   return [T[type] ?? type, H[how]].filter(Boolean).join(' · ');
 }
 
