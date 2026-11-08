@@ -59,6 +59,8 @@ export interface TeamState { def: TeamDef; side: Side; score: number; roster: Pl
 export interface GameConfig {
   mode: 'practice' | 'game';
   quarterLen: number;
+  /** round 66: periods in regulation (default 4 quarters; the story's big game plays 2 halves) */
+  periods?: number;
   seed?: number;
   teams: [TeamDef, TeamDef];
   rosters: [Player[], Player[]];
@@ -364,8 +366,13 @@ export class GameSim {
     return p.role === sw[0] ? sw[1] : p.role === sw[1] ? sw[0] : p.role;
   }
   byPlayRole(team: 0 | 1, role: string) { return this.teams[team].onCourt.find((p) => this.playRole(p) === role) ?? null; }
-  get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
-  get elapsed() { return Math.min(4, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
+  /** Round 66: periods in regulation (4 quarters, or 2 halves) and the quarter length of the equivalent 4-quarter game. */
+  get periods() { return this.cfg.periods ?? 4; }
+  get qEquiv() { return (this.cfg.quarterLen * this.periods) / 4; }
+  /** "Q3", "H2", "OT" */
+  periodLabel(q = this.quarter) { return q > this.periods ? 'OT' : `${this.periods === 2 ? 'H' : 'Q'}${q}`; }
+  get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= this.periods && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
+  get elapsed() { return Math.min(this.periods, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
   /** Round 61: a 1v1 CPU's level (null for humans and outside 1v1). */
   cpuLevel(p: Player): CpuLevel | null {
     const o = this.cfg.oneOnOne;
@@ -796,7 +803,7 @@ export class GameSim {
     if (this.crossed) return;
     let press = this.forcePress;
     const lead = this.teams[def].score - this.teams[off].score;
-    if (!press && this.quarter >= 4 && this.clock < this.cfg.quarterLen * 0.25 && lead <= -3 && lead >= -15) press = true; // late and trailing
+    if (!press && this.quarter >= this.periods && this.clock < this.cfg.quarterLen * 0.25 && lead <= -3 && lead >= -15) press = true; // late and trailing
     if (!press && afterMake) {
       const pd = this.teams[def].onCourt.reduce((a, p) => a + p.sub.perimD, 0) / Math.max(1, this.teams[def].onCourt.length);
       press = this.rng.chance(clamp(0.06 + 0.1 * (pd - 50) / 50, 0.03, 0.18));
@@ -1058,10 +1065,10 @@ export class GameSim {
 
   private endPeriod() {
     const [a, b] = [this.teams[0].score, this.teams[1].score];
-    this.emit({ kind: 'period', text: `End of ${this.quarter <= 4 ? 'Q' + this.quarter : 'OT'}`, big: true });
-    if (this.quarter >= 4 && a !== b) { this.finish(); return; }
+    this.emit({ kind: 'period', text: `End of ${this.periodLabel()}`, big: true });
+    if (this.quarter >= this.periods && a !== b) { this.finish(); return; }
     this.quarter++;
-    this.clock = this.quarter > 4 ? this.cfg.quarterLen / 2 : this.cfg.quarterLen;
+    this.clock = this.quarter > this.periods ? this.cfg.quarterLen / 2 : this.cfg.quarterLen;
     this.deadBall((this.quarter % 2 === 0 ? 1 : 0) as 0 | 1, 2.0, 'mid');
   }
 
@@ -1099,7 +1106,7 @@ export class GameSim {
       const dbl = [b.pts, b.reb, b.ast, b.stl, b.blk].filter((x) => x >= 10).length;
       if (dbl >= 3) this.milestones.push('tripleDouble');
       const won = this.teams[u.team].score > this.teams[1 - u.team].score;
-      if (won && this.lastGoAhead?.pid === u.id && this.lastGoAhead.quarter >= 4 && this.lastGoAhead.clock < 5) this.milestones.push('gameWinner');
+      if (won && this.lastGoAhead?.pid === u.id && this.lastGoAhead.quarter >= this.periods && this.lastGoAhead.clock < 5) this.milestones.push('gameWinner');
     }
     const nm = (i: 0 | 1) => (this.cfg.oneOnOne ? this.teams[i].onCourt[0].name : this.teams[i].def.name);
     this.emit({ kind: 'final', text: `FINAL ${nm(0)} ${this.teams[0].score} - ${this.teams[1].score} ${nm(1)}`, big: true });
@@ -1941,7 +1948,9 @@ export class GameSim {
     }
     const before = notchOf(p.rhythm);
     // round 53: gains also grow each quarter (hidden from the pops' math)
-    const applied = amount * gainScale(this.cfg.quarterLen) * (amount > 0 && why !== 'dev' ? quarterGain(this.quarter, this.cfg.mode === 'practice') : 1);
+    // round 66: a halves game counts as the 4-quarter game of the same length (H1 = Q1-Q2 gains, H2 = Q3-Q4)
+    const qq = Math.ceil((this.quarter * 4) / this.periods - 1e-9);
+    const applied = amount * gainScale(this.qEquiv) * (amount > 0 && why !== 'dev' ? quarterGain(qq, this.cfg.mode === 'practice') : 1);
     p.rhythm = Math.max(0, Math.min(100, p.rhythm + applied));
     const after = notchOf(p.rhythm);
     if (after !== before) {

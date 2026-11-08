@@ -1393,7 +1393,7 @@ export class GameScene extends Phaser.Scene {
     this.iqText.setText(iq ? `HIGH IQ · ${iq.play}${iq.target ? `  →  for ${iq.target.name}` : ''}` : '');
 
     const [a, b] = sim.teams;
-    const clock = sim.cfg.mode === 'practice' ? 'PRACTICE' : `${sim.quarter <= 4 ? 'Q' + sim.quarter : 'OT'} ${Math.floor(Math.max(0, sim.clock) / 60)}:${String(Math.floor(Math.max(0, sim.clock) % 60)).padStart(2, '0')}`;
+    const clock = sim.cfg.mode === 'practice' ? 'PRACTICE' : `${sim.periodLabel()} ${Math.floor(Math.max(0, sim.clock) / 60)}:${String(Math.floor(Math.max(0, sim.clock) % 60)).padStart(2, '0')}`;
     const o = sim.cfg.oneOnOne;
     if (o) {
       const n0 = a.onCourt[0]?.name ?? a.def.id, n1 = b.onCourt[0]?.name ?? b.def.id;

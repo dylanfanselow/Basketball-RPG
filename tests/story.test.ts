@@ -186,17 +186,17 @@ describe('round 60 story', () => {
     expect(d.step).toBe(0);
     expect(d.failAt).toBeGreaterThan(0);
   });
-  it('round 60d: a great big game = Lincoln won AND your pts+reb+ast+blk+stl is the best on the floor', () => {
+  it('round 60d: a great big game = Lincoln won AND your weighted night (round 66) is the best on the floor', () => {
     const sim = buildBigGame(career('PG'), 9);
     const me = sim.user!, other = sim.players.find((p) => p !== me && p.team === 1)!;
     const set = (p: typeof me, pts: number, reb = 0, ast = 0, blk = 0, stl = 0) => Object.assign(p.box, { pts, reb, ast, blk, stl });
     for (const p of sim.players) set(p, 4, 2, 1);
-    set(me, 20, 5, 4, 1, 2); // 32
+    set(me, 20, 5, 4, 1, 2); // 20 + 6.5 + 6 + 3 + 6 = 41.5
     sim.teams[0].score = 50; sim.teams[1].score = 40;
-    expect(bigGameVerdict(sim)).toMatchObject({ won: true, mine: 32, best: 32, great: true });
-    set(other, 25, 6, 1, 0, 1); // 33 beats you
+    expect(bigGameVerdict(sim)).toMatchObject({ won: true, mine: 41.5, best: 41.5, great: true });
+    set(other, 30, 6, 1, 0, 1); // 30 + 7.8 + 1.5 + 3 = 42.3 beats you
     expect(bigGameVerdict(sim).great).toBe(false);
-    set(other, 20, 5, 4, 2, 1); // 32: a tie still counts
+    set(other, 20, 5, 4, 2, 1); // 41.5: a tie still counts
     expect(bigGameVerdict(sim).great).toBe(true);
     sim.teams[1].score = 60; // a loss is never great
     expect(bigGameVerdict(sim)).toMatchObject({ won: false, great: false });

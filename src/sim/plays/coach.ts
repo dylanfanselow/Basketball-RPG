@@ -67,7 +67,7 @@ export function scoreCall(sim: GameSim, play: string, focus: Player, log: Record
   // round 54: closing time, the last few possessions go to the team's top scorer, mostly as isos
   const closer = endgame(sim) && topScorer(team.onCourt) === focus;
   if (closer) { score += iso ? 0.3 : 0.1; why = 'closing time'; }
-  const late = sim.quarter >= 4 && sim.clock < sim.cfg.quarterLen * 0.35;
+  const late = sim.quarter >= sim.periods && sim.clock < sim.cfg.quarterLen * 0.35;
   if (sim.clutch && focus.star) { score += 0.08; why ||= 'clutch'; }
   if (late && diff < -5 && THREE_SETS.has(play)) { score += 0.08; why ||= 'need threes'; }
   const hot = sim.heat[focus.id]?.recent.slice(-4).filter(Boolean).length ?? 0;
@@ -80,7 +80,7 @@ export function scoreCall(sim: GameSim, play: string, focus: Player, log: Record
 }
 
 /** Round 54: the last few possessions of the game (Q4 / OT, last 12% of the quarter: ~85 s of a 12-minute quarter). */
-export const endgame = (sim: GameSim) => sim.cfg.mode === 'game' && sim.quarter >= 4 && sim.clock < sim.cfg.quarterLen * 0.12;
+export const endgame = (sim: GameSim) => sim.cfg.mode === 'game' && sim.quarter >= sim.periods && sim.clock < sim.cfg.quarterLen * 0.12;
 /** The team's go-to scorer: the best-rated star on the floor, else the best scorer by reputation. */
 export function topScorer(off: Player[]): Player | null {
   const pool = off.some((p) => p.star) ? off.filter((p) => p.star) : off;

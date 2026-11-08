@@ -27,7 +27,7 @@ export class PostGameScene extends Phaser.Scene {
     const bx = u.box;
     const lines = [
       `${u.name}:  ${bx.pts} PTS  ${bx.reb} REB  ${bx.ast} AST  ${bx.stl} STL  ${bx.blk} BLK  ${bx.tov} TOV`,
-      `FG ${bx.fgm}/${bx.fga}   3PT ${bx.tpm}/${bx.tpa}   Minutes ${(bx.secs / sim.cfg.quarterLen * 12).toFixed(0)} (scaled)`,
+      `FG ${bx.fgm}/${bx.fga}   3PT ${bx.tpm}/${bx.tpa}   Minutes ${(bx.secs / sim.qEquiv * 12).toFixed(0)} (scaled)`,
       `Play execution: ${sim.grade.good} good / ${sim.grade.bad} missed`,
       `Team trust ${sim.trust.team.toFixed(0)}   Coach trust ${sim.trust.coach.toFixed(0)}`,
       '',
@@ -47,7 +47,7 @@ export class PostGameScene extends Phaser.Scene {
       ensureStory();
       app.career.story!.bigGame = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
       setStage('after');
-      lines.push(`Your night: ${v.mine} (pts + reb + ast + blk + stl), best on the floor: ${v.best}.`);
+      lines.push(`Your night: ${v.mine.toFixed(1)} (points, rebounds x1.3, assists x1.5, steals and blocks x3), best on the floor: ${v.best.toFixed(1)}.`);
       lines.push('The man with the clipboard is still writing.');
     } else {
       lines.push('(Quick games don\'t affect your career save.)');

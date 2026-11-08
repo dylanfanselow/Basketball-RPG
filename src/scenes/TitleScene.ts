@@ -219,14 +219,12 @@ export class TitleScene extends Phaser.Scene {
   private settingsRows(): { label: string; value: () => string; change?: (d: number) => void; act?: () => void }[] {
     const s = sfx.settings, pct = (v: number) => `${Math.round(v * 100)}%`;
     const vol = (k: 'master' | 'sfx' | 'crowd' | 'music') => (d: number) => { s[k] = Math.max(0, Math.min(1, Math.round(((s[k] ?? 0.5) + d * 0.1) * 10) / 10)); sfx.applySettings(); };
-    const QL = [180, 300, 480, 720];
     return [
       { label: 'Master volume', value: () => pct(s.master), change: vol('master') },
       { label: 'Effects', value: () => pct(s.sfx), change: vol('sfx') },
       { label: 'Crowd', value: () => pct(s.crowd), change: vol('crowd') },
       { label: 'Music', value: () => pct(s.music ?? 0.5), change: vol('music') },
       { label: 'Sound', value: () => (s.muted ? 'Muted' : 'On'), change: () => { sfx.toggleMute(); }, act: () => { sfx.toggleMute(); } },
-      { label: 'Quarter length', value: () => `${app.settings.quarterLen / 60} min`, change: (d) => { const i = Math.max(0, Math.min(QL.length - 1, QL.indexOf(app.settings.quarterLen) + d)); app.settings.quarterLen = QL[i < 0 ? 0 : i]; } },
       { label: 'Fullscreen', value: () => (this.scale.isFullscreen ? 'On' : 'Off'), act: () => (window as any).__toggleFullscreen?.() },
       { label: 'Dev menu (every mode)', value: () => '▶', act: () => this.go('Menu') },
       { label: 'Back', value: () => '', act: () => this.hidePanel() },

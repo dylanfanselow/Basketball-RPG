@@ -86,7 +86,7 @@ export function createStorySim(which: StoryGame, c: CareerState = app.career): G
   const seed = Math.floor(Math.random() * 1e9);
   ensureStory(c);
   if (which === 'ones') return buildOnes(c, seed);
-  if (which === 'bigGame') return buildBigGame(c, seed, app.settings.quarterLen);
+  if (which === 'bigGame') return buildBigGame(c, seed);
   const sim = buildTutorial(c, seed);
   sim.director = new TutorialDirector(sim);
   return sim;

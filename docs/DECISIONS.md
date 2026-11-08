@@ -501,6 +501,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   (2nd controller, or keyboard if only one controller). Defaults **1s & 2s, to 11, win by 2** (changeable on the setup
   screen). Make → scorer keeps it; stops/def boards → check at the top. Fouls: no FTs (make counts, miss = ball back).
   14 s shot clock, no ultimates, no trust grading.
+- **Round 66:** **Bang!** = clutch 3s x1.15 (was pull-up 3s). **Quarter length is not a player option** (Options
+  lost it; 3-minute quarters, the dev panel slider stays). The story's **big game is two 4-minute halves**
+  (`periods: 2`, H1/H2 on the clock, OT is 2 minutes). The **scout's verdict is weighted** like the box score: a
+  block or steal is worth 3 points, an assist 1.5, a rebound 1.3.
 - **Round 65 (shaped trees, owner's sketches):** Shooting = a shooting hand under a ball (threes along the bottom
   and up the left to **Chef**, midrange up the right to **Mamba**, both into **Lethal Shooter**), Perimeter = the
   court perimeter (start **Hand in Face** under the basket; possession perks Charge Magnet, Quick Hands,

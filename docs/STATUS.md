@@ -179,6 +179,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   bar with LESSON n/10 · step, ✓ flash); `scenes/storyRun.ts` (`StoryRun` in GameScene for mode `story`: box, holds
   the sim during lines, 1s intro + ending (Kingston leaves, your thought) → Trailer night, big-game cutscene with the
   coach's fit + scout with a clipboard by the bleachers + LOCKED IN banner, pause menu Skip lesson / Skip to the 1s);
+  Round 66: Bang! (`sh_pullup3`) is a `clutch` 3 term x1.15; Options (TitleScene) has no Quarter length row;
+  `GameConfig.periods` (default 4) with `GameSim.periods`, `qEquiv` (quarterLen x periods / 4: rhythm `gainScale`,
+  scaled minutes) and `periodLabel()` (Q1 / H1 / OT); end of game, clutch, late press, coach `late` / `endgame`,
+  game-winner milestone use the last period; rhythm `quarterGain` uses the equivalent quarter. `buildBigGame` =
+  `periods: 2`, `BIG_GAME_HALF` 240 s. `bigGameVerdict` sums the box score with `STAT_WEIGHTS`
+  (pts 1, reb 1.3, ast 1.5, stl 3, blk 3), one decimal; PostGame says so.
   Round 65 (shaped trees): trees take the owner's drawings: Shooting `shape: "ball"` (ring of 12 + the hand: Quick
   Release / Shot Creator inside), Perimeter `court` (baseline + arc, start Hand in Face at the baseline middle),
   Post `key` (paint + free-throw circle), Screens `bricks` (1-4-2-1 wall); `PerkTreeScene.drawBackdrop` draws the
