@@ -9,6 +9,6 @@
     { "id": "dv_drive", "name": "Downhill", "type": "passive", "x": 41.5, "y": 31, "prereqs": ["dv_gather"], "cost": 2, "desc": "Speed with the ball +6.", "effects": [{ "t": "sub", "key": "ballSpeed", "add": 6 }] },
     { "id": "dv_windmill", "name": "Windmill Gather", "type": "ability", "x": 51, "y": 26, "prereqs": ["dv_drive", "dv_kick"], "cost": 2, "desc": "D-Wade / Donovan Mitchell: on drive finishes (layups, Euro Steps, dunks) the gather swings the ball around in a big windmill, away from the defender. Can't be stripped during it, blocks x0.6, contest x0.85.", "effects": [{ "t": "param", "key": "windmill", "add": 1 }] },
     { "id": "dv_kick", "name": "Drive & Kick", "type": "passive", "x": 58.7, "y": 52, "prereqs": ["dv_gather"], "cost": 2, "desc": "Passes thrown while driving are faster and harder to intercept.", "effects": [{ "t": "param", "key": "drivePass", "mult": 1.3 }] },
-    { "id": "dv_freight", "name": "Freight Train", "type": "ability", "goat": true, "x": 51.6, "y": 6, "prereqs": ["dv_windmill"], "cost": 5, "desc": "Speed x1.15 for 3.5 s after every change of possession, and contact on your drives slows you down 60% less.", "effects": [{ "t": "param", "key": "freightTrain", "add": 1 }] }
+    { "id": "dv_freight", "name": "Freight Train", "type": "ability", "goat": true, "x": 51.6, "y": 6, "prereqs": ["dv_windmill"], "cost": 5, "desc": "Steal, block or defensive board: speed x1.15 for 2 s on the break. Contact on your drives slows you down 60% less.", "effects": [{ "t": "param", "key": "freightTrain", "add": 1 }] }
   ]
 }

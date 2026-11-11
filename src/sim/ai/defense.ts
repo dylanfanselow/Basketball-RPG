@@ -18,6 +18,14 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   let target;
   let urgent = false;
 
+  // round 51: a CPU star with Chase-Down runs down a break from behind (once a game). Round 74: checked before the
+  // get-back branch (which returned first whenever he was behind the ball, so it never fired), and also when he's
+  // been beaten on a half-court drive
+  if (h && h.team !== d.team && sim.isAI(d) && sim.ultReady(d) && sim.ultOf(d)?.id === 'chaseDown') {
+    const hr = dist(h.p, rim), behind = dist(d.p, rim) > hr + 2;
+    const beaten = hr < 18 && dot(h.vel, norm(sub(rim, h.p))) > 8 && dist(d.p, h.p) < 14;
+    if (behind && ((sim.inTransition(h.team) && hr < 30) || beaten) && tryActivateUlt(sim, d)) return;
+  }
   // transition defense: get back and protect the rim before matching up
   if (sim.inTransition(sim.possession) && dist(d.p, rim) > dist(ballP, rim) - 3) {
     const depth = Math.max(4, Math.min(16, dist(ballP, rim) * 0.4));
@@ -35,11 +43,6 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
       sim.steer(d, add(h.p, scale(norm(sub({ x: 47, y: 25 }, h.p)), 2.6)), true); // cut off the escape toward half court
       return;
     }
-  }
-  // round 51: a CPU star in full rhythm with Chase-Down runs down a break from behind (once a game)
-  if (h && h.team !== d.team && sim.isAI(d) && sim.ultReady(d) && sim.inTransition(h.team)) {
-    const u = sim.ultOf(d), hr = dist(h.p, rim);
-    if (u?.id === 'chaseDown' && hr < 30 && dist(d.p, rim) > hr + 2 && tryActivateUlt(sim, d)) return;
   }
   // round 47: double / triple team on a hot scorer (helpers come after a short read; the rest rotate)
   const load = sim.isAI(d) && ATT.load ? sim.loadFor() : null;

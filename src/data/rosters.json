@@ -1,5 +1,5 @@
 {
- "_doc": "Real 2026-27 rosters (as of late Oct 2026, compiled from preseason depth-chart reporting). Edit freely: change names, numbers, ratings (core 0-99), perks (node ids from src/data/trees), or appearance. Teams listed in order: starters first. Missing teams fall back to generated rosters. Some jersey numbers and looks are best guesses.",
+ "_doc": "Real 2026-27 rosters (as of late Oct 2026, compiled from preseason depth-chart reporting). Edit freely: change names, numbers, ratings (core 0-99), perks (node ids from src/data/trees), or appearance. Teams listed in order: starters first. Missing teams fall back to generated rosters. Some jersey numbers and looks are best guesses. Optional ult (deepStepback, ftTakeoff, chaseDown) overrides a star's position ultimate.",
  "season": "2026-27",
  "teams": {
   "ATL": [
@@ -4025,6 +4025,7 @@
      "mobility": 55,
      "playmaking": 99
     },
+    "ult": "deepStepback",
     "perks": [
      "pa_root",
      "fi_root",

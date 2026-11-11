@@ -512,6 +512,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 74 (owner):** **Freight Train** only fires on a **fast break** (a live steal, block or defensive board in a
+  full-court game, i.e. `changePossessionLive`), for the new offense only, **2 s** (was 3.5 s on any change); the
+  drive-contact effect stays. **Star bigs post up:** the coach adds +0.15 to post sets when the team's go-to scorer is
+  a big ("feed the post") and +0.1 when a guard or a man 4+ inches shorter is on him ("mismatch"); a big star's iso
+  call is a post set; `wantsPost` doubles for a star big and posts a size mismatch half the time (anyone with Post
+  50+). **Post doubles** also come for who he is: 60% for a star or heat tier 2+, 35% for Post 75+ (the strength
+  rule still applies); kick-outs have a lower bar and look first for the man the helper left. **Chase-Down** works
+  now (it was checked after the get-back branch, which always returned first) and also fires when a star big is
+  beaten on a half-court drive. **Jokić's ult = the Deep Step-Back three** (roster field `ult`).
 - **Round 73 (GOAT skills, owner):** every tree but Post/Perimeter/Shooting gets a new GOAT at its end (cost 5, gold
   star). **Point God** (Passing, upper arm past the baton's end, after Magic): △ during any shot before the release
   passes out of it. **Unstoppable** (Finishing, owner first called it Crafty; middle fingertip, needs Jelly Fake,

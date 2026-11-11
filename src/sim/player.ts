@@ -28,6 +28,8 @@ export class Player {
   height: number; isUser: boolean; appearance: Appearance;
   /** designated star: the coach calls iso sets for him */
   star = false;
+  /** round 74: his ultimate as a CPU star when it isn't the one for his position (roster `ult`) */
+  ultPick?: string;
   core: CoreStats; nodes: Set<string>; extra: ModSource[];
   mods: ModSet; sub!: SubRatings;
 

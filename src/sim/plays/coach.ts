@@ -45,7 +45,11 @@ export function scoreCall(sim: GameSim, play: string, focus: Player, log: Record
     const dh = focus.height - man.height;
     if (style === 'post') score += 0.05;
     if (dh > 0.25) { score += Math.min(0.12, dh * 0.15); why = 'size mismatch'; }
+    // round 74: a guard (or a man 4+ inches shorter) on a big: take him down there
+    if (isBig(focus) && (man.role === '1' || man.role === '2' || dh >= 0.33)) { score += 0.1; why = 'mismatch'; }
   }
+  // round 74: the team's go-to scorer is a big: feed the post
+  if (post && isBig(focus) && topScorer(sim.teams[focus.team].onCourt) === focus) { score += 0.15; why ||= 'feed the post'; }
   if (tags.includes('pnr')) {
     // their bigs have to guard the action: a poor perimeter big gets dragged into it (and onto the ball on a switch)
     const bigs = sim.opp(focus.team).filter((d) => d.role === '4' || d.role === '5');
@@ -81,6 +85,8 @@ export function scoreCall(sim: GameSim, play: string, focus: Player, log: Record
 
 /** Round 54: the last few possessions of the game (Q4 / OT, last 12% of the quarter: ~85 s of a 12-minute quarter). */
 export const endgame = (sim: GameSim) => sim.cfg.mode === 'game' && sim.quarter >= sim.periods && sim.clock < sim.cfg.quarterLen * 0.12;
+/** Round 74: a big (plays the 4 or 5, or listed PF / C). */
+export const isBig = (p: Player) => p.role === '4' || p.role === '5' || p.pos === 'PF' || p.pos === 'C';
 /** The team's go-to scorer: the best-rated star on the floor, else the best scorer by reputation. */
 export function topScorer(off: Player[]): Player | null {
   const pool = off.some((p) => p.star) ? off.filter((p) => p.star) : off;

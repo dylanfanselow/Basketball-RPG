@@ -52,6 +52,9 @@ export const POST = {
   /** a strength edge of HELP_GAP+ may draw a second defender: chance HELP_MIN there, rising with the gap to HELP_MAX;
    *  the rotation takes HELP_DELAY s */
   HELP_GAP: 4, HELP_MIN: 0.15, HELP_MAX: 0.85, HELP_DELAY: [0.5, 1.0] as [number, number],
+  /** round 74: the double comes for who he is too: a star (or a man the heat has at tier 2+) HELP_STAR, a real post
+   *  scorer (Post HELP_POST_RATING+) HELP_SCORER, whatever the strength battle says */
+  HELP_STAR: 0.6, HELP_SCORER: 0.35, HELP_POST_RATING: 75,
 };
 /** Chance the defense doubles a post with this strength gap (only when the attacker has a strength edge). */
 export const helpChance = (gap: number) => gap < POST.HELP_GAP ? 0 : Math.min(POST.HELP_MAX, POST.HELP_MIN + (gap - POST.HELP_GAP) / 18);
@@ -97,7 +100,7 @@ function startPost(sim: GameSim, p: Player) {
   engage(sim, p);
   const d = byId(sim, p.post.defId);
   // a mismatch: the defense may rotate a second defender over (he leaves his man, so someone's open for the kick-out)
-  const hc = d ? helpChance(p.post.gap) : 0;
+  const hc = d ? Math.max(helpChance(p.post.gap), p.star || sim.tierOf(p) >= 2 ? POST.HELP_STAR : p.sub.post >= POST.HELP_POST_RATING ? POST.HELP_SCORER : 0) : 0;
   if (d && hc > 0 && sim.rng.chance(hc)) {
     let best: Player | null = null, bd = 1e9;
     for (const o of sim.opp(p.team)) {

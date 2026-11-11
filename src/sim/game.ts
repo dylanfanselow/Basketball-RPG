@@ -9,7 +9,7 @@ import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
 import { RHYTHM_GAIN, RHYTHM_LOSS, OFF_NIGHT, RhythmGain, RhythmLoss, gainScale, quarterGain, POINT_GAIN, REPEAT_DECAY, notchOf, rhythmBoost, methodKey, scoreGain, scoreMath, methodLabel } from './rhythm';
-import { endgame, topScorer, chooseCall } from './plays/coach';
+import { endgame, topScorer, chooseCall, isBig } from './plays/coach';
 import { TrustState, applyTrust, TrustReason } from './ai/trust';
 import { RotationPlan, shouldBeOn } from './rotation';
 import { thinkOffense, offBallTarget } from './ai/offense';
@@ -166,9 +166,9 @@ export const ULT_ISO_TRIES = 3;
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
 export const UNCLE_DREW_MIN = 0.08;
-/** round 73 Freight Train: top speed x`boost` for `secs` after any change of possession; drive contact takes only
- * `contact` of the speed it normally would */
-export const FREIGHT = { boost: 1.15, secs: 3.5, contact: 0.4 };
+/** round 73/74 Freight Train: top speed x`boost` for `secs` on a fast break (steal, block or defensive board in a
+ * full-court game); drive contact takes only `contact` of the speed it normally would */
+export const FREIGHT = { boost: 1.15, secs: 2.0, contact: 0.4 };
 /** round 73 Gravity: while he holds a screen, defenders within `r` ft drift toward him at up to `pull` ft/s
  * (strongest close in), stopping `minD` ft away */
 export const GRAVITY = { r: 11, pull: 4.5, minD: 3 };
@@ -890,7 +890,14 @@ export class GameSim {
     this.assignMatchups(!(this.cfg.oneOnOne || this.cfg.halfCourt || this.cfg.mode === 'practice'));
     if (this.cfg.oneOnOne || this.cfg.halfCourt) this.deadBall(newTeam, 1.0); // take it back: new offense checks it up top
     else if (this.cfg.mode === 'practice') this.deadBall(0, 1.0);
-    else { this.transitionUntil = this.time + 5; this.newPossession(false); } // live turnover / defensive board: read the break
+    else {
+      this.transitionUntil = this.time + 5; this.newPossession(false); // live turnover / defensive board: read the break
+      // round 74 Freight Train: the break is on, he gets going
+      for (const p of this.teams[newTeam].onCourt) if (p.mods.pAdd('freightTrain') > 0) {
+        p.freightUntil = this.time + FREIGHT.secs;
+        if (p === this.user) this.emit({ kind: 'move', text: 'Freight Train!', pid: p.id });
+      }
+    }
   }
 
   callPlay() {
@@ -916,11 +923,16 @@ export class GameSim {
     let focus: Player | null = null;
     let why = '';
     this.closeCall();
-    const isoFor = (star: Player) => { id = this.rng.pick(isos); swap = PLAYS[id].focus ? [PLAYS[id].focus!, star.role] : null; focus = star; };
+    // round 74: a big's iso is a post-up (his number called on the block), except when it's for a perimeter ult
+    const posts = Object.keys(PLAYS).filter((pid) => PLAYS[pid].tags.includes('post') && allowed(pid) && pid !== this.runner.lastPlayId);
+    const isoFor = (star: Player, perimeter = false) => {
+      id = isBig(star) && !perimeter && posts.length ? this.rng.pick(posts) : this.rng.pick(isos);
+      swap = PLAYS[id].focus && PLAYS[id].focus !== star.role ? [PLAYS[id].focus!, star.role] : null; focus = star;
+    };
     // round 69: a CPU star saving his offensive ult gets an iso in the last period to use it
     this.ultIso = null;
     const ultStar = isos.length ? this.ultIsoCandidate(off) : null;
-    if (ultStar && this.rng.chance(this.clutch || endgame(this) ? 1 : 0.5)) { isoFor(ultStar); why = 'ultimate'; this.ultIso = ultStar.id; this.ultIsoTries[ultStar.id] = (this.ultIsoTries[ultStar.id] ?? 0) + 1; }
+    if (ultStar && this.rng.chance(this.clutch || endgame(this) ? 1 : 0.5)) { isoFor(ultStar, true); why = 'ultimate'; this.ultIso = ultStar.id; this.ultIsoTries[ultStar.id] = (this.ultIsoTries[ultStar.id] ?? 0) + 1; }
     else if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
@@ -2110,16 +2122,8 @@ export class GameSim {
     }
   }
 
-  lastPossSeen: 0 | 1 = 0;
-  /** round 73: GOAT skills that act every tick: Freight Train (change of possession) and Gravity (screens). */
+  /** round 73: GOAT skills that act every tick: Gravity (screens). (Freight Train fires in changePossessionLive.) */
   private goatTicks(dt: number) {
-    if (this.possession !== this.lastPossSeen) {
-      this.lastPossSeen = this.possession;
-      for (const p of this.players) if (p.mods.pAdd('freightTrain') > 0) {
-        p.freightUntil = this.time + FREIGHT.secs;
-        if (p === this.user) this.emit({ kind: 'move', text: 'Freight Train!', pid: p.id });
-      }
-    }
     for (const s of this.players) {
       if (s.state !== 'screen' || s.mods.pAdd('gravity') <= 0) continue;
       for (const d of this.opp(s.team)) {

@@ -307,7 +307,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - 5 core stats → ~28 sub-ratings via `statInfluence.json`; level-up screen; 8 perk constellations (`data/trees`), each drawn on a
   picture (round 65: ball, court, key, wall; round 72: NBA-logo dribbler, baton hand-off, open hand, valve wheel traced
   from the owner's images in `scenes/perkShapes.ts`); GOAT skills (gold stars, cost 5): Lethal Shooter, Iron Nate,
-  Block Party, Uncle Drew (`needsTree`), Point God, Unstoppable, Freight Train, Gravity (round 73, `goatTicks`);
+  Block Party, Uncle Drew (`needsTree`), Point God, Unstoppable, Freight Train, Gravity (round 73, `goatTicks`; round 74:
+  Freight Train on fast breaks only); CPU star ults by position, roster `ult` overrides (Jokić: step-back three);
   modifier/hook system (`modifiers.ts`) drives perks, traits, backstories, ultimates.
 - Ultimates: Deep Step-Back, FT-Line Takeoff, Chase-Down Block, each with 3 evolution levels; locked "???" panel
   until `flags.ult_unlocked`; milestone evo points.

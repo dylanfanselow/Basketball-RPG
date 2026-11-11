@@ -5,7 +5,8 @@ import { POSITIONS, Position, HEIGHTS } from '../sim/attributes';
 import { randomAppearance, withDefaults, Appearance } from '../render/appearance';
 import rostersRaw from '../data/rosters.json';
 
-export interface RosterEntry { name: string; number: number; pos: Position; heightFt: number; tier: number; archetype: string; core: CoreStats; perks: string[]; appearance: Partial<Appearance> }
+/** ult (round 74): a CPU star's ultimate when it breaks the position rule (Jokić: the step-back three) */
+export interface RosterEntry { name: string; number: number; pos: Position; heightFt: number; tier: number; archetype: string; core: CoreStats; perks: string[]; appearance: Partial<Appearance>; ult?: string }
 export const REAL_ROSTERS: Record<string, RosterEntry[]> = (rostersRaw as any).teams;
 /** Round 59b: jersey numbers already worn on a team (number → player), so the builder can skip them. */
 export function takenNumbers(teamId: string): Map<number, string> {
@@ -41,6 +42,7 @@ export function generateRoster(team: TeamDef, teamIdx: 0 | 1, strength = 0, size
       id: `${team.id}-${i}`, name: e.name, team: teamIdx, pos: e.pos, core: { ...e.core }, nodes: e.perks,
       number: e.number, skin: e.appearance.skin ?? 2, height: e.heightFt, appearance: withDefaults(e.appearance),
     }));
+    real.forEach((e, i) => { if (e.ult) out[i].ultPick = e.ult; });
     markStars(out, real.map((e) => e.tier));
     grantPickUp(out);
     return out;

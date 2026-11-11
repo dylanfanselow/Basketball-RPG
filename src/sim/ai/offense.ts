@@ -6,6 +6,7 @@ import { evaluateShot, selectShotType, ShotEval } from '../shooting';
 import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
 import { tryActivateUlt } from '../ultimates';
+import { isBig } from '../plays/coach';
 import { isoThink } from './oneOnOne';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
@@ -432,17 +433,26 @@ function bestShot(sim: GameSim, p: Player): { type: string; ev: ShotEval } {
   return { type, ev };
 }
 
-/** Should this handler post his man up? Bigs (or strong post players) 6-16 ft out with an edge, now and then. */
+/**
+ * Should this handler post his man up? Bigs (or strong post players) 6-16 ft out with an edge, now and then.
+ * Round 74: a star big twice as often, and a size mismatch (a guard or a man 4+ inches shorter on him) is a post-up
+ * most of the time, for anyone with a post game.
+ */
 function wantsPost(sim: GameSim, p: Player): boolean {
-  if (!(p.pos === 'C' || p.pos === 'PF' || p.sub.post >= 62) || !canPost(sim, p)) return false;
+  if (!canPost(sim, p)) return false;
   const d = dist(p.p, sim.rim(p.team));
   if (d < 6 || d > 16) return false;
   const def = postDefender(sim, p);
   if (!def) return false;
+  const big = isBig(p), small = p.height - def.height >= 0.33 || (big && (def.role === '1' || def.role === '2'));
+  if (!(big || p.sub.post >= 62 || (small && p.sub.post >= 50))) return false;
   const gap = postGap(p, def);
-  if (gap < -4) return false;
-  return sim.rng.chance(clamp01(0.12 + gap * 0.02));
+  if (gap < -4 && !small) return false;
+  const chance = small ? POST_MISMATCH : clamp01(0.12 + gap * 0.02) * (big && p.star ? 2 : 1);
+  return sim.rng.chance(chance);
 }
+/** Round 74: how often a size mismatch gets posted when he has the ball in range. */
+export const POST_MISMATCH = 0.5;
 
 /** Post mode: back down toward the rim, then let go and score out of the window; kick out of a double team. */
 function postAI(sim: GameSim, p: Player) {
@@ -475,9 +485,11 @@ function postAI(sim: GameSim, p: Player) {
   const def = p.post.defId;
   const doubled = sim.opp(p.team).some((o) => o.id !== def && dist(o.p, p.p) < 4 && sim.time >= o.stunnedUntil);
   if (doubled) {
+    // round 74: kick it out (a lower bar than before), first look the man the helper left
+    const helper = p.post.helpId ? sim.players.find((q) => q.id === p.post!.helpId) : null;
     let best: Player | null = null, bv = -1;
-    for (const m of catchers(sim, p)) { const val = sim.openness(m) - laneRisk(sim, p, m); if (val > bv) { bv = val; best = m; } }
-    if (best && bv > 0.1) { sim.pass(p, best); p.aiMode = 'none'; return; }
+    for (const m of catchers(sim, p)) { const val = sim.openness(m) - laneRisk(sim, p, m) + (helper?.guarding === m.id ? 0.15 : 0); if (val > bv) { bv = val; best = m; } }
+    if (best && bv > 0) { sim.pass(p, best); p.aiMode = 'none'; return; }
   }
   const locked = !!def && sim.players.some((q) => q.id === def && sim.time < q.postLockUntil);
   const release = d <= 7 || sim.time > p.aiModeUntil || (locked && sim.time - p.post.since > 1.2) || p.post.mode === 'weaker' && sim.time - p.post.since > 1.5;

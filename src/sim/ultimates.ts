@@ -29,10 +29,11 @@ export const CINE_SPEED = 0.38;
 /**
  * Round 55: a CPU star's ultimate by position (the owner's map): PG step-back; SG step-back if a shooter, else the
  * free-throw-line dunk; SF the dunk; PF chase-down if a shot-blocker, else the dunk; C chase-down. Level 2 for the very best.
+ * Round 74: a roster `ult` overrides it (Jokić takes the step-back three).
  */
 export function cpuUltFor(p: Player): UltState {
   const s = p.sub, shooter = Math.max(s.three, s.mid) >= Math.max(s.dunk, s.layup);
-  const id = p.pos === 'C' ? 'chaseDown' : p.pos === 'PF' ? (s.block >= s.dunk ? 'chaseDown' : 'ftTakeoff')
+  const id = p.ultPick ? p.ultPick : p.pos === 'C' ? 'chaseDown' : p.pos === 'PF' ? (s.block >= s.dunk ? 'chaseDown' : 'ftTakeoff')
     : p.pos === 'SF' ? 'ftTakeoff' : p.pos === 'SG' ? (shooter ? 'deepStepback' : 'ftTakeoff') : 'deepStepback';
   return { unlocked: true, id, level: p.overall >= 82 ? 1 : 0 };
 }
