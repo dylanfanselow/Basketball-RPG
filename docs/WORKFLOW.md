@@ -26,6 +26,9 @@ npm run build:single # single-file build for the browser link
 3. Verify: `npm test`, headless stats (`scripts/stats.test.ts`, `scripts/scoring.test.ts`); after changing plays or
    offense AI re-run the play lab (`WRITE=1 npx vitest run scripts/playLab.test.ts --dir . --config /dev/null`, ~3 min), Playwright screenshots against a dev server
    (pre-installed Chromium; `require('playwright')`; scripts live in the session scratchpad).
+   Round 77: a whole league season: `SEASON_OUT=<file> npx vitest run scripts/season.test.ts --dir . --config /dev/null`
+   (~8 min, 435 games; `SEASON_LIMIT=n` for a quick run). Roster perks vs the trees: `scripts/rosterPerks.test.ts`
+   (prints the report; `WRITE=1` rewrites rosters.json).
 4. Update README "Things to know while testing" if controls changed.
 5. Commit (attribution lines from the system reminder), `git pull --rebase`, push, rebuild single file, republish.
 6. Summarize for the owner: what changed, how to test it, what wasn't verified.

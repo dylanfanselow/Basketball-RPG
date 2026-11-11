@@ -61,8 +61,10 @@
   search snippets; official roster pages are blocked from the cloud environment).
 - Coaches/officials/fans are simple; no animated referees on court.
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
-- Round 65: Mamba / Chef / Finger Wag aren't on any CPU player; the shaped trees' lines are straight segments (the
+- Round 65: the shaped trees' lines are straight segments (the
   ball and arc are polygons over a faint backdrop).
+- Round 77: CPU teams never substitute (starters play all 48 game minutes; the bench never plays), so season stats
+  are starters only. CPU players never use Point God (no pass out of a shot).
 - Round 76: no end-of-quarter fouling, timeouts or advancing the ball; the defense doesn't change anything for a held
   last shot; holding costs ~8% of shots per game with 3-minute quarters.
 - Round 75: the crunch-time hush and pop were checked in the browser (flags and events), not listened to; the crowd
@@ -73,8 +75,7 @@
   effect has no dedicated test (the speed boost does).
 - Round 72: Uncle Drew only matters for the user (CPU dribblers don't press ○ mid-move); the empty top knob of the
   Handles valve has no perk yet.
-- Round 64 perks: no CPU player owns Magic, Roller/Popper, Gimme That! yet (only the user, via perk points or
-  the dev panel). No-look passes reuse the plain pass clip (the head stays forward); a wraparound shares the
+- Round 64 perks: no-look passes reuse the plain pass clip (the head stays forward); a wraparound shares the
   behind-the-back clip. Foresight only shows planned (physical) misses and loose balls, not scripted dunk misses.
 
 ## Not verified in this environment

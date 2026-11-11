@@ -2541,7 +2541,7 @@ export class GameSim {
     const wasShot = this.wasShotRebound;
     this.wasShotRebound = false;
     if (wasShot) {
-      g.box.reb++;
+      g.box.reb++; if (g.team === this.possession) g.box.oreb++;
       this.rhythmGain(g, g.team === this.possession ? 'oreb' : 'dreb'); // round 63: boards build rhythm
       if (g === this.user) this.quiet('rebound', { off: g.team === this.possession }, g.id);
       if (g === this.user && g.team === this.possession) applyTrust(this.trust, 'offReb');
@@ -2658,7 +2658,7 @@ export class GameSim {
     const pct = clamp(0.45 + p.sub.mid / 99 * 0.45, 0.4, 0.95);
     let made = 0; let last = false;
     for (let i = 0; i < n; i++) { last = this.rng.chance(pct); if (last) made++; }
-    this.teams[p.team].score += made; p.box.pts += made;
+    this.teams[p.team].score += made; p.box.pts += made; p.box.ftm += made; p.box.fta += n;
     this.emit({ kind: 'ft', text: `${p.name} ${made}/${n} FT`, team: p.team });
     return last;
   }

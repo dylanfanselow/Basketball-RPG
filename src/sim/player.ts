@@ -16,8 +16,9 @@ export interface PostState {
 
 export type PState = 'idle' | 'shoot' | 'screen' | 'charge' | 'stagger' | 'fallen' | 'jump' | 'dribbleMove' | 'swipe' | 'dive';
 
-export interface BoxScore { pts: number; fgm: number; fga: number; tpm: number; tpa: number; ast: number; reb: number; stl: number; blk: number; tov: number; secs: number; usage: number; touches: number }
-export const emptyBox = (): BoxScore => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ast: 0, reb: 0, stl: 0, blk: 0, tov: 0, secs: 0, usage: 0, touches: 0 });
+/** ftm / fta / oreb: round 77 */
+export interface BoxScore { pts: number; fgm: number; fga: number; tpm: number; tpa: number; ftm: number; fta: number; ast: number; reb: number; oreb: number; stl: number; blk: number; tov: number; secs: number; usage: number; touches: number }
+export const emptyBox = (): BoxScore => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, reb: 0, oreb: 0, stl: 0, blk: 0, tov: 0, secs: 0, usage: 0, touches: 0 });
 
 export interface PlayerInit {
   id: string; name: string; team: 0 | 1; pos: Position; core: CoreStats; nodes?: string[]; extra?: ModSource[]; isUser?: boolean; number?: number; skin?: number; height?: number; appearance?: Appearance;

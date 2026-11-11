@@ -512,6 +512,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 77 (owner): rosters brought up to date** (`scripts/rosterPerks.ts`, run once with WRITE=1): every perk's
+  prerequisites are owned (Uncle Drew = the whole Handles tree, so Kyrie has all of it; GOAT holders own their full
+  paths), and the 33 perks nobody had went to the players they fit (FITS by core ratings, position, height and
+  archetype; rarest fit first) within a perk-point budget by tier (5: 20, 4: 15, 3: 11, 2: 8, 1: 6). GOATs are never
+  handed out. Box score gains FTM/FTA and offensive rebounds. **Season runner** `scripts/season.test.ts`: every team
+  plays every other once (435 games), 3-minute quarters, starters only (CPU teams don't substitute), one JSON out.
 - **Round 76 (owner):** the arena hush follows **clutch time** (`sim.clutch`: final period or OT, the last 17% of the
   quarter, score within 5), not a flat last 30 s. **The step-back ult's three is automatic when uncontested**
   (contest under the green line, `GREEN_CONTEST` 0.15, now in shooting.ts), user and CPU. **Clock management**

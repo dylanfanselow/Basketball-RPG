@@ -302,6 +302,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   picks it up off the bounce. Animated nets (`drawNet` in view.ts, `updateNets` in GameScene). Loud `sfx.swish` only
   on clean swishes. Round 75/76: clutch time hushes crowd + music on each shot, a make pops the crowd;
   crunch-time shots dance on the rim (`planShot` suspense). A pump fake before the first dribble after a catch keeps the dribble.
+- Round 77: rosters' perks follow the trees (`scripts/rosterPerks.ts`); headless season runner `scripts/season.test.ts`.
 - Round 76 clock management: hold for the last shot, 2-for-1, milk a late lead (`GameSim.clockPlan`).
 - Trust model (`ai/trust.ts`) and rotation/minutes from coach trust (`rotation.ts`).
 

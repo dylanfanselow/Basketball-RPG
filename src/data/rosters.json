@@ -1,5 +1,5 @@
 {
- "_doc": "Real 2026-27 rosters (as of late Oct 2026, compiled from preseason depth-chart reporting). Edit freely: change names, numbers, ratings (core 0-99), perks (node ids from src/data/trees), or appearance. Teams listed in order: starters first. Missing teams fall back to generated rosters. Some jersey numbers and looks are best guesses. Optional ult (deepStepback, ftTakeoff, chaseDown) overrides a star's position ultimate.",
+ "_doc": "Real 2026-27 rosters (as of late Oct 2026, compiled from preseason depth-chart reporting). Edit freely: change names, numbers, ratings (core 0-99), perks (node ids from src/data/trees), or appearance. Teams listed in order: starters first. Missing teams fall back to generated rosters. Some jersey numbers and looks are best guesses. Optional ult (deepStepback, ftTakeoff, chaseDown) overrides a star's position ultimate. Round 77: perks brought up to date with the trees (every prerequisite owned; the perks nobody had went to the players they fit, scripts/rosterPerks.ts).",
  "season": "2026-27",
  "teams": {
   "ATL": [
@@ -20,11 +20,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -71,8 +73,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -119,8 +121,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -167,15 +170,21 @@
      "playmaking": 83
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "fi_power",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "pa_root",
      "pa_lob",
-     "fi_power",
-     "pa_dimes"
+     "pa_dimes",
+     "sc_root",
+     "sc_pop",
+     "sc_rescreen",
+     "in_root",
+     "in_getlow",
+     "in_tip"
     ],
     "appearance": {
      "skin": 3,
@@ -221,13 +230,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -275,8 +286,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 4,
@@ -323,6 +335,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -370,8 +384,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -418,11 +432,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -469,6 +483,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -516,6 +532,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -565,8 +583,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -615,11 +634,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -665,15 +686,20 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -766,11 +792,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -819,6 +846,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -865,11 +893,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -915,11 +944,11 @@
      "playmaking": 78
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 3,
@@ -1014,6 +1043,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -1108,11 +1138,11 @@
      "playmaking": 78
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 0,
@@ -1159,8 +1189,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 4,
@@ -1208,8 +1238,9 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
-     "sh_range"
+     "sh_range",
+     "sh_midrhythm",
+     "sh_release"
     ],
     "appearance": {
      "skin": 2,
@@ -1254,12 +1285,12 @@
      "playmaking": 74
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "pa_root",
      "pa_lob"
     ],
     "appearance": {
@@ -1307,6 +1338,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -1354,9 +1387,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -1403,6 +1436,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -1544,6 +1579,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -1593,11 +1630,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -1645,8 +1684,9 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
-     "sh_range"
+     "sh_range",
+     "sh_midrhythm",
+     "sh_release"
     ],
     "appearance": {
      "skin": 0,
@@ -1692,14 +1732,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -1745,10 +1789,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sc_root",
      "sc_pop",
+     "sc_popper",
+     "in_root",
      "in_wall"
     ],
     "appearance": {
@@ -1795,11 +1840,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -1848,6 +1894,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -1895,8 +1942,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -1943,9 +1990,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -2039,6 +2086,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -2086,6 +2135,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -2133,12 +2184,12 @@
      "playmaking": 84
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob"
+     "pa_root",
+     "pa_lob",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 0,
@@ -2185,11 +2236,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -2236,8 +2289,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -2286,11 +2340,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -2336,11 +2390,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -2386,11 +2441,11 @@
      "playmaking": 80
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 3,
@@ -2438,6 +2493,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -2532,8 +2588,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -2580,8 +2636,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 4,
@@ -2628,6 +2684,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -2675,6 +2733,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -2722,14 +2782,18 @@
      "playmaking": 94
     },
     "perks": [
-     "pa_root",
+     "sh_root",
+     "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
+     "dr_inout",
+     "pa_root",
      "pa_lob",
-     "pa_dimes",
-     "dr_inout"
+     "pa_skip",
+     "pa_dimes"
     ],
     "appearance": {
      "skin": 3,
@@ -2775,15 +2839,22 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
+     "dr_dbl",
      "dr_btb",
-     "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_hesiburst",
+     "dr_pullback",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -2830,8 +2901,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -2878,12 +2949,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -2929,13 +3005,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -2983,8 +3061,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -3031,11 +3110,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 4,
@@ -3129,6 +3208,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -3174,9 +3255,9 @@
      "playmaking": 68
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -3223,6 +3304,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -3271,16 +3354,40 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
+     "fi_root",
+     "fi_fork",
+     "fi_power",
+     "fi_lob",
+     "fi_poster",
+     "fi_jelly",
+     "fi_layup",
+     "fi_euro",
+     "fi_andone",
+     "fi_float",
+     "fi_hook",
+     "fi_dreamer",
+     "fi_unstoppable",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
+     "dr_dbl",
      "dr_btb",
-     "sh_afterMove",
-     "dr_uncledrew",
-     "fi_unstoppable"
+     "dr_shammgod",
+     "dr_snatch",
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_hesiburst",
+     "dr_pullback",
+     "dr_stepback",
+     "dr_chain",
+     "dr_breaker",
+     "dr_uncledrew"
     ],
     "appearance": {
      "skin": 3,
@@ -3327,8 +3434,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -3375,12 +3482,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 0,
@@ -3426,10 +3538,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 4,
@@ -3475,13 +3588,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -3528,11 +3643,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -3579,10 +3695,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 1,
@@ -3629,8 +3746,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -3677,6 +3794,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -3772,11 +3891,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -3824,14 +3943,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -3878,8 +4001,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -3927,8 +4050,9 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
-     "sh_range"
+     "sh_range",
+     "sh_midrhythm",
+     "sh_release"
     ],
     "appearance": {
      "skin": 2,
@@ -3975,13 +4099,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -4027,21 +4151,29 @@
     },
     "ult": "deepStepback",
     "perks": [
-     "pa_root",
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
-     "in_getlow",
-     "pa_skip",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
      "fi_hook",
      "fi_dreamer",
+     "pa_root",
      "pa_lob",
+     "pa_skip",
      "pa_dimes",
      "pa_bullet",
+     "pa_magic",
      "pa_pointgod",
-     "sc_gravity"
+     "sc_root",
+     "sc_roll",
+     "sc_pop",
+     "sc_slip",
+     "sc_rescreen",
+     "sc_ghost",
+     "sc_gravity",
+     "in_root",
+     "in_getlow"
     ],
     "appearance": {
      "skin": 0,
@@ -4088,11 +4220,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -4137,11 +4271,11 @@
      "playmaking": 75
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 3,
@@ -4188,6 +4322,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -4329,6 +4465,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -4376,15 +4514,22 @@
      "playmaking": 90
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob",
-     "pa_dimes",
      "dr_inout",
-     "pa_bullet"
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
+     "dv_gather",
+     "dv_drive",
+     "dv_kick",
+     "pa_root",
+     "pa_lob",
+     "pa_skip",
+     "pa_dimes",
+     "pa_bullet",
+     "pa_magic"
     ],
     "appearance": {
      "skin": 3,
@@ -4431,13 +4576,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 4,
@@ -4485,6 +4630,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -4531,10 +4677,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sc_root",
      "sc_pop",
+     "sc_popper",
+     "in_root",
      "in_wall"
     ],
     "appearance": {
@@ -4581,13 +4728,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -4636,6 +4785,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -4683,6 +4833,9 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "sc_roller",
      "in_root"
     ],
     "appearance": {
@@ -4730,11 +4883,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -4879,9 +5032,15 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
      "sh_range",
      "sh_pullup3",
+     "sh_chef",
+     "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_clutch2",
+     "sh_mamba",
+     "sh_release",
      "sh_lethal"
     ],
     "appearance": {
@@ -4927,12 +5086,12 @@
      "playmaking": 83
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob"
+     "pa_root",
+     "pa_lob",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 0,
@@ -4979,14 +5138,17 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -5032,12 +5194,12 @@
      "playmaking": 79
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "pa_root",
      "pa_lob"
     ],
     "appearance": {
@@ -5084,10 +5246,14 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sc_root",
      "sc_pop",
+     "sc_popper",
+     "in_root",
+     "in_getlow",
+     "in_tip",
+     "in_gimme",
      "in_wall"
     ],
     "appearance": {
@@ -5135,8 +5301,9 @@
     "perks": [
      "sh_root",
      "fi_root",
+     "dr_handle",
      "pd_contest",
-     "dr_handle"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -5183,8 +5350,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -5231,8 +5399,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -5278,10 +5447,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -5377,14 +5547,18 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dr_hesiburst",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -5430,12 +5604,12 @@
      "playmaking": 80
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob"
+     "pa_root",
+     "pa_lob",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 3,
@@ -5481,15 +5655,20 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 4,
@@ -5535,10 +5714,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sc_root",
      "sc_pop",
+     "sc_popper",
+     "in_root",
      "in_wall"
     ],
     "appearance": {
@@ -5584,18 +5764,20 @@
      "playmaking": 93
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
-     "in_getlow",
-     "pa_skip",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
      "fi_hook",
      "fi_dreamer",
+     "pa_root",
      "pa_lob",
-     "pa_dimes"
+     "pa_skip",
+     "pa_dimes",
+     "sc_root",
+     "in_root",
+     "in_getlow"
     ],
     "appearance": {
      "skin": 0,
@@ -5642,9 +5824,12 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
+     "pd_lanes",
+     "pd_iq",
      "in_root"
     ],
     "appearance": {
@@ -5692,8 +5877,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -5741,6 +5927,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -5789,6 +5976,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -5835,10 +6023,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_float",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -5886,8 +6076,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -5934,14 +6124,16 @@
      "playmaking": 96
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob",
-     "pa_dimes",
      "dr_inout",
+     "pa_root",
+     "pa_lob",
+     "pa_skip",
+     "pa_dimes",
+     "pa_bullet",
+     "pa_magic",
      "pa_pointgod"
     ],
     "appearance": {
@@ -5987,11 +6179,11 @@
      "playmaking": 76
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 2,
@@ -6038,8 +6230,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -6086,14 +6278,17 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -6140,13 +6335,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
-     "in_getlow",
      "fi_hook",
      "fi_dreamer",
+     "sc_root",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -6192,11 +6389,11 @@
      "playmaking": 76
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 0,
@@ -6243,11 +6440,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -6294,8 +6491,9 @@
     "perks": [
      "sh_root",
      "fi_root",
+     "dr_handle",
      "pd_contest",
-     "dr_handle"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -6342,11 +6540,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -6393,6 +6591,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -6440,6 +6640,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -6489,11 +6691,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -6540,9 +6744,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 0,
@@ -6589,11 +6793,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -6639,10 +6845,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -6688,10 +6895,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 1,
@@ -6738,11 +6946,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -6789,9 +6997,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -6886,6 +7094,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -6931,9 +7140,9 @@
      "playmaking": 72
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -6980,6 +7189,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -7027,16 +7238,27 @@
      "playmaking": 99
     },
     "perks": [
-     "pa_root",
+     "sh_root",
+     "sh_catch",
+     "sh_corner",
+     "sh_range",
+     "sh_pullup3",
+     "sh_chef",
+     "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_clutch2",
+     "sh_mamba",
+     "sh_lethal",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
      "dr_legs",
-     "pa_lob",
-     "pa_dimes",
      "dr_inout",
-     "pa_bullet",
-     "sh_lethal"
+     "pa_root",
+     "pa_lob",
+     "pa_skip",
+     "pa_dimes",
+     "pa_bullet"
     ],
     "appearance": {
      "skin": 0,
@@ -7082,14 +7304,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 0,
@@ -7136,8 +7362,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -7183,10 +7409,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 0,
@@ -7232,13 +7459,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -7286,9 +7515,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -7477,8 +7706,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 4,
@@ -7525,6 +7754,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -7621,9 +7852,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 0,
@@ -7670,8 +7901,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -7717,10 +7949,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -7765,12 +7998,12 @@
      "playmaking": 82
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "pa_root",
      "pa_lob"
     ],
     "appearance": {
@@ -7817,13 +8050,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
-     "in_getlow",
      "fi_hook",
      "fi_dreamer",
+     "sc_root",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -7871,8 +8106,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -7918,10 +8153,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_float",
+     "sc_root",
+     "sc_pop",
+     "sc_rescreen",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -7969,6 +8206,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -8016,9 +8255,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -8112,8 +8351,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -8162,8 +8401,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -8211,6 +8450,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -8258,9 +8498,12 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
+     "pd_lanes",
+     "pd_iq",
      "in_root"
     ],
     "appearance": {
@@ -8308,18 +8551,31 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
-     "dr_spin",
-     "dv_gather",
+     "fi_lob",
      "fi_poster",
-     "dv_freight",
-     "fi_unstoppable"
+     "fi_jelly",
+     "fi_layup",
+     "fi_euro",
+     "fi_andone",
+     "fi_float",
+     "fi_hook",
+     "fi_dreamer",
+     "fi_stepthru",
+     "fi_unstoppable",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
+     "dv_gather",
+     "dv_drive",
+     "dv_windmill",
+     "dv_kick",
+     "dv_freight"
     ],
     "appearance": {
      "skin": 4,
@@ -8366,12 +8622,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -8417,10 +8678,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
-     "sc_pop"
+     "sc_root",
+     "sc_pop",
+     "sc_popper",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -8465,11 +8727,11 @@
      "playmaking": 79
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
-     "dr_legs"
+     "dr_legs",
+     "pa_root",
+     "pa_skip"
     ],
     "appearance": {
      "skin": 0,
@@ -8659,9 +8921,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -8707,14 +8969,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 0,
@@ -8761,11 +9027,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 1,
@@ -8812,11 +9078,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -8862,10 +9130,11 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sc_root",
      "sc_pop",
+     "sc_popper",
+     "in_root",
      "in_wall"
     ],
     "appearance": {
@@ -8912,11 +9181,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -9011,9 +9281,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -9061,6 +9331,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -9203,8 +9474,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -9251,14 +9522,21 @@
      "playmaking": 89
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
+     "dr_dbl",
      "dr_legs",
+     "dr_inout",
+     "dv_first",
+     "dv_slither",
+     "pa_root",
      "pa_lob",
+     "pa_skip",
      "pa_dimes",
-     "dr_inout"
+     "pd_contest",
+     "pd_charge",
+     "pd_hands",
+     "pd_lanes"
     ],
     "appearance": {
      "skin": 2,
@@ -9304,15 +9582,22 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
+     "dr_dbl",
      "dr_btb",
-     "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_hesiburst",
+     "dr_pullback",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -9359,8 +9644,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -9409,13 +9695,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 4,
@@ -9461,13 +9747,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -9515,8 +9803,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -9564,6 +9853,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -9611,8 +9901,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -9659,6 +9949,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -9755,9 +10047,13 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
+     "pd_close",
+     "pd_navigate",
+     "pd_offnight",
      "in_root"
     ],
     "appearance": {
@@ -9805,9 +10101,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -9855,8 +10151,9 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
-     "sh_range"
+     "sh_range",
+     "sh_midrhythm",
+     "sh_release"
     ],
     "appearance": {
      "skin": 2,
@@ -9903,14 +10200,17 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -9957,10 +10257,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_float",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -10008,9 +10310,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -10057,9 +10359,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -10106,8 +10408,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -10154,6 +10456,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -10249,17 +10553,40 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
+     "sh_corner",
+     "sh_range",
+     "sh_pullup3",
+     "sh_chef",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_clutch2",
+     "sh_mamba",
+     "sh_release",
+     "sh_afterMove",
+     "sh_lethal",
+     "fi_root",
+     "fi_fork",
+     "fi_power",
+     "fi_lob",
+     "fi_poster",
+     "fi_jelly",
+     "fi_layup",
+     "fi_euro",
+     "fi_andone",
+     "fi_float",
+     "fi_hook",
+     "fi_dreamer",
+     "fi_unstoppable",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove",
      "dr_killer",
-     "sh_lethal",
-     "fi_unstoppable"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -10306,9 +10633,12 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
+     "pd_lanes",
+     "pd_iq",
      "in_root"
     ],
     "appearance": {
@@ -10356,8 +10686,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -10406,8 +10737,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -10455,12 +10787,17 @@
     },
     "perks": [
      "sh_root",
-     "sc_root",
-     "in_root",
      "sh_catch",
+     "sh_corner",
+     "sc_root",
      "sc_pop",
-     "in_wall",
-     "sh_corner"
+     "sc_rescreen",
+     "sc_popper",
+     "in_root",
+     "in_getlow",
+     "in_tip",
+     "in_gimme",
+     "in_wall"
     ],
     "appearance": {
      "skin": 2,
@@ -10507,8 +10844,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -10554,11 +10892,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -10606,9 +10945,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 1,
@@ -10655,6 +10994,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -10749,6 +11090,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -10797,16 +11140,27 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
+     "sh_corner",
+     "sh_range",
+     "sh_pullup3",
+     "sh_chef",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_clutch2",
+     "sh_mamba",
+     "sh_release",
+     "sh_afterMove",
+     "sh_lethal",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove",
      "dr_killer",
-     "sh_lethal"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -10853,8 +11207,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -10901,12 +11256,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -10952,14 +11312,18 @@
     },
     "perks": [
      "sh_root",
-     "fi_root",
-     "in_root",
-     "dr_handle",
      "sh_catch",
-     "in_wall",
+     "sh_corner",
+     "sh_range",
+     "fi_root",
      "fi_fork",
-     "in_anchor",
-     "sh_range"
+     "fi_layup",
+     "fi_euro",
+     "fi_andone",
+     "dr_handle",
+     "in_root",
+     "in_wall",
+     "in_anchor"
     ],
     "appearance": {
      "skin": 0,
@@ -11005,13 +11369,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
-     "in_getlow",
      "fi_hook",
      "fi_dreamer",
+     "sc_root",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -11059,8 +11425,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 0,
@@ -11107,11 +11473,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -11158,6 +11524,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -11250,9 +11618,9 @@
      "playmaking": 70
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 0,
@@ -11299,6 +11667,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -11348,8 +11718,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
      "sh_corner",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
      "pd_close"
     ],
@@ -11399,8 +11770,9 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
-     "sh_range"
+     "sh_range",
+     "sh_midrhythm",
+     "sh_release"
     ],
     "appearance": {
      "skin": 3,
@@ -11447,14 +11819,18 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dr_hesiburst",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -11501,14 +11877,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -11554,11 +11934,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -11606,8 +11987,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -11653,10 +12034,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_float",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -11751,6 +12134,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -11893,14 +12278,18 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -11947,13 +12336,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 4,
@@ -12000,14 +12389,18 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dr_hesiburst",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -12053,16 +12446,21 @@
      "playmaking": 94
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "fi_power",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "dv_slither",
+     "dv_gather",
+     "dv_drive",
+     "dv_windmill",
+     "dv_kick",
+     "dv_freight",
+     "pa_root",
      "pa_lob",
-     "fi_power",
-     "pa_dimes",
-     "dv_freight"
+     "pa_dimes"
     ],
     "appearance": {
      "skin": 3,
@@ -12108,16 +12506,20 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
-     "in_getlow",
      "fi_hook",
      "fi_dreamer",
+     "sc_root",
+     "sc_roll",
+     "sc_pop",
+     "sc_ghost",
+     "in_root",
+     "in_getlow",
      "in_wall",
-     "in_anchor",
-     "sc_ghost"
+     "in_anchor"
     ],
     "appearance": {
      "skin": 4,
@@ -12165,6 +12567,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -12213,6 +12616,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -12307,6 +12711,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -12352,9 +12758,9 @@
      "playmaking": 71
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -12402,15 +12808,19 @@
     },
     "perks": [
      "sh_root",
+     "sh_catch",
      "sh_midrhythm",
+     "sh_fade",
+     "sh_release",
+     "sh_afterMove",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin",
      "dr_btb",
-     "sh_afterMove",
-     "dr_killer"
+     "dr_killer",
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -12457,13 +12867,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -12510,8 +12920,9 @@
     "perks": [
      "sh_root",
      "sh_catch",
+     "sh_corner",
      "pd_contest",
-     "sh_corner"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -12558,13 +12969,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -12611,6 +13022,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -12657,11 +13070,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -12710,6 +13124,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -12757,6 +13172,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -12947,14 +13364,18 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_dbl",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -13002,11 +13423,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -13053,8 +13476,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -13099,12 +13522,15 @@
      "playmaking": 81
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "dv_slither",
+     "dv_gather",
+     "dv_kick",
+     "pa_root",
      "pa_lob"
     ],
     "appearance": {
@@ -13151,13 +13577,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -13205,8 +13633,9 @@
     "perks": [
      "sh_root",
      "fi_root",
+     "dr_handle",
      "pd_contest",
-     "dr_handle"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -13253,13 +13682,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -13306,11 +13735,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -13357,6 +13786,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -13451,9 +13882,9 @@
      "playmaking": 67
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -13500,11 +13931,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 2,
@@ -13551,8 +13984,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 3,
@@ -13600,8 +14033,12 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_range",
+     "sh_midrhythm",
      "sh_release",
-     "sh_range"
+     "sc_root",
+     "sc_pop",
+     "sc_popper"
     ],
     "appearance": {
      "skin": 3,
@@ -13646,18 +14083,20 @@
      "playmaking": 90
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
-     "in_getlow",
-     "pa_skip",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
      "fi_hook",
      "fi_dreamer",
+     "pa_root",
      "pa_lob",
-     "pa_dimes"
+     "pa_skip",
+     "pa_dimes",
+     "sc_root",
+     "in_root",
+     "in_getlow"
     ],
     "appearance": {
      "skin": 0,
@@ -13704,9 +14143,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -13753,9 +14192,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -13849,6 +14288,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -13896,6 +14337,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -13943,8 +14386,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -13993,14 +14436,18 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
-     "fi_layup",
-     "dv_bump",
-     "dr_cross",
-     "fi_euro",
      "fi_power",
+     "fi_layup",
+     "fi_euro",
+     "dr_handle",
+     "dr_cross",
+     "dr_dbl",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "dv_first",
+     "dv_bump",
+     "dv_slither",
      "dv_gather"
     ],
     "appearance": {
@@ -14048,13 +14495,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -14101,11 +14548,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -14153,6 +14602,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -14199,15 +14649,23 @@
     },
     "perks": [
      "sh_root",
-     "fi_root",
-     "in_root",
-     "dr_handle",
      "sh_catch",
-     "in_wall",
-     "fi_fork",
-     "in_anchor",
+     "sh_corner",
      "sh_range",
+     "fi_root",
+     "fi_fork",
+     "dr_handle",
+     "dr_legs",
+     "dr_inout",
      "dr_spin",
+     "in_root",
+     "in_getlow",
+     "in_tip",
+     "in_gimme",
+     "in_wall",
+     "in_anchor",
+     "in_fingerwag",
+     "in_foresight",
      "in_blockparty"
     ],
     "appearance": {
@@ -14255,9 +14713,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -14304,11 +14762,11 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
      "fi_layup",
-     "dv_bump",
-     "dr_cross"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -14400,9 +14858,9 @@
      "playmaking": 73
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -14449,6 +14907,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -14592,11 +15052,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -14643,13 +15105,13 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle",
+     "fi_power",
      "fi_layup",
-     "dv_bump",
-     "dr_cross",
      "fi_euro",
-     "fi_power"
+     "dr_handle",
+     "dr_cross",
+     "dv_first",
+     "dv_bump"
     ],
     "appearance": {
      "skin": 3,
@@ -14696,13 +15158,19 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
-     "dr_handle",
-     "pd_hands",
-     "in_root",
-     "pd_close",
      "fi_fork",
-     "pd_ironnate"
+     "dr_handle",
+     "pd_contest",
+     "pd_charge",
+     "pd_hands",
+     "pd_lanes",
+     "pd_iq",
+     "pd_close",
+     "pd_navigate",
+     "pd_offnight",
+     "pd_pickup",
+     "pd_ironnate",
+     "in_root"
     ],
     "appearance": {
      "skin": 4,
@@ -14747,14 +15215,18 @@
      "playmaking": 83
     },
     "perks": [
-     "pa_root",
      "fi_root",
-     "dr_handle",
      "fi_fork",
+     "fi_power",
+     "dr_handle",
      "dv_first",
      "dv_bump",
+     "dv_slither",
+     "dv_gather",
+     "dv_drive",
+     "dv_kick",
+     "pa_root",
      "pa_lob",
-     "fi_power",
      "pa_dimes"
     ],
     "appearance": {
@@ -14801,13 +15273,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
+     "fi_layup",
+     "fi_euro",
      "fi_float",
-     "in_getlow",
      "fi_hook",
      "fi_dreamer",
+     "sc_root",
+     "in_root",
+     "in_getlow",
      "in_wall"
     ],
     "appearance": {
@@ -14855,8 +15329,9 @@
     "perks": [
      "sh_root",
      "fi_root",
+     "dr_handle",
      "pd_contest",
-     "dr_handle"
+     "pd_charge"
     ],
     "appearance": {
      "skin": 3,
@@ -14997,6 +15472,8 @@
     "perks": [
      "fi_root",
      "sc_root",
+     "sc_roll",
+     "sc_slip",
      "in_root"
     ],
     "appearance": {
@@ -15044,6 +15521,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -15093,11 +15572,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -15144,11 +15625,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -15196,9 +15679,13 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
-     "sh_release",
      "sh_range",
-     "sh_pullup3"
+     "sh_pullup3",
+     "sh_midrhythm",
+     "sh_fade",
+     "sh_contact",
+     "sh_clutch2",
+     "sh_release"
     ],
     "appearance": {
      "skin": 0,
@@ -15245,12 +15732,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -15296,10 +15788,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_float",
+     "sc_root",
+     "sc_roll",
+     "sc_slip",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {
@@ -15347,9 +15841,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -15396,8 +15890,8 @@
     "perks": [
      "fi_root",
      "fi_fork",
-     "dv_first",
-     "dr_handle"
+     "dr_handle",
+     "dv_first"
     ],
     "appearance": {
      "skin": 3,
@@ -15491,6 +15985,8 @@
     "perks": [
      "sh_root",
      "sc_root",
+     "sc_pop",
+     "sc_popper",
      "in_root"
     ],
     "appearance": {
@@ -15585,14 +16081,20 @@
      "playmaking": 90
     },
     "perks": [
-     "pa_root",
      "dr_handle",
      "dr_cross",
-     "pa_skip",
+     "dr_dbl",
      "dr_legs",
+     "dr_inout",
+     "dr_hesiburst",
+     "pa_root",
      "pa_lob",
+     "pa_skip",
      "pa_dimes",
-     "dr_inout"
+     "pd_contest",
+     "pd_charge",
+     "pd_hands",
+     "pd_lanes"
     ],
     "appearance": {
      "skin": 3,
@@ -15639,8 +16141,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 1,
@@ -15687,11 +16189,13 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
      "dr_cross",
-     "sh_fade",
-     "dr_stepback",
-     "dr_spin"
+     "dr_legs",
+     "dr_inout",
+     "dr_spin",
+     "dr_stepback"
     ],
     "appearance": {
      "skin": 3,
@@ -15738,12 +16242,17 @@
     "perks": [
      "sh_root",
      "fi_root",
-     "pd_contest",
+     "fi_fork",
      "dr_handle",
+     "pd_contest",
+     "pd_charge",
      "pd_hands",
-     "in_root",
+     "pd_lanes",
+     "pd_iq",
      "pd_close",
-     "fi_fork"
+     "pd_navigate",
+     "pd_offnight",
+     "in_root"
     ],
     "appearance": {
      "skin": 3,
@@ -15789,13 +16298,15 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
-     "sc_roll",
-     "in_getlow",
      "fi_lob",
+     "sc_root",
+     "sc_roll",
+     "sc_roller",
+     "in_root",
+     "in_getlow",
+     "in_tip",
      "in_wall"
     ],
     "appearance": {
@@ -15844,6 +16355,7 @@
      "sh_root",
      "sh_catch",
      "sh_corner",
+     "sh_midrhythm",
      "sh_release"
     ],
     "appearance": {
@@ -15889,9 +16401,9 @@
      "playmaking": 70
     },
     "perks": [
-     "pa_root",
      "dr_handle",
-     "dr_cross"
+     "dr_cross",
+     "pa_root"
     ],
     "appearance": {
      "skin": 3,
@@ -15938,8 +16450,8 @@
     "perks": [
      "sh_root",
      "sh_catch",
-     "pd_contest",
-     "sh_corner"
+     "sh_corner",
+     "pd_contest"
     ],
     "appearance": {
      "skin": 4,
@@ -15986,9 +16498,9 @@
     "perks": [
      "sh_root",
      "sh_midrhythm",
+     "sh_fade",
      "dr_handle",
-     "dr_cross",
-     "sh_fade"
+     "dr_cross"
     ],
     "appearance": {
      "skin": 3,
@@ -16034,11 +16546,12 @@
     },
     "perks": [
      "fi_root",
-     "sc_root",
-     "in_root",
      "fi_fork",
      "fi_power",
+     "sc_root",
      "sc_roll",
+     "sc_roller",
+     "in_root",
      "in_getlow"
     ],
     "appearance": {

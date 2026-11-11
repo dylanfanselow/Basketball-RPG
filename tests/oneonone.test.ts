@@ -303,7 +303,9 @@ describe('round 61: the 1v1 CPU brain', () => {
     place(g, c, u, { x: 3, y: 0 });
     u.state = 'fallen'; u.stateT = 0; u.stateDur = 1.3;
     const down = forecastShot(g, c, 'three').contest;
-    place(g, c, u, { x: 6, y: 1 });
+    // round 77: 4.5 ft (was 6): Murray now owns Quick Release (his prerequisites were filled in), and from 6 ft a set
+    // defender can't reach a 0.28 s release either, so set and staggered were both 0
+    place(g, c, u, { x: 4.5, y: 1 });
     const set = forecastShot(g, c, 'three').contest;
     u.staggerUntil = g.time + 0.5;
     const stag = forecastShot(g, c, 'three').contest;
