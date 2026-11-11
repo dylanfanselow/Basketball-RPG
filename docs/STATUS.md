@@ -300,7 +300,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   stuns hold the stumble pose (`bumpedU` in GameScene).
 - Made shots: rim path continues below the net, then a falling `dead` ball (gravity, bounces, roll); the inbounder
   picks it up off the bounce. Animated nets (`drawNet` in view.ts, `updateNets` in GameScene). Loud `sfx.swish` only
-  on clean swishes. A pump fake before the first dribble after a catch keeps the dribble.
+  on clean swishes. Round 75: crunch time (last 30 s) hushes crowd + music on each shot, a make pops the crowd;
+  crunch-time shots dance on the rim (`planShot` suspense). A pump fake before the first dribble after a catch keeps the dribble.
 - Trust model (`ai/trust.ts`) and rotation/minutes from coach trust (`rotation.ts`).
 
 ## Progression

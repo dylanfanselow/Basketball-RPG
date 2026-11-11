@@ -29,6 +29,10 @@ class Sfx {
   private arenaOn = false;
   settings: AudioSettings = { master: 0.8, sfx: 0.9, crowd: 0.45, muted: false, music: 0.5 };
   private musicBus!: GainNode;
+  private crowdHush!: GainNode;
+  private musicHush!: GainNode;
+  /** round 75: a crunch-time shot is in the air (crowd + music held near silent) */
+  hushed = false;
 
   constructor() {
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')); } catch { /* defaults */ }
@@ -55,7 +59,9 @@ class Sfx {
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4;
     this.musicBus = ctx.createGain();
-    this.sfxBus.connect(this.master); this.crowdBus.connect(this.master); this.musicBus.connect(this.master);
+    // round 75: crowd and music each pass through a hush gate (crunch-time shots: the arena holds its breath)
+    this.crowdHush = ctx.createGain(); this.musicHush = ctx.createGain();
+    this.sfxBus.connect(this.master); this.crowdBus.connect(this.crowdHush).connect(this.master); this.musicBus.connect(this.musicHush).connect(this.master);
     this.master.connect(comp).connect(ctx.destination);
     // 2s of white noise reused by every noise-based sound
     this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -147,6 +153,41 @@ class Sfx {
       this.tone({ f: 70, f2: 38, peak: 0.55, a: 0.04, d: 0.9, dest: this.master });
       this.noiseHit({ type: 'lowpass', f: 1800, f2: 160, q: 2, peak: 0.35, a: 0.05, d: 0.8, dest: this.master });
     }
+  }
+
+  /**
+   * Round 75: a shot in the last 30 seconds: the crowd and the music drop out while it's in the air (sfx stay, so
+   * every bounce on the rim is heard). Off brings them back (a miss); pop() is the make.
+   */
+  hush(on: boolean) {
+    this.hushed = on;
+    if (!this.ctx || !this.crowdHush) return;
+    const t = this.ctx.currentTime;
+    for (const [g, low] of [[this.crowdHush, 0.04], [this.musicHush, 0]] as [GainNode, number][]) {
+      g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.setTargetAtTime(on ? low : 1, t, on ? 0.12 : 0.35);
+    }
+  }
+  /** Round 75: the crunch-time make: the house comes down (the crowd back at once and louder than any cheer, the
+   *  music back after it). intensity 0..1 (the road crowd is smaller). */
+  pop(intensity = 1) {
+    this.hushed = false;
+    if (!this.ctx || !this.crowdHush) return;
+    const t = this.ctx.currentTime;
+    this.crowdHush.gain.cancelScheduledValues(t); this.crowdHush.gain.setValueAtTime(this.crowdHush.gain.value, t); this.crowdHush.gain.setTargetAtTime(1, t, 0.02);
+    this.musicHush.gain.cancelScheduledValues(t); this.musicHush.gain.setValueAtTime(this.musicHush.gain.value, t); this.musicHush.gain.setTargetAtTime(1, t + 1.2, 0.6);
+    const k = intensity * this.crowdSize;
+    if (!this.ok() || k <= 0.01 || !this.crowdGain) return;
+    const g = this.crowdGain.gain, f = this.crowdFilter.frequency;
+    g.cancelScheduledValues(t); f.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t); f.setValueAtTime(f.value, t);
+    g.linearRampToValueAtTime(0.12 + 0.95 * k, t + 0.12);
+    f.linearRampToValueAtTime(1300 + 700 * k, t + 0.12);
+    g.linearRampToValueAtTime(0.12, t + 4.5); f.linearRampToValueAtTime(650, t + 4.5);
+    // the roar: a bright "yeah" layer, a deep body, and a few whistles
+    this.noiseHit({ type: 'bandpass', f: 1900, q: 0.7, peak: 0.5 * k, a: 0.08, d: 3.2, dest: this.crowdBus });
+    this.noiseHit({ type: 'bandpass', f: 380, q: 0.9, peak: 0.42 * k, a: 0.1, d: 2.8, dest: this.crowdBus });
+    for (let i = 0; i < 3; i++) this.tone({ f: rand(2300, 3100), f2: rand(2000, 2600), peak: 0.05 * k, a: 0.03, d: rand(0.35, 0.7), at: rand(0.1, 0.9), dest: this.crowdBus });
   }
 
   // ---------- sounds ----------

@@ -119,6 +119,11 @@ export function launchVelocity(p0: V3, aim: V3, theta: number, g = GRAVITY): V3 
   return v3((dx / D) * sp * c, (dy / D) * sp * c, sp * Math.sin(theta));
 }
 
+/** Round 75: crunch-time shots: how many iron-aimed versions to try, and how much softer (higher) they're lofted. */
+export const SUSPENSE_TRIES = 60, SUSPENSE_ARC = 0.1;
+/** Round 75: share of ordinary (non-crunch) shots that get the same rim-dancing treatment now and then. */
+export const SUSPENSE_ANYTIME = 0.2;
+
 /** Arc by shot type (degrees above horizontal at release). */
 const ARC: Record<string, number> = { mid: 50, fade: 53, jelly: 64, three: 49, deep3: 47, stepThroughJumper: 50, floater: 62, hook: 56, layup: 58, euro: 58, stepThrough: 58, push: 55 };
 const BANKERS = new Set(['layup', 'euro', 'stepThrough', 'push', 'jelly']);
@@ -129,6 +134,8 @@ export interface PlanInput {
   release: V3; hoop: Hoop; type: string; made: boolean; airball: boolean;
   /** shot distance (ft) and how contested (0..1), bigger misses from deep / under pressure */
   dist: number; contest: number;
+  /** round 75: pick a version that dances on the rim (several bounces) when one exists (crunch time, and now and then) */
+  suspense?: boolean;
 }
 
 /**
@@ -162,6 +169,28 @@ export function planShot(inp: PlanInput, rng: Rng): ShotPlan {
     return { ...sim, aim, swish: sim.through !== null && !hit, airball: !hit && sim.through === null, fallback: false };
   };
   const ok = (p: ShotPlan | null) => !!p && (made ? p.through !== null : p.through === null && (airball ? p.airball : !p.airball));
+  // round 75: crunch time: aim at the iron (a softer, higher arc) and keep the plan that bounces on the rim the most
+  if (inp.suspense && !airball) {
+    let best: ShotPlan | null = null, bs = -1;
+    const baseArc = arc;
+    for (let i = 0; i < SUSPENSE_TRIES; i++) {
+      const ang = rng.range(0, Math.PI * 2), r = rng.range(made ? 0.4 : 0.5, made ? 0.72 : 0.85);
+      const aim = v3(hoop.x + along.x * Math.cos(ang) * r + lat.x * Math.sin(ang) * r * 0.75, hoop.y + along.y * Math.cos(ang) * r + lat.y * Math.sin(ang) * r * 0.75, RIM_HEIGHT + 0.05);
+      let vel: V3 | null = null;
+      for (let th = Math.min(1.42, baseArc + SUSPENSE_ARC); !vel && th < 1.5; th += 0.1) vel = launchVelocity(release, aim, th);
+      if (!vel) continue;
+      const sim = simulateShot(release, vel, hoop);
+      if (sim.timedOut) continue;
+      const rims = sim.contacts.filter((c) => c.kind === 'rim');
+      const hit = sim.contacts.some((c) => c.kind !== 'net');
+      const plan: ShotPlan = { ...sim, aim, swish: sim.through !== null && !hit, airball: !hit && sim.through === null, fallback: false };
+      if (!ok(plan) || rims.length < 2) continue;
+      const score = rims.length + (rims[rims.length - 1].t - rims[0].t) * 2;
+      if (score > bs) { bs = score; best = plan; }
+      if (rims.length >= 4) break;
+    }
+    if (best) return best;
+  }
   for (let i = 0; i < 40; i++) {
     let a: number, l: number, z = RIM_HEIGHT + 0.05;
     if (made) {

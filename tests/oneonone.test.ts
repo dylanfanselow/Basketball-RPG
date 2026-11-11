@@ -372,10 +372,11 @@ describe('round 61: the 1v1 CPU brain', () => {
 
   it('Hard gets cleaner looks than Easy and beats Easy in a mirror match', () => {
     const out: [IsoStats, IsoStats] = [emptyIsoStats(), emptyIsoStats()];
-    for (let s = 1; s <= 8; s++) run1v1(buildOneOnOne({ ...DEFAULT_1V1, p1Team: 'BOS', p2Team: 'BOS', cpuLevel: 'easy' }, s * 31, false, 'hard'), out);
+    // round 75: 24 games (was 8, which a reshuffled random stream could tip from 6 wins to 5): Hard wins 62%+
+    for (let s = 1; s <= 24; s++) run1v1(buildOneOnOne({ ...DEFAULT_1V1, p1Team: 'BOS', p2Team: 'BOS', cpuLevel: 'easy' }, s * 31, false, 'hard'), out);
     expect(out[0].contest / out[0].shots).toBeLessThan(out[1].contest / out[1].shots);
-    expect(out[0].wins).toBeGreaterThanOrEqual(6);
-  });
+    expect(out[0].wins).toBeGreaterThanOrEqual(15);
+  }, 60000);
 
   it('defense by level: an Easy CPU bites on pump fakes far more than a Hard one', () => {
     const bites = (level: 'easy' | 'hard') => {

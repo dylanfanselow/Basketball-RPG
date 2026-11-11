@@ -20,7 +20,7 @@ import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, po
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
-import { ShotPlan, planShot, samplePlan, predictLanding, V3 } from './ballPhysics';
+import { ShotPlan, planShot, samplePlan, predictLanding, V3, SUSPENSE_ANYTIME } from './ballPhysics';
 
 export interface UserInput {
   move: Vec; sprint: boolean; // sprint = tap (edge) for a burst
@@ -166,6 +166,8 @@ export const ULT_ISO_TRIES = 3;
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
 export const UNCLE_DREW_MIN = 0.08;
+/** round 75: the last this-many seconds of the game are crunch time (the arena holds its breath on every shot) */
+export const CRUNCH_S = 30;
 /** round 73/74 Freight Train: top speed x`boost` for `secs` on a fast break (steal, block or defensive board in a
  * full-court game); drive contact takes only `contact` of the speed it normally would */
 export const FREIGHT = { boost: 1.15, secs: 2.0, contact: 0.4 };
@@ -383,6 +385,8 @@ export class GameSim {
   get qEquiv() { return (this.cfg.quarterLen * this.periods) / 4; }
   /** "Q3", "H2", "OT" */
   periodLabel(q = this.quarter) { return q > this.periods ? 'OT' : `${this.periods === 2 ? 'H' : 'Q'}${q}`; }
+  /** Round 75: the last CRUNCH_S seconds of the game (final period or overtime, game clock): shots hush the arena. */
+  get crunchTime() { return this.cfg.mode === 'game' && !this.cfg.oneOnOne && this.quarter >= this.periods && this.clock <= CRUNCH_S && this.clock > 0; }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= this.periods && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(this.periods, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
   /** Round 61: a 1v1 CPU's level (null for humans and outside 1v1). */
@@ -1496,7 +1500,7 @@ export class GameSim {
     const ev = evaluateShot(p, this.opp(p.team), side, ps.type, { now: this.time, clutch: this.clutch, override: ps.override, dunk: ps.dunk, windmill: ps.windmill, oopTiming: ps.oopTiming });
     const rim = this.rim(p.team);
     if (p.anim) p.anim.release = this.time;
-    this.quiet('release', { type: ps.type }, p.id);
+    this.quiet('release', { type: ps.type, crunch: this.crunchTime && ps.type !== 'dunk' }, p.id);
 
     // blocks
     for (const d of this.cfg.story?.noBlocks ? [] : this.opp(p.team)) {
@@ -1577,7 +1581,7 @@ export class GameSim {
       this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0, t: 0, dur, made, pts: ev.pts, ev, foul, rim: rimPath, rimT: 0, rimKey: 0, airball: false };
     } else {
       // everything else is a real physical shot that produces the decided result (see ballPhysics.ts)
-      const plan = planShot({ release: { x: this.ball.p.x, y: this.ball.p.y, z: z0 }, hoop: { x: rim.x, y: rim.y, dir: side }, type: ps.type, made, airball, dist: d, contest: ev.contest }, this.rng);
+      const plan = planShot({ release: { x: this.ball.p.x, y: this.ball.p.y, z: z0 }, hoop: { x: rim.x, y: rim.y, dir: side }, type: ps.type, made, airball, dist: d, contest: ev.contest, suspense: this.crunchTime || this.rng.chance(SUSPENSE_ANYTIME) }, this.rng);
       const first = plan.contacts[0]?.t ?? plan.end.t;
       this.ball.st = { kind: 'shot', shooter: p, a: { ...this.ball.p }, z0, t: 0, dur: first, made, pts: ev.pts, ev, foul, airball: plan.airball, plan, ci: 0 };
     }

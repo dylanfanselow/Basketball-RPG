@@ -512,6 +512,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 75 (owner): crunch time.** Every shot (not dunks) released in the **last 30 seconds** of the game (final
+  period or OT, game clock) hushes the arena: the crowd and the music drop out while it's in the air (sound effects
+  stay, so each bounce on the iron is heard). A miss, airball or block brings everything back; a make is a **big
+  crowd pop** (louder than any cheer: roar, low rumble, whistles; the road crowd 70%), the music returns after it.
+  **Rim suspense:** crunch-time shots pick a flight that bounces on the rim 2+ times (94% of them vs 4% of ordinary
+  shots) with a softer, higher arc; 20% of ordinary shots get the same treatment. The result is still decided before
+  the flight (FG% unchanged in 12 headless games: 43.0% vs 43.6%).
 - **Round 74 (owner):** **Freight Train** only fires on a **fast break** (a live steal, block or defensive board in a
   full-court game, i.e. `changePossessionLive`), for the new offense only, **2 s** (was 3.5 s on any change); the
   drive-contact effect stays. **Star bigs post up:** the coach adds +0.15 to post sets when the team's go-to scorer is

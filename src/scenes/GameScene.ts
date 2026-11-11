@@ -205,7 +205,7 @@ export class GameScene extends Phaser.Scene {
     this.makeHud();
     // round 60: a prologue game (the tutorial box, the 1s, the big game's coach + scout)
     this.story = this.mode === 'story' ? new StoryRun(this, this.initData.story ?? 'tutorial') : null;
-    this.events.on('shutdown', () => { app.sim = null; sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; sfx.music(null); });
+    this.events.on('shutdown', () => { app.sim = null; sfx.hush(false); sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; sfx.music(null); });
     sfx.music('game'); // round 60c: the retro arcade loop in every basketball game
     sfx.setArena(!this.school); // crowd murmur only while an arena game is on
     sfx.rain(this.school === 'rain');
@@ -390,6 +390,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sim = this.sim;
+    // round 75: a crunch-time hush never outlives its shot (a make pops, a miss / block / airball lifts it at once)
+    if (sfx.hushed && sim.ball.st.kind !== 'shot' && this.time.now - this.hushAt > 1500) sfx.hush(false);
     if (sim.over) sim.settle(Math.min(0.05, deltaMs / 1000)); // round 60e: land and stand after the final whistle
     // round 60: story lines hold the game (✕ reads on); the tutorial box follows the director
     if (this.story?.update()) { for (const e of sim.drainEvents()) this.onEvent(e); this.render(); if (sim.over) this.story.onOver(); return; }
@@ -470,21 +472,22 @@ export class GameScene extends Phaser.Scene {
       case 'pass': sfx.pass(pan, !!d.lob); break;
       case 'catch': sfx.catch(pan); break;
       case 'rebound': sfx.ding(!!d.off); this.popText(who, d.off ? 'OFF. REBOUND +1' : 'REBOUND +1', '#ffd84a'); break;
-      case 'release': sfx.release(pan); break;
+      case 'release': sfx.release(pan); if (d.crunch) { sfx.hush(true); this.hushAt = this.time.now; } break; // round 75: crunch time, the arena holds its breath
       case 'net':
         this.netHits[sim.ball.p.x < 47 ? 0 : 1] = { at: this.time.now, amp: d.type === 'dunk' ? 1.1 : d.swish ? 1 : 0.75 };
         if (d.type === 'dunk' || d.type === 'alleyOop') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
         else { d.swish ? sfx.swish(pan, true) : sfx.swish(pan, false); if (d.pts === 3) sfx.cheer(d.team === 0 ? 0.75 : 0.3); }
+        if (sfx.hushed) sfx.pop(d.team === 0 ? 1 : 0.7); // round 75: it went in: the house comes down
         break;
-      case 'rim': if (!d.seq) sfx.clank(pan, !!d.board); break; // live-rim misses already played their contacts
+      case 'rim': if (!d.seq) sfx.clank(pan, !!d.board); if (sfx.hushed) sfx.hush(false); break; // live-rim misses already played their contacts
       case 'rimHit': d.kind === 'tick' ? sfx.rimTick(pan) : sfx.clank(pan, d.kind === 'board'); break;
-      case 'airball': sfx.airball(pan); break;
+      case 'airball': sfx.airball(pan); if (sfx.hushed) sfx.hush(false); break;
       case 'attention': sfx.cheer(d.tier >= 2 ? 0.55 : 0.35); break; // the crowd notices the defense loading up (round 47)
       case 'boxout': break;
       case 'bounce': sfx.bounce(d.v ?? 6, pan); break;
       case 'screenHit': sfx.thud(pan, false); break;
       case 'contact': sfx.thud(pan, !!d.hard); break;
-      case 'block': sfx.block(pan); sfx.cheer(home ? 0.8 : 0.35); break;
+      case 'block': if (sfx.hushed) sfx.hush(false); sfx.block(pan); sfx.cheer(home ? 0.8 : 0.35); break;
       case 'steal': sfx.steal(pan); if (home) sfx.cheer(0.55); else sfx.groan(); break;
       case 'ankles': sfx.squeak(pan, 1.2); sfx.cheer(1); break;
       case 'poster': sfx.cheer(1); break;
@@ -857,6 +860,8 @@ export class GameScene extends Phaser.Scene {
 
   nets: NetHoop[] = [];
   netHits: { at: number; amp: number }[] = [];
+  /** round 75: when the crunch-time hush started (ms, scene time) */
+  hushAt = 0;
   /** Nets: bulge around the ball while it goes through, then stretch, snap back and sway. */
   updateNets() {
     const b = this.sim.ball, now = this.time.now;
