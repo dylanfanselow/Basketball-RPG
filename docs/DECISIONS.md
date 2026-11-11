@@ -512,6 +512,13 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 72 (shaped trees, owner's pictures):** Driving = the dribbler from the NBA logo (start at the planted
+  foot, Windmill Gather at the head, Drive & Kick on the ball), Passing = a relay baton hand-off (start at the lower
+  fist bottom left, Magic at the baton's top end), Finishing = an open hand (start at the wrist; pinky and ring finger
+  dunks, middle finger layups, index and thumb floaters/hooks), Handles = a red valve wheel (start at the bottom knob,
+  work around the wheel). Outlines are **traced from the reference images**, not drawn freehand. New Handles GOAT
+  skill **Uncle Drew** sits in the hub: needs **every** Handles perk; ○ mid-move cancels into the next move at once
+  (after 0.08 s), and every chain move works off any move. Only **Kyrie Irving** has it in the league.
 - **Round 68:** a shot off a pump fake is its own scoring method for the rhythm STALE count (`mid · pump fake`),
   not "off dribble".
 - **Round 67:** Mamba also keeps made midrange jumpers from going **stale** (no repeat decay on their rhythm).

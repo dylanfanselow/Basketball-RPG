@@ -8,6 +8,8 @@ import { Player } from '../src/sim/player';
 import { newCareer, migrateCareer } from '../src/career/career';
 import { canUnlock, unlock } from '../src/career/skilltree';
 import { predictLanding } from '../src/sim/ballPhysics';
+import { resolveMove } from '../src/sim/moves';
+import { PERK_SHAPES } from '../src/scenes/perkShapes';
 import { v, len, sub, norm, scale, add } from '../src/sim/math';
 import rosters from '../src/data/rosters.json';
 
@@ -175,7 +177,7 @@ describe('round 64: Roller / Popper', () => {
 describe('round 65: shaped trees and GOAT skills', () => {
   it('GOAT skills cost 5 and sit where the owner drew them', () => {
     const goats = TREES.flatMap((t) => t.nodes.filter((n) => n.goat).map((n) => n.id)).sort();
-    expect(goats).toEqual(['in_blockparty', 'pd_ironnate', 'sh_lethal']);
+    expect(goats).toEqual(['dr_uncledrew', 'in_blockparty', 'pd_ironnate', 'sh_lethal']);
     for (const id of goats) expect(NODES[id].cost).toBe(5);
     expect(NODES.sh_lethal.prereqs.sort()).toEqual(['sh_chef', 'sh_mamba']);
     expect(NODES.sh_lethal.desc).toContain('I understand it now');
@@ -194,6 +196,7 @@ describe('round 65: shaped trees and GOAT skills', () => {
     const who = (id: string) => flat.filter((p) => p.perks.includes(id)).map((p) => p.name).sort();
     expect(who('in_blockparty')).toEqual(['Victor Wembanyama']);
     expect(who('pd_ironnate')).toEqual(['Kawhi Leonard']);
+    expect(who('dr_uncledrew')).toEqual(['Kyrie Irving']);
     expect(who('sh_lethal')).toEqual(['Jalen Brunson', 'Luka Dončić', 'Shai Gilgeous-Alexander', 'Stephen Curry']);
   });
   it('old saves: Lockdown Stance -> Hand in Face, Swat Team -> Anchor, Floor Burn refunded', () => {
@@ -328,5 +331,70 @@ describe('round 68: a shot off a pump fake is its own scoring method', () => {
     expect(c.has('afterFake')).toBe(true);
     p.pumpFakeAt = g.time - 5; // a fake before this catch doesn't count
     expect(shotConditions(p, g.side(p.team), 'mid', g.time, false).has('afterFake')).toBe(false);
+  });
+});
+
+describe('round 72: shaped trees (player, baton, hand, valve) and Uncle Drew', () => {
+  const tree = (id: string) => TREES.find((t) => t.id === id)!;
+  it('each tree is drawn on its picture and starts where the owner said', () => {
+    expect(['driving', 'passing', 'finishing', 'dribbling'].map((id) => tree(id).shape)).toEqual(['player', 'baton', 'hand', 'valve']);
+    for (const s of ['player', 'baton', 'hand']) expect(PERK_SHAPES[s]?.length).toBeGreaterThan(0);
+    const root = (id: string) => tree(id).nodes.find((n) => n.prereqs.length === 0)!;
+    const maxY = (id: string) => Math.max(...tree(id).nodes.map((n) => n.y));
+    for (const id of ['driving', 'finishing', 'dribbling']) expect(root(id).y).toBe(maxY(id)); // from the bottom
+    const pa = root('passing');
+    expect(pa.y).toBe(maxY('passing'));
+    expect(pa.x).toBe(Math.min(...tree('passing').nodes.map((n) => n.x))); // bottom left
+    expect([NODES.dr_uncledrew.x, NODES.dr_uncledrew.y]).toEqual([50, 48]); // the hub of the wheel
+    expect(NODES.dr_chain.prereqs.sort()).toEqual(['dr_killer', 'dr_snatch', 'dr_stepback']);
+  });
+  it('Uncle Drew is a GOAT skill that needs every Handles perk', () => {
+    expect(NODES.dr_uncledrew.goat).toBe(true);
+    expect(NODES.dr_uncledrew.cost).toBe(5);
+    const c = newCareer('U', 'PG');
+    c.perkPoints = 99;
+    const rest = tree('dribbling').nodes.map((n) => n.id).filter((id) => id !== 'dr_uncledrew');
+    for (const id of rest.slice(0, -1)) expect(unlock(c, id)).toBe(true);
+    const chk = canUnlock(c, 'dr_uncledrew');
+    expect(chk.ok).toBe(false);
+    if (!chk.ok) expect(chk.reason).toBe('Requires every Handles perk');
+    expect(unlock(c, rest[rest.length - 1])).toBe(true);
+    expect(unlock(c, 'dr_uncledrew')).toBe(true);
+  });
+  const handler = (uncle: boolean) => {
+    const g = live();
+    const h = g.holder()!;
+    for (const n of tree('dribbling').nodes) h.nodes.add(n.id);
+    if (!uncle) h.nodes.delete('dr_uncledrew');
+    h.recompute(); h.deadDribble = false;
+    return { g, h };
+  };
+  it('cancels a dribble move straight into the next one (no buffering)', () => {
+    for (const uncle of [false, true]) {
+      const { g, h } = handler(uncle);
+      g.dribbleMove(h, v(0, 1));
+      expect(h.state).toBe('dribbleMove');
+      const first = h.move!.id;
+      h.stateT = 0.2;
+      g.dribbleMove(h, v(0, -1));
+      if (uncle) {
+        expect(h.state).toBe('dribbleMove');
+        expect(h.bufferedMove).toBeNull();
+        expect(h.lastMove!.id).toBe(first);
+        expect(h.stateT).toBe(0);
+      } else {
+        expect(h.bufferedMove).not.toBeNull();
+        expect(h.move!.id).toBe(first);
+      }
+    }
+  });
+  it('every chain move works off any move (Snatch-Back off a Spin)', () => {
+    for (const uncle of [false, true]) {
+      const { g, h } = handler(uncle);
+      const toRim = norm(sub(g.rim(h.team), h.p));
+      h.vel = v(); h.lastMove = { id: 'spin', endAt: g.time, dir: toRim };
+      const id = resolveMove(h, scale(toRim, -1), toRim, g.time, 3);
+      expect(id).toBe(uncle ? 'snatchBack' : 'stepback');
+    }
   });
 });

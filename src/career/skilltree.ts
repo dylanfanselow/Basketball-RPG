@@ -1,4 +1,4 @@
-import { NODES } from '../sim/data';
+import { NODES, TREES } from '../sim/data';
 import type { CareerState } from './career';
 
 export type UnlockCheck = { ok: true } | { ok: false; reason: string };
@@ -8,6 +8,10 @@ export function canUnlock(c: CareerState, id: string): UnlockCheck {
   const n = NODES[id];
   if (!n) return { ok: false, reason: 'Unknown perk' };
   if (c.nodes.includes(id)) return { ok: false, reason: 'Already unlocked' };
+  if (n.needsTree) {
+    const tree = TREES.find((t) => t.id === n.tree)!;
+    if (tree.nodes.some((m) => m.id !== id && !c.nodes.includes(m.id))) return { ok: false, reason: `Requires every ${tree.name} perk` };
+  }
   if (c.perkPoints < n.cost) return { ok: false, reason: `Needs ${n.cost} perk point${n.cost > 1 ? 's' : ''}` };
   const missing = n.prereqs.filter((p) => !c.nodes.includes(p));
   if (missing.length) return { ok: false, reason: `Requires ${missing.map((p) => NODES[p]?.name).join(' and ')}` };

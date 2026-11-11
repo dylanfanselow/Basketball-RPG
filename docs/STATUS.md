@@ -304,7 +304,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
 - Trust model (`ai/trust.ts`) and rotation/minutes from coach trust (`rotation.ts`).
 
 ## Progression
-- 5 core stats → ~28 sub-ratings via `statInfluence.json`; level-up screen; 8 perk constellations (`data/trees`);
+- 5 core stats → ~28 sub-ratings via `statInfluence.json`; level-up screen; 8 perk constellations (`data/trees`), each drawn on a
+  picture (round 65: ball, court, key, wall; round 72: NBA-logo dribbler, baton hand-off, open hand, valve wheel traced
+  from the owner's images in `scenes/perkShapes.ts`); GOAT skills incl. Handles' Uncle Drew (`needsTree`);
   modifier/hook system (`modifiers.ts`) drives perks, traits, backstories, ultimates.
 - Ultimates: Deep Step-Back, FT-Line Takeoff, Chase-Down Block, each with 3 evolution levels; locked "???" panel
   until `flags.ult_unlocked`; milestone evo points.

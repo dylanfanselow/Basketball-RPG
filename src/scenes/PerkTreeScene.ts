@@ -4,9 +4,16 @@ import { FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { TREES, TreeNode, Tree } from '../sim/data';
 import { canUnlock, unlock } from '../career/skilltree';
+import { PERK_SHAPES } from './perkShapes';
 
 const AREA = { x: 120, y: 150, w: 760, h: 520 };
 const GOLD = 0xffcc33;
+const BG = 0x05060d;
+/** a color blended toward the background, drawn opaque (so overlapping strokes don't stack up) */
+const fade = (c: number, t: number) => {
+  const ch = (s: number) => Math.round(((BG >> s) & 255) + (((c >> s) & 255) - ((BG >> s) & 255)) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
 
 export class PerkTreeScene extends Phaser.Scene {
   inp!: InputMapper; treeIdx = 0; sel = 0; back = 'Hub';
@@ -33,10 +40,26 @@ export class PerkTreeScene extends Phaser.Scene {
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { const n = this.nodeAt(p.x, p.y); if (n >= 0) this.sel = n; });
   }
   get tree() { return TREES[this.treeIdx]; }
-  /** Round 65: the picture a shaped tree is drawn on (a ball, the court, the key, a brick wall), faint, behind the lines. */
+  /**
+   * Round 65: the picture a shaped tree is drawn on (a ball, the court, the key, a brick wall), faint, behind the lines.
+   * Round 72: the traced pictures (player, baton, hand) from perkShapes.ts and the valve wheel.
+   */
   drawBackdrop(tree: Tree) {
     const g = this.g, X = (x: number) => AREA.x + (x / 100) * AREA.w, Y = (y: number) => AREA.y + (y / 100) * AREA.h;
-    if (tree.shape === 'ball') {
+    const traced = PERK_SHAPES[tree.shape];
+    if (traced) {
+      const pts = (fl: number[]) => { const out: Phaser.Math.Vector2[] = []; for (let i = 0; i < fl.length; i += 2) out.push(new Phaser.Math.Vector2(X(fl[i]), Y(fl[i + 1]))); return out; };
+      for (const part of traced) {
+        for (const poly of part.polys) {
+          const p = pts(poly);
+          g.fillStyle(part.fill, part.alpha ?? 0.13); g.fillPoints(p, true);
+          g.lineStyle(2, part.edge, 0.4); g.strokePoints(p, true, true);
+        }
+        g.lineStyle(2, part.edge, 0.3);
+        for (const l of part.lines ?? []) g.strokePoints(pts(l), false, false);
+      }
+    } else if (tree.shape === 'valve') this.drawValve();
+    else if (tree.shape === 'ball') {
       const cx = X(49.5), cy = Y(49), r = 232;
       g.fillStyle(0xe86a1c, 0.13); g.fillCircle(cx, cy, r);
       g.lineStyle(3, 0x2a1408, 0.35); g.strokeCircle(cx, cy, r);
@@ -63,6 +86,27 @@ export class PerkTreeScene extends Phaser.Scene {
         g.lineStyle(2, 0xcfc6b8, 0.25); g.strokeRect(p.x - bw / 2, p.y - bh / 2, bw, bh);
       }
     }
+  }
+  /**
+   * Round 72: the Handles valve wheel, after the owner's picture (front on: 8 knobs on the rim, a + of spokes, an inner
+   * ring, a diamond hole in the hub). Drawn in pixels so it stays round; the Handles nodes sit on the same radii
+   * (outer knobs 215 px, inner ring 118 px, centre at x 50 / y 48 in tree units).
+   */
+  drawValve() {
+    const g = this.g, cx = AREA.x + 0.5 * AREA.w, cy = AREA.y + 0.48 * AREA.h, R = 215, r = 118, RED = 0xd42a2a;
+    const at = (rad: number, k: number) => ({ x: cx + Math.sin((k * Math.PI) / 4) * rad, y: cy - Math.cos((k * Math.PI) / 4) * rad });
+    // two passes: a lighter edge drawn wider, then the body on top, so every bar gets an outline
+    for (const [col, grow] of [[fade(RED, 0.42), 4], [fade(RED, 0.2), 0]] as const) {
+      g.lineStyle(22 + grow, col, 1);
+      for (let k = 0; k < 8; k++) { const a = at(R, k), b = at(R, k + 1), i = at(r, k); g.lineBetween(a.x, a.y, b.x, b.y); g.lineBetween(i.x, i.y, a.x, a.y); }
+      for (let k = 0; k < 8; k += 2) { const i = at(r, k); g.lineBetween(cx, cy, i.x, i.y); }
+      g.strokeCircle(cx, cy, r);
+      g.fillStyle(col, 1);
+      for (let k = 0; k < 8; k++) { const a = at(R, k); g.fillCircle(a.x, a.y, 22 + grow / 2); }
+      g.fillCircle(cx, cy, 36 + grow / 2);
+    }
+    g.fillStyle(BG, 1);
+    g.fillPoints([new Phaser.Math.Vector2(cx, cy - 15), new Phaser.Math.Vector2(cx + 15, cy), new Phaser.Math.Vector2(cx, cy + 15), new Phaser.Math.Vector2(cx - 15, cy)], true);
   }
   pos(n: TreeNode) { return { x: AREA.x + (n.x / 100) * AREA.w, y: AREA.y + (n.y / 100) * AREA.h }; }
   nodeAt(x: number, y: number) { return this.tree.nodes.findIndex((n) => { const p = this.pos(n); return Math.hypot(p.x - x, p.y - y) < 22; }); }
@@ -129,7 +173,8 @@ export class PerkTreeScene extends Phaser.Scene {
       else { g.fillPoints([new Phaser.Math.Vector2(p.x, p.y - r), new Phaser.Math.Vector2(p.x + r, p.y), new Phaser.Math.Vector2(p.x, p.y + r), new Phaser.Math.Vector2(p.x - r, p.y)], true); }
       if (i === this.sel) { g.lineStyle(2, 0xffcc33, 1); g.strokeCircle(p.x, p.y, r + 7); }
       const nameCol = n.goat ? (owned || can ? '#ffcc33' : '#9a8540') : owned ? '#ffffff' : can ? '#d8def0' : '#68708c';
-      this.names.push(this.add.text(p.x, p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '12px', color: nameCol, fontStyle: n.goat ? 'bold' : 'normal' }).setOrigin(0.5, 0));
+      const wrap = tree.labelWrap ? { wordWrap: { width: tree.labelWrap }, align: 'center' } : {};
+      this.names.push(this.add.text(p.x, p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '12px', color: nameCol, fontStyle: n.goat ? 'bold' : 'normal', ...wrap }).setOrigin(0.5, 0));
     });
     const n = tree.nodes[this.sel];
     const chk = canUnlock(c, n.id);

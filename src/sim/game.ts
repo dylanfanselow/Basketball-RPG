@@ -164,6 +164,8 @@ export const sizeScore = (p: Player) => p.height * 12 + p.core.strength * 0.25;
 export const ULT_ISO_TRIES = 3;
 /** Round 64: how long after a screen Roller / Popper speed you up (s). */
 export const SLIP_S = 2.0;
+/** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
+export const UNCLE_DREW_MIN = 0.08;
 
 /**
  * How hard a screen lands: stun (s) and knock-back (ft). Grows with the screener's screen rating and strength over
@@ -1758,6 +1760,10 @@ export class GameSim {
     if (p.deadDribble) {
       if (!p.deadWarned) { p.deadWarned = true; this.emit({ kind: 'dead', text: 'Dribble picked up: pass or shoot', pid: p.id }); }
       return;
+    }
+    // round 72: Uncle Drew cancels the move on the spot and goes straight into the next one
+    if (p.state === 'dribbleMove' && p.move && p.stateT >= UNCLE_DREW_MIN && p.mods.pAdd('uncleDrew') > 0) {
+      p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.state = 'idle'; p.bufferedMove = null;
     }
     // input buffer: pressing during a move queues the next one (makes chains feel responsive)
     if (p.state === 'dribbleMove') { p.bufferedMove = { stick: { ...stick }, at: this.time }; return; }

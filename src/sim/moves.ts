@@ -35,7 +35,9 @@ export function resolveMove(p: Player, stick: Vec, toRim: Vec, now: number, defD
   const fits = (m: MoveDef) => (m.dir === dir || m.dir === 'any') && (!m.slow || speed < 4) && (!m.moving || speed >= 4);
   if (p.lastMove) {
     const since = now - p.lastMove.endAt;
-    const chains = Object.entries(MOVES).filter(([id, m]) => m.chainFrom === p.lastMove!.id && since <= (m.chainWindow ?? 0.5) * chainMult && p.hasMove(id) && fits(m));
+    // round 72: with Uncle Drew every chain move works off any other move
+    const uncle = p.mods.pAdd('uncleDrew') > 0;
+    const chains = Object.entries(MOVES).filter(([id, m]) => (m.chainFrom === p.lastMove!.id || (uncle && !!m.chainFrom && id !== p.lastMove!.id)) && since <= (m.chainWindow ?? 0.5) * chainMult && p.hasMove(id) && fits(m));
     chains.sort((a, b) => (a[1].dir === 'any' ? 1 : 0) - (b[1].dir === 'any' ? 1 : 0));
     if (chains.length) return chains[0][0];
   }

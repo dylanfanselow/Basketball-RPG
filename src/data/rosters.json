@@ -3278,7 +3278,8 @@
      "dr_stepback",
      "dr_spin",
      "dr_btb",
-     "sh_afterMove"
+     "sh_afterMove",
+     "dr_uncledrew"
     ],
     "appearance": {
      "skin": 3,

@@ -33,8 +33,11 @@ export interface TreeNode {
   effects: Effect[]; posLock?: string[]; req?: Partial<CoreStats>;
   /** round 65: a GOAT skill (5 points, drawn as a gold star; one or a few CPU players in the league have it) */
   goat?: boolean;
+  /** round 72: needs every other perk of its tree (Uncle Drew); `prereqs` are only the lines drawn into it */
+  needsTree?: boolean;
 }
-export interface Tree { id: string; name: string; shape: string; color: string; desc: string; nodes: TreeNode[] }
+/** labelWrap (round 72): node names wrap at this width (px) on the narrow shaped trees */
+export interface Tree { id: string; name: string; shape: string; color: string; desc: string; nodes: TreeNode[]; labelWrap?: number }
 
 export interface ShotTypeDef { name: string; base: number[][]; sub: string; windup: number; contestW: number; pts: number; contact?: boolean }
 export interface MoveDef {
