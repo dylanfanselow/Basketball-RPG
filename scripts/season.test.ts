@@ -16,7 +16,7 @@ import rosters from '../src/data/rosters.json';
 type Line = BoxScore & { gp: number; dd: number; td: number; best: number; ults: number };
 const BOX_KEYS = ['pts', 'fgm', 'fga', 'tpm', 'tpa', 'ftm', 'fta', 'ast', 'reb', 'oreb', 'stl', 'blk', 'tov', 'secs', 'usage', 'touches'] as const;
 
-it('season', () => {
+it('season', async () => {
   const out = process.env.SEASON_OUT;
   const limit = Number(process.env.SEASON_LIMIT ?? 1e9);
   const players: Record<string, { name: string; team: string; pos: string; tier: number; star: boolean; perks: string[]; ult: string | null; line: Line }> = {};
@@ -38,6 +38,7 @@ it('season', () => {
   let gi = 0;
   for (const [hi, ai] of pairs) {
     if (gi >= limit) break;
+    await new Promise((r) => setImmediate(r)); // let vitest's worker breathe between games (a long sync test times its RPC out)
     const home = TEAMS[hi], away = TEAMS[ai];
     const g = new GameSim({ mode: 'game', quarterLen: 180, seed: 1000 + gi, teams: [home, away], rosters: [generateRoster(home, 0), generateRoster(away, 1)], userId: null, trust: { team: 50, coach: 50 }, ult: { unlocked: false, id: null, level: 0 } } as any);
     const tid = (p: Player) => (p.team === 0 ? home.id : away.id);
