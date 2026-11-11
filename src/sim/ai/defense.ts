@@ -2,7 +2,7 @@ import type { GameSim } from '../game';
 import { Player } from '../player';
 import { POST, postGap } from '../post';
 import { scorerStyle, ATT } from '../attention';
-import { tryActivateUlt } from '../ultimates';
+import { tryActivateUlt, CHASE } from '../ultimates';
 import { RESTRICTED_R, inFrontcourt } from '../court';
 import { add, dist, norm, scale, sub, lerpV, clamp, dot, len } from '../math';
 
@@ -19,12 +19,12 @@ export function thinkDefense(sim: GameSim, d: Player, dt: number) {
   let urgent = false;
 
   // round 51: a CPU star with Chase-Down runs down a break from behind (once a game). Round 74: checked before the
-  // get-back branch (which returned first whenever he was behind the ball, so it never fired), and also when he's
-  // been beaten on a half-court drive
-  if (h && h.team !== d.team && sim.isAI(d) && sim.ultReady(d) && sim.ultOf(d)?.id === 'chaseDown') {
-    const hr = dist(h.p, rim), behind = dist(d.p, rim) > hr + 2;
-    const beaten = hr < 18 && dot(h.vel, norm(sub(rim, h.p))) > 8 && dist(d.p, h.p) < 14;
-    if (behind && ((sim.inTransition(h.team) && hr < 30) || beaten) && tryActivateUlt(sim, d)) return;
+  // get-back branch. Round 78 (owner): fired when the finisher actually goes up for a layup / dunk and he can get
+  // there (trailing him: on the break, or beaten), so it lands; in the last period, any rim finish close enough
+  if (h && h.team !== d.team && h.state === 'shoot' && h.pendingShot && CHASE.finishes.includes(h.pendingShot.type) && sim.isAI(d) && sim.ultReady(d) && sim.ultOf(d)?.id === 'chaseDown') {
+    const r = dist(d.p, h.p), trailing = sim.inTransition(h.team) || dist(d.p, rim) > dist(h.p, rim) + 1;
+    const late = sim.quarter >= sim.periods;
+    if (((trailing && r <= CHASE.range) || (late && r <= CHASE.fallbackRange)) && tryActivateUlt(sim, d)) return;
   }
   // transition defense: get back and protect the rim before matching up
   if (sim.inTransition(sim.possession) && dist(d.p, rim) > dist(ballP, rim) - 3) {

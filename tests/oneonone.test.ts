@@ -263,11 +263,12 @@ describe('passing', () => {
       return g.holder() === m ? 'caught' : g.events.some((e) => e.kind === 'steal') ? 'picked' : 'other';
     };
     let shortPicked = 0, longPicked = 0, shortCaught = 0;
-    for (let s = 1; s <= 120; s++) {
+    // round 78: 240 passes each (was 120): with steals x0.7 there are fewer pick-offs to count
+    for (let s = 1; s <= 240; s++) {
       const a = trial(s, 12); if (a === 'picked') shortPicked++; if (a === 'caught') shortCaught++;
       if (trial(s, 42) === 'picked') longPicked++;
     }
-    expect(shortCaught).toBeGreaterThan(110);
+    expect(shortCaught).toBeGreaterThan(220);
     expect(longPicked).toBeGreaterThan(shortPicked * 3 + 3);
   });
   it('passes are faster than before', () => {

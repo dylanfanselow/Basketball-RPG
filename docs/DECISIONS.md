@@ -512,6 +512,14 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 78 (owner):** **Chase-Down** fires when the finisher actually goes up (a layup / Euro / dunk / alley-oop /
+  Step-Through / jelly / push started, `CHASE.finishes`) and the big can get there: trailing (on the break, or farther
+  from the rim than the shooter) within 15 ft, or in the last period any rim finish within 12 ft. He arrives by the
+  release (up to 45 ft/s) and blocks from up to 7 ft whatever his jump (`CHASE.reach`). Same 40 games: 3 of 15
+  chase-downs blocked before, 13 of 15 after. **Lethal Shooter**: every third green miss goes in (was every other);
+  measured against Chef x0.88 and Lethal 40% + Chef x0.85 on the four Lethal teams' 116 games
+  (`scripts/goatTune.test.ts`): their 3P% 63.4% now, 61.1% (every third), 59.7% (Chef x0.88), 63.9% (40% + x0.85).
+  **Steals** x0.7 (on-ball swipes and passing-lane pick-offs, `STEAL`): 7.85 to 5.44 per team per game.
 - **Round 77 (owner): rosters brought up to date** (`scripts/rosterPerks.ts`, run once with WRITE=1): every perk's
   prerequisites are owned (Uncle Drew = the whole Handles tree, so Kyrie has all of it; GOAT holders own their full
   paths), and the 33 perks nobody had went to the players they fit (FITS by core ratings, position, height and

@@ -61,25 +61,31 @@ describe('round 74: ultimates', () => {
     d.star = true; g.cpuUlts[d.id] = { unlocked: true, id: 'chaseDown', level: 0 };
     return { h, d };
   };
-  it('a star big runs down a fast break from behind', () => {
+  // round 78: it fires when the finisher goes up (a layup / dunk started), no longer when the break starts
+  const goUp = (g: GameSim, h: Player, type: string) => { g.startShot(h, type); };
+  it('a star big runs down a fast-break finisher from behind (when he goes up)', () => {
     const g = live();
     const { h, d } = chaser(g);
     const rim = g.rim(h.team), toRim = norm(sub(rim, h.p));
-    h.p = add(rim, scale(toRim, -20)); h.vel = scale(toRim, 14);
+    h.p = add(rim, scale(toRim, -8)); h.vel = scale(toRim, 14);
     d.p = add(h.p, scale(toRim, -6));
     g.transitionUntil = g.time + 5; g.runner.reset(); // a break: no set called yet
     expect(g.inTransition(h.team)).toBe(true);
     thinkDefense(g, d, 1 / 60);
+    expect(g.ult.active).toBeNull(); // still running: not yet
+    goUp(g, h, 'layup');
+    thinkDefense(g, d, 1 / 60);
     expect(g.ult.active?.id).toBe('chaseDown');
     expect(g.ult.active?.pid).toBe(d.id);
   });
-  it('...and when he gets beaten on a half-court drive', () => {
+  it('...and when he gets beaten on a half-court drive and the driver goes up', () => {
     const g = live();
     const { h, d } = chaser(g);
     const rim = g.rim(h.team), toRim = norm(sub(rim, h.p));
-    h.p = add(rim, scale(toRim, -12)); h.vel = scale(toRim, 12);
+    h.p = add(rim, scale(toRim, -7)); h.vel = scale(toRim, 12);
     d.p = add(h.p, scale(toRim, -4));
-    g.transitionUntil = 0;
+    g.transitionUntil = 0; g.quarter = 1;
+    goUp(g, h, 'layup');
     thinkDefense(g, d, 1 / 60);
     expect(g.ult.active?.id).toBe('chaseDown');
   });

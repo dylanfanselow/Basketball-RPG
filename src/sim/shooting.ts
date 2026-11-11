@@ -36,11 +36,17 @@ export function contestReach(type: string): number {
 /** Seconds from the gather to the release for this shot (the type's windup x the shooter's release / gather perks). */
 export function windupFor(p: Player, type: string): number {
   const jumper = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'].includes(type);
-  const chef = (type === 'three' || type === 'deep3') && p.mods.pAdd('chef') > 0 ? CHEF_WINDUP : 1; // round 65 Chef
+  const chef = (type === 'three' || type === 'deep3') && p.mods.pAdd('chef') > 0 ? SHOOT_TUNE.chefWindup : 1; // round 65 Chef
   return SHOT_TYPES[type].windup * chef * (jumper ? p.mods.pMult('release') : p.mods.pMult('gather'));
 }
-/** Round 65 Chef: 3-point windup multiplier and how far out a deep 3 still shoots like a normal 3 (ft). */
-export const CHEF_WINDUP = 0.8, CHEF_RANGE = 34;
+/** Round 65 Chef: how far out a deep 3 still shoots like a normal 3 (ft). */
+export const CHEF_RANGE = 34;
+/**
+ * Round 78: the shooting GOAT knobs. Lethal Shooter saves every `lethalEvery`-th missed green jumper (or, with
+ * `lethalChance` under 1, each one with that chance); Chef's 3-point windup multiplier. Mutable for the tuning
+ * experiment (scripts/goatTune.test.ts); the game never changes them.
+ */
+export const SHOOT_TUNE = { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8 };
 
 /** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
 export const STEP_THROUGH_WINDOW = 1.5;

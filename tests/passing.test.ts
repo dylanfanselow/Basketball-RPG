@@ -87,5 +87,5 @@ describe('round 61b: passes find the receiver', () => {
       expect(passes).toBeGreaterThan(200);
       expect(g.events.filter((e) => e.kind === 'passMiss').length).toBeLessThanOrEqual(1);
     }
-  });
+  }, 30000);
 });

@@ -4,7 +4,7 @@ import { Player } from './player';
 import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { GREEN_CONTEST, coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
+import { GREEN_CONTEST, SHOOT_TUNE, coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -16,7 +16,7 @@ import { thinkOffense, offBallTarget } from './ai/offense';
 import { thinkDefense } from './ai/defense';
 import { CPU_LEVELS, CpuLevel, CpuLevelCfg } from './ai/levels';
 import type { IsoMemory } from './ai/oneOnOne';
-import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane, OFFENSIVE_ULTS } from './ultimates';
+import { UltState, UltRuntime, tryActivateUlt, tickUlt, cpuUltFor, ultAction, posterLane, OFFENSIVE_ULTS, CHASE } from './ultimates';
 import { PlayRole } from './data';
 import { RimPath, buildPath, sampleRim, pathEnd } from './rim';
 import { updatePost, onPostShot, postLocked, postIntent, POST } from './post';
@@ -183,6 +183,8 @@ export const FREIGHT = { boost: 1.15, secs: 2.0, contact: 0.4 };
 export const GRAVITY = { r: 11, pull: 4.5, minD: 3 };
 /** round 73 Unstoppable: contests on his shots x this (and blocks become contests) */
 export const UNSTOPPABLE_CONTEST = 0.75;
+/** Round 78: steals were too common (8 per team per game): the on-ball swipe and the passing-lane pick-off chances x these. */
+export const STEAL = { swipe: 0.7, lane: 0.7 };
 
 /**
  * How hard a screen lands: stun (s) and knock-back (ft). Grows with the screener's screen rating and strength over
@@ -1527,13 +1529,14 @@ export class GameSim {
     for (const d of this.cfg.story?.noBlocks ? [] : this.opp(p.team)) {
       const party = this.blockPartyOn(d, p, ps.type); // round 65 Block Party: rises and swats it, every time
       if (party && d.z < 0.6) this.jump(d, 0.9);
-      if ((d.z < 0.6 && !party) || d.state === 'fallen' || postLocked(this, d)) continue;
+      // round 78: the Chase-Down ult reaches it from CHASE.reach away, timed: he's up there whatever his jump says
+      const chase = this.ult.active?.id === 'chaseDown' && this.ult.active.pid === d.id;
+      if ((d.z < 0.6 && !party && !chase) || d.state === 'fallen' || postLocked(this, d)) continue;
       if (isStepThrough(ps.type) && bitOnFake(d, p, this.time)) continue; // still coming down from the fake
       const dd = dist(d.p, p.p);
-      if (dd > 4.8 && !party) continue;
+      if (dd > (chase ? CHASE.reach : 4.8) && !party) continue;
       const toRim = norm(sub(rim, p.p));
       const along = dot(norm(sub(d.p, p.p)), toRim);
-      const chase = this.ult.active?.id === 'chaseDown' && this.ult.active.pid === d.id;
       let posF = along > 0.4 ? 1 : along > -0.2 ? 0.55 : 0.1;
       const close = !['mid', 'three', 'deep3', 'fade'].includes(ps.type);
       let chance = (0.04 + 0.2 * d.sub.block / 99) * posF * d.mods.pMult('blockMult') * (close ? 1 : 0.4) * clamp(0.8 + (d.height - p.height) * 0.4, 0.5, 1.4);
@@ -1959,7 +1962,7 @@ export class GameSim {
     const front = posting ? (h.post!.defId === p.id ? 0.8 : 1) : dot(norm(sub(p.p, h.p)), h.face) > -0.2 ? 1 : 0.4;
     const security = 0.6 + (h.sub.ballSpeed / 99) * 0.6;
     const windmill = h.state === 'shoot' && !!h.pendingShot?.windmill; // Windmill Gather: the ball is swung away, no strip
-    const chance = windmill ? 0 : (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1) * (posting ? POST.STEAL_MULT : 1);
+    const chance = windmill ? 0 : STEAL.swipe * (0.06 + 0.16 * p.sub.steal / 99) * p.mods.pMult('stealChance') * front / security * (h.state === 'dribbleMove' ? 1.4 : 1) * (posting ? POST.STEAL_MULT : 1);
     if (this.rng.chance(chance)) {
       p.box.stl++; h.box.tov++;
       this.emit({ kind: 'steal', text: `STEAL by ${p.name}!`, team: p.team, pid: p.id, big: true });
@@ -2349,7 +2352,7 @@ export class GameSim {
           const r = (1.3 + clamp((passLen - 20) / 25, 0, 1) * 0.9) * d.mods.pMult('deflect') + (swiping ? 1.4 : 0);
           if (dist(d.p, b.p) < r && b.z < d.reach + d.z + 0.5) {
             st.checked.add(d.id);
-            const chance = (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.riskMult ?? (st.risky ? 1.8 : 1)) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
+            const chance = STEAL.lane * (st.inbound ? 0.4 : 1) * (0.04 + 0.16 * d.sub.steal / 99) * (st.riskMult ?? (st.risky ? 1.8 : 1)) * (st.lob ? 0.25 : 1) * (swiping ? 1.8 : 1) * (this.time < d.staggerUntil ? 0.3 : 1);
             if (this.rng.chance(chance)) {
               d.box.stl++; st.from.box.tov++;
               this.emit({ kind: 'steal', text: `Picked off by ${d.name}!`, team: d.team, pid: d.id, big: true, data: { recvOff: dist(st.to.p, st.b), inbound: !!st.inbound, len: passLen, k, human: this.isHuman(st.to) } });
@@ -2474,13 +2477,14 @@ export class GameSim {
   }
 
   /**
-   * Round 65: a shot that would miss can still go in. Lethal Shooter (free): every other green jumper (contest under
+   * Round 65: a shot that would miss can still go in. Lethal Shooter (free): every third green jumper (round 78; was every other) (contest under
    * GREEN_CONTEST). Mamba: every other miss of any shot, paid with rhythm (more for a worse shot), if he has it.
    */
   missSaved(p: Player, type: string, ev: ShotEval): boolean {
     if (p.mods.pAdd('lethal') > 0 && JUMPERS.includes(type) && ev.contest < GREEN_CONTEST) {
       p.lethalMisses++;
-      if (p.lethalMisses % 2 === 0) { this.emit({ kind: 'move', text: 'Lethal shooter', pid: p.id, team: p.team }); return true; }
+      const save = SHOOT_TUNE.lethalChance < 1 ? this.rng.chance(SHOOT_TUNE.lethalChance) : p.lethalMisses % SHOOT_TUNE.lethalEvery === 0;
+      if (save) { this.emit({ kind: 'move', text: 'Lethal shooter', pid: p.id, team: p.team }); return true; }
     }
     if (p.mods.pAdd('mamba') > 0) {
       p.mambaMisses++;

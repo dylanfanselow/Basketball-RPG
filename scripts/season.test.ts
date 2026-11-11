@@ -26,6 +26,10 @@ it('season', async () => {
   const plays: Record<string, { runs: number; pts: number }> = {};
   const counts: Record<string, number> = {};
   const add = (k: string, n = 1) => { counts[k] = (counts[k] ?? 0) + n; };
+  // round 78: the shot diet: attempts / makes / points by shot type, league-wide, per team and per player
+  type Diet = Record<string, { fga: number; fgm: number; pts: number }>;
+  const shots = { league: {} as Diet, teams: {} as Record<string, Diet>, players: {} as Record<string, Diet> };
+  const tally = (d: Diet, type: string, made: boolean, pts: number) => { const r = (d[type] ??= { fga: 0, fgm: 0, pts: 0 }); r.fga++; if (made) { r.fgm++; r.pts += pts; } };
   const ults: { id: string; who: string; team: string; outcome: string }[] = [];
   const clutchShots: { who: string; team: string; made: boolean; pts: number; type: string }[] = [];
   for (const t of TEAMS) teams[t.id] = { id: t.id, city: t.city, name: t.name, w: 0, l: 0, pf: 0, pa: 0, ot: 0, closeW: 0, closeL: 0, results: [] as string[], box: {} as Record<string, number>, plays: {} as Record<string, { runs: number; pts: number }>, posts: 0, doubles: 0 };
@@ -47,6 +51,7 @@ it('season', async () => {
     let seen = 0;
     const postSeen = new Set<string>(), helpSeen = new Set<string>();
     const pendingClutch = new Map<string, { type: string; team: string; who: string }>();
+    const pendingShot = new Map<string, { type: string; team: string; key: string }>();
     let lastUlt: { id: string; who: string; team: string; at: number } | null = null;
     let lastPostPass = g.lastPostPassAt;
     const freightWas = new Map<string, number>(), screenWas = new Map<string, string>();
@@ -58,6 +63,18 @@ it('season', async () => {
         const who = e.pid ? g.players.find((q) => q.id === e.pid) : null;
         add(`event:${e.kind}`);
         if (e.kind === 'release' && e.data?.crunch && who) pendingClutch.set(who.id, { type: e.data.type, team: tid(who), who: who.name });
+        if (e.kind === 'release' && who) pendingShot.set(who.id, { type: e.data?.type ?? '?', team: tid(who), key: key(who) });
+        if ((e.kind === 'net' || e.kind === 'rim' || e.kind === 'airball' || e.kind === 'block') && pendingShot.size) {
+          // a block's pid is the blocker: the shot is the pending one from the other team
+          const id = e.kind === 'block' ? [...pendingShot.keys()].find((k) => g.players.find((q) => q.id === k)?.team !== who?.team) : e.pid;
+          const ps = id ? pendingShot.get(id) : undefined;
+          if (ps) {
+            const made = e.kind === 'net', pts = made ? (e.data?.pts ?? 2) : 0;
+            tally(shots.league, ps.type, made, pts); tally((shots.teams[ps.team] ??= {}), ps.type, made, pts); tally((shots.players[ps.key] ??= {}), ps.type, made, pts);
+            pendingShot.delete(id!);
+          }
+        }
+        if (e.kind === 'steal') add(e.text.startsWith('STEAL') ? 'stealsSwipe' : 'stealsPickOff');
         if ((e.kind === 'net' || e.kind === 'rim' || e.kind === 'airball' || e.kind === 'block') && pendingClutch.size) {
           const shooterId = e.kind === 'block' ? [...pendingClutch.keys()][0] : e.pid ?? [...pendingClutch.keys()][0];
           const pc = pendingClutch.get(shooterId!) ?? [...pendingClutch.values()][0];
@@ -140,7 +157,7 @@ it('season', async () => {
   // tiers from the rosters (for the report)
   for (const [tid, list] of Object.entries((rosters as any).teams)) for (const e of list as any[]) { const k = `${tid}|${e.name}`; if (players[k]) players[k].tier = e.tier; }
   bestGames.sort((a, b) => b.pts - a.pts);
-  const result = { games, teams, players, plays, counts, ults, clutchShots, bestGames: bestGames.slice(0, 40), perkNames: Object.fromEntries(Object.entries(NODES).map(([k, n]) => [k, n.name])) };
+  const result = { games, teams, players, plays, counts, ults, clutchShots, shots, bestGames: bestGames.slice(0, 40), perkNames: Object.fromEntries(Object.entries(NODES).map(([k, n]) => [k, n.name])) };
   if (out) writeFileSync(out, JSON.stringify(result));
   console.log(`season: ${games.length} games, ${Object.keys(players).length} players with minutes`);
 }, 3_600_000);

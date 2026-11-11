@@ -38,6 +38,12 @@ export function cpuUltFor(p: Player): UltState {
   return { unlocked: true, id, level: p.overall >= 82 ? 1 : 0 };
 }
 
+/**
+ * Round 78 Chase-Down: a CPU star fires it when a finisher goes up for a layup / dunk and he can get there (trailing,
+ * within `range` ft; in the last period any rim finish within `fallbackRange`). He arrives by the release (at most
+ * `maxSpeed` ft/s) and blocks from up to `reach` ft. `finishes`: the shots it hunts.
+ */
+export const CHASE = { range: 15, fallbackRange: 12, reach: 7, maxSpeed: 45, finishes: ['layup', 'euro', 'dunk', 'alleyOop', 'alleyOopLayup', 'stepThrough', 'jelly', 'push'] };
 /** Round 69: ultimates used on offense (CPU stars save these for the last period); Chase-Down is defense. */
 export const OFFENSIVE_ULTS = ['deepStepback', 'ftTakeoff'];
 
@@ -205,6 +211,17 @@ export function tickUlt(sim: GameSim, _dt: number) {
   if (a.id === 'chaseDown') {
     const tgt = sim.players.find((q) => q.id === a.targetId);
     if (!tgt) { sim.ult.active = null; return; }
+    // round 78: he's going up: get there by the release (beside him, on the rim side) and rise into it
+    if (tgt.state === 'shoot' && tgt.pendingShot) {
+      const left = Math.max(0.05, tgt.stateDur - tgt.stateT);
+      const spot = add(tgt.p, scale(norm(sub(sim.rim(tgt.team), tgt.p)), 1.2));
+      const gap = dist(p.p, spot);
+      const speed = Math.min(CHASE.maxSpeed, gap / left);
+      p.want = scale(norm(sub(spot, p.p)), speed);
+      if (p.z === 0) p.vel = p.want;
+      if (left < 0.3 && p.z === 0) { p.blockCdUntil = 0; sim.jump(p, 1.1); }
+      return;
+    }
     // lock-on: sprint at the target (or the ball once it's in the air) with a big speed boost and go up when in range
     const ballUp = sim.ball.st.kind === 'shot';
     const aim = ballUp ? sim.ball.p : add(tgt.p, scale(tgt.vel, 0.25));

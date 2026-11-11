@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
 import { emptyInput, MAGIC, SLIP_S, GREEN_CONTEST, FINGER_WAG, mambaCost, FREIGHT, GRAVITY } from '../src/sim/game';
-import { evaluateShot, windupFor, CHEF_WINDUP, shotConditions } from '../src/sim/shooting';
+import { evaluateShot, windupFor, SHOOT_TUNE, shotConditions } from '../src/sim/shooting';
 import { methodKey, methodLabel } from '../src/sim/rhythm';
 import { TREES, NODES } from '../src/sim/data';
 import { Player } from '../src/sim/player';
@@ -226,7 +226,7 @@ describe('round 65: Chef', () => {
     withNode(sh, 'sh_chef', true);
     expect(base()).toBeCloseTo(0.36, 3);
     expect(off).toBeLessThan(0.3);
-    expect(windupFor(sh, 'three')).toBeCloseTo(w0 * CHEF_WINDUP, 5);
+    expect(windupFor(sh, 'three')).toBeCloseTo(w0 * SHOOT_TUNE.chefWindup, 5);
     sh.p = { x: rim.x + dir * 38, y: rim.y }; // a heave stays a heave
     expect(base()).toBeLessThan(0.2);
   });
@@ -251,13 +251,13 @@ describe('round 65: Mamba and Lethal Shooter', () => {
     g.missSaved(p, 'mid', ev(0.4, 0.3));
     expect(g.missSaved(p, 'mid', ev(0.4, 0.3))).toBe(false);
   });
-  it('Lethal Shooter: every other green jumper miss goes in, free; contested or not a jumper, no', () => {
+  it('Lethal Shooter: every third green jumper miss goes in (round 78, was every other), free; contested or not a jumper, no', () => {
     const g = live();
     const p = g.holder()!;
     withNode(p, 'sh_lethal', true);
     g.setRhythm(p, 0);
-    const res = [0, 1, 2, 3].map(() => g.missSaved(p, 'three', ev(0.4, GREEN_CONTEST / 2)));
-    expect(res).toEqual([false, true, false, true]);
+    const res = [0, 1, 2, 3, 4, 5].map(() => g.missSaved(p, 'three', ev(0.4, GREEN_CONTEST / 2)));
+    expect(res).toEqual([false, false, true, false, false, true]);
     expect(p.rhythm).toBe(0);
     expect([0, 1].map(() => g.missSaved(p, 'three', ev(0.4, 0.5)))).toEqual([false, false]);
     expect([0, 1].map(() => g.missSaved(p, 'layup', ev(0.4, 0)))).toEqual([false, false]);
