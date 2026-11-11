@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { hiRes } from './ui';
-import { GameSim, GameEvent, UserInput } from '../sim/game';
+import { GameSim, GameEvent, UserInput, GRAVITY } from '../sim/game';
 import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
 import { app } from '../state';
@@ -776,6 +776,31 @@ export class GameScene extends Phaser.Scene {
         const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 140);
         this.shadows.fillStyle(0x000000, 0.22 + 0.12 * pulse); this.shadows.fillEllipse(sx(fs.x), sy(fs.y), 22 + pulse * 4, 7 + pulse);
         this.shadows.lineStyle(2, 0x9fe8ff, 0.55 + 0.35 * pulse); this.shadows.strokeEllipse(sx(fs.x), sy(fs.y), 30 + pulse * 4, 10 + pulse);
+      }
+    }
+    // round 73 Gravity: a screen that pulls: rings on the floor closing in on the screener, and a tug line with
+    // chevrons running in from each defender being pulled
+    for (const p of sim.players) {
+      if (p.state !== 'screen' || p.mods.pAdd('gravity') <= 0) continue;
+      const cx = sx(p.p.x), cy = sy(p.p.y), rx = sx(p.p.x + GRAVITY.r) - cx, ry = sy(p.p.y + GRAVITY.r) - cy;
+      const ph = (this.time.now / 900) % 1;
+      this.shadows.fillStyle(0x7a3cff, 0.12); this.shadows.fillEllipse(cx, cy, rx * 2, ry * 2);
+      for (let k = 0; k < 3; k++) {
+        const f = 1 - ((ph + k / 3) % 1); // each ring shrinks from the edge to the screener
+        this.shadows.lineStyle(3, 0xa070ff, 0.25 + 0.65 * (1 - f)); this.shadows.strokeEllipse(cx, cy, rx * 2 * f + 10, ry * 2 * f + 4);
+      }
+      this.shadows.lineStyle(2, 0xa070ff, 0.55); this.shadows.strokeEllipse(cx, cy, rx * 2, ry * 2);
+      for (const d of sim.opp(p.team)) {
+        const r = Math.hypot(d.p.x - p.p.x, d.p.y - p.p.y);
+        if (r > GRAVITY.r || r <= GRAVITY.minD || d.z > 0) continue;
+        const ax = sx(d.p.x), ay = sy(d.p.y);
+        this.shadows.lineStyle(3, 0xa070ff, 0.7); this.shadows.lineBetween(ax, ay, cx, cy);
+        const len = Math.hypot(cx - ax, cy - ay) || 1, ux = (cx - ax) / len, uy = (cy - ay) / len;
+        for (let k = 0; k < 3; k++) {
+          const t = ((ph * 2 + k / 3) % 1) * 0.85, mx = ax + (cx - ax) * t, my = ay + (cy - ay) * t;
+          this.shadows.lineBetween(mx, my, mx - ux * 9 - uy * 7, my - uy * 9 + ux * 7);
+          this.shadows.lineBetween(mx, my, mx - ux * 9 + uy * 7, my - uy * 9 - ux * 7);
+        }
       }
     }
     this.ballG.fillStyle(0xe86a1c, 1); this.ballG.fillCircle(bx, by, 8);

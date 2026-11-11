@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
-import { emptyInput, MAGIC, SLIP_S, GREEN_CONTEST, FINGER_WAG, mambaCost } from '../src/sim/game';
+import { emptyInput, MAGIC, SLIP_S, GREEN_CONTEST, FINGER_WAG, mambaCost, FREIGHT, GRAVITY } from '../src/sim/game';
 import { evaluateShot, windupFor, CHEF_WINDUP, shotConditions } from '../src/sim/shooting';
 import { methodKey, methodLabel } from '../src/sim/rhythm';
 import { TREES, NODES } from '../src/sim/data';
@@ -177,7 +177,7 @@ describe('round 64: Roller / Popper', () => {
 describe('round 65: shaped trees and GOAT skills', () => {
   it('GOAT skills cost 5 and sit where the owner drew them', () => {
     const goats = TREES.flatMap((t) => t.nodes.filter((n) => n.goat).map((n) => n.id)).sort();
-    expect(goats).toEqual(['dr_uncledrew', 'in_blockparty', 'pd_ironnate', 'sh_lethal']);
+    expect(goats).toEqual(['dr_uncledrew', 'dv_freight', 'fi_unstoppable', 'in_blockparty', 'pa_pointgod', 'pd_ironnate', 'sc_gravity', 'sh_lethal']);
     for (const id of goats) expect(NODES[id].cost).toBe(5);
     expect(NODES.sh_lethal.prereqs.sort()).toEqual(['sh_chef', 'sh_mamba']);
     expect(NODES.sh_lethal.desc).toContain('I understand it now');
@@ -197,6 +197,10 @@ describe('round 65: shaped trees and GOAT skills', () => {
     expect(who('in_blockparty')).toEqual(['Victor Wembanyama']);
     expect(who('pd_ironnate')).toEqual(['Kawhi Leonard']);
     expect(who('dr_uncledrew')).toEqual(['Kyrie Irving']);
+    expect(who('pa_pointgod')).toEqual(['Nikola Jokić', 'Tyrese Haliburton']);
+    expect(who('dv_freight')).toEqual(['Giannis Antetokounmpo', 'LeBron James']);
+    expect(who('sc_gravity')).toEqual(['Nikola Jokić']);
+    expect(who('fi_unstoppable')).toEqual(['Giannis Antetokounmpo', 'Jalen Brunson', 'Kyrie Irving']);
     expect(who('sh_lethal')).toEqual(['Jalen Brunson', 'Luka Dončić', 'Shai Gilgeous-Alexander', 'Stephen Curry']);
   });
   it('old saves: Lockdown Stance -> Hand in Face, Swat Team -> Anchor, Floor Burn refunded', () => {
@@ -396,5 +400,78 @@ describe('round 72: shaped trees (player, baton, hand, valve) and Uncle Drew', (
       const id = resolveMove(h, scale(toRim, -1), toRim, g.time, 3);
       expect(id).toBe(uncle ? 'snatchBack' : 'stepback');
     }
+  });
+});
+
+describe('round 73: Point God, Unstoppable, Freight Train, Gravity', () => {
+  it('the screens wall is 1, 4, 3, 1 bricks from the bottom, Gravity on top', () => {
+    const t = TREES.find((x) => x.id === 'screens')!;
+    const rows = [...new Set(t.nodes.map((n) => n.y))].sort((a, b) => b - a).map((y) => t.nodes.filter((n) => n.y === y).length);
+    expect(rows).toEqual([1, 4, 3, 1]);
+    expect(t.nodes.find((n) => n.y === Math.min(...t.nodes.map((m) => m.y)))!.id).toBe('sc_gravity');
+    expect(NODES.sc_gravity.prereqs.sort()).toEqual(['sc_ghost', 'sc_rescreen', 'sc_slip']);
+    for (const id of ['pa_pointgod', 'fi_unstoppable', 'dv_freight', 'sc_gravity']) expect(NODES[id].cost).toBe(5);
+    expect(NODES.fi_unstoppable.name).toBe('Unstoppable');
+  });
+  it('Point God passes out of a shot', () => {
+    for (const god of [false, true]) {
+      const g = live();
+      const h = g.holder()!, m = g.mates(h)[0];
+      withNode(h, 'pa_pointgod', god);
+      g.startShot(h, 'mid');
+      expect(h.state).toBe('shoot');
+      g.pass(h, m);
+      if (god) { expect(g.ball.st.kind).toBe('pass'); expect(h.pendingShot).toBeNull(); expect(h.state).toBe('idle'); }
+      else { expect(g.ball.st.kind).not.toBe('pass'); expect(h.state).toBe('shoot'); }
+    }
+  });
+  it('Unstoppable: a sure block is only a contest, and contests on his shots are weaker', () => {
+    for (const un of [false, true]) {
+      const g = live();
+      g.freezeAI = true;
+      const h = g.holder()!;
+      withNode(h, 'fi_unstoppable', un);
+      const d = g.nearestDefender(h).d!;
+      g.rng.chance = () => true;
+      g.startShot(h, 'layup');
+      for (let t = 0; t < 2 && h.pendingShot; t += 1 / 60) {
+        d.p = add(h.p, scale(norm(sub(g.rim(h.team), h.p)), 2)); d.z = 2; d.state = 'idle';
+        g.update(1 / 60, emptyInput());
+      }
+      expect(g.events.some((e) => e.kind === 'block')).toBe(!un);
+      if (un) expect(g.events.some((e) => e.text.startsWith('UNSTOPPABLE'))).toBe(true);
+    }
+    const p = new Player({ id: 'u', name: 'U', pos: 'SG' } as any);
+    expect(p.mods.contestInTerms({ type: 'mid', conds: new Set() } as any).length).toBe(0);
+    p.nodes.add('fi_unstoppable'); p.recompute();
+    expect(p.mods.contestInTerms({ type: 'mid', conds: new Set() } as any).map((t) => t.mult)).toEqual([0.75]);
+  });
+  it('Freight Train: faster after a change of possession', () => {
+    const g = live();
+    const h = g.holder()!;
+    const d = g.opp(h.team)[0];
+    withNode(d, 'dv_freight', true);
+    d.burstUntil = 0;
+    const base = g.topSpeed(d, false);
+    g.changePossessionLive(d.team);
+    g.update(1 / 60, emptyInput());
+    expect(d.freightUntil).toBeGreaterThan(g.time + FREIGHT.secs - 0.05);
+    d.burstUntil = 0; // no sprint burst in the comparison
+    expect(g.topSpeed(d, false)).toBeCloseTo(base * FREIGHT.boost, 5);
+  });
+  it('Gravity pulls nearby defenders toward his screen', () => {
+    const pulled = (grav: boolean) => {
+      const g = live();
+      g.freezeAI = true;
+      const h = g.holder()!, s = g.mates(h)[0], d = g.opp(h.team)[0];
+      withNode(s, 'sc_gravity', grav);
+      for (const q of g.players) if (q !== s && q !== d && q !== h) q.p = v(5, 5); // out of the way
+      d.p = add(s.p, v(8, 0)); d.vel = v();
+      g.setScreen(s);
+      for (let t = 0; t < 0.5; t += 1 / 60) g.update(1 / 60, emptyInput());
+      return 8 - Math.hypot(d.p.x - s.p.x, d.p.y - s.p.y);
+    };
+    expect(pulled(true)).toBeGreaterThan(pulled(false) + 1);
+    expect(GRAVITY.r).toBeGreaterThan(8);
   });
 });

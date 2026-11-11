@@ -512,6 +512,17 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 73 (GOAT skills, owner):** every tree but Post/Perimeter/Shooting gets a new GOAT at its end (cost 5, gold
+  star). **Point God** (Passing, upper arm past the baton's end, after Magic): △ during any shot before the release
+  passes out of it. **Unstoppable** (Finishing, owner first called it Crafty; middle fingertip, needs Jelly Fake,
+  And-One Artist and Dreamer): a shot that would be blocked is only contested (Block Party too; the Chase-Down ult
+  still blocks), and contests on his shots ×0.75. **Freight Train** (Driving, the head; Windmill Gather moved to the
+  chest): speed ×1.15 for 3.5 s after **every** change of possession (both ways), and drive contact takes 60% less
+  speed. **Gravity** (Screens, top brick): while he holds a screen, defenders within 11 ft drift toward him (up to
+  4.5 ft/s, stopping 3 ft away); purple rings close in on him on the floor with tug lines to the pulled defenders.
+  The Screens wall is now **1, 4, 3, 1** bricks from the bottom (Screen Assassin moved to the middle of row 3 and
+  sits on Roll Man + Pick & Pop). League: Point God = Jokić, Haliburton; Freight Train = Giannis, LeBron; Gravity =
+  Jokić; Unstoppable = Brunson, Kyrie, Giannis; Uncle Drew = Kyrie.
 - **Round 72 (shaped trees, owner's pictures):** Driving = the dribbler from the NBA logo (start at the planted
   foot, Windmill Gather at the head, Drive & Kick on the ball), Passing = a relay baton hand-off (start at the lower
   fist bottom left, Magic at the baton's top end), Finishing = an open hand (start at the wrist; pinky and ring finger

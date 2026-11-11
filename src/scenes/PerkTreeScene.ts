@@ -174,7 +174,7 @@ export class PerkTreeScene extends Phaser.Scene {
       if (i === this.sel) { g.lineStyle(2, 0xffcc33, 1); g.strokeCircle(p.x, p.y, r + 7); }
       const nameCol = n.goat ? (owned || can ? '#ffcc33' : '#9a8540') : owned ? '#ffffff' : can ? '#d8def0' : '#68708c';
       const wrap = tree.labelWrap ? { wordWrap: { width: tree.labelWrap }, align: 'center' } : {};
-      this.names.push(this.add.text(p.x, p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '12px', color: nameCol, fontStyle: n.goat ? 'bold' : 'normal', ...wrap }).setOrigin(0.5, 0));
+      this.names.push(this.add.text(p.x, n.labelAbove ? p.y - r - 4 : p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '12px', color: nameCol, fontStyle: n.goat ? 'bold' : 'normal', ...wrap }).setOrigin(0.5, n.labelAbove ? 1 : 0));
     });
     const n = tree.nodes[this.sel];
     const chk = canUnlock(c, n.id);

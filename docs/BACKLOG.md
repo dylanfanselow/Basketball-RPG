@@ -63,6 +63,8 @@
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
 - Round 65: Mamba / Chef / Finger Wag aren't on any CPU player; the shaped trees' lines are straight segments (the
   ball and arc are polygons over a faint backdrop).
+- Round 73: CPU players never pass out of a shot (Point God is user-only in practice); Freight Train's contact
+  effect has no dedicated test (the speed boost does).
 - Round 72: Uncle Drew only matters for the user (CPU dribblers don't press ○ mid-move); the empty top knob of the
   Handles valve has no perk yet.
 - Round 64 perks: no CPU player owns Magic, Roller/Popper, Gimme That! yet (only the user, via perk points or

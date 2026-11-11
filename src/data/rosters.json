@@ -3279,7 +3279,8 @@
      "dr_spin",
      "dr_btb",
      "sh_afterMove",
-     "dr_uncledrew"
+     "dr_uncledrew",
+     "fi_unstoppable"
     ],
     "appearance": {
      "skin": 3,
@@ -4037,7 +4038,9 @@
      "fi_dreamer",
      "pa_lob",
      "pa_dimes",
-     "pa_bullet"
+     "pa_bullet",
+     "pa_pointgod",
+     "sc_gravity"
     ],
     "appearance": {
      "skin": 0,
@@ -5937,7 +5940,8 @@
      "dr_legs",
      "pa_lob",
      "pa_dimes",
-     "dr_inout"
+     "dr_inout",
+     "pa_pointgod"
     ],
     "appearance": {
      "skin": 2,
@@ -8312,7 +8316,9 @@
      "fi_power",
      "dr_spin",
      "dv_gather",
-     "fi_poster"
+     "fi_poster",
+     "dv_freight",
+     "fi_unstoppable"
     ],
     "appearance": {
      "skin": 4,
@@ -10251,7 +10257,8 @@
      "dr_btb",
      "sh_afterMove",
      "dr_killer",
-     "sh_lethal"
+     "sh_lethal",
+     "fi_unstoppable"
     ],
     "appearance": {
      "skin": 2,
@@ -12053,7 +12060,8 @@
      "dv_bump",
      "pa_lob",
      "fi_power",
-     "pa_dimes"
+     "pa_dimes",
+     "dv_freight"
     ],
     "appearance": {
      "skin": 3,

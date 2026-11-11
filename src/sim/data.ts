@@ -35,6 +35,8 @@ export interface TreeNode {
   goat?: boolean;
   /** round 72: needs every other perk of its tree (Uncle Drew); `prereqs` are only the lines drawn into it */
   needsTree?: boolean;
+  /** round 73: draw the name above the node (a crowded fingertip) */
+  labelAbove?: boolean;
 }
 /** labelWrap (round 72): node names wrap at this width (px) on the narrow shaped trees */
 export interface Tree { id: string; name: string; shape: string; color: string; desc: string; nodes: TreeNode[]; labelWrap?: number }

@@ -166,6 +166,14 @@ export const ULT_ISO_TRIES = 3;
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
 export const UNCLE_DREW_MIN = 0.08;
+/** round 73 Freight Train: top speed x`boost` for `secs` after any change of possession; drive contact takes only
+ * `contact` of the speed it normally would */
+export const FREIGHT = { boost: 1.15, secs: 3.5, contact: 0.4 };
+/** round 73 Gravity: while he holds a screen, defenders within `r` ft drift toward him at up to `pull` ft/s
+ * (strongest close in), stopping `minD` ft away */
+export const GRAVITY = { r: 11, pull: 4.5, minD: 3 };
+/** round 73 Unstoppable: contests on his shots x this (and blocks become contests) */
+export const UNSTOPPABLE_CONTEST = 0.75;
 
 /**
  * How hard a screen lands: stun (s) and knock-back (ft). Grows with the screener's screen rating and strength over
@@ -991,6 +999,7 @@ export class GameSim {
     tickUlt(this, dt);
     this.physics(dt);
     this.collisions();
+    this.goatTicks(dt);
     this.updateBall(dt);
     this.updatePlay(dt);
     this.rules(dt);
@@ -1496,6 +1505,11 @@ export class GameSim {
       if (ps.override?.contestMult !== undefined) chance *= ps.override.contestMult;
       if (chase) chance = Math.max(chance, this.ult.active!.level.blockChance); // round 55: from any angle, almost no matter what
       if (party) chance = 1;
+      // round 73 Unstoppable: what would be a block is only a contest (the chase-down ult still gets him)
+      if (!chase && p.mods.pAdd('unstoppable') > 0) {
+        if (this.rng.chance(chance)) this.emit({ kind: 'move', text: `UNSTOPPABLE! Through ${d.name}`, pid: p.id, big: true, good: true });
+        continue;
+      }
       if (this.rng.chance(chance)) {
         d.box.blk++; p.box.fga++; this.heatAfterShot(p, false, ev);
         if (ev.pts === 3) p.box.tpa++;
@@ -1614,6 +1628,7 @@ export class GameSim {
    * tip). Otherwise it's a high, soft pass he catches on the floor.
    */
   lobPass(from: Player, to: Player) {
+    this.passOutOfShot(from);
     if (this.holder() !== from || from.busy) return;
     if (!this.lobTarget(from, to)) {
       this.pass(from, to);
@@ -1688,7 +1703,16 @@ export class GameSim {
     b.st = { kind: 'loose', vel: scale(norm(sub(st.b, st.a)), 4), vz: -2, lastTeam: st.from.team };
   }
 
+  /** Round 73 Point God: he can pass out of any shot (jumper, layup, dunk) before he lets it go. */
+  passOutOfShot(p: Player): boolean {
+    if (this.holder() !== p || p.state !== 'shoot' || !p.pendingShot || p.mods.pAdd('pointGod') <= 0) return false;
+    p.pendingShot = null; p.state = 'idle'; p.stateT = 0; p.hangUntil = 0; p.liftAt = 0;
+    this.emit({ kind: 'move', text: 'Point God: out of the shot!', pid: p.id, big: true });
+    return true;
+  }
+
   pass(from: Player, to: Player, force = false) {
+    this.passOutOfShot(from);
     if (this.holder() !== from || (from.busy && !force)) return; // force: an ult kick-out (mid-air)
     const ps = this.passSafety(from, to);
     const { lead, d, safe, overhead } = ps;
@@ -1739,8 +1763,9 @@ export class GameSim {
   }
   /** Top speed now: the sprint burst gives half its gain with the ball (handlers are slower than cutters / defenders). */
   topSpeed(p: Player, hasBall = this.holder() === p) {
-    if (this.time >= p.burstUntil) return p.runSpeed;
-    return hasBall ? p.runSpeed + (p.burstSpeed - p.runSpeed) * BALL_BURST : p.burstSpeed;
+    const ft = this.time < p.freightUntil ? FREIGHT.boost : 1; // round 73 Freight Train
+    if (this.time >= p.burstUntil) return p.runSpeed * ft;
+    return (hasBall ? p.runSpeed + (p.burstSpeed - p.runSpeed) * BALL_BURST : p.burstSpeed) * ft;
   }
   lastRechargeMsg = -9;
 
@@ -2085,6 +2110,28 @@ export class GameSim {
     }
   }
 
+  lastPossSeen: 0 | 1 = 0;
+  /** round 73: GOAT skills that act every tick: Freight Train (change of possession) and Gravity (screens). */
+  private goatTicks(dt: number) {
+    if (this.possession !== this.lastPossSeen) {
+      this.lastPossSeen = this.possession;
+      for (const p of this.players) if (p.mods.pAdd('freightTrain') > 0) {
+        p.freightUntil = this.time + FREIGHT.secs;
+        if (p === this.user) this.emit({ kind: 'move', text: 'Freight Train!', pid: p.id });
+      }
+    }
+    for (const s of this.players) {
+      if (s.state !== 'screen' || s.mods.pAdd('gravity') <= 0) continue;
+      for (const d of this.opp(s.team)) {
+        if (d.z > 0 || d.state === 'fallen' || postLocked(this, d)) continue;
+        const rel = sub(s.p, d.p), r = len(rel);
+        if (r > GRAVITY.r || r <= GRAVITY.minD) continue;
+        const step = Math.min(r - GRAVITY.minD, GRAVITY.pull * (1 - (r - GRAVITY.minD) / (GRAVITY.r - GRAVITY.minD) * 0.6) * dt);
+        d.p = this.clampFor(d, add(d.p, scale(rel, step / r)));
+      }
+    }
+  }
+
   private collisions() {
     const ps = this.players;
     const bs = this.ball.st;
@@ -2115,7 +2162,8 @@ export class GameSim {
       if (h && (a === h || b === h) && a.team !== b.team && len(h.vel) > 8) {
         const def = a === h ? b : a;
         const ratio = (h.sub.driveStability + 20) / (def.sub.postD * 0.5 + def.sub.perimD * 0.5 + 20);
-        h.vel = scale(h.vel, clamp(0.45 + 0.4 * ratio, 0.4, 0.95));
+        const keep = clamp(0.45 + 0.4 * ratio, 0.4, 0.95);
+        h.vel = scale(h.vel, h.mods.pAdd('freightTrain') > 0 ? 1 - (1 - keep) * FREIGHT.contact : keep); // round 73 Freight Train
         if (this.time - this.lastContactAt > 0.6) { this.lastContactAt = this.time; this.quiet('contact', { hard: false }, h.id); }
       }
     }
