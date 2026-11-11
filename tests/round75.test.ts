@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeGame } from './helpers';
-import { emptyInput, CRUNCH_S } from '../src/sim/game';
+import { emptyInput } from '../src/sim/game';
 import { planShot } from '../src/sim/ballPhysics';
 import { Rng } from '../src/sim/math';
 
@@ -10,20 +10,23 @@ describe('round 75: crunch time', () => {
     for (let t = 0; t < 30 && !(g.live && g.holder()); t += 1 / 30) g.update(1 / 30, emptyInput());
     return g;
   };
-  it('is the last 30 seconds of the last period', () => {
+  it('is clutch time: the last stretch of the final period in a close game (round 76)', () => {
     const g = live();
-    expect(CRUNCH_S).toBe(30);
-    g.quarter = g.periods; g.clock = 29;
+    g.teams[0].score = 80; g.teams[1].score = 78;
+    g.quarter = g.periods; g.clock = g.cfg.quarterLen * 0.1;
     expect(g.crunchTime).toBe(true);
-    g.clock = 31;
+    g.teams[1].score = 66; // a blowout: no hush
     expect(g.crunchTime).toBe(false);
-    g.quarter = g.periods - 1; g.clock = 10;
+    g.teams[1].score = 78; g.clock = g.cfg.quarterLen * 0.5; // too early
+    expect(g.crunchTime).toBe(false);
+    g.quarter = g.periods - 1; g.clock = 5; // end of the 3rd
     expect(g.crunchTime).toBe(false);
   });
   it('a jumper released in crunch time tells the arena to hush (not a dunk, not earlier)', () => {
     const shot = (crunch: boolean, type: string) => {
       const g = live();
-      g.quarter = g.periods; g.clock = crunch ? 20 : 100;
+      g.quarter = g.periods; g.clock = crunch ? g.cfg.quarterLen * 0.1 : g.cfg.quarterLen * 0.6;
+      g.teams[0].score = 70; g.teams[1].score = 70;
       const h = g.holder()!;
       g.events.length = 0;
       g.startShot(h, type);

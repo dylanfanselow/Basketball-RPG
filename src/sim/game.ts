@@ -4,7 +4,7 @@ import { Player } from './player';
 import { rmap } from './attributes';
 import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
-import { coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
+import { GREEN_CONTEST, coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
 import { resolveMove, moveDirection, sideOf } from './moves';
 import { PlayRunner } from './plays/runner';
@@ -154,7 +154,16 @@ export const isMidrange = (ev: { type: string; pts: number; dist: number }) =>
 /** Longest a held screen lasts (s). */
 export const SCREEN_HOLD_MAX = 6;
 /** Round 65 GOAT / shooting perks: green = the cone's green (barely contested); Mamba's rhythm price; Finger Wag. */
-export const GREEN_CONTEST = 0.15, FINGER_WAG = 2;
+export { GREEN_CONTEST };
+export const FINGER_WAG = 2;
+/**
+ * Round 76: end-of-quarter clock management (game-clock seconds). 2-for-1: with TWO_FOR_ONE_MAX..SHOOT_BY left, get a
+ * shot up by SHOOT_BY so the ball comes back with time for one more. Last shot: once the game clock is under the shot
+ * clock, hold it until LAST_SHOT_GO and then attack. Milk: up late in the final period (MILK_FROM left), only great
+ * looks until the shot clock is down to MILK_UNTIL.
+ */
+export const CLOCK = { twoForOneMax: 44, shootBy: 31, lastShotGo: 7, milkFrom: 60, milkUntil: 7, milkPicky: 0.15 };
+export type ClockPlan = 'lastShot' | 'twoForOne' | 'milk' | null;
 export const MAMBA = { base: 10, perMiss: 30 };
 export const mambaCost = (pct: number) => MAMBA.base + MAMBA.perMiss * (1 - clamp01(pct));
 const JUMPERS = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'];
@@ -166,8 +175,6 @@ export const ULT_ISO_TRIES = 3;
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
 export const UNCLE_DREW_MIN = 0.08;
-/** round 75: the last this-many seconds of the game are crunch time (the arena holds its breath on every shot) */
-export const CRUNCH_S = 30;
 /** round 73/74 Freight Train: top speed x`boost` for `secs` on a fast break (steal, block or defensive board in a
  * full-court game); drive contact takes only `contact` of the speed it normally would */
 export const FREIGHT = { boost: 1.15, secs: 2.0, contact: 0.4 };
@@ -385,8 +392,22 @@ export class GameSim {
   get qEquiv() { return (this.cfg.quarterLen * this.periods) / 4; }
   /** "Q3", "H2", "OT" */
   periodLabel(q = this.quarter) { return q > this.periods ? 'OT' : `${this.periods === 2 ? 'H' : 'Q'}${q}`; }
-  /** Round 75: the last CRUNCH_S seconds of the game (final period or overtime, game clock): shots hush the arena. */
-  get crunchTime() { return this.cfg.mode === 'game' && !this.cfg.oneOnOne && this.quarter >= this.periods && this.clock <= CRUNCH_S && this.clock > 0; }
+  /** Round 76: what the clock asks of the team with the ball right now (CLOCK). Trailing late in the final period: none
+   *  (just score). */
+  clockPlan(team: 0 | 1): ClockPlan {
+    if (this.cfg.mode !== 'game' || this.cfg.oneOnOne || this.possession !== team || this.clock <= 0) return null;
+    const c = this.clock, final = this.quarter >= this.periods;
+    const diff = this.teams[team].score - this.teams[1 - team].score;
+    if (final && diff < 0) return null;
+    if (c <= this.shotClock) return 'lastShot';
+    if (final && diff > 0) return c <= CLOCK.milkFrom ? 'milk' : null;
+    if (c > CLOCK.shootBy && c <= CLOCK.twoForOneMax) return 'twoForOne';
+    return null;
+  }
+  /** Round 76: clock plans already announced this quarter ("team|plan|quarter"), each is called once */
+  clockCalls = new Set<string>();
+  /** Round 75/76: shots hush the arena in clutch time (the final period's last stretch, a close game, see `clutch`). */
+  get crunchTime() { return this.cfg.mode === 'game' && !this.cfg.oneOnOne && this.clutch && this.clock > 0; }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= this.periods && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(this.periods, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
   /** Round 61: a 1v1 CPU's level (null for humans and outside 1v1). */

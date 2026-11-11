@@ -46,6 +46,8 @@ export class Player {
   mambaMisses = 0; lethalMisses = 0; fingerWagAt = -99;
   /** round 73: Freight Train speed boost after a change of possession lasts until this time */
   freightUntil = -99;
+  /** round 76: the step-back ult's three is automatic (uncontested) until this time */
+  ultSureUntil = -99;
   pumpFakeAt = -99; openShotUntil = -99; openShotMult = 1;
   staggerUntil = 0; screenedUntil = -9; chargeSetAt = -99; swipeCdUntil = 0; blockCdUntil = 0;
   /** Round 51: rhythm 0-100 (notches at 25 / 50 / 75; 100 powers the ultimate). */

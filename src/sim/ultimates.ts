@@ -78,6 +78,7 @@ export function tryActivateUlt(sim: GameSim, p: Player): boolean {
     p.mods.removeHooks('ult');
     p.mods.addHook('shot', 'ult', (c) => (c.type === 'three' || c.type === 'deep3' ? { label, mult: level.shotBonus } : isStepThrough(c.type) && level.finishMult ? { label, mult: level.finishMult } : null), until);
     p.mods.addHook('contestIn', 'ult', (c) => (c.type === 'three' || c.type === 'deep3' ? { label, mult: level.contestMult } : isStepThrough(c.type) && level.finishContest ? { label, mult: level.finishContest } : null), until);
+    p.ultSureUntil = until; // round 76: wide open, it's automatic
     sim.ult.active = { ...base, until, nextAt: sim.time + 0.34 };
     ok = true;
   } else if (st.id === 'ftTakeoff' && hasBall && d >= 9 && d <= level.range && !p.busy) {

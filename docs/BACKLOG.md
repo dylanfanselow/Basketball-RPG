@@ -63,6 +63,8 @@
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
 - Round 65: Mamba / Chef / Finger Wag aren't on any CPU player; the shaped trees' lines are straight segments (the
   ball and arc are polygons over a faint backdrop).
+- Round 76: no end-of-quarter fouling, timeouts or advancing the ball; the defense doesn't change anything for a held
+  last shot; holding costs ~8% of shots per game with 3-minute quarters.
 - Round 75: the crunch-time hush and pop were checked in the browser (flags and events), not listened to; the crowd
   sprites don't freeze or stand during the hush.
 - Round 74: the post kick-out has no unit test of its own (headless games: 27 → 31 kick-outs in 8 star-big games);

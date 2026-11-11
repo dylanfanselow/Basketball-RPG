@@ -275,9 +275,17 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   for (const t of shooter.mods.shotTerms(ctxForMods)) terms.push({ label: t.label, value: t.mult, kind: t.label.startsWith('ULT') ? 'ult' : 'perk' });
   if (ctx.override?.label) terms.push({ label: ctx.override.label, value: 1, kind: 'ult' });
 
-  const pct = clamp(terms.reduce((acc, t) => acc * t.value, 1), 0.01, 0.97);
+  let pct = clamp(terms.reduce((acc, t) => acc * t.value, 1), 0.01, 0.97);
+  // round 76 (owner): the step-back ult's three is automatic when nobody's on him (a green cone)
+  if (ctx.now < shooter.ultSureUntil && (type === 'three' || type === 'deep3') && contest < GREEN_CONTEST) {
+    terms.push({ label: 'ULT uncontested: automatic', value: 1 / pct, kind: 'ult' });
+    pct = 1;
+  }
   return { type, dist: d, pts, pct, contest, terms, conds, contestBy: con.by, dunk: ctx.dunk, windmill: ctx.windmill };
 }
+
+/** A "green" jumper: the contest cone barely touched (Lethal Shooter, round 65; the step-back ult's sure three, round 76). */
+export const GREEN_CONTEST = 0.15;
 
 export function formatEquation(e: ShotEval): string {
   const parts = e.terms.map((t) => t.kind === 'base' ? `${(t.value * 100).toFixed(0)}% [${t.label}]` : `×${t.value.toFixed(2)} [${t.label}]`);

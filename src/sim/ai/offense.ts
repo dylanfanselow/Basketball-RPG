@@ -6,7 +6,8 @@ import { evaluateShot, selectShotType, ShotEval } from '../shooting';
 import { POST, canPost, postDefender, postGap, postIntent } from '../post';
 import { passFactor, callBonus } from './trust';
 import { tryActivateUlt } from '../ultimates';
-import { isBig } from '../plays/coach';
+import { isBig, topScorer } from '../plays/coach';
+import { CLOCK } from '../game';
 import { isoThink } from './oneOnOne';
 
 const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['lw', 'lc'], '3': ['rw', 'rc'], '4': ['lc', 'le', 'lw'], '5': ['rdk', 'rb', 'ldk'] };
@@ -271,11 +272,30 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
 
   const sinceCatch = sim.time - p.receivedAt;
   const iso = isoFor(sim, p);
-  if (!iso && catchRead(sim, p, sinceCatch)) return;
+  // round 76: the clock at the end of a quarter (2-for-1, hold for the last shot, milk a late lead)
+  const plan = sim.clockPlan(p.team);
+  const callKey = `${p.team}|${plan}|${sim.quarter}`;
+  if (plan && !sim.clockCalls.has(callKey)) {
+    sim.clockCalls.add(callKey);
+    const say = plan === 'lastShot' ? 'Hold it: last shot' : plan === 'twoForOne' ? 'Two-for-one: quick shot' : 'Run some clock';
+    sim.emit({ kind: 'call', text: `Coach: "${say}"`, team: p.team, pid: p.id });
+  }
+  if (plan === 'lastShot' && sim.clock > CLOCK.lastShotGo) {
+    // hold for the last shot: dribble it out up top (get it to the go-to scorer first), nobody shoots yet
+    const star = topScorer(sim.teams[p.team].onCourt);
+    if (star && star !== p && !star.isUser && canCatch(sim, star) && sinceCatch > 0.6 && sim.clock > CLOCK.lastShotGo + 3 && laneRisk(sim, p, star) < 0.3) { sim.pass(p, star); return; }
+    sim.steer(p, spot(side, 'top'), false, 0.55);
+    return;
+  }
+  if (!iso && plan !== 'milk' && catchRead(sim, p, sinceCatch)) return; // milking: no quick catch-and-shoot
   if (sim.time < p.aiNextThink) return;
   p.aiNextThink = sim.time + 0.18 + sim.rng.next() * 0.14;
 
-  const urgency = clamp01(1 - sim.shotClock / 14);
+  let urgency = clamp01(1 - sim.shotClock / 14);
+  let picky = 0;
+  if (plan === 'lastShot') urgency = Math.max(urgency, clamp01(1 - (sim.clock - 1.5) / (CLOCK.lastShotGo - 1.5))); // go time
+  else if (plan === 'twoForOne') urgency = Math.max(urgency, clamp01(1 - (sim.clock - CLOCK.shootBy) / 12));
+  else if (plan === 'milk' && sim.shotClock > CLOCK.milkUntil) { urgency = 0; picky = CLOCK.milkPicky; } // only a great look
   const phase = sim.runner.cur;
   const resetting = sim.runner.resetting(sim.time);
 
@@ -349,7 +369,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   const team = sim.teams[p.team].onCourt;
   const avgUse = team.reduce((a, q) => a + q.box.usage, 0) / Math.max(1, team.length);
   const avgTouch = team.reduce((a, q) => a + q.box.touches, 0) / Math.max(1, team.length);
-  const shootT = 0.98 - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09 - (iso ? 0.12 : 0);
+  const shootT = 0.98 + picky - urgency * 0.45 + (phase ? 0.06 : 0) + Math.max(0, p.box.usage - avgUse) * 0.09 - (iso ? 0.12 : 0);
 
   let best: Player | null = null, bestVal = -1e9;
   for (const m of catchers(sim, p)) {

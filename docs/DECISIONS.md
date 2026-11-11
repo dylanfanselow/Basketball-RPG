@@ -512,6 +512,14 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 76 (owner):** the arena hush follows **clutch time** (`sim.clutch`: final period or OT, the last 17% of the
+  quarter, score within 5), not a flat last 30 s. **The step-back ult's three is automatic when uncontested**
+  (contest under the green line, `GREEN_CONTEST` 0.15, now in shooting.ts), user and CPU. **Clock management**
+  (`GameSim.clockPlan`, `CLOCK`): game clock under the shot clock = **hold for the last shot** (dribble it out up top,
+  get it to the go-to scorer, attack at 7 s); 31-44 s left = **2-for-1** (get a shot up by 31 s); up late in the final
+  period (last 60 s) = **milk the clock** (only great looks until 7 on the shot clock); trailing late in the final
+  period = no plan, just score. The coach announces each once per team per quarter. Headless: the quarter's last
+  shot comes with a median 1.3-1.5 s left (was 1.9-2.4), ~8% fewer shots per game (the held possessions), same FG%.
 - **Round 75 (owner): crunch time.** Every shot (not dunks) released in the **last 30 seconds** of the game (final
   period or OT, game clock) hushes the arena: the crowd and the music drop out while it's in the air (sound effects
   stay, so each bounce on the iron is heard). A miss, airball or block brings everything back; a make is a **big
