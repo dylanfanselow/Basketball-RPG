@@ -110,3 +110,4 @@
 
 Each round was planned in plan mode, the owner approved, then implemented with tests + Playwright screenshots,
 committed, pushed to `main`, and the browser link republished.
+| 80 | `a160297` | Next story chapter: trailer exit → Kingston on the court (sick for one day, jealous, "I'll figure out a way", leaves) → 3 months later newspaper (nationals, record cold, Crestview adds transfer Kingston) → Mom wakes you → snowy trailer → bus (jokes, captain, Kingston talk, Mom's call about the generator with a choice) → national final in the arena | Stages kingston / paper / snow / bus / final, `buildVisit` / `buildFinal` / `lincolnSquad`, `PaperScene` + `paperArt`, `gradeSnow`, `BusScene` + `busArt`, StoryBox choices, bus / phone / paper sounds |

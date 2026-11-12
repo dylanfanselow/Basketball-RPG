@@ -158,6 +158,24 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80 (owner): the next chapter of the story.**
+  - ✕ at the **trailer's path end** (after Mom's talk, while you should check on Kingston) leads to **Kingston on the
+    school court in the day**. He can't explain being sick for one day (fine, ate, had his coffee, then his stomach
+    turned, gone by the end of the game), then it turns to jealousy ("a guy like you gets the chance? why not me?"),
+    "I'm done with this place, I'll figure out a way", and he walks off. A cutscene, no game HUD.
+  - **Three months later:** a newspaper in the owner's reference style (tilted cream newsprint on a table, pixel
+    type, a dithered photo of you): Lincoln is headed to the **national championship**, **record low temperatures**,
+    and at the bottom **Crestview Prep** (the owner's pick, navy + silver Falcons) adds **transfer Kingston Williams**.
+  - Black, Mom: "you better wake up, that bus is not gonna wait on you". The **trailer yard is snowy** from here on.
+  - ✕ at the path end catches the **bus**: side view, front to the right like the reference, snowy pines and road.
+    The **captain is a teammate**: a C if you're the PG, otherwise the PG; the talk alludes to him being captain.
+    Jokes (the heater, "it's sewn on"), one joke (a face mask, "you tryna be Kingston now?") brings him up, a short
+    talk about him, then **Mom calls: the generator broke**. Choice: "I'll be right there" (she: no, play your heart
+    out, she'll figure it out) or "Hold out, I'll be back right after the game" (she: "I'll try"). Saved
+    (`momCall`), no consequence yet.
+  - Fade to black → the **national final in the arena**, a full game (two 4-minute halves) vs Crestview with Kingston
+    their star. No NBA celebs courtside at a high-school final. Afterwards home is the snowy trailer (the generator
+    is dead); the story continues later.
 - **Round 60g (owner): any jersey number.** You start in high school, not on an NBA team, so the builder lets you
   pick any number 0-99 (no team's numbers are skipped); the preview jersey is Lincoln's maroon and gold.
 - **Round 60f (owner): perks.** In the 1s Kingston has **every perk in every tree**. Every new career starts with

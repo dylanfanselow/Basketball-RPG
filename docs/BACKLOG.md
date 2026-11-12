@@ -98,7 +98,11 @@
   vs ATL"), fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
   ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
-- **Check on Kingston (round 71):** the door blocks with "I should check on Kingston." after Mom's second talk, but
+- **Round 80 follow-ups:** what happens after the national final (the dead generator, Mom; `momCall` 'go' / 'stay'
+  has no consequence yet); the coffee / poisoning reveal; you walk the snowy yard in a tee and shorts (a winter coat
+  for the room sprite?); the bus has no interior; Kingston's court visit has him in his white Lincoln game kit. Ask the
+  owner how the jokes, the newspaper and the final's difficulty (Kingston +16, every perk) feel.
+- **Check on Kingston (round 71):** (done in round 80: the path end leads to him) the door blocks with "I should check on Kingston." after Mom's second talk, but
   that visit doesn't exist yet: build it and clear `StoryState.checkKingston` there (until then the trailer's day loop
   can't continue in a story save). Real mail for the mailbox later.
 - **Trailer yard (round 57):** the story element at the door (`TRAILER_DOOR_STORY` in TrailerScene), a trailer interior, and tying it to the "Lights on a generator" backstory at career creation.

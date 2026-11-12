@@ -261,6 +261,18 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80: stages `kingston` → `paper` → `snow` → `bus` → `final` (`StoryState.winter` / `squadSeed` / `momCall` /
+  `final`); `sim/story.ts` `CRESTVIEW`, `captainPos`, `lincolnSquad` / `squadCaptain` (bus names = final roster),
+  `buildVisit` (you + Kingston, not live, he holds the ball), `buildFinal` (arena, Kingston +16 / every perk / star);
+  `StoryRun` `'kingston'` (`cutscene`: held the whole time, `GameScene.hideHud` hides the HUD / rings / labels, no
+  game music; `kingstonLeaves(drift)`) and `'final'` (intro + NATIONAL CHAMPIONSHIP banner); no celebs in story
+  arena games; PostGame `replay.story === 'final'` saves `story.final` → Trailer. `scenes/PaperScene.ts` +
+  `render/paperArt.ts` (front page on a pixel canvas, thresholded ink text, Bayer-dithered photo from
+  `buildCoachSheet` with a clean face, camera stops, overlays on a second camera). TrailerScene: `story: 'snow'`,
+  `snow` (winter), `trailerArt.gradeSnow` (greens → snow, drifts, caps on every open top, overcast, no flowers),
+  falling snow + breath, door / generator / path-end story actions (`storyExit`), dead generator after the final.
+  `scenes/BusScene.ts` + `render/busArt.ts` (tiled parallax layers, bus 2 frames, wheels 4 frames, exhaust, snow);
+  `StoryBox` `choices` + speaker `phone`; `sfx.busRumble` / `phoneRing` / `paperRustle`; dev menu Story entries.
   Round 60d: `story.bigGameVerdict` (stat sum vs everyone, great = won + best sum), `StoryStage` `'after'`,
   `StoryState.bigGame`, PostGame story branch saves it → Trailer `{ story: 'after' }` (`afterLines`, daytime Mom,
   control back + stage `done`), dev menu *Story: After the game (great / promise)*; `tests/style.test.ts` (no em dashes).

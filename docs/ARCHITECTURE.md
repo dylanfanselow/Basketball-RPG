@@ -67,6 +67,8 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
 | `scenes/storyRun.ts`, `render/storyBox.ts` | Round 60: `StoryRun` drives a prologue game inside GameScene (lines hold the sim, transitions by `setStage` / `storyScene`, coach + scout in the big game); `StoryBox` is the bottom text box (also used by TrailerScene). |
+| `scenes/PaperScene.ts`, `render/paperArt.ts` | Round 80: "three months later", the newspaper on a table (pixel front page, dithered photo of you, camera stops), then Mom wakes you. |
+| `scenes/BusScene.ts`, `render/busArt.ts` | Round 80: the bus ride to the national final (parallax snowy road, bus front to the right), the team's talk, Mom's call + a dialogue choice. |
 | `scenes/MatchSetupScene.ts` | Quick 5v5 setup. `setup.ts` builds the `GameSim` for each mode (`GameInit` is kept for Restart/Rematch). |
 | `scenes/ThreeSetupScene.ts` | Quick 3v3 setup: team / opponent lists + lineups & options column (6 slots, play as, court); Left/Right changes a row, R1/L2 (Q/E) switch columns. |
 | `scenes/OneOnOneSetupScene.ts` | 1v1 setup: 4 list columns + 4 option columns (P2 human/CPU, game to, scoring, win by 2). PostGame has a 1v1 branch (rematch / change players / menu). |
