@@ -512,6 +512,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 69:** CPU stars always have their ultimate (no rhythm needed, once a game; still none in 1v1 or practice).
   Offensive ults (Deep Step-Back, FT-Line Dunk) are saved for the last period (Q4 / OT, the big game's 2nd half),
   and the coach calls an iso for the star to use it (up to 3 forced isos, more in the clutch). Chase-Down any time.
+- **Round 79 (owner): Mamba** saves threes less often: missed threes have their own count and every **fourth** goes in
+  (`SHOOT_TUNE.mambaThreeEvery`); midrange and close shots stay every other miss (their own count). Rhythm cost
+  unchanged. Why: the Lethal study showed Lethal is worth ~1 pt a game, while Mamba (owned by all four Lethal
+  Shooters) saved ~2.5 shots a game each.
 - **Round 78 (owner):** **Chase-Down** fires when the finisher actually goes up (a layup / Euro / dunk / alley-oop /
   Step-Through / jelly / push started, `CHASE.finishes`) and the big can get there: trailing (on the break, or farther
   from the rim than the shooter) within 15 ft, or in the last period any rim finish within 12 ft. He arrives by the

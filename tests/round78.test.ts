@@ -58,3 +58,22 @@ describe('round 78: tuning', () => {
     expect(SHOOT_TUNE.chefWindup).toBeLessThan(1);
   });
 });
+
+describe('round 79: Mamba', () => {
+  it('threes are saved every fourth miss, counted on their own; midrange stays every other miss', () => {
+    const g = live(5);
+    const p = g.holder()!;
+    p.nodes.add('sh_mamba'); p.recompute();
+    g.setRhythm(p, 100);
+    const ev = (pct: number) => ({ pct, contest: 0.4 } as any);
+    expect(SHOOT_TUNE.mambaThreeEvery).toBe(4);
+    // three misses in a row don't move the midrange count
+    expect([0, 1, 2].map(() => g.missSaved(p, 'three', ev(0.35)))).toEqual([false, false, false]);
+    expect(g.missSaved(p, 'mid', ev(0.4))).toBe(false);
+    expect(g.missSaved(p, 'mid', ev(0.4))).toBe(true);
+    expect(g.missSaved(p, 'three', ev(0.35))).toBe(true); // the 4th three
+    g.setRhythm(p, 100); // each save spends rhythm
+    expect(g.missSaved(p, 'layup', ev(0.5))).toBe(false);
+    expect(g.missSaved(p, 'hook', ev(0.5))).toBe(true); // close shots share the every-other count
+  });
+});

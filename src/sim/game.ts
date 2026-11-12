@@ -2478,7 +2478,8 @@ export class GameSim {
 
   /**
    * Round 65: a shot that would miss can still go in. Lethal Shooter (free): every third green jumper (round 78; was every other) (contest under
-   * GREEN_CONTEST). Mamba: every other miss of any shot, paid with rhythm (more for a worse shot), if he has it.
+   * GREEN_CONTEST). Mamba: every other miss of any shot (round 79: threes every
+   * SHOOT_TUNE.mambaThreeEvery-th, counted on their own), paid with rhythm (more for a worse shot), if he has it.
    */
   missSaved(p: Player, type: string, ev: ShotEval): boolean {
     if (p.mods.pAdd('lethal') > 0 && JUMPERS.includes(type) && ev.contest < GREEN_CONTEST) {
@@ -2487,9 +2488,11 @@ export class GameSim {
       if (save) { this.emit({ kind: 'move', text: 'Lethal shooter', pid: p.id, team: p.team }); return true; }
     }
     if (p.mods.pAdd('mamba') > 0) {
-      p.mambaMisses++;
+      // round 79: threes have their own count and are saved less often; midrange and close shots every other miss
+      const three = type === 'three' || type === 'deep3';
+      const n = three ? ++p.mambaThreeMisses : ++p.mambaMisses;
       const cost = mambaCost(ev.pct);
-      if (p.mambaMisses % 2 === 0 && p.rhythm >= cost) {
+      if (n % (three ? SHOOT_TUNE.mambaThreeEvery : 2) === 0 && p.rhythm >= cost) {
         this.addRhythm(p, -cost, 'mamba', `Mamba ${Math.round(ev.pct * 100)}% shot`);
         this.emit({ kind: 'move', text: 'Mamba', pid: p.id, team: p.team });
         return true;

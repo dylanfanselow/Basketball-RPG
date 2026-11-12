@@ -243,8 +243,8 @@ describe('round 65: Mamba and Lethal Shooter', () => {
     expect(g.missSaved(p, 'mid', ev(0.45, 0.3))).toBe(true);
     const spentGood = 100 - p.rhythm;
     g.setRhythm(p, 100);
-    g.missSaved(p, 'three', ev(0.1, 0.6));
-    expect(g.missSaved(p, 'three', ev(0.1, 0.6))).toBe(true);
+    // round 79: threes count on their own and only every fourth missed three goes in (midrange unchanged)
+    expect([0, 1, 2, 3].map(() => g.missSaved(p, 'three', ev(0.1, 0.6)))).toEqual([false, false, false, true]);
     expect(100 - p.rhythm).toBeGreaterThan(spentGood);
     expect(mambaCost(0.1)).toBeGreaterThan(mambaCost(0.45));
     g.setRhythm(p, 5);

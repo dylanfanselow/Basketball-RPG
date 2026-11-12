@@ -45,6 +45,8 @@ export class Player {
   slipUntil = -99;
   /** round 65: would-be misses counted for Mamba / Lethal Shooter (every 2nd one goes in), Finger Wag time */
   mambaMisses = 0; lethalMisses = 0; fingerWagAt = -99;
+  /** round 79: Mamba counts missed threes on their own (saved every SHOOT_TUNE.mambaThreeEvery-th) */
+  mambaThreeMisses = 0;
   /** round 73: Freight Train speed boost after a change of possession lasts until this time */
   freightUntil = -99;
   /** round 76: the step-back ult's three is automatic (uncontested) until this time */

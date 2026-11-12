@@ -46,7 +46,7 @@ export const CHEF_RANGE = 34;
  * `lethalChance` under 1, each one with that chance); Chef's 3-point windup multiplier. Mutable for the tuning
  * experiment (scripts/goatTune.test.ts); the game never changes them.
  */
-export const SHOOT_TUNE = { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8 };
+export const SHOOT_TUNE = { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8, /** round 79: Mamba saves every Nth missed three (other shots: every 2nd) */ mambaThreeEvery: 4 };
 
 /** Seconds after a pump fake in which stick-toward-rim + shoot is a Step-Through. */
 export const STEP_THROUGH_WINDOW = 1.5;

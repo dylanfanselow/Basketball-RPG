@@ -3,6 +3,7 @@
  * off / every 3rd green miss (the game) / every 2nd (before round 78), over three seed sets, recording every three the
  * Lethal Shooters take (contest, make chance, rhythm, step-back ult, Chef, saved by Lethal) and their teams' results.
  *   LETHAL_OUT=<file> npx vitest run scripts/lethalStudy.test.ts --dir . --config /dev/null      (~12 min)
+ * STUDY=mamba: Mamba saving every 2nd missed three (before round 79) vs every 4th (now) instead (~8 min).
  */
 import { it } from 'vitest';
 import { writeFileSync } from 'fs';
@@ -11,11 +12,17 @@ import { SHOOT_TUNE } from '../src/sim/shooting';
 import { TEAMS } from '../src/sim/data';
 import { generateRoster } from '../src/career/roster';
 
-const OPTIONS = [
-  { id: 'off', label: 'Lethal off', tune: { lethalEvery: 1e9, lethalChance: 1, chefWindup: 0.8 } },
-  { id: 'every3', label: 'Every 3rd green miss (now)', tune: { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8 } },
-  { id: 'every2', label: 'Every 2nd green miss (before)', tune: { lethalEvery: 2, lethalChance: 1, chefWindup: 0.8 } },
+const LETHAL_OPTIONS = [
+  { id: 'off', label: 'Lethal off', tune: { lethalEvery: 1e9, lethalChance: 1, chefWindup: 0.8, mambaThreeEvery: 4 } },
+  { id: 'every3', label: 'Every 3rd green miss (now)', tune: { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8, mambaThreeEvery: 4 } },
+  { id: 'every2', label: 'Every 2nd green miss (before)', tune: { lethalEvery: 2, lethalChance: 1, chefWindup: 0.8, mambaThreeEvery: 4 } },
 ];
+// round 79: STUDY=mamba compares Mamba saving every 2nd missed three (before) with every 4th (now)
+const MAMBA_OPTIONS = [
+  { id: 'mamba2', label: 'Mamba threes every 2nd miss (before)', tune: { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8, mambaThreeEvery: 2 } },
+  { id: 'mamba4', label: 'Mamba threes every 4th miss (now)', tune: { lethalEvery: 3, lethalChance: 1, chefWindup: 0.8, mambaThreeEvery: 4 } },
+];
+const OPTIONS = process.env.STUDY === 'mamba' ? MAMBA_OPTIONS : LETHAL_OPTIONS;
 const SEEDS = [5000, 6000, 7000];
 
 it('lethal study', async () => {
@@ -35,8 +42,8 @@ it('lethal study', async () => {
       const inp = emptyInput();
       for (let t = 0; t < 3000 && !g.over; t += 1 / 30) {
         g.update(1 / 30, inp);
-        let savedNow: string | null = null;
-        for (; seen < g.events.length; seen++) { const e = g.events[seen]; if (e.kind === 'move' && e.text === 'Lethal shooter') savedNow = e.pid ?? null; }
+        let savedNow: string | null = null, mambaNow: string | null = null;
+        for (; seen < g.events.length; seen++) { const e = g.events[seen]; if (e.kind === 'move' && e.text === 'Lethal shooter') savedNow = e.pid ?? null; if (e.kind === 'move' && e.text === 'Mamba') mambaNow = e.pid ?? null; }
         const ls = g.lastShot;
         if (ls && ls !== last) {
           last = ls;
@@ -44,7 +51,7 @@ it('lethal study', async () => {
           if (p) {
             const ev = ls.ev;
             shots.push({
-              opt: opt.id, seed: base, name: p.name, type: ev.type, made: ls.made, blocked: !!ls.blocked, saved: savedNow === p.id,
+              opt: opt.id, seed: base, name: p.name, type: ev.type, made: ls.made, blocked: !!ls.blocked, saved: savedNow === p.id, mamba: mambaNow === p.id,
               contest: +ev.contest.toFixed(3), pct: +ev.pct.toFixed(3), rhythm: Math.round(p.rhythm),
               ult: ev.terms.some((tm) => tm.kind === 'ult'), chef: ev.terms.some((tm) => tm.label.startsWith('Chef')), pts: ev.pts,
             });
