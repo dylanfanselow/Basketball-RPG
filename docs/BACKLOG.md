@@ -63,6 +63,9 @@
 - Animation blending between clips is not implemented (Catmull-Rom in-betweens smooth within a clip).
 - Round 65: the shaped trees' lines are straight segments (the
   ball and arc are polygons over a faint backdrop).
+- Round 78 (lethal study): Lethal Shooter is worth ~1 pt a game at every 3rd (~2 at every 2nd); the four Lethal
+  players' real boost is **Mamba** (they own it as Lethal's prerequisite): ~2.5 saved misses a game each. Their threes
+  go in ~58% with Lethal off while the shot odds say ~43%.
 - Round 78: the shot diet counts fouled misses as shots (the box score doesn't, so its total runs ~1% over FGA).
 - Round 77: CPU teams never substitute (starters play all 48 game minutes; the bench never plays), so season stats
   are starters only. CPU players never use Point God (no pass out of a shot).

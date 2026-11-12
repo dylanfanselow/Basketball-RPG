@@ -28,7 +28,8 @@ npm run build:single # single-file build for the browser link
    (pre-installed Chromium; `require('playwright')`; scripts live in the session scratchpad).
    Round 77: a whole league season: `SEASON_OUT=<file> npx vitest run scripts/season.test.ts --dir . --config /dev/null`
    (~8 min, 435 games; `SEASON_LIMIT=n` for a quick run). Roster perks vs the trees: `scripts/rosterPerks.test.ts`
-   (prints the report; `WRITE=1` rewrites rosters.json). Shooting-GOAT tuning experiment: `scripts/goatTune.test.ts` (~5 min).
+   (prints the report; `WRITE=1` rewrites rosters.json). Shooting-GOAT tuning experiment: `scripts/goatTune.test.ts` (~5 min). How much Lethal Shooter is worth (off / every 3rd / every 2nd, three seed sets, every three
+   recorded): `LETHAL_OUT=<file> npx vitest run scripts/lethalStudy.test.ts --dir . --config /dev/null` (~12 min).
 4. Update README "Things to know while testing" if controls changed.
 5. Commit (attribution lines from the system reminder), `git pull --rebase`, push, rebuild single file, republish.
 6. Summarize for the owner: what changed, how to test it, what wasn't verified.
