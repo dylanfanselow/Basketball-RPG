@@ -6,7 +6,7 @@ import { planRotation } from '../sim/rotation';
 import { app } from '../state';
 import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
 import { ThreeSetup, buildThrees } from '../sim/threes';
-import { buildTutorial, buildOnes, buildBigGame, newStory } from '../sim/story';
+import { buildTutorial, buildOnes, buildBigGame, buildVisit, buildFinal, newStory } from '../sim/story';
 import { TutorialDirector } from '../sim/tutorial';
 import type { StoryStage, CareerState } from '../career/career';
 export type { ThreeSetup } from '../sim/threes';
@@ -15,7 +15,7 @@ export { DEFAULT_1V1 } from '../sim/oneOnOne';
 
 export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne' | 'story';
 /** Round 60: the prologue's games. */
-export type StoryGame = 'tutorial' | 'ones' | 'bigGame';
+export type StoryGame = 'tutorial' | 'ones' | 'bigGame' | 'kingston' | 'final';
 
 /** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
@@ -87,6 +87,8 @@ export function createStorySim(which: StoryGame, c: CareerState = app.career): G
   ensureStory(c);
   if (which === 'ones') return buildOnes(c, seed);
   if (which === 'bigGame') return buildBigGame(c, seed);
+  if (which === 'kingston') return buildVisit(c, seed);
+  if (which === 'final') return buildFinal(c, seed);
   const sim = buildTutorial(c, seed);
   sim.director = new TutorialDirector(sim);
   return sim;
@@ -96,6 +98,7 @@ export function createStorySim(which: StoryGame, c: CareerState = app.career): G
 export function ensureStory(c: CareerState = app.career) {
   if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' };
   if (!c.story.rival) c.story.rival = newStory(c).rival;
+  if (c.story.squadSeed === undefined) c.story.squadSeed = Math.floor(Math.random() * 1e9); // round 80
 }
 
 /** Round 60: where the story continues for a stage (New Game, Load Save, dev menu). */
@@ -107,6 +110,12 @@ export function storyScene(stage: StoryStage): [string, object | undefined] {
     case 'night': return ['Trailer', { night: true, story: 'night' }];
     case 'bigGame': return ['Game', { mode: 'story', story: 'bigGame', venue: 'school' }];
     case 'after': return ['Trailer', { story: 'after' }]; // round 60d: Mom, the day of the big game
+    // round 80: Kingston at the court, three months later, the snowy morning, the bus, the national final
+    case 'kingston': return ['Game', { mode: 'story', story: 'kingston', venue: 'school' }];
+    case 'paper': return ['Paper', undefined];
+    case 'snow': return ['Trailer', { story: 'snow' }];
+    case 'bus': return ['Bus', undefined];
+    case 'final': return ['Game', { mode: 'story', story: 'final', venue: 'arena' }];
     default: return c.story?.home === 'trailer' ? ['Trailer', undefined] : ['Apartment', undefined];
   }
 }

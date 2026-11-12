@@ -41,6 +41,15 @@ export class PostGameScene extends Phaser.Scene {
       lines.push(`+${r.xp} XP   (Lv ${app.career.level}, ${app.career.xp}/${xpToNext(app.career.level)})`);
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);
       for (const e of r.evo) lines.push(`Ultimate evolution: ${e}`);
+    } else if (this.mode === 'story' && this.replay?.story === 'final') {
+      // round 80: the national final; afterwards home is the snowy trailer (the story goes on from there later)
+      const v = bigGameVerdict(sim);
+      ensureStory();
+      app.career.story!.final = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
+      app.career.story!.winter = true;
+      setStage('done');
+      lines.push(v.won ? 'NATIONAL CHAMPIONS! Lincoln High takes the title.' : 'Crestview Prep takes the title. Kingston gets the last word.');
+      lines.push(`Your night: ${v.mine.toFixed(1)} (points, rebounds x1.3, assists x1.5, steals and blocks x3), best on the floor: ${v.best.toFixed(1)}.`);
     } else if (this.mode === 'story') {
       // round 60d: the big game. How it went decides Mom's scene back home (great: won + the best stat sum)
       const v = bigGameVerdict(sim);
@@ -84,6 +93,7 @@ export class PostGameScene extends Phaser.Scene {
       return;
     }
     if (this.inp.confirm()) {
+      if (this.mode === 'story' && this.replay?.story === 'final') { this.scene.start('Trailer'); return; } // round 80: home, in the snow
       if (this.mode === 'story') { const [scene, data] = storyScene('after'); this.scene.start(scene, data); return; }
       this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
     }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createCareer, migrateCareer, newCareer, STARTER_CORE, STARTER_PERKS, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
-import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN } from '../src/sim/story';
+import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
 import { NODES } from '../src/sim/data';
 import { GameSim, UserInput, emptyInput } from '../src/sim/game';
@@ -228,5 +228,43 @@ describe('round 60 story', () => {
     const ones = rivalPlayer(c, 'ones'), tut = rivalPlayer(c, 'tutorial');
     expect(ones.nodes.size).toBe(Object.keys(NODES).length);
     expect(tut.nodes.size).toBeLessThan(Object.keys(NODES).length);
+  });
+
+  it('round 80: the captain is the center if you are the point guard, otherwise the point guard', () => {
+    expect(captainPos('PG')).toBe('C');
+    for (const p of ['SG', 'SF', 'PF', 'C'] as const) expect(captainPos(p)).toBe('PG');
+    const c = career('SF'); c.story!.squadSeed = 1234;
+    const squad = lincolnSquad(c);
+    expect(squad.map((p) => p.pos).sort()).toEqual(['C', 'PF', 'PG', 'SG']);
+    expect(squadCaptain(c).pos).toBe('PG');
+    expect(lincolnSquad(c).map((p) => p.name)).toEqual(squad.map((p) => p.name)); // the same guys every time
+  });
+  it('round 80: the court visit is just you and Kingston, he has the ball, nothing is live', () => {
+    const sim = buildVisit(career('PG'), 3);
+    expect(sim.players.length).toBe(2);
+    expect(sim.live).toBe(false);
+    expect(sim.holder()?.id).toBe(RIVAL_ID);
+    expect(sim.drainEvents().length).toBe(0);
+  });
+  it('round 80: the national final: the bus guys on Lincoln, Kingston the star of Crestview, played to the end', () => {
+    const c = career('SG'); c.story!.squadSeed = 77;
+    const sim = buildFinal(c, 11);
+    expect(sim.teams[1].def).toBe(CRESTVIEW);
+    expect(sim.cfg.venue).toBe('arena');
+    const names = lincolnSquad(c).map((p) => p.name);
+    expect(sim.teams[0].roster.filter((p) => p !== sim.user).map((p) => p.name)).toEqual(names);
+    const king = sim.players.find((p) => p.id === RIVAL_ID)!;
+    expect(king.team).toBe(1);
+    expect(king.star).toBe(true);
+    expect(king.nodes.size).toBe(Object.keys(NODES).length);
+    expect(king.core.shooting).toBe(Math.min(99, avgSpread(king.pos).shooting + LOCKED_IN + RIVAL_EDGE));
+    let guard = 0;
+    while (!sim.over && guard++ < 60 * 60 * 20) sim.update(1 / 60, emptyInput());
+    expect(sim.over).toBe(true);
+  });
+  it('round 80: the schedule card shows the national final in winter', () => {
+    const c = career('PG');
+    for (const st of ['snow', 'bus', 'final'] as const) { c.story!.stage = st; expect(storyKeyGame(c)).toEqual({ when: 'TODAY', what: 'Final vs CRE' }); }
+    c.story!.stage = 'done'; c.story!.winter = true; expect(storyKeyGame(c)!.when).toBe('PLAYED');
   });
 });

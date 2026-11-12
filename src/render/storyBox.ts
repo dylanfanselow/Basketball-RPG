@@ -2,9 +2,9 @@ import Phaser from 'phaser';
 import { FONT } from '../scenes/ui';
 
 /** Who's talking in the box (round 60). The narrator (tutorial) has no name tag. */
-export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you' | 'me' | 'mom' | 'mate';
+export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you' | 'me' | 'mom' | 'mate' | 'phone';
 /** `name` overrides the speaker's tag (`me` = your first name, `mate` = the teammate's). */
-export interface BoxContent { who: BoxSpeaker; text: string; blocking: boolean; title?: string; sub?: string; name?: string }
+export interface BoxContent { who: BoxSpeaker; text: string; blocking: boolean; title?: string; sub?: string; name?: string; /** round 80: a dialogue choice (↑↓ + ✕); `choice` = the highlighted one */ choices?: string[]; choice?: number }
 
 const TAG: Record<BoxSpeaker, { name: string; color: number; text: string } | null> = {
   narrator: null,
@@ -15,6 +15,8 @@ const TAG: Record<BoxSpeaker, { name: string; color: number; text: string } | nu
   me: { name: 'YOU', color: 0x2f6a4a, text: '#e6ffe9' },
   mom: { name: 'MOM', color: 0x8a5a2a, text: '#fff1dc' },
   mate: { name: 'TEAMMATE', color: 0x7a1f2b, text: '#ffffff' },
+  // round 80: Mom on the phone
+  phone: { name: 'MOM (PHONE)', color: 0x8a5a2a, text: '#fff1dc' },
 };
 
 /**
@@ -48,7 +50,7 @@ export class StoryBox {
   }
 
   /** Is the typewriter still revealing the line? */
-  get typing() { return !!this.shown && this.chars() < this.shown.text.length; }
+  get typing() { return !!this.shown && !this.shown.choices && this.chars() < this.shown.text.length; }
   private chars() { return Math.floor((this.scene.time.now - this.startAt) / 1000 * 62); }
   /** ✕ while typing: show the whole line at once. */
   finishTyping() { this.startAt = -1e9; }
@@ -56,7 +58,7 @@ export class StoryBox {
   flash() { this.flashAt = this.scene.time.now; }
 
   show(c: BoxContent) {
-    const same = this.shown && this.shown.text === c.text && this.shown.who === c.who;
+    const same = this.shown && this.shown.text === c.text && this.shown.who === c.who && !!this.shown.choices === !!c.choices;
     if (!same) this.startAt = c.blocking ? this.scene.time.now : -1e9; // prompts appear at once
     this.shown = c;
     this.visible = true;
@@ -86,6 +88,16 @@ export class StoryBox {
     const edge = flash > 0 ? 0x5fe08a : t ? t.color : 0x6b7bb0;
     g.lineStyle(flash > 0 ? 4 : 2, edge, 1); g.strokeRoundedRect(X, Y, W, H, 12);
     if (flash > 0) { g.fillStyle(0x5fe08a, 0.18 * flash); g.fillRoundedRect(X, Y, W, H, 12); }
+    if (c.choices) {
+      // round 80: the options, the highlighted one marked and bright
+      this.body.setText(c.choices.map((o, i) => `${i === c.choice ? '▶' : '  '} ${o}`).join('\n')).setFontStyle('bold').setColor('#ffe9a8');
+      if (t) this.tag.setText((c.name ?? t.name).toUpperCase()).setBackgroundColor(Phaser.Display.Color.IntegerToColor(t.color).rgba).setColor(t.text).setVisible(true);
+      else this.tag.setVisible(false);
+      this.head.setVisible(false);
+      this.hint.setText('↑↓ choose  ✕ answer').setVisible(true).setAlpha(0.55 + 0.45 * Math.abs(Math.sin(now / 380)));
+      return;
+    }
+    this.hint.setText('✕ next');
     this.body.setText(c.text.slice(0, Math.max(0, this.chars())))
       .setFontStyle(c.who === 'you' ? 'italic' : c.blocking ? '' : 'bold')
       .setColor(c.who === 'you' ? '#d6e0ff' : c.blocking ? '#ffffff' : '#ffe9a8');

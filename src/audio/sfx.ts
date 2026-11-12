@@ -570,6 +570,44 @@ class Sfx {
     if (level <= 0 && this.gen) { const n = this.gen; this.gen = null; n.g.gain.setTargetAtTime(0, t, 0.08); n.osc.stop(t + 0.5); n.lfo.stop(t + 0.5); }
   }
   private gen: { osc: OscillatorNode; lfo: OscillatorNode; g: GainNode } | null = null;
+  /**
+   * Round 80: the school bus on the road, a deep diesel drone with a slow wobble and some road hiss under it. `on`
+   * false (or leaving the scene) stops it.
+   */
+  busRumble(on: boolean) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (on && !this.bus) {
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 41;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 3.2; lg.gain.value = 0.22;
+      const amp = ctx.createGain(); amp.gain.value = 0.75;
+      lfo.connect(lg).connect(amp.gain);
+      const hiss = ctx.createBufferSource(); hiss.buffer = this.noise; hiss.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 900; hp.Q.value = 0.6;
+      const hg = ctx.createGain(); hg.gain.value = 0.18;
+      const g = ctx.createGain(); g.gain.value = 0;
+      osc.connect(lp).connect(amp).connect(g); hiss.connect(hp).connect(hg).connect(g); g.connect(this.sfxBus);
+      osc.start(); lfo.start(); hiss.start();
+      this.bus = { osc, lfo, hiss, g };
+    }
+    if (this.bus) this.bus.g.gain.setTargetAtTime(on && !this.settings.muted ? 0.13 : 0, t, 0.3);
+    if (!on && this.bus) { const n = this.bus; this.bus = null; n.osc.stop(t + 1.2); n.lfo.stop(t + 1.2); n.hiss.stop(t + 1.2); }
+  }
+  private bus: { osc: OscillatorNode; lfo: OscillatorNode; hiss: AudioBufferSourceNode; g: GainNode } | null = null;
+  /** Round 80: a cell phone ringing (one ring: a quick two-tone trill, twice). */
+  phoneRing() {
+    if (!this.ok()) return;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) {
+      const at = r * 0.42 + i * 0.055;
+      this.tone({ type: 'square', f: i % 2 ? 1320 : 1760, peak: 0.035, a: 0.003, d: 0.045, at, lp: 3200 });
+    }
+  }
+  /** Round 80: a newspaper page rustling. */
+  paperRustle() {
+    if (!this.ok()) return;
+    for (let i = 0; i < 4; i++) this.noiseHit({ type: 'bandpass', f: 2200 + i * 500, q: 0.8, peak: 0.07, a: 0.01, d: 0.07, at: i * 0.05 });
+  }
   /** Round 47: a door latch: a short bright click (two little metal clicks a few ms apart). */
   private latch(at = 0) {
     this.noiseHit({ type: 'highpass', f: 2600, peak: 0.22, a: 0.001, d: 0.025, at });

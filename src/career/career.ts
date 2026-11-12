@@ -42,7 +42,9 @@ export interface CareerState {
    */
   story?: StoryState;
 }
-export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'done';
+/** Round 80: after `after` (Mom's talk) the yard is yours (`done` + `checkKingston`); the path end then leads on:
+ *  Kingston at the court → three months later (the paper) → the snowy morning → the bus → the national final. */
+export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'kingston' | 'paper' | 'snow' | 'bus' | 'final' | 'done';
 export interface RivalInfo { first: string; last: string; pos: Position; number: number; heightIn: number; appearance: Appearance }
 export interface StoryState {
   stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment';
@@ -50,6 +52,14 @@ export interface StoryState {
   bigGame?: BigGameResult;
   /** round 71: Mom said to go check on Kingston (after the big game); until then the trailer door says so */
   checkKingston?: boolean;
+  /** round 80: three months later it's winter (the trailer yard is snowy from the snowy morning on) */
+  winter?: boolean;
+  /** round 80: the Lincoln teammates (same names on the bus and in the national final) */
+  squadSeed?: number;
+  /** round 80: on the bus, Mom calls (the generator broke): 'go' = you said you'd come home, 'stay' = hold out */
+  momCall?: 'go' | 'stay';
+  /** round 80: how the national final went */
+  final?: BigGameResult;
 }
 export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
 
@@ -283,9 +293,14 @@ export function advanceDay(c: CareerState) { c.life.day++; }
 export function storyKeyGame(c: CareerState): { when: string; what: string } | null {
   const st = c.story;
   if (!st) return null;
+  // round 80: three months later, the national final against Crestview Prep
+  const fin = 'Final vs CRE';
+  if (st.stage === 'snow' || st.stage === 'bus' || st.stage === 'final') return { when: 'TODAY', what: fin };
+  if (st.stage === 'paper') return { when: 'SOON', what: fin };
+  if (st.winter) return { when: 'PLAYED', what: fin };
   const what = 'Big game vs JEF';
   if (st.stage === 'bigGame') return { when: 'TODAY', what };
-  if (st.stage === 'after') return { when: 'PLAYED', what };
+  if (st.stage === 'after' || st.stage === 'kingston') return { when: 'PLAYED', what };
   if (st.stage === 'done') return st.home === 'trailer' ? { when: 'PLAYED', what } : null;
   return { when: '1 DAY', what };
 }

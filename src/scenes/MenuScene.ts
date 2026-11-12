@@ -29,6 +29,11 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Big game (scout)', action: () => this.story('bigGame'), hint: 'Kingston is out sick: the coach starts you. Locked in: +10 all stats.' },
       { label: 'Story: After the game (great)', action: () => this.after(true), hint: 'Round 60d: Mom the day of the big game, after a great game (won + best stat sum).' },
       { label: 'Story: After the game (promise)', action: () => this.after(false), hint: 'Round 60d: Mom says the scout told her you have promise.' },
+      { label: 'Story: Kingston at the court', action: () => this.story('kingston'), hint: 'Round 80: the day after, Kingston is confused about being sick, then jealous, then gone.' },
+      { label: 'Story: Three months later', action: () => this.story('paper'), hint: 'Round 80: the newspaper (nationals, record cold, Crestview adds Kingston), then Mom wakes you.' },
+      { label: 'Story: Snowy morning', action: () => this.story('snow'), hint: 'Round 80: the trailer yard in snow; ✕ at the end of the path catches the bus.' },
+      { label: 'Story: Bus ride', action: () => this.story('bus'), hint: 'Round 80: jokes, Kingston, then Mom calls: the generator broke (your choice is saved).' },
+      { label: 'Story: National final', action: () => this.story('final'), hint: 'Round 80: the arena, Lincoln vs Crestview Prep (Kingston).' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -54,7 +59,11 @@ export class MenuScene extends Phaser.Scene {
     ].join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
   }
   /** Round 60: jump to a story stage (sets it on the career, like Load Save would resume it). */
-  private story(stage: StoryStage) { setStage(stage); const [scene, data] = storyScene(stage); this.scene.start(scene, data); }
+  private story(stage: StoryStage) {
+    setStage(stage);
+    if (stage === 'snow' || stage === 'bus' || stage === 'final') { app.career.story!.winter = true; app.changed(); } // round 80
+    const [scene, data] = storyScene(stage); this.scene.start(scene, data);
+  }
   /** Round 60d: Mom's after-game scene with a made-up result. */
   private after(great: boolean) {
     setStage('after');

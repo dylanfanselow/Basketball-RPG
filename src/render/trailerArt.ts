@@ -48,6 +48,93 @@ function gradeNight(c: C, w: number, h: number, sky = false) {
   EMIT = [];
 }
 
+// ---------------------------------------------------------------- snow (round 80)
+/** Snow shades, brightest first (cool shadows, never pure grey). */
+const SNOW = ['#f6f9fd', '#e8eef5', '#d6dfea', '#bfcbdb', '#a7b5c9'];
+const lumOf = (r: number, g: number, b: number) => 0.3 * r + 0.59 * g + 0.11 * b;
+const snowCol = (lum: number, x: number, y: number) => {
+  const k = Math.max(0, Math.min(4, Math.floor((235 - lum) / 34 + (hn(x >> 1, y >> 1, 801) - 0.5) * 0.8)));
+  return hn(x, y, 802) < 0.012 ? '#ffffff' : SNOW[k];
+};
+/** A snow cap on top of a surface: `n` rows from (x, y) down, a little ragged. */
+function cap(c: C, x: number, y: number, n = 3) {
+  const h = n + (hn(x >> 1, y, 803) < 0.3 ? 1 : 0) - (hn(x >> 2, y, 804) < 0.15 ? 1 : 0);
+  for (let k = 0; k < h; k++) P(c, x, y + k, k === h - 1 ? SNOW[2] : k === 0 ? SNOW[0] : SNOW[1]);
+}
+/** The trailer's top edge at an art column (the same rounded profile drawTrailer uses). */
+function trailerTop(x: number): number | null {
+  if (x < T_X0 || x >= T_X1) return null;
+  for (let y = T_TOP; y < T_BOT; y++) {
+    const rTL = 34, rTR = 20;
+    if (x < T_X0 + rTL && y < T_TOP + rTL && Math.hypot(x - (T_X0 + rTL), y - (T_TOP + rTL)) > rTL) continue;
+    if (x > T_X1 - rTR && y < T_TOP + rTR && Math.hypot(x - (T_X1 - rTR), y - (T_TOP + rTR)) > rTR) continue;
+    return y;
+  }
+  return null;
+}
+/**
+ * Round 80: winter, three months later. Greens (grass, weeds, foliage) turn to snow shaded by how lit they were,
+ * the dirt path is trodden grey slush, the sky is overcast, and every surface open to the sky gets a snow cap
+ * (`bg`: the sky's edge plus the trailer, roofs, fences and steps; a piece: any pixel with nothing above it).
+ */
+function gradeSnow(c: C, w: number, h: number, bg: boolean, caps = true) {
+  const img = c.getImageData(0, 0, w, h), d = img.data;
+  const sky = new Uint8Array(w * h);
+  const HZ = 262;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (!d[i + 3]) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2], lum = lumOf(r, g, b);
+    let out: string | null = null;
+    if (bg && y < HZ && (b > r + 25 || (r > 195 && g > 205 && b > 215))) {
+      // overcast: flat pale grey-blue with soft darker bands
+      sky[y * w + x] = 1;
+      const band = Math.sin(y / 23 + Math.sin(x / 140) * 1.4) * 0.5 + 0.5;
+      out = mix(mix('#9ea8b6', '#dde2e8', y / HZ), '#c3cad4', band * 0.35);
+    } else if (g > r + 6 && g > b + 6) {
+      // green → snow; the darkest foliage keeps a little evergreen showing through
+      if (bg && y > HZ + 6) {
+        // the yard: a smooth blanket (soft drifts, not the grass's blade noise), a few dead stalks poking through
+        const drift = hn(x >> 4, y >> 3, 808) * 0.6 + hn(x >> 2, y >> 2, 809) * 0.4;
+        out = hn(x, y, 802) < 0.01 ? '#ffffff' : SNOW[drift < 0.22 ? 2 : drift < 0.55 ? 1 : 0];
+        if (hn(x, y >> 2, 806) < 0.01) out = '#7a6a52';
+      } else out = lum < 95 && hn(x >> 1, y >> 1, 805) < 0.45 ? (lum < 75 ? '#3c4a44' : '#55665c') : snowCol(lum + 40, x, y);
+    } else if (bg && y > 296 && r > g && g > b && r - b > 40 && r < 200) {
+      out = mix(snowCol(lum + 70, x, y), '#8a8478', lum < 120 ? 0.55 : 0.3); // the path: trodden grey slush, darker ruts
+    }
+    if (out) { const n = parseInt(out.slice(1), 16); d[i] = n >> 16; d[i + 1] = (n >> 8) & 255; d[i + 2] = n & 255; }
+  }
+  // wildflowers don't bloom in the snow: lone bright specks in the yard (snow left and right of them) go white
+  if (bg) {
+    const snowy = (j: number) => d[j] > 190 && d[j + 1] > 200 && d[j + 2] > 210;
+    for (let y = HZ + 6; y < h; y++) for (let x = 3; x < w - 3; x++) {
+      const i = (y * w + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2];
+      if (Math.max(r, g, b) - Math.min(r, g, b) < 60) continue;
+      const L = [4, 8, 12].find((k) => snowy(i - k)), Rr = [4, 8, 12].find((k) => snowy(i + k));
+      if (L && Rr) { d[i] = d[i - L]; d[i + 1] = d[i - L + 1]; d[i + 2] = d[i - L + 2]; }
+    }
+  }
+  // cool, flat winter light on everything else
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    d[i] = Math.round(d[i] * 0.9 + 12); d[i + 1] = Math.round(d[i + 1] * 0.92 + 14); d[i + 2] = Math.min(255, Math.round(d[i + 2] * 0.95 + 26));
+  }
+  c.putImageData(img, 0, 0);
+  if (!caps) return;
+  // snow caps: anything opaque with sky (bg) or nothing (a piece) right above it
+  for (let x = 0; x < w; x++) for (let y = 1; y < h; y++) {
+    const i = (y * w + x) * 4, above = ((y - 1) * w + x) * 4;
+    const open = bg ? sky[(y - 1) * w + x] && !sky[y * w + x] : d[above + 3] === 0;
+    if (d[i + 3] && open) cap(c, x, y, bg ? 3 : 2);
+  }
+  if (!bg) return;
+  for (let x = T_X0; x < T_X1; x++) { const t = trailerTop(x); if (t !== null) cap(c, x, t - 1, 4); }  // the camper's roof
+  for (let x = 0; x < 160; x++) cap(c, x, 166, 4);                                                       // the house roof
+  for (const [x0, x1, top] of [[736, 884, 210], [872, 1000, 222], [600, 700, 236]]) for (let x = x0 + 6; x < Math.min(x1 - 6, w); x++) cap(c, x, top - 1, 3);
+  for (let x = 0; x < 180; x++) cap(c, x, 232, 2);                                                        // the left fence rail
+  for (const [y0, y1, hh] of STEPS.rows) { const top = Gy(y1) - up(hh); for (let x = Xa(STEPS.x0); x < Xa(STEPS.x1); x++) for (let y = Gy(y0) - up(hh); y <= top; y++) P(c, x, y, hn(x, y, 807) < 0.2 ? SNOW[1] : SNOW[0]); }
+}
+
 // ---------------------------------------------------------------- background
 function blobTree(c: C, blobs: [number, number, number][], x0 = 0, x1 = ART_W) {
   for (const [bx, by, r] of blobs) for (let y = Math.max(0, by - r); y < by + r; y++) for (let x = Math.max(x0, bx - r); x < Math.min(x1, bx + r); x++) {
@@ -102,7 +189,7 @@ function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body
   for (let x = x0; x < x1; x += 3) R(c, x, bot - 4 - Math.round(hn(x, seed, 103) * 9), 2, 12, hn(x, 1, 104) < 0.5 ? '#557f33' : '#6c9c42'); // weeds
 }
 
-function drawBackground(night: boolean): HTMLCanvasElement {
+function drawBackground(night: boolean, snow = false): HTMLCanvasElement {
   NIGHT = night; EMIT = [];
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   // sky + clouds
@@ -183,6 +270,7 @@ function drawBackground(night: boolean): HTMLCanvasElement {
   drawWeeds(c);
   drawSteps(c);
   drawJunk(c);
+  if (snow) gradeSnow(c, ART_W, ART_H, true);
   if (night) gradeNight(c, ART_W, ART_H, true);
   NIGHT = false;
   return cv;
@@ -450,11 +538,12 @@ const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
 const FRAMES: Record<string, number> = { trailerDoor: 2, generator: 2 };
 const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
 
-/** Round 57c: `night` = the night version (darkened, moon and stars, the trailer's lamps lit by the generator). */
-export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false): { bg: string; pieces: ArtPiece[] } {
-  const sfx = night ? '_n' : '';
+/** Round 57c: `night` = the night version (darkened, moon and stars, the trailer's lamps lit by the generator).
+ *  Round 80: `snow` = winter (snow on the ground and on every top, overcast). */
+export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false, snow = false): { bg: string; pieces: ArtPiece[] } {
+  const sfx = (night ? '_n' : '') + (snow ? '_s' : '');
   const bg = `trailer_bg${sfx}_v3`; // v3: the mailbox moved out to a piece (round 71)
-  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night));
+  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night, snow));
   const pieces: ArtPiece[] = [];
   for (const p of TRAILER_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
@@ -462,6 +551,7 @@ export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = fals
     const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => {
       NIGHT = night; EMIT = [];
       draw(c, p, f);
+      if (snow) gradeSnow(c, ART_W, ART_H, false, p.kind !== 'trailerDoor');
       if (night) gradeNight(c, ART_W, ART_H);
       NIGHT = false;
     });

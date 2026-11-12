@@ -206,7 +206,7 @@ export class GameScene extends Phaser.Scene {
     // round 60: a prologue game (the tutorial box, the 1s, the big game's coach + scout)
     this.story = this.mode === 'story' ? new StoryRun(this, this.initData.story ?? 'tutorial') : null;
     this.events.on('shutdown', () => { app.sim = null; sfx.hush(false); sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; sfx.music(null); });
-    sfx.music('game'); // round 60c: the retro arcade loop in every basketball game
+    sfx.music(this.story?.cutscene ? null : 'game'); // round 60c: the retro arcade loop in every basketball game (round 80: not in a cutscene)
     sfx.setArena(!this.school); // crowd murmur only while an arena game is on
     sfx.rain(this.school === 'rain');
     sfx.crowdSize = this.school === 'rain' ? 0 : this.school === 'day' ? 0.35 : 1;
@@ -818,6 +818,17 @@ export class GameScene extends Phaser.Scene {
     for (const t of this.shotClockTexts) t.setText(String(Math.max(0, Math.ceil(sim.shotClock))));
     this.drawOverlays();
     this.drawHud();
+    if (this.story?.cutscene) this.hideHud();
+  }
+
+  /** Round 80: a story cutscene on the court (Kingston at the school): no scoreboard, meter, shot line or buttons. */
+  hideHud() {
+    // no rings under the players, no P1 tag
+    this.overlay.clear(); this.overlayTop.clear();
+    for (const t of this.labelTexts) t.setVisible(false);
+    for (const o of this.children.list as (Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Depth & Phaser.GameObjects.Components.Visible & { scrollFactorX?: number })[]) {
+      if (o.scrollFactorX === 0 && o.depth >= 9000 && o.depth < 9200 && o.visible) o.setVisible(false);
+    }
   }
 
   /** Round 56: the rainy night's live layers (made in create, never lazily): streaks over everything, splashes on the
@@ -908,13 +919,14 @@ export class GameScene extends Phaser.Scene {
     // (the chairs themselves are drawn into the seated bench / celebrity sprites)
     // courtside seats between each bench and the scorer's table: plush red chairs for the famous faces
     this.celebs = [];
+    // round 80: a high-school final in the arena has no NBA celebrities courtside
     const crng = new Rng(sim.teams[0].def.seed * 97 + 13);
     // a fixed cast (hand-editable in the pixel editor), seated in a different order each home arena
     const order = Array.from({ length: CELEB_CAST }, (_, i) => i).filter((i) => !RETIRED_CELEBS.includes(i)).sort(() => crng.next() - 0.5);
     // featured celebs always get a seat, a few seats in from the table
     for (const f of FEATURED_CELEBS) { order.splice(order.indexOf(f), 1); order.splice(Math.min(order.length, 3 + (crng.next() * 6 | 0)), 0, f); }
     let seat = 0;
-    for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
+    if (this.mode !== 'story') for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
       const ci = order[seat++ % order.length];
       const key = celebTexKey(ci);
       if (!this.textures.exists(key)) {

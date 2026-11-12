@@ -49,6 +49,35 @@ export class StoryRun {
       this.say([
         { who: 'kingston', text: `Just us now. Make it, take it. Don't cry when I cook you, ${you}.` },
       ]);
+    } else if (which === 'kingston') {
+      // round 80: the day after the big game, Kingston alone on the school court. Confused, then jealous, then gone.
+      if (c.story) { c.story.checkKingston = false; app.changed(); }
+      const great = !!c.story?.bigGame?.great;
+      this.say([
+        { who: 'kingston', text: 'Look who it is. Mr. Starter.' },
+        { who: 'me', name: you, text: 'How you feeling? Ma said you were sick as a dog.' },
+        { who: 'kingston', text: 'Man, I still don\'t get it. I was fine. Woke up, ate, had my coffee. Same as every game day.' },
+        { who: 'kingston', text: 'Then outta nowhere my stomach\'s turning inside out. And by the time the game\'s over? Nothing. Like somebody flipped a switch.' },
+        { who: 'kingston', text: 'Sick for one day. One. And it had to be THE day.' },
+        { who: 'kingston', text: great ? 'Heard you went off. Whole street\'s talking.' : 'Heard the scout wrote your name down.' },
+        { who: 'me', name: you, text: 'I just played, man. It should\'ve been you out there.' },
+        { who: 'kingston', text: 'Yeah. It should\'ve.' },
+        { who: 'kingston', text: 'I been out here every morning since I was eight. Rain, cold, whatever. All for that one day.' },
+        { who: 'kingston', text: 'And a guy like you gets the chance? How? Why you? Why not me?' },
+        { who: 'me', name: you, text: 'Kingston, come on. I didn\'t ask for any of this.' },
+        { who: 'kingston', text: 'You didn\'t have to ask. That\'s the thing. It just fell in your lap.' },
+        { who: 'kingston', text: 'Nah. I\'m done with this place. This court, this school, all of it.' },
+        { who: 'kingston', text: 'I\'ll figure out a way. Watch me.', then: () => { sfx.music('mom'); this.kingstonLeaves(0.45); } },
+        { who: 'you', text: 'He\'ll cool off. He always does.', then: () => this.goTo('paper') },
+      ]);
+    } else if (which === 'final') {
+      // round 80: three months later, the national final in the arena; Kingston plays for Crestview now
+      const line = c.story?.momCall === 'go' ? 'Play my heart out. For her.' : 'Just hold out, Ma. One more game.';
+      this.say([
+        { who: 'narrator', text: 'The national championship. Lincoln vs. Crestview Prep.' },
+        { who: 'kingston', text: `Told you I'd figure out a way, ${you}.` },
+        { who: 'you', text: line, then: () => this.banner('NATIONAL CHAMPIONSHIP', 'LINCOLN LIONS  vs  CRESTVIEW PREP FALCONS') },
+      ]);
     } else if (which === 'bigGame') {
       this.buildCoach(); this.buildScout();
       const last = c.lastName || c.name.split(' ').slice(-1)[0];
@@ -85,7 +114,7 @@ export class StoryRun {
     }
     const ok = inp.pressed('a');
     let content: BoxContent | null = null;
-    let hold = false;
+    let hold = this.cutscene; // round 80: the court visit never plays
     if (this.line) {
       content = { who: this.line.who, text: this.line.text, blocking: true, name: this.line.name };
       hold = true;
@@ -113,7 +142,7 @@ export class StoryRun {
 
   /** The sim says the game is over. True = the story handles what's next (no PostGame). */
   onOver(): boolean {
-    if (this.which === 'bigGame') return false; // PostGame (story branch) → home
+    if (this.which === 'bigGame' || this.which === 'final') return false; // PostGame (story branch) → home
     if (this.overHandled) return true;
     this.overHandled = true;
     if (this.which === 'ones') {
@@ -141,18 +170,22 @@ export class StoryRun {
     if (e.kind === 'score' && e.team === 0) this.coach.cheerUntil = this.gs.time.now + 1600;
   }
 
+  /** Round 80: a story scene on the court that isn't a game (Kingston at the school): no HUD, no game music. */
+  get cutscene(): boolean { return this.which === 'kingston'; }
+
   /** The tutorial's shot-chance lines: GameScene shows an example number top right meanwhile. */
   get shotExample(): boolean { return !this.line && this.dir?.view()?.example === 'shot'; }
 
-  pauseOptions(): string[] { return this.dir ? ['Skip lesson', 'Skip to the 1s'] : this.which === 'ones' ? ['Skip to that night'] : []; }
+  pauseOptions(): string[] { return this.dir ? ['Skip lesson', 'Skip to the 1s'] : this.which === 'ones' ? ['Skip to that night'] : this.which === 'kingston' ? ['Skip to three months later'] : []; }
   pauseAction(i: number) {
     if (this.dir && i === 0) this.dir.skipLesson();
     else if (this.dir && i === 1) this.goTo('ones');
     else if (this.which === 'ones') this.goTo('night');
+    else if (this.which === 'kingston') this.goTo('paper');
   }
 
   // ---------- transitions ----------
-  private goTo(stage: 'ones' | 'night') {
+  private goTo(stage: 'ones' | 'night' | 'paper') {
     if (this.leaving) return;
     this.leaving = true;
     setStage(stage);
@@ -166,13 +199,13 @@ export class StoryRun {
    * "See you tomorrow": he turns and walks off into the rain, away from the hoop and out of the picture (round 60b;
    * GameScene animates him from his velocity, the same stride rooms use for walking). Your thoughts play meanwhile.
    */
-  private kingstonLeaves() {
+  private kingstonLeaves(drift = -0.18) {
     const sim = this.gs.sim, king = sim.players.find((p) => p.id === RIVAL_ID);
     if (!king) return;
     sim.live = false; // nobody's defending anymore (no defensive shuffle)
     if (sim.user && sim.holder() !== sim.user) sim.giveBall(sim.user);
-    const away = -sim.side(0); // the hoop is that way; he heads the other way, drifting toward the fence
-    const dir = { x: away, y: -0.18 }, n = Math.hypot(dir.x, dir.y);
+    const away = -sim.side(0); // the hoop is that way; he heads the other way, drifting toward the fence (round 80: or passing in front of you)
+    const dir = { x: away, y: drift }, n = Math.hypot(dir.x, dir.y);
     this.walker = { dir: { x: dir.x / n, y: dir.y / n }, speed: 6.4 };
     king.face = { ...this.walker.dir };
     king.state = 'idle'; king.anim = null;

@@ -31,7 +31,13 @@ export class TrailerScene extends RoomScene {
   /** Round 57c: the night version (Menu → Trailer (night); story events can ask for it). */
   night = false;
   /** Round 60: 'night' = home after the 1s with Kingston (the next day is the big game). */
-  story: 'night' | 'after' | null = null;
+  story: 'night' | 'after' | 'snow' | null = null;
+  /** Round 80: winter (from the snowy morning on): snow on everything, flakes falling, your breath in the air. */
+  snow = false;
+  private flakes: { x: number; y: number; vy: number; ph: number; r: number }[] = [];
+  private snowG: Phaser.GameObjects.Graphics | null = null;
+  private puffs: { x: number; y: number; t: number }[] = [];
+  private nextPuff = 0;
   private box: StoryBox | null = null;
   private lines: { who: BoxSpeaker; text: string; name?: string }[] = [];
   /**
@@ -45,9 +51,14 @@ export class TrailerScene extends RoomScene {
   private mom: Phaser.GameObjects.Sprite | null = null;
   /** Round 71: a thought from looking at something in the yard is up (✕ closes it). */
   private thinking = false;
-  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' }) { super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; }
+  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' | 'snow' }) {
+    super.init(data); this.night = !!data?.night; this.story = data?.story ?? null;
+    this.snow = this.story === 'snow' || (!this.story && !!app.career.story?.winter);
+  }
   room(): RoomDef { return TRAILER_YARD; }
-  buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm, this.night); }
+  buildArt(tm: Phaser.Textures.TextureManager) { return buildTrailerArt(tm, this.night, this.snow); }
+  /** Round 80: after the final the generator has quit (Mom's call on the bus). */
+  private get genDead() { return this.snow && this.story !== 'snow'; }
   extraObstacles(): Poly[] { return [TRAILER_SOLID]; }
   /** Wood on the steps, grass and dirt everywhere else. */
   footSurface(): boolean | 'grass' { return liftAt(this.pos) > 0 ? false : 'grass'; }
@@ -56,6 +67,15 @@ export class TrailerScene extends RoomScene {
 
   onCreate() {
     this.box = null; this.lines = []; this.cut = null; this.cutT = 0; this.leg = 0; this.mom = null; this.thinking = false;
+    this.flakes = []; this.snowG = null; this.puffs = []; this.nextPuff = 2;
+    if (this.snow) this.buildSnow();
+    if (this.story === 'snow') {
+      // round 80: Mom woke you; you come out the door into the snow (the yard is yours, the bus is waiting)
+      this.pos = { ...DOOR_SPOT }; this.face = { x: 0, y: 1 };
+      this.cameras.main.fadeOut(0, 0, 0, 0);
+      this.shown = false; this.busy = true;
+    }
+    if (app.career.story?.checkKingston) this.time.delayedCall(1500, () => prepareStory(this, 'kingston')); // round 80: the court visit is next (after your own sheet)
     if (this.story === 'night' || this.story === 'after') {
       this.box = new StoryBox(this, { y: 590 });
       this.mom = this.buildMom();
@@ -66,7 +86,8 @@ export class TrailerScene extends RoomScene {
       this.shown = false;
       this.busy = true; // a cutscene: the stick does nothing until you're inside
     }
-    this.cameras.main.setBackgroundColor(this.night ? '#0b1020' : '#4f97e2');
+    this.cameras.main.setBackgroundColor(this.night ? '#0b1020' : this.snow ? '#c3cad4' : '#4f97e2');
+    if (this.snow) this.player.setTint(0xdfe6f2); // flat winter light
     this.events.once('shutdown', () => sfx.genHum(0));
     if (this.night) {
       // moonlit: you're cooler and darker; warm light pools from the porch bulb and the lit windows
@@ -81,14 +102,57 @@ export class TrailerScene extends RoomScene {
   }
 
   actions() {
+    const st = app.career.story;
+    const morning = this.story === 'snow';
     return [
       // round 71: after Mom's talk following the big game, the door waits until you've checked on Kingston
-      { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => (app.career.story?.checkKingston ? this.think('I should check on Kingston.') : this.goInside()) },
-      { label: 'Generator', spot: GENERATOR_SPOT, reach: 1.6, run: () => this.think('I\'m surprised this piece of junk still works, but I\'m glad it does.') },
+      { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => (morning ? this.think('I gotta catch the bus.') : st?.checkKingston ? this.think('I should check on Kingston.') : this.goInside()) },
+      { label: 'Generator', spot: GENERATOR_SPOT, reach: 1.6, run: () => this.think(morning ? 'Come on, old man. Just hold on a little longer.' : this.genDead ? 'Still won\'t start.' : 'I\'m surprised this piece of junk still works, but I\'m glad it does.') },
       { label: 'Mailbox', spot: MAILBOX_SPOT, reach: 1.3, run: () => { sfx.blip(true); this.think('No mail.'); } },
-      // round 57c: the end of the path (by the mailbox) leaves
-      { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Title'); } },
+      // round 57c: the end of the path (by the mailbox) leaves; round 80: in the story it leads on
+      st?.checkKingston
+        ? { label: 'Go see Kingston', spot: PATH_END, reach: 1.8, run: () => this.storyExit('kingston') }
+        : morning
+          ? { label: 'Catch the bus', spot: PATH_END, reach: 1.8, run: () => this.storyExit('bus') }
+          : { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => { sfx.footstep('grass', 0); this.scene.start('Title'); } },
     ];
+  }
+
+  /** Round 80: down the path to the next part of the story (Kingston at the court; the bus). */
+  private storyExit(stage: 'kingston' | 'bus') {
+    if (this.busy) return;
+    this.busy = true;
+    sfx.footstep('grass', 0);
+    setStage(stage);
+    this.cameras.main.fadeOut(650, 0, 0, 0);
+    this.time.delayedCall(700, () => { const [scene, data] = storyScene(stage); this.scene.start(scene, data); });
+  }
+
+  // ---------- round 80: winter ----------
+  private buildSnow() {
+    for (let i = 0; i < 170; i++) this.flakes.push({ x: Math.random() * 1280, y: Math.random() * 720, vy: 26 + Math.random() * 46, ph: Math.random() * 6.3, r: Math.random() < 0.25 ? 2 : 1.3 });
+    this.snowG = this.add.graphics().setScrollFactor(0).setDepth(8800);
+  }
+  private drawSnow(dt: number) {
+    const g = this.snowG; if (!g) return;
+    g.clear();
+    for (const f of this.flakes) {
+      f.y += f.vy * dt; f.x += Math.sin(this.t * 0.9 + f.ph) * 14 * dt - 6 * dt;
+      if (f.y > 724) { f.y = -4; f.x = Math.random() * 1280; }
+      if (f.x < -4) f.x = 1284;
+      g.fillStyle(0xffffff, f.r > 1.5 ? 0.95 : 0.7).fillCircle(f.x, f.y, f.r);
+    }
+    // your breath now and then, a little cloud drifting up in front of your face
+    if (this.player.visible && this.player.alpha > 0.5 && this.t > this.nextPuff) {
+      this.nextPuff = this.t + 2.2 + Math.random() * 1.6;
+      const cam = this.cameras.main, fx = this.face.x > 0.2 ? 1 : this.face.x < -0.2 ? -1 : 0;
+      this.puffs.push({ x: this.player.x - cam.scrollX + fx * 14, y: this.player.y - cam.scrollY - this.player.displayHeight * 0.83, t: this.t });
+    }
+    this.puffs = this.puffs.filter((p) => this.t - p.t < 1.2);
+    for (const p of this.puffs) {
+      const k = (this.t - p.t) / 1.2;
+      g.fillStyle(0xf4f7fb, 0.55 * (1 - k)).fillCircle(p.x + k * 8, p.y - k * 16, 4 + k * 9);
+    }
   }
 
   /** Round 71: your thought in the story box (YOU, thinking); you stand still until ✕ closes it. */
@@ -110,6 +174,18 @@ export class TrailerScene extends RoomScene {
       if (this.thinking && !this.lines.length) { this.thinking = false; this.busy = false; }
     }
     this.momScene(dt);
+    this.drawSnow(dt);
+    if (this.story === 'snow' && !this.shown && this.playerReady()) {
+      // round 80: fade in on the top step as the door shuts behind you
+      this.shown = true; this.drawPlayer(0);
+      prepareStory(this, 'final'); // tonight's game, drawn while you walk to the bus (after your own sheet)
+      const door = this.piece('door');
+      door?.setFrame(1); sfx.doorOpen();
+      this.cameras.main.fadeIn(700, 0, 0, 0);
+      this.time.delayedCall(520, () => { door?.setFrame(0); sfx.doorClose(); this.busy = false; });
+    }
+    // round 80: after the final the generator is dead (no shake, no hum)
+    if (this.genDead) { this.piece('generator')?.setFrame(0); sfx.genHum(0); return; }
     // the generator runs: shakes a pixel and its light blinks; the hum grows as you walk up to it
     this.piece('generator')?.setFrame(Math.floor(this.t * 14) % 2);
     const g = TRAILER_YARD.furniture.find((p) => p.id === 'generator')!;
@@ -214,6 +290,7 @@ export class TrailerScene extends RoomScene {
           this.cut = null; this.busy = false; this.box?.hide();
           setStage('done'); sfx.music(null);
           c.story!.checkKingston = true; app.changed(); // round 71: the door reminds you until you've seen him
+          prepareStory(this, 'kingston'); // round 80: the path end leads to him now
           return;
         }
         this.cut = 'walkUp'; this.cutT = 0;

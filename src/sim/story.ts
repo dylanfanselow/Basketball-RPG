@@ -8,7 +8,7 @@ import { GameSim } from './game';
 import { Player } from './player';
 import { TeamDef, CoreStats, CORE_STATS, NODES } from './data';
 import { Position, HEIGHTS } from './attributes';
-import { Rng, clamp } from './math';
+import { Rng, clamp, norm, sub } from './math';
 import { STAT_WEIGHTS } from './boxScore';
 import { randomAppearance, Appearance } from '../render/appearance';
 import { AI_PERKS, BIAS, FIRST, LAST } from '../career/roster';
@@ -168,5 +168,85 @@ export function buildBigGame(c: CareerState, seed: number): GameSim {
     teams: [LINCOLN, JEFFERSON], rosters: [mine, theirs], userId: me.id,
     trust: { team: 70, coach: 70 }, ult: { unlocked: false, id: null, level: 0 },
     featureUser: true, venue: 'school',
+  });
+}
+
+// ---------------------------------------------------------------- round 80: Kingston leaves, the national final
+
+/** Round 80 (owner): Kingston transfers to Crestview Prep, the school Lincoln meets in the national final. */
+export const CRESTVIEW: TeamDef = { id: 'CRE', city: 'Crestview Prep', name: 'Falcons', colors: ['#1c2b4a', '#c0c6cf'], seed: 6003 };
+
+/** Round 80 (owner): the team captain on the bus: a center if you're the point guard, otherwise the point guard. */
+export const captainPos = (pos: Position): Position => (pos === 'PG' ? 'C' : 'PG');
+
+/** The Lincoln squad's seed (saved on the story so the bus and the final have the same guys). */
+export function squadSeed(c: CareerState): number {
+  return c.story?.squadSeed ?? (c.name.length * 7919 + c.number * 131 + 17);
+}
+
+/**
+ * Round 80: your four Lincoln teammates three months on (they've grown a little: ~48), one at every other position,
+ * the captain among them. Deterministic from the story's squad seed.
+ */
+export function lincolnSquad(c: CareerState): Player[] {
+  const rng = new Rng(squadSeed(c));
+  const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+  return order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, 48));
+}
+/** The captain (see `captainPos`). */
+export function squadCaptain(c: CareerState, squad = lincolnSquad(c)): Player {
+  return squad.find((p) => p.pos === captainPos(c.pos)) ?? squad[0];
+}
+
+/**
+ * Round 80: the day after the big game, Kingston alone on the school court (day). A cutscene, not a game: you and
+ * him, nobody else; he's at the free-throw line with the ball, you at the top of the key facing him. Not live.
+ */
+export function buildVisit(c: CareerState, seed: number): GameSim {
+  const me = storyMe(c);
+  const king = rivalPlayer(c, 'tutorial', 1);
+  const sim = new GameSim({
+    mode: 'practice', quarterLen: 180, seed,
+    teams: [LINCOLN, LINCOLN], rosters: [[me], [king]], userId: me.id,
+    trust: { team: 60, coach: 60 }, ult: { unlocked: false, id: null, level: 0 },
+    featureUser: false, venue: 'school',
+    oneOnOne: { target: 11, scoring: '1s2s', winBy2: true, cpu: 'medium' },
+  });
+  const rim = sim.rim(0), out = rim.x < 47 ? 1 : -1;
+  king.p = { x: rim.x + out * 13.5, y: rim.y + 1.5 };
+  me.p = { x: rim.x + out * 22.5, y: rim.y - 3 };
+  for (const p of [king, me]) { p.vel = { x: 0, y: 0 }; p.state = 'idle'; p.anim = null; p.z = 0; p.vz = 0; }
+  king.face = norm(sub(me.p, king.p)); me.face = norm(sub(king.p, me.p));
+  sim.giveBall(king);
+  sim.live = false;
+  sim.drainEvents(); // no "has the ball first" banner
+  return sim;
+}
+
+/** Round 80: the national final is two halves like the big game. */
+export const FINAL_HALF = BIG_GAME_HALF;
+
+/**
+ * Round 80: the national final (arena): Lincoln (you, locked in, + the squad) vs Crestview Prep, with Kingston
+ * their star: your locked-in spread plus his usual edge, every perk.
+ */
+export function buildFinal(c: CareerState, seed: number): GameSim {
+  const rng = new Rng(seed ^ 0xf1a1);
+  const me = storyMe(c, LOCKED_IN);
+  me.star = true;
+  const mine = [me, ...lincolnSquad(c)];
+  const r = c.story?.rival ?? fallbackRival(c);
+  const king = new Player({
+    id: RIVAL_ID, name: `${r.first} ${r.last}`, team: 1, pos: r.pos, core: avgSpread(r.pos, LOCKED_IN + RIVAL_EDGE), nodes: Object.keys(NODES),
+    number: r.number, skin: KINGSTON_SKIN, height: r.heightIn / 12, appearance: kingstonLook(r.appearance),
+  });
+  king.star = true;
+  const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+  const theirs = [king, ...order.filter((p) => p !== r.pos).map((pos, i) => extraPlayer(`CRE-${i}`, 1, pos, rng, 52))];
+  return new GameSim({
+    mode: 'game', quarterLen: FINAL_HALF, periods: 2, seed,
+    teams: [LINCOLN, CRESTVIEW], rosters: [mine, theirs], userId: me.id,
+    trust: { team: 75, coach: 75 }, ult: { unlocked: false, id: null, level: 0 },
+    featureUser: true, venue: 'arena',
   });
 }
