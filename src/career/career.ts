@@ -82,7 +82,7 @@ export function takeOnDebt(c: CareerState) {
 }
 /** Round 81: the week before the draft, from the day the agent shows it to you. */
 export function draftWeek(today: number): DraftWeek {
-  return { combine1: today + 2, combine2: today + 3, scrimmage: today + 5, draft: today + 7 };
+  return { combine1: today + 7, combine2: today + 8, scrimmage: today + 10, draft: today + 12 }; // round 81b: 7 days to the combine
 }
 /** Round 81: the draft week's events by career day (the calendar draws them as tags). */
 export function storyEventsByDay(c: CareerState): Map<number, { label: string; color: string }> {
@@ -326,10 +326,12 @@ export function advanceDay(c: CareerState) { c.life.day++; }
 export function storyKeyGame(c: CareerState): { when: string; what: string } | null {
   const st = c.story;
   if (!st) return null;
-  // round 81: the draft is the next big date
+  // round 81b: the next draft-week event (the combine, the scrimmage, then the draft)
   if (st.draft && c.life.day <= st.draft.draft) {
-    const n = st.draft.draft - c.life.day;
-    return { when: n === 0 ? 'TODAY' : `${n} DAY${n === 1 ? '' : 'S'}`, what: 'The draft' };
+    const d = st.draft, day = c.life.day;
+    const [at, what] = day <= d.combine2 ? [day <= d.combine1 ? d.combine1 : d.combine2, 'The combine'] : day <= d.scrimmage ? [d.scrimmage, 'The scrimmage'] : [d.draft, 'The draft'];
+    const n = at - day;
+    return { when: n === 0 ? 'TODAY' : `${n} DAY${n === 1 ? '' : 'S'}`, what };
   }
   // round 80: three months later, the national final against Crestview Prep
   const fin = 'Final vs CRE';

@@ -12,6 +12,7 @@ import { RoomDef, Station, RS, syOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
 import { AgentTalk } from './agentTalk';
+import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage } from './setup';
 
 /**
@@ -44,6 +45,7 @@ export class GarageScene extends RoomScene {
   agent: AgentTalk | null = null;
   init(data?: { at?: string; story?: 'agent' }) { super.init(data); this.story = data?.story ?? null; this.agent = null; }
   room(): RoomDef { return GARAGE; }
+  music() { return 'home' as const; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildGarageArt(tm); }
 
   onCreate() {
@@ -62,14 +64,18 @@ export class GarageScene extends RoomScene {
     this.netFront = this.add.graphics();
     if (this.story === 'agent') {
       const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
-      this.agent = new AgentTalk(this, { x: 24.5, y: 10.5 }, [
-        { wait: 0.6 },
+      const P = AGENT_PATHS.garage, out = GARAGE.doors.find((d) => d.id === 'outside')!.spot;
+      this.agent = new AgentTalk(this, P.haleStart, [
+        { youTo: P.youIn }, // in through the apartment door
+        { wait: 0.3 },
         hale('All this was mine. Back when I still thought I could play.'),
-        hale('Every station works a skill. Treadmill: mobility. Squat rack: strength and mobility. Bench: strength and finishing.'),
-        hale('The hoop is shooting and finishing. The dribble mat is playmaking and shooting.'),
+        hale('Every station works a different part of your game.'),
         hale('And every rep costs energy. See that bar up top? When it\'s empty, you\'re done. Sleep it back.'),
         hale('Use the week. I\'ll be in touch.'),
-        { run: () => { this.agent?.leave(); const c = app.career; if (c.story) c.story.home = 'apartment'; setStage('draftWeek'); } },
+        // round 81b: he walks out the side door (not a fade in place)
+        { agentTo: P.haleOut },
+        { agentOut: { x: out.x - 1.4, y: out.y - 0.4 } },
+        { run: () => { const c = app.career; if (c.story) c.story.home = 'apartment'; setStage('draftWeek'); } },
         { wait: 0.7 },
       ]);
     }

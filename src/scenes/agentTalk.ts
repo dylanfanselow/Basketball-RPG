@@ -10,8 +10,10 @@ import { sfx } from '../audio/sfx';
 /** One beat of the agent's scene: a line, the agent walking somewhere, you walking somewhere, or something to do. */
 export type AgentStep =
   | { say: { who: BoxSpeaker; text: string; name?: string } }
-  | { agentTo: V }
-  | { youTo: V }
+  | { agentTo: V | V[] }
+  | { youTo: V | V[] }
+  /** round 81b: he walks out through a door: it opens, he steps through (toward `to`), it closes behind him */
+  | { agentOut: V }
   | { wait: number }
   | { run: () => void };
 
@@ -27,6 +29,9 @@ export class AgentTalk {
   private i = 0;
   private t = 0;
   private typing = false;
+  /** the waypoint the current walk is on (round 81b: walks follow paths around the furniture) */
+  private wp = 0;
+  private outAt = -1;
 
   constructor(private room: RoomScene & { inp: { pressed(k: string): boolean } }, start: V, private steps: AgentStep[]) {
     const key = 'story_agent_v1', tm = room.textures;
@@ -58,11 +63,21 @@ export class AgentTalk {
       } else {
         this.box.hide();
         if ('agentTo' in step) {
-          const dx = step.agentTo.x - this.at.x, dy = step.agentTo.y - this.at.y, d = Math.hypot(dx, dy), sp = 4.2 * dt;
-          if (d <= sp) { this.at = { ...step.agentTo }; this.next(); } else { this.at = { x: this.at.x + dx / d * sp, y: this.at.y + dy / d * sp }; walking = true; this.sprite.setFlipX(dx < 0); }
+          const path = Array.isArray(step.agentTo) ? step.agentTo : [step.agentTo], to = path[this.wp];
+          const dx = to.x - this.at.x, dy = to.y - this.at.y, d = Math.hypot(dx, dy), sp = 4.2 * dt;
+          if (d <= sp) { this.at = { ...to }; if (++this.wp >= path.length) this.next(); } else { this.at = { x: this.at.x + dx / d * sp, y: this.at.y + dy / d * sp }; walking = true; this.sprite.setFlipX(dx < 0); }
         } else if ('youTo' in step) {
-          if (room.walkTowards(step.youTo, dt) || this.t > 5) this.next();
+          const path = Array.isArray(step.youTo) ? step.youTo : [step.youTo];
+          if (room.walkTowards(path[this.wp], dt) || this.t > 5) { this.t = 0; if (++this.wp >= path.length) this.next(); }
           youWalk = true;
+        } else if ('agentOut' in step) {
+          // the door opens, he steps through it (fading as he passes the wall), it shuts behind him
+          if (this.outAt < 0) { this.outAt = 0; sfx.doorOpen(); }
+          this.outAt += dt;
+          const dx = step.agentOut.x - this.at.x, dy = step.agentOut.y - this.at.y, d = Math.hypot(dx, dy), sp = 3.2 * dt;
+          if (d > sp) { this.at = { x: this.at.x + dx / d * sp, y: this.at.y + dy / d * sp }; walking = true; this.sprite.setFlipX(dx < 0); }
+          if (this.sprite.active) this.sprite.setAlpha(Math.max(0, 1 - this.outAt / 0.45));
+          if (this.outAt >= 0.45) { this.sprite.setVisible(false); this.room.time.delayedCall(150, () => sfx.doorClose()); this.next(); }
         } else if ('wait' in step) { if (this.t >= step.wait) this.next(); }
         else { step.run(); this.next(); }
       }
@@ -77,8 +92,6 @@ export class AgentTalk {
     return true;
   }
 
-  private next() { this.i++; this.t = 0; void this.typing; }
+  private next() { this.i++; this.t = 0; this.wp = 0; void this.typing; }
 
-  /** He leaves: fades out. */
-  leave() { this.box.hide(); this.room.tweens.add({ targets: this.sprite, alpha: 0, duration: 600, onComplete: () => this.sprite.destroy() }); }
 }

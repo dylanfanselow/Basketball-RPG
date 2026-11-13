@@ -120,7 +120,7 @@ export function storyScene(stage: StoryStage): [string, object | undefined] {
     case 'homecoming': return ['Trailer', { night: true, story: 'homecoming' }];
     case 'letter': return ['Trailer', { story: 'letter' }];
     case 'agent': return ['Apartment', { story: 'agent' }];
-    case 'agentGarage': return ['Garage', { story: 'agent' }];
+    case 'agentGarage': return ['Garage', { story: 'agent', at: 'apartment' }]; // round 81b: in through the apartment door
     case 'draftWeek': return ['Apartment', undefined];
     default: return c.story?.home === 'trailer' ? ['Trailer', undefined] : ['Apartment', undefined];
   }

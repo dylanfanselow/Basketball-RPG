@@ -7,11 +7,13 @@ const SETTINGS_KEY = 'hoopcareer.audio';
 
 export interface AudioSettings { master: number; sfx: number; crowd: number; muted: boolean; /** round 60c: music volume */ music?: number }
 
-export type MusicTrack = 'game' | 'mom';
-/** Round 60c: the owner's royalty-free tracks (mondamusic "Retro Arcade Game Music", alexgrohl "Sad Story"). */
+export type MusicTrack = 'game' | 'mom' | 'home';
+/** Round 60c: the owner's royalty-free tracks (mondamusic "Retro Arcade Game Music", alexgrohl "Sad Story"; round 81b:
+ * vadim_makes_sound "Home Organization" loop, at home in the apartment and the garage). */
 const MUSIC: Record<MusicTrack, { src: string; vol: number }> = {
   game: { src: './music/arcade.mp3', vol: 0.35 },
   mom: { src: './music/sad-story.mp3', vol: 0.7 },
+  home: { src: './music/home.mp3', vol: 0.45 },
 };
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);

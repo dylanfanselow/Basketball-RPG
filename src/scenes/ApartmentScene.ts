@@ -7,6 +7,7 @@ import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
 import { AgentTalk } from './agentTalk';
+import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage, storyScene } from './setup';
 import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, MONTHS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
@@ -27,6 +28,7 @@ export class ApartmentScene extends RoomScene {
 
   constructor() { super('Apartment'); }
   room(): RoomDef { return APARTMENT; }
+  music() { return 'home' as const; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildRoomArt(tm); }
 
   /** Round 81: the agent's first meeting here. */
@@ -62,8 +64,8 @@ export class ApartmentScene extends RoomScene {
     const st = c.story!;
     const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
     const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
-    const calSpot = { x: SPOTS.calendar.x + 1.6, y: SPOTS.calendar.y + 0.4 };
-    this.agent = new AgentTalk(this, { x: 17.6, y: 13.6 }, [
+    const P = AGENT_PATHS.apartment;
+    this.agent = new AgentTalk(this, P.haleStart, [
       { wait: 0.6 },
       hale(`You came. Good. ${st.agent ?? 'Victor Hale'}.`),
       hale('I represent players in the NBA. I was at the national final. I\'ve done this a long time, and I know what I saw.'),
@@ -71,19 +73,25 @@ export class ApartmentScene extends RoomScene {
       me('I appreciate it, Mr. Hale. I really do. But I can\'t think about the NBA right now.'),
       me('Our generator blew up. Took half the trailer with it. We\'re fifteen thousand in debt, and my mom...'),
       hale('I heard. Rough luck.'),
-      hale('So here\'s what we\'ll do. This place? It\'s yours. Stay as long as you need.'),
+      hale('So here\'s what we\'ll do. This place? It\'s yours.'),
+      // round 81b (owner): free until you make it, then about your whole first contract plus the generator
+      hale('Rent free until you make it.'),
+      hale('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
       hale('One condition.'),
       hale('You can\'t fail.'),
       hale('Come here. Let me show you something.'),
-      { agentTo: { x: calSpot.x + 1.6, y: calSpot.y + 0.6 } },
-      { youTo: calSpot },
+      // round 81b: around the kitchen island, not through it
+      { agentTo: P.haleToCalendar },
+      { youTo: P.youToCalendar },
       { run: () => { st.draft = draftWeek(c.life.day); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
-      hale('This is your week. The draft is seven days out.'),
-      hale('Two days of combine: skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
+      hale('This is your week. Seven days from today: the combine.'),
+      hale('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league. Then the draft.'),
       hale('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
       { run: () => this.closeCalendar() },
       hale('Now. The garage.'),
-      { run: () => { setStage('agentGarage'); this.cameras.main.fadeOut(600, 0, 0, 0); this.time.delayedCall(650, () => { const [scene, data] = storyScene('agentGarage'); this.scene.start(scene, data); }); } },
+      { agentTo: P.haleToGarage },
+      { youTo: P.youToGarage },
+      { run: () => { sfx.doorOpen(); setStage('agentGarage'); this.cameras.main.fadeOut(600, 0, 0, 0); this.time.delayedCall(650, () => { const [scene, data] = storyScene('agentGarage'); this.scene.start(scene, data); }); } },
       { wait: 2 },
     ]);
   }

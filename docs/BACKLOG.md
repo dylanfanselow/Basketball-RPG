@@ -98,6 +98,8 @@
   vs ATL"), fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
   ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
+- **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
+  only a line so far; it should come due when you sign, and feed the reveal.
 - **Round 81 follow-ups:** the combine (two days of skill tests), the scrimmage and the draft itself; paying the debt off; the reveal that Hale made the generator fail and the fire-or-keep choice; Mom's scene after the repairs.
 - **Round 80i:** ask about the academy name (Ridgemont Academy Rams, easy to rename: `ACADEMY` in sim/story.ts + paper / bus / story texts).
 - **Round 80e:** ask whether the halftime walk speed / length feels right and how often Kingston talks now.

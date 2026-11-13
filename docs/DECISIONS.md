@@ -173,6 +173,18 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     Rough luck."); you can stay here, one condition: **you can't fail**. At the calendar: the draft is seven days out,
     two combine days, a scrimmage, the draft; you should get picked, maybe late. In the garage: his old equipment,
     every station works skills and costs energy (the bar up top). Then the draft week is yours; home = apartment.
+- **Round 81b (owner): the agent scenes, fixed.**
+  - Hale and you walk **around** the furniture (waypoint paths in `world/agentPaths.ts`, tested with the real
+    collision): no more walking through the kitchen island, no more getting stuck. You both walk to the garage door,
+    and you come into the garage through the apartment door.
+  - He **walks out** the garage's side door at the end (door opens, he steps through, it shuts), no fade in place.
+  - He doesn't explain what each workout does (one general line, plus the energy bar line).
+  - The house deal (owner's words): rent free until you make it, then about **your whole first contract plus what
+    the generator costs**. Text only for now (a hook for the Hale reveal).
+  - **7 days until the first combine**: COMBINE +7 and +8, SCRIMMAGE +10, DRAFT +12. The HUD card counts down to
+    the next event ("7 DAYS / The combine").
+  - **Home music**: vadim_makes_sound "Home Organization" loop (the owner's royalty-free file,
+    `public/music/home.mp3`) in the apartment and the garage, unbroken through the door between them.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).

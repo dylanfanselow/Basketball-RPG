@@ -261,6 +261,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 81b: `world/agentPaths.ts` (`AGENT_PATHS`), `AgentTalk` steps `agentTo` / `youTo` take waypoint lists,
+  `agentOut` (walks out a door); `RoomScene.music()` hook ('home' in Apartment + Garage; `sfx` track `home`);
+  `draftWeek` +7/+8/+10/+12, `storyKeyGame` names the next event.
   Round 81: stages `homecoming` / `letter` / `agent` / `agentGarage` / `draftWeek` (`storyScene`), `StoryState`
   `trailerWrecked` / `debt` / `agent` / `draft`, `takeOnDebt` (`GENERATOR_DEBT` 15000), `draftWeek`,
   `storyEventsByDay`, `storyKeyGame` "The draft"; `trailerArt` wreck (`wreckYard`, `charGenerator`, `_x` keys, no

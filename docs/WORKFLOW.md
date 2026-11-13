@@ -6,7 +6,8 @@
 - **Browser link (private artifact):** https://claude.ai/artifact/Vfg8WiUU3S3ACrfuEDx4qX
   Rebuild with `npm run build:single` → `dist/hoop-career.html`, then republish that file to the same URL
   (Artifact tool with `url`). Round 60c: the music isn't inlined, publish `public/music/arcade.mp3` and
-  `public/music/sad-story.mp3` alongside as `files` (`music/…`); they persist across republishes.
+  `public/music/sad-story.mp3` (round 81b: and `public/music/home.mp3`) alongside as `files` (`music/…`); they persist
+  across republishes.
 - Owner plays locally on a Mac in Chrome: `cd Basketball-RPG && git pull` then `npm run dev`
   (http://localhost:5173). No new npm packages so far; tell the owner to `npm install` if one is added.
 

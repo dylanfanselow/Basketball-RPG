@@ -4,7 +4,7 @@ import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
 import { xpToNext, nextKeyGame, storyKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
-import { sfx } from '../audio/sfx';
+import { sfx, MusicTrack } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
 import { yawFor } from '../render/frameCache';
@@ -102,6 +102,8 @@ export abstract class RoomScene extends Phaser.Scene {
   busy = false;
   /** Room-specific objects after the art is placed. */
   onCreate(): void { /* optional */ }
+  /** Round 81b: the room's music (home: the apartment and the garage); it keeps playing through the doors between them. */
+  music(): MusicTrack | null { return null; }
   /** What your feet land on (round 57): concrete (true), wood (false) or grass. */
   footSurface(): boolean | 'grass' { return this.room().id === 'garage'; }
   /** Room-specific per-frame work (animations, pets…), after you've moved. */
@@ -151,6 +153,8 @@ export abstract class RoomScene extends Phaser.Scene {
     this.prompt = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(9500).setVisible(false);
     this.debug = this.add.graphics().setDepth(9400);
     buildIcons(tm);
+    const track = this.music();
+    if (track) { sfx.music(track); this.events.once('shutdown', () => sfx.music(null)); } // the next room picks it back up
     this.onCreate();
     this.makeHud();
     if (this.enteredByDoor) this.time.delayedCall(260, () => sfx.doorClose()); // the door swings shut behind you
