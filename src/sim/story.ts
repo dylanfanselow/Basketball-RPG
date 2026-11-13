@@ -47,7 +47,8 @@ export function newStory(c: Pick<CareerState, 'pos' | 'number' | 'height'>, rnd:
     first: 'Kingston', last: 'Williams', pos: c.pos, heightIn,
     number: nums[Math.floor(rnd() * nums.length)], appearance: kingstonLook(randomAppearance(rnd)),
   };
-  return { stage: 'tutorial', rival, home: 'trailer' };
+  // round 80e: the Lincoln squad is fixed from the start (the big game, the bus and the final have the same guys)
+  return { stage: 'tutorial', rival, home: 'trailer', squadSeed: Math.floor(rnd() * 1e9) };
 }
 
 /** Round 80d (owner): Kingston's skin is tone 5 in the builder (index 4, the darkest; was tone 4 since round 71). */
@@ -160,7 +161,8 @@ export function buildBigGame(c: CareerState, seed: number): GameSim {
   const rng = new Rng(seed ^ 0x5eed);
   const me = storyMe(c, LOCKED_IN);
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const mine = [me, ...order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, 45))];
+  // round 80e: the same Lincoln guys as on the bus and in the final (three months younger: 45, the captain +5)
+  const mine = [me, ...lincolnSquad(c, { base: 45, buff: 5 })];
   const theirs = order.map((pos, i) => extraPlayer(`JEF-${i}`, 1, pos, rng, 46));
   me.star = true;
   return new GameSim({
@@ -188,13 +190,13 @@ export function squadSeed(c: CareerState): number {
  * Round 80: your four Lincoln teammates three months on (they've grown a little: ~48), one at every other position,
  * the captain among them. Deterministic from the story's squad seed.
  */
-export function lincolnSquad(c: CareerState): Player[] {
+export function lincolnSquad(c: CareerState, o: { base?: number; buff?: number } = {}): Player[] {
   const rng = new Rng(squadSeed(c));
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const squad = order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, 48));
+  const squad = order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, o.base ?? 48));
   // round 80c (owner): the captain is clearly your best teammate (after the names are drawn, so they never change)
   const cap = squadCaptain(c, squad);
-  for (const s of CORE_STATS) cap.core[s] = clamp(cap.core[s] + CAPTAIN_BUFF, 1, 99);
+  for (const s of CORE_STATS) cap.core[s] = clamp(cap.core[s] + (o.buff ?? CAPTAIN_BUFF), 1, 99);
   cap.recompute();
   return squad;
 }
@@ -245,6 +247,8 @@ export function kingstonFinalPerks(pos: Position): string[] {
   const k = KINGSTON_TREES[pos];
   return [...Object.entries(NODES).filter(([, n]) => k.trees.includes(n.tree) && !n.goat).map(([id]) => id), k.goat];
 }
+/** Round 80e: the share of Crestview's sets that are an iso for Kingston. */
+export const KINGSTON_ISO = 0.45;
 /** Round 80c: Kingston's edge in the final over an average player (you're locked in at +10). */
 export const KINGSTON_FINAL = LOCKED_IN + 3;
 
@@ -268,11 +272,16 @@ export function buildFinal(c: CareerState, seed: number): GameSim {
   king.star = true;
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
   const theirs = [king, ...order.filter((p) => p !== r.pos).map((pos, i) => extraPlayer(`CRE-${i}`, 1, pos, rng, 52))];
+  // round 80e: reserves on both benches (no subs without a rotation: they sit next to the assistant coaches)
+  const bench: Position[] = ['PG', 'SF', 'PF', 'C'];
+  mine.push(...bench.map((pos, i) => extraPlayer(`LIN-B${i}`, 0, pos, rng, 44)));
+  theirs.push(...bench.map((pos, i) => extraPlayer(`CRE-B${i}`, 1, pos, rng, 48)));
   return new GameSim({
     mode: 'game', quarterLen: FINAL_HALF, periods: 2, seed,
     teams: [LINCOLN, CRESTVIEW], rosters: [mine, theirs], userId: me.id,
     trust: { team: 75, coach: 75 }, ult: { unlocked: false, id: null, level: 0 },
     featureUser: true, venue: 'arena',
     ultLate: true, // round 80c: Kingston saves his ult for clutch time
+    isoStar: { pid: RIVAL_ID, chance: KINGSTON_ISO }, // round 80e: his number gets called a lot
   });
 }

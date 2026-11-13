@@ -158,6 +158,17 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80e (owner): the final, more.**
+  - **More isos for Kingston** (about 45% of Crestview's sets are his iso).
+  - Kingston's lines: the step-back ult and some isos "Let's dance."; a post-up bucket or his ult dunk "Too small.";
+    a block / Chase-Down **"Get that **** outta here!"** (censored, owner's pick); a steal "Gimme that."; a three
+    "Splash."; and "This guy." among the general ones.
+  - **Halftime at the bench:** everyone walks over to their bench; the reserves sit next to the assistant coaches and
+    the coach, the starters' five seats are empty (they stand in front of them); after the coach's talk they walk
+    back out. Coming out, Kingston says "Time to turn on the gas." if Crestview is down (or tied), and mocks your
+    coach if they're up.
+  - The captain's tag is **(Captain)**, and he's the teammate who says you look tired before the big game (the big
+    game has the same Lincoln guys as the bus and the final).
 - **Round 80d (owner): the face mask and Kingston's skin.** The face mask looks like the owner's photo: a
   carbon-fibre shell (near-black graphite, diagonal weave, a soft sheen) from the brow over the nose with eye openings,
   and a black strap with a small silver clip. It shows from **every angle** (side, front, three-quarter and the strap

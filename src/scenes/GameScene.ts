@@ -13,7 +13,7 @@ import { CELEB_CAST, FEATURED_CELEBS, GLAM_CELEBS, RETIRED_CELEBS, CANE_CELEBS, 
 /** Texture key of celeb cast member i (the pixel editor drops it so the next game picks up new art). */
 export const celebTexKey = (i: number) => `celebcast_${i}`;
 import type { Appearance } from '../render/appearance';
-import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildCoachSheet, buildAnnouncerSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
+import { Sheet, Kit, shade, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, frameRect, buildFrontSheet, buildEmptyChair, buildCoachSheet, buildAnnouncerSheet, COACH_FRAMES, FRONT_W, FRONT_H, drawAngled, crispenRect, figureHeight } from '../render/sprites';
 import { FrameCache, yawFor, shotView } from '../render/frameCache';
 import { CLIP, SHOT_CLIP, frameAt, shotU, sampleClip, frameTime, shuffleState, J } from '../render/anim';
 import { sfx } from '../audio/sfx';
@@ -33,7 +33,7 @@ import { UltFx, LIFT_DEPTH } from '../render/aura';
 import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from '../render/schoolArt';
 import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
-import { StoryRun } from './storyRun';
+import { StoryRun, storyBenchSeats } from './storyRun';
 import { playerKit, takeStory } from './preload';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
@@ -937,6 +937,11 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
       this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), cane: CANE_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
+    // round 80e: in the story final the starters' seats stay empty on the bench (the reserves sit by the assistants)
+    if (this.mode === 'story') {
+      if (!this.textures.exists('empty_chair_v1')) this.textures.addCanvas('empty_chair_v1', buildEmptyChair());
+      for (const t of [0, 1] as const) for (const x of storyBenchSeats(t).empty) this.add.image(sx(x), sy(-3.9), 'empty_chair_v1').setOrigin(0.5, 1).setScale(BENCH_SCALE).setDepth(sy(-3.9) - 0.5);
+    }
     // assistant coaches: two in suits at the end of each bench (toward midcourt)
     this.assistants = [];
     ([0, 1] as const).forEach((team) => {
@@ -1000,11 +1005,12 @@ export class GameScene extends Phaser.Scene {
     ([0, 1] as const).forEach((team) => {
       const bench = sim.teams[team].roster.filter((p) => !onCourt.has(p.id));
       const start = BENCH_X[team][0];
+      const story = this.mode === 'story' ? storyBenchSeats(team).reserves : null; // round 80e
       bench.forEach((p, i) => {
         const fs = this.frontSprite(p);
         const cheering = now < this.benchCheerUntil[team];
         const bob = cheering ? -Math.abs(Math.sin(now / 140 + i)) * 4 : Math.sin(now / 900 + i) * 0.6;
-        fs.setVisible(true).setPosition(sx(start + i * 2.2), sy(-3.9) + bob).setDepth(sy(-3.9)).setFrame(cheering ? 1 : 0);
+        fs.setVisible(true).setPosition(sx(story?.[i] ?? start + i * 2.2), sy(-3.9) + bob).setDepth(sy(-3.9)).setFrame(cheering ? 1 : 0);
       });
     });
     for (const [id, fs] of this.frontSprites) fs.setVisible(fs.visible && !onCourt.has(id));

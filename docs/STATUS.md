@@ -261,6 +261,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80e: `GameConfig.isoStar` (`KINGSTON_ISO` 0.45) in `callPlay`; `play` events carry `pid` + `data.iso`, `score`
+  events `data: { type, pts, post }` (`Player.shotFromPost`); `lincolnSquad(c, { base, buff })` (big game 45 / +5),
+  `newStory` sets `squadSeed`; final rosters + 4 reserves each; `storyBenchSeats` + `buildEmptyChair` (story benches);
+  StoryRun `startHalf` / `stepHalf` (walk to the bench, talk, walk back, Kingston's coming-out line), new `KINGSTON_TALK`.
   Round 80d: `sprites.carbonFill` / `maskStrap`; the mask in `drawHead` (side shell + strap and buckle, back strap) and
   `frontHead` (front / turned shell with two eye openings, side straps), eyes re-plotted in the openings; `KINGSTON_SKIN` = 4.
   Round 80c: `KINGSTON_TREES` / `kingstonFinalPerks` / `KINGSTON_FINAL` (+13), `CAPTAIN_BUFF` in `lincolnSquad`,

@@ -80,7 +80,7 @@ export class BusScene extends Phaser.Scene {
     const squad = lincolnSquad(c), cap = squadCaptain(c, squad);
     const [a, b] = squad.filter((p) => p !== cap);
     const first = (n: string) => n.split(' ')[0];
-    const C = `${first(cap.name)} (C)`, A = first(a.name), B = first(b.name);
+    const C = `${first(cap.name)} (Captain)`, A = first(a.name), B = first(b.name);
     const mate = (name: string, text: string): Line => ({ who: 'mate', name, text });
     const me = (text: string): Line => ({ who: 'me', name: you, text });
     return [

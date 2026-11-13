@@ -63,6 +63,8 @@ export interface GameConfig {
   periods?: number;
   /** round 80c: CPU stars hold their ultimate until the late window (last period, clutch-time clock, any score) */
   ultLate?: boolean;
+  /** round 80e: this player gets an iso this share of his team's sets (the story's Kingston) */
+  isoStar?: { pid: string; chance: number };
   seed?: number;
   teams: [TeamDef, TeamDef];
   rosters: [Player[], Player[]];
@@ -964,7 +966,9 @@ export class GameSim {
     this.ultIso = null;
     const ultStar = isos.length ? this.ultIsoCandidate(off) : null;
     if (ultStar && this.rng.chance(this.clutch || endgame(this) ? 1 : 0.5)) { isoFor(ultStar, true); why = 'ultimate'; this.ultIso = ultStar.id; this.ultIsoTries[ultStar.id] = (this.ultIsoTries[ultStar.id] ?? 0) + 1; }
-    else if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
+    else if (this.cfg.isoStar && isos.length && off.some((p) => p.id === this.cfg.isoStar!.pid && this.isAI(p) && p.state !== 'fallen') && this.rng.chance(this.cfg.isoStar.chance)) {
+      isoFor(off.find((p) => p.id === this.cfg.isoStar!.pid)!); why = 'his night'; // round 80e
+    } else if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
       focus = off.find((p) => p.id === fid) ?? null;
@@ -1007,7 +1011,7 @@ export class GameSim {
     this.phaseStartedAt = this.time;
     const fp = focus as Player | null;
     const tail = (fp && !isIso(id) && PLAYS[id].focus && this.byRole(this.possession, PLAYS[id].focus!) !== fp ? ` for ${fp.name}` : '') + (why ? `, ${why}` : '');
-    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"${why ? `, ${why}` : ''}` : `Coach: "${this.runner.play!.name}"${tail}`, team: this.possession });
+    this.emit({ kind: 'play', text: isIso(id) && fp ? `Coach: "Iso for ${fp.name}"${why ? `, ${why}` : ''}` : `Coach: "${this.runner.play!.name}"${tail}`, team: this.possession, pid: fp?.id, data: { iso: isIso(id) } });
     this.curCall = { team: this.possession, play: id, score0: this.teams[this.possession].score };
     const rc = this.recentCalls[this.possession]; rc.push(id); if (rc.length > 3) rc.shift();
   }
@@ -1464,6 +1468,7 @@ export class GameSim {
       : type === 'alleyOop' ? pickOopDunk(p, this.rng) : null; // round 54: oops have their own slams
     const windmill = windmillGather(p, type, speedToRim);
     p.pendingShot = { type, override, dunk: dunk?.id, windmill };
+    p.shotFromPost = !!p.post; // round 80e: a post-up bucket (story lines)
     if (type === 'dunk') p.dunkStartAt = this.time;
     onPostShot(this, p, this.time + p.stateDur); // out of the post: the defender stays locked / sealed through the release
     p.anim = { name: (dunk ? dunk.clip : `shot_${type}`) + (windmill ? '_wm' : ''), start: this.time, release: this.time + p.stateDur };
@@ -2620,7 +2625,7 @@ export class GameSim {
       if (s === this.user) applyTrust(this.trust, 'madeShot');
       const name = (dk ? (dk.id === 'flush' ? 'Dunk' : dk.id === 'twoHand' || /Dunk|Alley-Oop/.test(dk.name) ? dk.name : `${dk.name} Dunk`) : SHOT_TYPES[st.ev.type].name) + (st.ev.windmill ? ' (windmill gather)' : '');
       this.lastMadeAt = this.time;
-      this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true });
+      this.emit({ kind: 'score', text: `${s.name} ${name}${ast ? ` (ast ${ast.name})` : ''} +${val}`, team, pid: s.id, big: st.ev.type === 'dunk' || st.pts === 3, good: true, data: { type: st.ev.type, pts: val, post: s.shotFromPost } });
       if (st.ev.type === 'dunk' && st.ev.conds.has('contested') && s.mods.pAdd('posterize') > 0) {
         const nd = this.nearestDefender(s).d;
         if (nd && dist(nd.p, s.p) < 4) { this.knockDown(nd, 1.2, 'poster'); this.rhythmLoss(nd, 'posterized'); this.emit({ kind: 'poster', text: `POSTERIZED ${nd.name}!`, big: true }); }

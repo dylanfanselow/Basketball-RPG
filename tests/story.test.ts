@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createCareer, migrateCareer, newCareer, STARTER_CORE, STARTER_PERKS, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
-import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW, kingstonFinalPerks, CAPTAIN_BUFF, KINGSTON_FINAL } from '../src/sim/story';
+import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW, kingstonFinalPerks, newStory as newStory2, CAPTAIN_BUFF, KINGSTON_FINAL } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
 import { NODES } from '../src/sim/data';
 import { GameSim, UserInput, emptyInput } from '../src/sim/game';
@@ -252,7 +252,8 @@ describe('round 60 story', () => {
     expect(sim.teams[1].def).toBe(CRESTVIEW);
     expect(sim.cfg.venue).toBe('arena');
     const names = lincolnSquad(c).map((p) => p.name);
-    expect(sim.teams[0].roster.filter((p) => p !== sim.user).map((p) => p.name)).toEqual(names);
+    expect(sim.teams[0].roster.filter((p) => p !== sim.user).slice(0, 4).map((p) => p.name)).toEqual(names);
+    expect(sim.teams[0].roster.length).toBe(9); expect(sim.teams[0].onCourt.length).toBe(5); // round 80e: reserves sit
     const king = sim.players.find((p) => p.id === RIVAL_ID)!;
     expect(king.team).toBe(1);
     expect(king.star).toBe(true);
@@ -294,5 +295,31 @@ describe('round 60 story', () => {
     expect(sim.ultReady(king)).toBe(true);
     sim.teams[0].score = 40; sim.teams[1].score = 42;
     expect(sim.crunchTime).toBe(true);
+  });
+
+  it('round 80e: Kingston gets more isos in the final; score events say how', () => {
+    const c = career('PG'); c.story!.squadSeed = 8;
+    const run = (iso: boolean) => {
+      const sim = buildFinal(c, 31);
+      if (!iso) sim.cfg.isoStar = undefined;
+      let guard = 0, n = 0; const scores: any[] = [];
+      while (!sim.over && guard++ < 60 * 60 * 20) { sim.update(1 / 60, emptyInput()); for (const e of sim.drainEvents()) { if (e.kind === 'play' && e.data?.iso && e.pid === RIVAL_ID) n++; if (e.kind === 'score') scores.push(e); } }
+      return { n, scores };
+    };
+    const on = run(true), off = run(false);
+    expect(on.n).toBeGreaterThan(off.n * 1.5);
+    expect(on.scores.length).toBeGreaterThan(0);
+    for (const e of on.scores) { expect(typeof e.data.type).toBe('string'); expect([1, 2, 3]).toContain(e.data.pts); expect(typeof e.data.post).toBe('boolean'); }
+  });
+  it('round 80e: the big game has the squad (same names, the captain) and new stories fix the squad seed', () => {
+    const c = career('SF');
+    expect(typeof c.story!.squadSeed).toBe('number');
+    const sim = buildBigGame(c, 4);
+    const mates = sim.teams[0].roster.filter((p) => p !== sim.user);
+    expect(mates.map((p) => p.name)).toEqual(lincolnSquad(c).map((p) => p.name));
+    expect(squadCaptain(c, mates).pos).toBe('PG');
+    // the rival is drawn before the squad seed: same look as without it
+    let s1 = 42; const r1 = () => ((s1 = (s1 * 16807) % 2147483647) / 2147483647);
+    expect(newStory2(c, r1).rival!.appearance).toEqual(c.story!.rival!.appearance);
   });
 });

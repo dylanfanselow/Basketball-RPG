@@ -97,6 +97,8 @@ export class Player {
   pendingShot: { type: string; override?: { base?: number; label?: string; contestMult?: number }; dunk?: string; windmill?: boolean; jellyRead?: boolean; oopTiming?: number } | null = null;
   /** post up (post.ts): the attacker's battle with the defender on his back */
   post: PostState | null = null;
+  /** round 80e: his last shot came out of a post-up */
+  shotFromPost = false;
   /** posted defender: stun-locked by bumps (no contest, no actions) until then */
   postLockUntil = -9;
   /** posted defender: held in the bumped pose after the attacker's release (reduced contest) until then */

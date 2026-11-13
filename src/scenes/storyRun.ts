@@ -47,6 +47,8 @@ export class StoryRun {
   private talkUntil = 0;
   private nextTalkAt = 0;
   private halfDone = false;
+  /** Round 80e: halftime at the bench: walk over, the coach talks, walk back (court ft per player). */
+  private half: { phase: 'toBench' | 'talk' | 'back'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }> } | null = null;
   private wasLate = false;
 
   constructor(private gs: GameScene, public which: StoryGame) {
@@ -95,8 +97,10 @@ export class StoryRun {
       const last = c.lastName || c.name.split(' ').slice(-1)[0];
       const kn = k ? k.last : 'Williams';
       // round 60b: a teammate notices you look wiped out (you didn't sleep much last night...)
-      const mate = gs.sim.teams[0].roster.find((p) => p !== gs.sim.user);
-      const mateName = mate ? mate.name.split(' ')[0] : 'Teammate';
+      // round 80e: it's the captain who notices
+      const mates = gs.sim.teams[0].roster.filter((p) => p !== gs.sim.user);
+      const mate = mates.length ? squadCaptain(c, mates) : null;
+      const mateName = mate ? `${mate.name.split(' ')[0]} (Captain)` : 'Teammate';
       this.say([
         { who: 'narrator', text: 'The next day. Lincoln High, game day. A man with a clipboard sits on the bleachers.' },
         { who: 'mate', name: mateName, text: 'Yo, you good? You look dead tired.' },
@@ -126,7 +130,8 @@ export class StoryRun {
     }
     const ok = inp.pressed('a');
     let content: BoxContent | null = null;
-    let hold = this.cutscene; // round 80: the court visit never plays
+    let hold = this.cutscene || !!this.half; // round 80: the court visit never plays; round 80e: halftime holds the game
+    this.stepHalf();
     if (this.line) {
       content = { who: this.line.who, text: this.line.text, blocking: true, name: this.line.name };
       hold = true;
@@ -182,9 +187,17 @@ export class StoryRun {
     if (this.which !== 'final') return;
     // round 80c: Kingston talks trash; the coach talks to you at the half
     const me = this.gs.sim.user;
-    if (e.kind === 'period' && e.text === 'End of H1' && !this.halfDone) { this.halfDone = true; this.halftime(); return; }
-    if (e.kind === 'score' && e.pid === RIVAL_ID && Math.random() < 0.75) this.talk(KINGSTON_TALK.scores);
-    else if ((e.kind === 'block' || e.kind === 'steal') && e.pid === RIVAL_ID) this.talk(KINGSTON_TALK.stops);
+    if (e.kind === 'period' && e.text === 'End of H1' && !this.halfDone) { this.halfDone = true; this.startHalf(); return; }
+    const his = e.pid === RIVAL_ID;
+    // round 80e: his signature moments always get their line
+    if (e.kind === 'ult' && his && e.data?.id === 'deepStepback') this.talk(['Let\'s dance.'], true);
+    else if (e.kind === 'ult' && his && e.data?.id === 'ftTakeoff') this.talk(['Too small.'], true);
+    else if (e.kind === 'play' && his && e.data?.iso && Math.random() < 0.4) this.talk(['Let\'s dance.']);
+    else if (e.kind === 'score' && his && e.data?.post) this.talk(['Too small.'], true);
+    else if (e.kind === 'score' && his && e.data?.pts === 3 && Math.random() < 0.7) this.talk(['Splash.'], Math.random() < 0.5);
+    else if (e.kind === 'score' && his && Math.random() < 0.75) this.talk(KINGSTON_TALK.scores);
+    else if (e.kind === 'block' && his) this.talk(KINGSTON_TALK.blocks, true);
+    else if (e.kind === 'steal' && his) this.talk(KINGSTON_TALK.steals, true);
     else if (e.kind === 'score' && me && e.pid === me.id && Math.random() < 0.5) this.talk(KINGSTON_TALK.youScore);
   }
 
@@ -223,6 +236,57 @@ export class StoryRun {
   }
 
   /**
+   * Round 80e: the end of the first half. Everyone walks over to stand in front of his team's empty seats (the
+   * reserves sit next to the assistant coaches); then the coach talks (`halftime`); then back out to the floor.
+   */
+  private startHalf() {
+    const sim = this.gs.sim, home = new Map<string, { x: number; y: number }>(), bench = new Map<string, { x: number; y: number }>();
+    for (const t of [0, 1] as const) {
+      const seats = storyBenchSeats(t).empty;
+      sim.teams[t].onCourt.forEach((p, i) => { home.set(p.id, { ...p.p }); bench.set(p.id, { x: seats[i % seats.length], y: -1.4 }); });
+    }
+    this.half = { phase: 'toBench', t: 0, home, bench };
+  }
+
+  /** Walk everyone toward their spots for this phase (the same stride rooms use: GameScene animates from velocity). */
+  private stepHalf() {
+    const h = this.half; if (!h) return;
+    const sim = this.gs.sim, dt = Math.min(0.05, this.gs.game.loop.delta / 1000);
+    h.t += dt;
+    if (h.phase === 'talk') {
+      for (const p of sim.players) { p.vel = { x: 0, y: 0 }; p.face = { x: 0, y: 1 }; }
+      if (!this.line && !this.queue.length) { h.phase = 'back'; h.t = 0; }
+      return;
+    }
+    const spots = h.phase === 'toBench' ? h.bench : h.home;
+    let moving = false;
+    for (const p of sim.players) {
+      const to = spots.get(p.id); if (!to) continue;
+      const dx = to.x - p.p.x, dy = to.y - p.p.y, d = Math.hypot(dx, dy);
+      p.state = 'idle'; p.anim = null; p.z = 0; p.vz = 0;
+      if (d < 0.25) { p.vel = { x: 0, y: 0 }; if (h.phase === 'toBench') p.face = { x: 0, y: 1 }; continue; }
+      moving = true;
+      const sp = Math.min(h.phase === 'toBench' ? 9 : 12, d / dt);
+      p.vel = { x: dx / d * sp, y: dy / d * sp };
+      p.p = { x: p.p.x + p.vel.x * dt, y: p.p.y + p.vel.y * dt };
+      p.face = { x: dx / d, y: dy / d };
+    }
+    const late = h.t > (h.phase === 'toBench' ? 6 : 6);
+    if (moving && !late) return;
+    if (late) for (const p of sim.players) { const to = spots.get(p.id); if (to) p.p = { ...to }; }
+    for (const p of sim.players) p.vel = { x: 0, y: 0 };
+    if (h.phase === 'toBench') { h.phase = 'talk'; h.t = 0; this.halftime(); return; }
+    // back on the floor: play resumes, and Kingston has something to say about it
+    this.half = null;
+    const me = sim.user;
+    if (me) {
+      const crestview = sim.teams[1 - me.team].score, lincoln = sim.teams[me.team].score;
+      this.nextTalkAt = 0;
+      this.gs.time.delayedCall(900, () => this.talk(crestview > lincoln ? KINGSTON_TALK.mock : KINGSTON_TALK.gas, true));
+    }
+  }
+
+  /**
    * Round 80c: the end of the first half. Down: the coach tells you to play the game, not the emotions, and you lock
    * back in ("I NEED TO WIN THIS": +6 on every stat). Up or tied: don't get complacent, Kingston still has tricks.
    */
@@ -232,7 +296,7 @@ export class StoryRun {
     const you = c.firstName || c.name.split(' ')[0];
     const mine = sim.teams[me.team].score, theirs = sim.teams[1 - me.team].score;
     const cap = squadCaptain(c, sim.teams[me.team].roster.filter((p) => p !== me));
-    const capName = `${cap.name.split(' ')[0]} (C)`;
+    const capName = `${cap.name.split(' ')[0]} (Captain)`;
     if (mine < theirs) {
       this.say([
         { who: 'narrator', text: `Halftime. Crestview ${theirs}, Lincoln ${mine}.` },
@@ -388,10 +452,26 @@ export class StoryRun {
 
 /** Round 80c: Kingston's trash talk in the national final. */
 const KINGSTON_TALK = {
-  scores: ['Too easy.', 'Remember the 1s? Same thing.', 'That\'s what the scout should\'ve seen.', 'You still can\'t guard me.', 'Crestview, baby!'],
-  stops: ['Not in my house.', 'Get that weak stuff outta here.', 'You borrowed my spot. I\'m taking it back.'],
-  youScore: ['Lucky.', 'Enjoy it. Won\'t happen again.', 'Oh, now you wanna hoop?'],
+  scores: ['Too easy.', 'Remember the 1s? Same thing.', 'That\'s what the scout should\'ve seen.', 'You still can\'t guard me.', 'Crestview, baby!', 'This guy.'],
+  // round 80e (owner): blocks and Chase-Downs, steals (the swear censored, the owner's pick)
+  blocks: ['Get that **** outta here!', 'Get that **** outta here!', 'Not in my house.'],
+  steals: ['Gimme that.', 'Gimme that.', 'You borrowed my spot. I\'m taking it back.'],
+  youScore: ['Lucky.', 'Enjoy it. Won\'t happen again.', 'Oh, now you wanna hoop?', 'This guy.'],
+  // coming out of halftime: down (or tied) / up
+  gas: ['Time to turn on the gas.'],
+  mock: ['Nice speech, Coach. Didn\'t help.', 'What\'d your coach tell you in there? Pray?'],
   clutch: ['This is my moment, not yours.'],
 };
 /** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
 const NEED_TO_WIN = 6;
+
+/**
+ * Round 80e: the story final's benches (court ft, the seats 2.2 ft apart along `BENCH_X`): the reserves sit next to
+ * the assistant coaches (toward midcourt), the five empty seats toward the baseline are the starters'.
+ */
+export function storyBenchSeats(team: 0 | 1): { reserves: number[]; empty: number[] } {
+  const start = team === 0 ? 4 : 72, seat = (i: number) => start + i * 2.2;
+  return team === 0
+    ? { empty: [0, 1, 2, 3, 4].map(seat), reserves: [5, 6, 7, 8].map(seat) }
+    : { reserves: [0, 1, 2, 3].map(seat), empty: [4, 5, 6, 7, 8].map(seat) };
+}

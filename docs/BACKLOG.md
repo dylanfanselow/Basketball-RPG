@@ -98,6 +98,7 @@
   vs ATL"), fixed in 60b (Big game vs JEF). Kingston walks off since 60b (he uses the jog cycle at walking pace;
   ask if it reads as a walk). Mom is a front-view standing figure in the doorway (ask about her look). Ask the owner how
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
+- **Round 80e:** ask whether the halftime walk speed / length feels right and how often Kingston talks now.
 - **Round 80c:** ask how the final plays now (Kingston +13 with position perks, the captain +10, the halftime boost +6, how often he talks).
 - **Round 80 follow-ups:** what happens after the national final (the dead generator, Mom; `momCall` 'go' / 'stay'
   has no consequence yet); the coffee / poisoning reveal; you walk the snowy yard in a tee and shorts (a winter coat

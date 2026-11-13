@@ -689,6 +689,16 @@ export function buildFrontSheet(heightFt: number, a: Appearance, kit: Kit): HTML
   return c;
 }
 
+/** Round 80e: an empty bench seat (the same chair the seated bench players sit on), facing the camera. */
+export function buildEmptyChair(): HTMLCanvasElement {
+  const c = makeCanvas(FRONT_W, FRONT_H);
+  const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+  const s = figureHeight(6.5) / 99, floor = FRONT_H - 3, L = (n: number) => n * s;
+  frontChair(ctx, FRONT_W / 2, floor, floor - L(21) - L(4), floor - L(21) - L(36), '#5a6584', s);
+  crispen(c);
+  return c;
+}
+
 /** Courtside broadcaster behind the scorer's table: seated in a suit with a headset; 0 = listening, 1 = talking. */
 export function buildAnnouncerSheet(heightFt: number, a: Appearance, kit: Kit): HTMLCanvasElement {
   const c = makeCanvas(FRONT_W * 2, FRONT_H);
