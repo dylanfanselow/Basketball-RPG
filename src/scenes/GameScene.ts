@@ -150,6 +150,8 @@ export class GameScene extends Phaser.Scene {
   pauseIdx = 0;
   /** Round 60: the prologue running in this game, if any. */
   story: StoryRun | null = null;
+  /** Round 80f: a story game in the arena (the national final) is a neutral site: half the crowd per school. */
+  get splitCrowd() { return this.mode === 'story' && !this.school; }
   ended = false;
 
   constructor() { super('Game'); }
@@ -188,7 +190,7 @@ export class GameScene extends Phaser.Scene {
     this.nets = hoops.nets; this.netHits = [{ at: -9999, amp: 0 }, { at: -9999, amp: 0 }];
     this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
     if (!this.school) {
-      this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed);
+      this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed, this.splitCrowd);
       this.buildSideline();
     } else {
       // no stands, table, benches, coaches or celebs out here: a few kids by the fence (not on the rainy night)
@@ -475,8 +477,8 @@ export class GameScene extends Phaser.Scene {
       case 'release': sfx.release(pan); if (d.crunch) { sfx.hush(true); this.hushAt = this.time.now; } break; // round 75: crunch time, the arena holds its breath
       case 'net':
         this.netHits[sim.ball.p.x < 47 ? 0 : 1] = { at: this.time.now, amp: d.type === 'dunk' ? 1.1 : d.swish ? 1 : 0.75 };
-        if (d.type === 'dunk' || d.type === 'alleyOop') { sfx.dunk(pan); sfx.cheer(d.team === 0 ? 0.9 : 0.45); }
-        else { d.swish ? sfx.swish(pan, true) : sfx.swish(pan, false); if (d.pts === 3) sfx.cheer(d.team === 0 ? 0.75 : 0.3); }
+        if (d.type === 'dunk' || d.type === 'alleyOop') { sfx.dunk(pan); sfx.cheer(d.team === 0 || this.splitCrowd ? 0.9 : 0.45); }
+        else { d.swish ? sfx.swish(pan, true) : sfx.swish(pan, false); if (d.pts === 3) sfx.cheer(d.team === 0 || this.splitCrowd ? 0.75 : 0.3); }
         if (sfx.hushed) sfx.pop(d.team === 0 ? 1 : 0.7); // round 75: it went in: the house comes down
         break;
       case 'rim': if (!d.seq) sfx.clank(pan, !!d.board); if (sfx.hushed) sfx.hush(false); break; // live-rim misses already played their contacts
@@ -487,8 +489,8 @@ export class GameScene extends Phaser.Scene {
       case 'bounce': sfx.bounce(d.v ?? 6, pan); break;
       case 'screenHit': sfx.thud(pan, false); break;
       case 'contact': sfx.thud(pan, !!d.hard); break;
-      case 'block': if (sfx.hushed) sfx.hush(false); sfx.block(pan); sfx.cheer(home ? 0.8 : 0.35); break;
-      case 'steal': sfx.steal(pan); if (home) sfx.cheer(0.55); else sfx.groan(); break;
+      case 'block': if (sfx.hushed) sfx.hush(false); sfx.block(pan); sfx.cheer(home || this.splitCrowd ? 0.8 : 0.35); break;
+      case 'steal': sfx.steal(pan); if (home || this.splitCrowd) sfx.cheer(0.55); else sfx.groan(); break;
       case 'ankles': sfx.squeak(pan, 1.2); sfx.cheer(1); break;
       case 'poster': sfx.cheer(1); break;
       case 'ult':
@@ -511,6 +513,7 @@ export class GameScene extends Phaser.Scene {
     if (team === undefined) return;
     this.crowd.react(worldX, power, team === 0);
     if (team === 1 && power > 0.5) this.crowd.react(worldX, power * 0.6, true, true); // home fans boo the visitors' big play
+    if (team === 0 && power > 0.5 && this.splitCrowd) this.crowd.react(worldX, power * 0.6, false, true); // round 80f: and the other half boos ours
     this.benchCheerUntil[team] = this.time.now + 1800;
     for (const c of this.coaches) if (c.team === team && power > 0.5) c.cheerUntil = this.time.now + 1300;
     // the famous front row reacts too: big plays bring them out of their seats, the rest film or gasp

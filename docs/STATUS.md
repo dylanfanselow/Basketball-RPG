@@ -261,6 +261,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80f: back-view hair = code cap + the side picture over it (`drawHead` / `hairFront` backView, high top and
+  mohawk keep their height); rain gain 0.14; `Crowd` / `FanRow` `split` (GameScene `splitCrowd` for story arena games,
+  boos per side, equal cheers); halftime huddle ring round the head coach (`startHalf`, `faceCoach`).
   Round 80e: `GameConfig.isoStar` (`KINGSTON_ISO` 0.45) in `callPlay`; `play` events carry `pid` + `data.iso`, `score`
   events `data: { type, pts, post }` (`Player.shotFromPost`); `lincolnSquad(c, { base, buff })` (big game 45 / +5),
   `newStory` sets `squadSeed`; final rosters + 4 reserves each; `storyBenchSeats` + `buildEmptyChair` (story benches);

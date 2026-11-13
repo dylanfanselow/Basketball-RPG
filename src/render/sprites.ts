@@ -335,7 +335,9 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
   }
   if (backView) {
     if (want('base')) { ellipse(ctx, cx - rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); ellipse(ctx, cx + rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); }
-    if (want('hair') && !pic('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, true);
+    // round 80f: from behind the hair covers the whole back of the skull (the side pictures leave the face side
+    // bare, which showed as skin): the code cap first, then the picture's silhouette (a high top) over it
+    if (want('hair')) { if (!only || only === 'hair') hairFront(ctx, cx, cy, rx, ry, a, H, k, true); pic('hair'); }
     if (!only && a.headband) stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband);
     // round 80d: from behind, the mask's strap round the back of the head at eye level
     if (!only && a.mask) maskStrap(ctx, [[cx - rx * 1.0, cy - ry * 0.1 + a.eyeY * k], [cx + rx * 1.0, cy - ry * 0.1 + a.eyeY * k]], k);
@@ -442,7 +444,13 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
   };
   const g = ctx.createLinearGradient(cx + rx * 0.6, cy - ry, cx - rx * 0.6, cy);
   g.addColorStop(0, H.hi); g.addColorStop(0.45, H.base); g.addColorStop(1, H.deep);
-  if (backView && a.hair !== 'bald') { cap(0.6, 0.6, 1.02, g); return; }
+  if (backView && a.hair !== 'bald') {
+    // round 80f: tall styles keep their height from behind too
+    if (a.hair === 'hightop') { const top = ctx.createLinearGradient(cx, cy - ry * 2.1, cx, cy - ry * 0.4); top.addColorStop(0, H.hi); top.addColorStop(1, H.sh); poly(ctx, [[cx - rx * 0.9, cy - ry * 0.45], [cx - rx * 0.86, cy - ry * 1.95], [cx + rx * 0.86, cy - ry * 1.95], [cx + rx * 0.9, cy - ry * 0.45]], top); }
+    if (a.hair === 'mohawk') poly(ctx, [[cx - rx * 0.25, cy - ry * 0.8], [cx - rx * 0.2, cy - ry * 1.55], [cx + rx * 0.2, cy - ry * 1.55], [cx + rx * 0.25, cy - ry * 0.8]], g);
+    cap(0.6, 0.6, 1.02, g);
+    return;
+  }
   switch (a.hair) {
     case 'bald': ellipse(ctx, cx + rx * 0.25, cy - ry * 0.6, 2.2 * k, 1.2 * k, tint(SKIN_TONES[a.skin % 5][0], 0.45)); break;
     case 'buzz': ctx.save(); ctx.globalAlpha = 0.85; cap(-0.42, 0.05, 1.01, g); ctx.restore(); break;

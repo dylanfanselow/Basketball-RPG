@@ -158,6 +158,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80f (owner):** from behind, every hairstyle covers the back of the head (no bare patch); the rain is quieter;
+  the national final is a **neutral site**: the left half of the arena is Lincoln's fans, the right half Crestview's,
+  each cheering (and booing) for its own school; at halftime the **starters huddle round their head coach and face
+  him** (open toward the camera); coming out, Kingston's mocking line is only "What'd your coach tell you in there? Pray?".
 - **Round 80e (owner): the final, more.**
   - **More isos for Kingston** (about 45% of Crestview's sets are his iso).
   - Kingston's lines: the step-back ult and some isos "Let's dance."; a post-up bucket or his ult dunk "Too small.";

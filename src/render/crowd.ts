@@ -32,14 +32,22 @@ export class Crowd implements CrowdLike {
   row: FanRow;
 
   /** homeColors / awayColors: team colors (primary first); bigGame (playoffs): nearly every home fan wears them. */
-  constructor(private scene: Phaser.Scene, homeColors: string[], awayColors: string[], bigGame = false, seed = 1) {
+  /** split (round 80f, a neutral-site final): the left half of the arena is the home school's, the right half the
+   *  visitors'; each half wears its school's colors and cheers (or boos) for its own team. */
+  constructor(private scene: Phaser.Scene, homeColors: string[], awayColors: string[], bigGame = false, seed = 1, private split = false) {
     this.g = scene.add.graphics().setDepth(-990);
     const rng = new Phaser.Math.RandomDataGenerator(['fans']);
     const homeAll = homeColors.map((c) => Phaser.Display.Color.HexStringToColor(c).color);
-    const away = Phaser.Display.Color.HexStringToColor(awayColors[0]).color;
+    const awayAll = awayColors.map((c) => Phaser.Display.Color.HexStringToColor(c).color);
+    const away = awayAll[0];
     const homeShare = bigGame ? 0.85 : 0.35, awayShare = bigGame ? 0.04 : 0.08;
     // shirt for one fan: home colors (mostly the primary), the odd visitor, or everyday neutrals
-    const shirtFor = (neutral: number[]) => {
+    const shirtFor = (neutral: number[], x = 0) => {
+      if (split) {
+        const theirs = x >= WORLD_W / 2, cols = theirs ? awayAll : homeAll;
+        const r = rng.frac();
+        return { base: r < 0.6 || cols.length < 2 ? cols[0] : r < 0.85 ? cols[1] : rng.pick(neutral), isAway: theirs };
+      }
       const r = rng.frac();
       if (r < homeShare) return { base: rng.frac() < (bigGame ? 0.85 : 0.6) || homeAll.length < 2 ? homeAll[0] : homeAll[1], isAway: false };
       if (r < homeShare + awayShare) return { base: away, isAway: true };
@@ -51,7 +59,7 @@ export class Crowd implements CrowdLike {
       const lit = 0.5 + 0.5 * (row / (CROWD_ROWS - 1));
       for (let x = -150 + (row % 2) * 6; x < WORLD_W + 150; x += 12) {
         if (rng.frac() < 0.05) continue; // a few empty seats
-        const { base, isAway } = shirtFor(neutral);
+        const { base, isAway } = shirtFor(neutral, x);
         const skin = rng.pick(SKINS);
         this.fans.push({
           x: x + rng.between(-2, 2), row, shirt: mul(base, 0.6 * lit), shirtLit: mul(base, 0.85 * lit), skin: mul(skin, 0.62 * lit), skinLit: mul(skin, 0.9 * lit),
@@ -60,7 +68,7 @@ export class Crowd implements CrowdLike {
         });
       }
     }
-    this.row = new FanRow(scene, this, homeColors, awayColors[0], bigGame, seed);
+    this.row = new FanRow(scene, this, homeColors, awayColors[0], bigGame, seed, split ? awayColors : null);
   }
 
   /** How a fan at world x (rooting for the visitors if away) is reacting to recent events right now. */
@@ -71,7 +79,7 @@ export class Crowd implements CrowdLike {
       const age = now - e.t - delay;
       if (age < 0 || age > 1600) continue;
       const mine = e.home ? !away : away;
-      if (e.boo) { if (!away) boo = true; continue; }
+      if (e.boo) { if (e.home ? !away : away) boo = true; continue; } // round 80f: the side that boos (home fans, unless split)
       if (!mine) continue;
       const k = 1 - age / 1600;
       jump = Math.max(jump, Math.abs(Math.sin(age / 90)) * 7 * e.power * k);
@@ -135,39 +143,50 @@ const FAN_LOOKS = 18;
 class FanRow {
   fans: { sprite: Phaser.GameObjects.Sprite; x: number; away: boolean; phase: number; frame: number; baseY?: number }[] = [];
 
-  constructor(private scene: Phaser.Scene, private crowd: Crowd, home: string[], away: string, bigGame: boolean, seed: number) {
+  /** splitAway (round 80f): the right half of the row (and the seats behind the right basket) are the visitors'. */
+  constructor(private scene: Phaser.Scene, private crowd: Crowd, home: string[], away: string, bigGame: boolean, seed: number, splitAway: string[] | null = null) {
     const rng = new Phaser.Math.RandomDataGenerator([`fanrow${seed}${bigGame ? 'big' : ''}`]);
-    const looks: { key: string; look: CelebLook }[] = [];
-    for (let i = 0; i < FAN_LOOKS; i++) {
-      const look = randomFan(() => rng.frac(), home, away, bigGame, true); // the sprite fans all wear home colors
-      const key = `fan_${seed}_${bigGame ? 1 : 0}_${i}`;
-      if (!scene.textures.exists(key)) {
-        const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
-        for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+    const lookSet = (cols: string[], other: string, tag: string) => {
+      const out: { key: string; look: CelebLook }[] = [];
+      for (let i = 0; i < FAN_LOOKS; i++) {
+        const look = randomFan(() => rng.frac(), cols, other, bigGame, true); // the sprite fans all wear their side's colors
+        const key = `fan_${seed}_${bigGame ? 1 : 0}_${tag}${i}`;
+        if (!scene.textures.exists(key)) {
+          const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
+          for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+        }
+        out.push({ key, look });
       }
-      looks.push({ key, look });
-    }
+      return out;
+    };
+    const looks = lookSet(home, away, '');
+    const awayLooks = splitAway ? lookSet(splitAway, home[0], `a${splitAway[0]}`) : null;
     for (let ft = -10; ft <= 104; ft += 1.5) {
       if (rng.frac() < 0.04) continue; // an empty seat here and there
-      const { key, look } = rng.pick(looks);
+      const theirs = !!awayLooks && ft >= 47;
+      const { key, look } = rng.pick(theirs ? awayLooks! : looks);
       const x = sx(ft) + rng.between(-3, 3);
       const sprite = scene.add.sprite(x, FAN_ROW_FEET, key, 0).setOrigin(0.5, 1).setScale(FAN_SCALE).setDepth(FAN_ROW_FEET).setTint(0xb4b0cc);
-      this.fans.push({ sprite, x, away: look.side === 'away', phase: rng.frac() * 10, frame: 0 });
+      this.fans.push({ sprite, x, away: theirs || (!awayLooks && look.side === 'away'), phase: rng.frac() * 10, frame: 0 });
     }
     // seats behind each basket: packed rows running from the far sideline toward us (kept clear of the hoop supports),
     // everyone in the home team's primary color, heads turned toward the court (mirrored at the right end)
-    const primary = home[0];
-    const baseLooks: string[] = [];
-    for (let i = 0; i < 12; i++) {
-      const look = randomFan(() => rng.frac(), home, away, bigGame, true);
-      Object.assign(look, { color: shade(primary, 0.92), accent: shade(primary, 0.75), hatColor: primary, turn: 0.55 });
-      const key = `fanb_${seed}_${i}_${primary}`;
-      if (!scene.textures.exists(key)) {
-        const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
-        for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+    const baseSet = (primary: string) => {
+      const keys: string[] = [];
+      for (let i = 0; i < 12; i++) {
+        const look = randomFan(() => rng.frac(), home, away, bigGame, true);
+        Object.assign(look, { color: shade(primary, 0.92), accent: shade(primary, 0.75), hatColor: primary, turn: 0.55 });
+        const key = `fanb_${seed}_${i}_${primary}`;
+        if (!scene.textures.exists(key)) {
+          const tex = scene.textures.addCanvas(key, buildCelebSheet(look))!;
+          for (let f = 0; f < CELEB_FRAMES; f++) tex.add(f, 0, f * CELEB_W, 0, CELEB_W, CELEB_H);
+        }
+        keys.push(key);
       }
-      baseLooks.push(key);
-    }
+      return keys;
+    };
+    const baseLooks = baseSet(home[0]);
+    const baseAway = splitAway ? baseSet(splitAway[0]) : baseLooks;
     const STANCHIONS: [number, number][] = [[-7.8, -1.3], [95.3, 101.8]];
     for (const [xs, flip] of [[[-5.3, -7.5, -9.7], false], [[99.3, 101.5, 103.7], true]] as [number[], boolean][]) {
       xs.forEach((xFt, col) => {
@@ -175,8 +194,8 @@ class FanRow {
           if (STANCHIONS.some(([a, b]) => xFt > a && xFt < b) && yFt > 15 && yFt < 34) continue;
           if (rng.frac() < 0.03) continue;
           const x = sx(xFt) + rng.between(-2, 2), y = FLOOR_TOP + yFt * 6.4;
-          const sprite = scene.add.sprite(x, y, rng.pick(baseLooks), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.84).setDepth(y - 0.5).setTint(0xd2cee4).setFlipX(flip);
-          this.fans.push({ sprite, x, away: false, phase: rng.frac() * 10, frame: 0, baseY: y });
+          const sprite = scene.add.sprite(x, y, rng.pick(flip ? baseAway : baseLooks), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.84).setDepth(y - 0.5).setTint(0xd2cee4).setFlipX(flip);
+          this.fans.push({ sprite, x, away: flip && !!splitAway, phase: rng.frac() * 10, frame: 0, baseY: y });
         }
       });
     }

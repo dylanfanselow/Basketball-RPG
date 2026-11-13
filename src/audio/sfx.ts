@@ -375,8 +375,8 @@ class Sfx {
       const src = ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
-      const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(0.22, t + 1.2); // round 60c: quieter
-      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.05;
+      const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(0.14, t + 1.2); // round 60c / 80f: quieter
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.03;
       lfo.connect(lg).connect(g.gain); lfo.start();
       src.connect(hp).connect(lp).connect(g).connect(this.crowdBus); src.start();
       this.rainNodes = { src, g, lfo };

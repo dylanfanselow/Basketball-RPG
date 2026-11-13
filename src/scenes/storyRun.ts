@@ -48,7 +48,7 @@ export class StoryRun {
   private nextTalkAt = 0;
   private halfDone = false;
   /** Round 80e: halftime at the bench: walk over, the coach talks, walk back (court ft per player). */
-  private half: { phase: 'toBench' | 'talk' | 'back'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }> } | null = null;
+  private half: { phase: 'toBench' | 'talk' | 'back'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }>; coach: Map<0 | 1, { x: number; y: number }> } | null = null;
   private wasLate = false;
 
   constructor(private gs: GameScene, public which: StoryGame) {
@@ -241,11 +241,28 @@ export class StoryRun {
    */
   private startHalf() {
     const sim = this.gs.sim, home = new Map<string, { x: number; y: number }>(), bench = new Map<string, { x: number; y: number }>();
+    // round 80f (owner): the starters huddle round their head coach (on the sideline at y -1.6) and face him; the ring
+    // is open toward the camera so he stays in the picture
+    const RING = [205, 155, 118, 25, 335].map((d) => (d * Math.PI) / 180);
+    const coachOf = new Map<0 | 1, { x: number; y: number }>();
     for (const t of [0, 1] as const) {
-      const seats = storyBenchSeats(t).empty;
-      sim.teams[t].onCourt.forEach((p, i) => { home.set(p.id, { ...p.p }); bench.set(p.id, { x: seats[i % seats.length], y: -1.4 }); });
+      const c = this.gs.coaches.find((q) => q.team === t);
+      const at = { x: c ? c.home : t === 0 ? 26.5 : 67.5, y: -1.6 };
+      coachOf.set(t, at);
+      sim.teams[t].onCourt.forEach((p, i) => {
+        home.set(p.id, { ...p.p });
+        const a = RING[i % RING.length];
+        bench.set(p.id, { x: at.x + Math.cos(a) * 3.8, y: at.y + Math.sin(a) * 2.4 });
+      });
     }
-    this.half = { phase: 'toBench', t: 0, home, bench };
+    this.half = { phase: 'toBench', t: 0, home, bench, coach: coachOf };
+  }
+
+  /** Round 80f: a player in the huddle looks at his coach. */
+  private faceCoach(p: { team: 0 | 1; p: { x: number; y: number } }): { x: number; y: number } {
+    const c = this.half?.coach.get(p.team); if (!c) return { x: 0, y: 1 };
+    const dx = c.x - p.p.x, dy = c.y - p.p.y, d = Math.hypot(dx, dy) || 1;
+    return { x: dx / d, y: dy / d };
   }
 
   /** Walk everyone toward their spots for this phase (the same stride rooms use: GameScene animates from velocity). */
@@ -254,7 +271,7 @@ export class StoryRun {
     const sim = this.gs.sim, dt = Math.min(0.05, this.gs.game.loop.delta / 1000);
     h.t += dt;
     if (h.phase === 'talk') {
-      for (const p of sim.players) { p.vel = { x: 0, y: 0 }; p.face = { x: 0, y: 1 }; }
+      for (const p of sim.players) { p.vel = { x: 0, y: 0 }; p.face = this.faceCoach(p); }
       if (!this.line && !this.queue.length) { h.phase = 'back'; h.t = 0; }
       return;
     }
@@ -264,7 +281,7 @@ export class StoryRun {
       const to = spots.get(p.id); if (!to) continue;
       const dx = to.x - p.p.x, dy = to.y - p.p.y, d = Math.hypot(dx, dy);
       p.state = 'idle'; p.anim = null; p.z = 0; p.vz = 0;
-      if (d < 0.25) { p.vel = { x: 0, y: 0 }; if (h.phase === 'toBench') p.face = { x: 0, y: 1 }; continue; }
+      if (d < 0.25) { p.vel = { x: 0, y: 0 }; if (h.phase === 'toBench') p.face = this.faceCoach(p); continue; }
       moving = true;
       const sp = Math.min(h.phase === 'toBench' ? 9 : 12, d / dt);
       p.vel = { x: dx / d * sp, y: dy / d * sp };
@@ -459,7 +476,7 @@ const KINGSTON_TALK = {
   youScore: ['Lucky.', 'Enjoy it. Won\'t happen again.', 'Oh, now you wanna hoop?', 'This guy.'],
   // coming out of halftime: down (or tied) / up
   gas: ['Time to turn on the gas.'],
-  mock: ['Nice speech, Coach. Didn\'t help.', 'What\'d your coach tell you in there? Pray?'],
+  mock: ['What\'d your coach tell you in there? Pray?'],
   clutch: ['This is my moment, not yours.'],
 };
 /** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
