@@ -158,6 +158,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80d (owner): the face mask and Kingston's skin.** The face mask looks like the owner's photo: a
+  carbon-fibre shell (near-black graphite, diagonal weave, a soft sheen) from the brow over the nose with eye openings,
+  and a black strap with a small silver clip. It shows from **every angle** (side, front, three-quarter and the strap
+  from behind). Kingston is **skin tone 5** (builder numbering; saved rivals too).
 - **Round 80c (owner): the national final.**
   - The clutch-time hush works in the final like any 5v5 (close score in the last ~40 s of the second half).
   - **Kingston's perks fit his position** (only in the final; the 1s keep every perk): every perk of the trees his
@@ -217,7 +221,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     **every basketball game**; alexgrohl "Sad Story" plays in the **scene with Mom** (it fades in on the walk up,
     the game music fades out as Kingston walks off). Music volume in Settings (default 50%).
   - **Kingston is Black and wears goggles** (also applied to rivals already in saves). Round 71 (owner): skin
-    **tone 4** (builder numbering), a **face mask** (no goggles) and a **high top**, saved rivals too.
+    **tone 4** (round 80d: **tone 5**) (builder numbering), a **face mask** (no goggles) and a **high top**, saved rivals too.
   - The tutorial no longer mentions the ultimate (the rhythm / ult line is gone).
   - **Multi-step lessons start over on a miss:** in the Step-Through lesson a plain shot after the fake (or letting
     the fake's window run out) goes back to "pump fake" with a red "Missed it"; same for shooting outside the post in

@@ -50,10 +50,10 @@ export function newStory(c: Pick<CareerState, 'pos' | 'number' | 'height'>, rnd:
   return { stage: 'tutorial', rival, home: 'trailer' };
 }
 
-/** Round 71 (owner): Kingston's skin is tone 4 in the builder (index 3). */
-export const KINGSTON_SKIN = 3;
+/** Round 80d (owner): Kingston's skin is tone 5 in the builder (index 4, the darkest; was tone 4 since round 71). */
+export const KINGSTON_SKIN = 4;
 /**
- * Round 60c / 71 (owner): Kingston is Black (skin tone 4), wears a face mask (not goggles) and a high top. Applied to
+ * Round 60c / 71 (owner): Kingston is Black (skin tone 5 since round 80d), wears a face mask (not goggles) and a high top. Applied to
  * new and already-saved rivals alike.
  */
 export function kingstonLook(a: Appearance): Appearance {

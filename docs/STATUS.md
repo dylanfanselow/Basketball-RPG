@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80d: `sprites.carbonFill` / `maskStrap`; the mask in `drawHead` (side shell + strap and buckle, back strap) and
+  `frontHead` (front / turned shell with two eye openings, side straps), eyes re-plotted in the openings; `KINGSTON_SKIN` = 4.
   Round 80c: `KINGSTON_TREES` / `kingstonFinalPerks` / `KINGSTON_FINAL` (+13), `CAPTAIN_BUFF` in `lincolnSquad`,
   `GameConfig.ultLate` + `GameSim.lateWindow` gate CPU `ultReady`; StoryRun final: `talk` / `drawTalk` (Kingston's
   bubble, `KINGSTON_TALK`, throttled, cosmetic random), `halftime` on "End of H1" (down: `NEED_TO_WIN` +6 banner).

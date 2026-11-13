@@ -284,6 +284,34 @@ function drawTorsoUpright(ctx: Ctx, neck: J, hip: J, sF: J, sB: J, kit: Kit, a: 
   }
 }
 
+// ---------- face mask (round 80d: the owner's photo, a carbon-fibre shell) ----------
+/**
+ * Fill a shape with carbon fibre: near-black graphite, a diagonal twill weave (2-pixel blocks alternating) and a soft
+ * sheen from the top. `shape` adds the outline (and holes, filled even-odd) to the current path. Pixel loops in the
+ * context's own space, so it works rotated (head turns) and on an OffscreenCanvas.
+ */
+function carbonFill(ctx: Ctx, shape: (c: Ctx) => void, box: [number, number, number, number]) {
+  const [x0, y0, x1, y1] = box;
+  ctx.save();
+  ctx.beginPath(); shape(ctx); ctx.clip('evenodd');
+  ctx.fillStyle = '#202227'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  for (let y = Math.floor(y0); y < y1; y++) for (let x = Math.floor(x0); x < x1; x++) {
+    const a = ((x + y) >> 1) & 1, b = ((x - y) >> 1) & 1;
+    if (a ^ b) { ctx.fillStyle = (x + y) & 1 ? '#383b42' : '#2e3137'; ctx.fillRect(x, y, 1, 1); }
+  }
+  const g = ctx.createLinearGradient(x0, y0, x0 + (x1 - x0) * 0.4, y1);
+  g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(0.5, 'rgba(255,255,255,0.06)'); g.addColorStop(1, 'rgba(0,0,0,0.12)');
+  ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  ctx.restore();
+  ctx.save(); ctx.beginPath(); shape(ctx); ctx.lineWidth = 1; ctx.strokeStyle = '#0c0d0f'; ctx.stroke(); ctx.restore();
+}
+/** The strap: a black band with a stitched edge; `buckle` = a small silver clip at that point. */
+function maskStrap(ctx: Ctx, pts: J[], k: number, buckle?: J) {
+  stroke(ctx, pts, 1.7 * k, '#141518');
+  stroke(ctx, pts.map(([x, y]) => [x, y - 0.6 * k] as J), 0.6, '#3a3d44', 0.8);
+  if (buckle) { px(ctx, buckle[0] - k, buckle[1] - 1.2 * k, '#8d939b', Math.max(2, Math.round(2 * k)), Math.max(2, Math.round(2.4 * k))); px(ctx, buckle[0] - k + 1, buckle[1] - 1.2 * k + 1, '#c9ced5', 1, 1); }
+}
+
 // ---------- head ----------
 /**
  * Side (profile) head, or the back of the head. Built from face parts (faceParts.ts): each part uses its hand-drawn
@@ -309,6 +337,8 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
     if (want('base')) { ellipse(ctx, cx - rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); ellipse(ctx, cx + rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); }
     if (want('hair') && !pic('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, true);
     if (!only && a.headband) stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband);
+    // round 80d: from behind, the mask's strap round the back of the head at eye level
+    if (!only && a.mask) maskStrap(ctx, [[cx - rx * 1.0, cy - ry * 0.1 + a.eyeY * k], [cx + rx * 1.0, cy - ry * 0.1 + a.eyeY * k]], k);
     return;
   }
   const ey = cy - ry * 0.08 + a.eyeY * k;
@@ -370,7 +400,27 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
   if (only) return;
   if (a.headband) { stroke(ctx, [[cx - rx * 0.98, cy - ry * 0.35], [cx + rx * 0.98, cy - ry * 0.42]], 2.6 * k, a.headband); stroke(ctx, [[cx - rx * 0.9, cy - ry * 0.48], [cx + rx * 0.9, cy - ry * 0.55]], 1, tint(a.headband, 0.4), 0.7); }
   if (a.goggles) { stroke(ctx, [[cx - rx, ey + 0.5], [cx + rx, ey + 0.5]], 1.4, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.8, 3 * k, 2.2 * k, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.6, 2 * k, 1.3 * k, '#8fd3ff'); px(ctx, ex - 0.5, ey, '#e8f8ff'); }
-  if (a.mask) { const m = '#c9d3dc'; stroke(ctx, [[cx + rx * 0.2, ey - 2.4 * k], [cx + rx * 1.02, ey - 2.4 * k], [cx + rx * 1.05, ey + 2.6 * k], [cx + rx * 0.2, ey + 2.6 * k], [cx + rx * 0.2, ey - 2.4 * k]], 1.2, m); }
+  if (a.mask) {
+    // round 80d: profile of the carbon shell: forehead to the nose guard, open round the eyes, strap back past the ear
+    const row = cy + a.eyeY * k - 0.5 * k, ny = ey + 3.4 * k;
+    maskStrap(ctx, [[cx + rx * 0.25, row], [cx - rx * 0.98, row - 0.4 * k]], k, [cx + rx * 0.08, row]);
+    carbonFill(ctx, (c) => {
+      c.moveTo(cx + rx * 0.22, cy - ry * 0.5);
+      c.lineTo(cx + rx * 0.95, cy - ry * 0.55);
+      c.lineTo(cx + rx * 1.1, ey - 1.6 * k);
+      c.lineTo(cx + rx + 2.1 * k, ny + 0.4 * k); // over the nose
+      c.lineTo(cx + rx + 0.4 * k, ny + 1.6 * k);
+      c.lineTo(cx + rx * 0.55, ny + 1.2 * k);    // the cheek piece
+      c.lineTo(cx + rx * 0.22, ey + 1.8 * k);
+      c.closePath();
+      c.ellipse(cx + 7.6 * k, row + 0.5 * k, 3.1 * k, 1.5 * k, 0, 0, Math.PI * 2); // the eye opening
+    }, [cx, cy - ry * 0.6, cx + rx + 3 * k, ny + 2 * k]);
+    // the eyes stay clear in the opening
+    plotEyeCells(ctx, cx, cy + a.eyeY * k, k, [
+      { dx: 5.5, dy: -0.5, color: '#f2efe8' }, { dx: 6.5, dy: -0.5, color: a.eyeColor, iris: true },
+      { dx: 8.5, dy: -0.5, color: '#e8e4dc' }, { dx: 9.5, dy: -0.5, color: a.eyeColor, iris: true },
+    ]);
+  }
 }
 
 /** Hair behind the skull (afro volume, dreads/braids hanging, bun). */
@@ -728,6 +778,27 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
   if (a.headband) stroke(ctx, [[cx - rx, hy - ry * 0.45], [cx + rx, hy - ry * 0.45]], 2.4 * k, a.headband);
   if (opts.shades) { poly(ctx, [[cx - rx * 0.95, ey - 1.6 * k], [cx + rx * 0.95, ey - 1.6 * k], [cx + rx * 0.8, ey + 1.8 * k], [cx + 1 * k, ey + 1.2 * k], [cx - 1 * k, ey + 1.2 * k], [cx - rx * 0.8, ey + 1.8 * k]], opts.shades); px(ctx, cx - rx * 0.55, ey - 0.6 * k, '#ffffff', 2, 1); }
   else if (a.goggles) { stroke(ctx, [[cx - rx, ey], [cx + rx, ey]], 1.2, '#1c1c1c'); for (const sx of [-1, 1]) ellipse(ctx, cx + sx * rx * 0.42, ey + 0.3, 2.2 * k, 1.6 * k, '#8fd3ff'); }
+  else if (a.mask) {
+    // round 80d: the carbon shell from the front (or three-quarter): brow to the nose guard, two eye openings,
+    // the strap out to each side of the head
+    const row = hy + a.eyeY * k + 0.5 * k, gap = a.eyeGap ? 6 : 4, h = gap / 2 + 1;
+    const L = cx0 - rx * (0.9 - 0.35 * turn), Rr = cx0 + rx * (0.9 - 0.1 * turn), top = hy - ry * 0.42, ny = ey + 3.9 * k;
+    maskStrap(ctx, [[cx0 - rx * 1.02, row - 0.2 * k], [L + k, row - 0.2 * k]], k);
+    if (turn < 0.5) maskStrap(ctx, [[Rr - k, row - 0.2 * k], [cx0 + rx * 1.02, row - 0.2 * k]], k);
+    carbonFill(ctx, (c) => {
+      c.moveTo(L, top + 1.5 * k);
+      c.quadraticCurveTo((L + Rr) / 2, top - 1.2 * k, Rr, top + 1.5 * k);
+      c.lineTo(Rr, row + 1.6 * k);
+      c.lineTo(cx + 2.6 * k, ny - 0.6 * k);
+      c.lineTo(cx + 1.6 * k, ny + 1.0 * k);   // the nose guard
+      c.lineTo(cx - 1.6 * k, ny + 1.0 * k);
+      c.lineTo(cx - 2.6 * k, ny - 0.6 * k);
+      c.lineTo(L, row + 1.6 * k);
+      c.closePath();
+      for (const sx of [-1, 1]) c.ellipse(cx + sx * h * k, row, 2.4 * k * squash(sx), 1.4 * k, 0, 0, Math.PI * 2);
+    }, [L - 1, top - 2 * k, Rr + 1, ny + 2 * k]);
+    plotEyeCells(ctx, cx, hy + a.eyeY * k, k, frontEyeCells(a.eyeColor, gap));
+  }
 }
 
 /** A chair seen from the front (drawn behind a seated figure): backrest, seat edge, legs. */
