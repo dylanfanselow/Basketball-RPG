@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-12 (round 80: Kingston leaves, three months later, the bus, the national final).
+Last updated: 2026-11-13 (round 81: home to the wrecked trailer, the debt, the agent, the draft week).
 Next session: start with BACKLOG.md → "Start here next session".
