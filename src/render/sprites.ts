@@ -326,7 +326,8 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
   const ramps = { hair: H, skin: S };
   const want = (t: PartType | 'base') => !only || only === t;
   const pic = (t: PartType, dy = 0) => !only && drawPart(ctx, t, 'side', cx, cy, k, a, ramps, { dy });
-  if (want('hairBack') && !pic('hairBack')) hairBack(ctx, cx, cy, rx, ry, a, H, k);
+  // round 80j: from behind the hair is all code (centered volume / locks), never the profile pictures
+  if (want('hairBack') && (backView || !pic('hairBack'))) hairBack(ctx, cx, cy, rx, ry, a, H, k, backView);
   if (want('base')) {
     // skull: radial light from the front-top
     const rg = ctx.createRadialGradient(cx + rx * 0.35, cy - ry * 0.35, 1, cx, cy, rx * 1.35);
@@ -337,8 +338,8 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
     if (want('base')) { ellipse(ctx, cx - rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); ellipse(ctx, cx + rx * 0.95, cy + ry * 0.05, 1.8 * k, 2.8 * k, S.sh); }
     // round 80f: from behind the hair covers the whole back of the skull (the side pictures leave the face side
     // bare, which showed as skin): the code cap first, then the picture's silhouette (a high top) over it
-    if (want('hair')) { if (!only || only === 'hair') hairFront(ctx, cx, cy, rx, ry, a, H, k, true); pic('hair'); }
-    if (!only && a.headband) stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband);
+    if (want('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, true);
+    if (!only && a.headband) inHead(ctx, cx, cy, rx, ry, () => stroke(ctx, [[cx - rx, cy - ry * 0.4], [cx + rx, cy - ry * 0.4]], 2.6 * k, a.headband!));
     // round 80d: from behind, the mask's strap round the back of the head at eye level
     if (!only && a.mask) maskStrap(ctx, [[cx - rx * 1.0, cy - ry * 0.1 + a.eyeY * k], [cx + rx * 1.0, cy - ry * 0.1 + a.eyeY * k]], k);
     return;
@@ -400,7 +401,7 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
   }
   if (want('hair') && !pic('hair')) hairFront(ctx, cx, cy, rx, ry, a, H, k, false);
   if (only) return;
-  if (a.headband) { stroke(ctx, [[cx - rx * 0.98, cy - ry * 0.35], [cx + rx * 0.98, cy - ry * 0.42]], 2.6 * k, a.headband); stroke(ctx, [[cx - rx * 0.9, cy - ry * 0.48], [cx + rx * 0.9, cy - ry * 0.55]], 1, tint(a.headband, 0.4), 0.7); }
+  if (a.headband) { const hb = a.headband; inHead(ctx, cx, cy, rx, ry, () => { stroke(ctx, [[cx - rx * 0.98, cy - ry * 0.35], [cx + rx * 0.98, cy - ry * 0.42]], 2.6 * k, hb); stroke(ctx, [[cx - rx * 0.9, cy - ry * 0.48], [cx + rx * 0.9, cy - ry * 0.55]], 1, tint(hb, 0.4), 0.7); }); } // round 80j: wraps the head
   if (a.goggles) { stroke(ctx, [[cx - rx, ey + 0.5], [cx + rx, ey + 0.5]], 1.4, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.8, 3 * k, 2.2 * k, '#1c1c1c'); ellipse(ctx, ex + 0.5, ey + 0.6, 2 * k, 1.3 * k, '#8fd3ff'); px(ctx, ex - 0.5, ey, '#e8f8ff'); }
   if (a.mask) {
     // round 80d: profile of the carbon shell: forehead to the nose guard, open round the eyes, strap back past the ear
@@ -425,9 +426,33 @@ export function drawHead(ctx: Ctx, hx: number, hy: number, a: Appearance, k: num
   }
 }
 
-/** Hair behind the skull (afro volume, dreads/braids hanging, bun). */
-function hairBack(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: Appearance, H: Ramp, k: number) {
-  if (a.hair === 'afro') { const g = ctx.createRadialGradient(cx + 2 * k, cy - ry * 0.7, 1, cx - 1 * k, cy - ry * 0.3, rx * 1.7); g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.deep); ellipse(ctx, cx - 1 * k, cy - ry * 0.35, rx * 1.55, ry * 1.25, g); }
+/** Round 80j: the afro's one shading (volume and the hair on the skull share it, so they read as one mass). */
+function afroGrad(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, k: number, H: Ramp, back = false): CanvasGradient {
+  const g = ctx.createRadialGradient(cx + (back ? 0 : 2 * k), cy - ry * 0.7, 1, cx - (back ? 0 : 1 * k), cy - ry * 0.3, rx * 1.7);
+  g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.deep);
+  return g;
+}
+/** Round 80j: the high top's one shading, top to hairline (the block and the hair on the skull share it). */
+function hightopGrad(ctx: Ctx, cx: number, cy: number, ry: number, H: Ramp): CanvasGradient {
+  const g = ctx.createLinearGradient(cx, cy - ry * 2.0, cx, cy + ry * 0.2);
+  g.addColorStop(0, H.hi); g.addColorStop(0.5, H.base); g.addColorStop(1, H.sh);
+  return g;
+}
+/** Round 80j: draw inside the head's outline (headbands wrap the head instead of sticking out past it). */
+function inHead(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, draw: () => void) {
+  ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, rx * 1.03, ry * 1.03, 0, 0, Math.PI * 2); ctx.clip(); draw(); ctx.restore();
+}
+
+/** Hair behind the skull (afro volume, dreads/braids hanging, bun). backView (round 80j): seen from behind, centered. */
+function hairBack(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: Appearance, H: Ramp, k: number, backView = false) {
+  if (a.hair === 'afro') ellipse(ctx, cx - (backView ? 0 : 1 * k), cy - ry * 0.35, rx * 1.55, ry * 1.25, afroGrad(ctx, cx, cy, rx, ry, k, H, backView));
+  if (backView) {
+    // from behind: locks hang down both sides of the back of the head, the bun sits on top in the middle
+    if (a.hair === 'dreads') for (let i = 0; i < 6; i++) { const x = cx + (i - 2.5) * rx * 0.34; stroke(ctx, [[x, cy - ry * 0.4], [x * 1 + (x - cx) * 0.15, cy + ry * (0.95 + (i % 2) * 0.2)]], 2.2 * k, i % 2 ? H.base : H.sh); }
+    if (a.hair === 'braids') for (let i = 0; i < 5; i++) { const x = cx + (i - 2) * rx * 0.4; stroke(ctx, [[x, cy - ry * 0.2], [x, cy + ry * 0.8]], 1.4 * k, i % 2 ? H.base : H.sh); }
+    if (a.hair === 'bun') ellipse(ctx, cx, cy - ry * 0.95, 3.4 * k, 3 * k, H.base);
+    return;
+  }
   if (a.hair === 'dreads') for (let i = 0; i < 5; i++) stroke(ctx, [[cx - rx * 0.6 - i * 1.4 * k, cy - ry * 0.6], [cx - rx * 0.9 - i * 1.6 * k, cy + ry * (0.8 + (i % 2) * 0.25)]], 2.2 * k, i % 2 ? H.base : H.sh);
   if (a.hair === 'braids') for (let i = 0; i < 4; i++) stroke(ctx, [[cx - rx * 0.6 - i * 1.3 * k, cy - ry * 0.3], [cx - rx * 0.8 - i * 1.4 * k, cy + ry * 0.75]], 1.4 * k, i % 2 ? H.base : H.sh);
   if (a.hair === 'bun') ellipse(ctx, cx - rx * 0.75, cy - ry * 0.85, 3.4 * k, 3 * k, H.base);
@@ -435,20 +460,51 @@ function hairBack(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: A
 
 /** Hair on top of the skull, front view of the 3/4 head. */
 function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: Appearance, H: Ramp, k: number, backView: boolean) {
-  /** A cap over the top of the skull down to `line` (fraction of ry above center, negative = above), back side lower. */
+  const skull = (puff: number) => { ctx.beginPath(); ctx.ellipse(cx, cy - ry * 0.05 * (puff - 1), rx * puff + 0.4, ry * puff + 0.4, 0, 0, Math.PI * 2); ctx.clip(); };
+  /**
+   * A cap over the top of the skull. Profile: the hairline at `front` (fraction of ry, negative = above center) on the
+   * face side, then a smooth sweep back and down to the nape, a little past `back` (round 80j: no square corner).
+   */
   const cap = (front: number, back: number, puff = 1, fill: string | CanvasGradient = H.base) => {
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(cx, cy - ry * 0.05 * (puff - 1), rx * puff + 0.4, ry * puff + 0.4, 0, 0, Math.PI * 2); ctx.clip();
-    poly(ctx, [[cx - rx * 1.5, cy - ry * 2], [cx + rx * 1.5, cy - ry * 2], [cx + rx * 1.5, cy + ry * front], [cx + rx * 0.4, cy + ry * front], [cx - rx * 0.4, cy + ry * back], [cx - rx * 1.5, cy + ry * back]], fill);
+    ctx.save(); skull(puff);
+    const yF = cy + ry * front, yB = cy + ry * back, nape = yB + ry * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx * 1.6, cy - ry * 2.3); ctx.lineTo(cx + rx * 1.6, cy - ry * 2.3);
+    ctx.lineTo(cx + rx * 1.6, yF); ctx.lineTo(cx + rx * 0.45, yF);
+    ctx.bezierCurveTo(cx + rx * 0.05, yF, cx - rx * 0.3, yB, cx - rx * 0.75, nape);
+    ctx.lineTo(cx - rx * 1.6, nape + ry * 0.12); ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
     ctx.restore();
   };
+  /** From behind: the hair covers the skull down to `line` (fraction of ry), curving a touch lower in the middle. */
+  const backCap = (line: number, puff = 1.02, fill: string | CanvasGradient = H.base) => {
+    ctx.save(); skull(puff);
+    const y = cy + ry * line;
+    ctx.beginPath(); ctx.moveTo(cx - rx * 1.6, cy - ry * 2.3); ctx.lineTo(cx + rx * 1.6, cy - ry * 2.3); ctx.lineTo(cx + rx * 1.6, y - ry * 0.08);
+    ctx.quadraticCurveTo(cx, y + ry * 0.18, cx - rx * 1.6, y - ry * 0.08); ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill(); ctx.restore();
+  };
+  const stubble = (draw: () => void) => { ctx.save(); ctx.globalAlpha = 0.25; draw(); ctx.restore(); };
   const g = ctx.createLinearGradient(cx + rx * 0.6, cy - ry, cx - rx * 0.6, cy);
   g.addColorStop(0, H.hi); g.addColorStop(0.45, H.base); g.addColorStop(1, H.deep);
-  if (backView && a.hair !== 'bald') {
-    // round 80f: tall styles keep their height from behind too
-    if (a.hair === 'hightop') { const top = ctx.createLinearGradient(cx, cy - ry * 2.1, cx, cy - ry * 0.4); top.addColorStop(0, H.hi); top.addColorStop(1, H.sh); poly(ctx, [[cx - rx * 0.9, cy - ry * 0.45], [cx - rx * 0.86, cy - ry * 1.95], [cx + rx * 0.86, cy - ry * 1.95], [cx + rx * 0.9, cy - ry * 0.45]], top); }
-    if (a.hair === 'mohawk') poly(ctx, [[cx - rx * 0.25, cy - ry * 0.8], [cx - rx * 0.2, cy - ry * 1.55], [cx + rx * 0.2, cy - ry * 1.55], [cx + rx * 0.25, cy - ry * 0.8]], g);
-    cap(0.6, 0.6, 1.02, g);
+  const tall = hightopGrad(ctx, cx, cy, ry, H);
+  const block = (x0: number, x1: number) => poly(ctx, [[cx - rx * x0, cy - ry * 0.45], [cx - rx * (x0 - 0.04), cy - ry * 1.95], [cx + rx * (x1 - 0.06), cy - ry * 1.95], [cx + rx * x1, cy - ry * 0.45]], tall);
+  if (backView) {
+    // round 80f / 80j: from behind it's the code (no profile picture laid over), every style complete
+    switch (a.hair) {
+      case 'bald': break;
+      case 'hightop': block(0.9, 0.9); backCap(0.6, 1.02, tall); break;
+      case 'afro': backCap(0.6, 1.04, afroGrad(ctx, cx, cy, rx, ry, k, H, true)); break;
+      case 'mohawk': {
+        // shaved sides (stubble), the strip running from the crest down the middle of the back of the head
+        stubble(() => backCap(0.6, 1.0, H.sh));
+        poly(ctx, [[cx - rx * 0.25, cy - ry * 0.8], [cx - rx * 0.2, cy - ry * 1.55], [cx + rx * 0.2, cy - ry * 1.55], [cx + rx * 0.25, cy - ry * 0.8]], g);
+        ctx.save(); skull(1.02); poly(ctx, [[cx - rx * 0.24, cy - ry * 1.2], [cx + rx * 0.24, cy - ry * 1.2], [cx + rx * 0.2, cy + ry * 0.55], [cx - rx * 0.2, cy + ry * 0.55]], g); ctx.restore();
+        break;
+      }
+      case 'curly': case 'twists': backCap(0.6, 1.08, g); for (let i = -3; i <= 3; i++) ellipse(ctx, cx + i * 2.4 * k, cy - ry * (0.98 + (i % 2 ? 0.1 : 0)), 1.5 * k, 1.3 * k, i % 2 ? H.hi : H.base); break;
+      default: backCap(0.6, 1.02, g);
+    }
     return;
   }
   switch (a.hair) {
@@ -456,12 +512,14 @@ function hairFront(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, a: 
     case 'buzz': ctx.save(); ctx.globalAlpha = 0.85; cap(-0.42, 0.05, 1.01, g); ctx.restore(); break;
     case 'fade': cap(-0.5, -0.1, 1.04, g); ctx.save(); ctx.globalAlpha = 0.45; cap(-0.38, 0.15, 1.0, H.sh); ctx.restore(); break;
     case 'waves': cap(-0.45, 0.02, 1.04, g); for (let i = 0; i < 4; i++) stroke(ctx, [[cx - rx * 0.6 + i * 3 * k, cy - ry * 0.85], [cx - rx * 0.45 + i * 3 * k, cy - ry * 0.6]], 1, H.hi, 0.7); break;
-    case 'hightop': { const top = ctx.createLinearGradient(cx, cy - ry * 2.1, cx, cy - ry * 0.4); top.addColorStop(0, H.hi); top.addColorStop(1, H.sh); poly(ctx, [[cx - rx * 0.92, cy - ry * 0.45], [cx - rx * 0.88, cy - ry * 1.95], [cx + rx * 0.82, cy - ry * 1.95], [cx + rx * 0.9, cy - ry * 0.45]], top); cap(-0.4, -0.05, 1.03, g); break; }
-    case 'afro': cap(-0.38, -0.1, 1.04, g); break;
+    // round 80j: the block and the hair on the skull are one shape in one shading
+    case 'hightop': block(0.92, 0.88); cap(-0.4, -0.05, 1.03, tall); break;
+    case 'afro': cap(-0.38, -0.1, 1.04, afroGrad(ctx, cx, cy, rx, ry, k, H)); break;
     case 'twists': cap(-0.4, 0, 1.06, g); for (let i = 0; i < 6; i++) stroke(ctx, [[cx - rx * 0.75 + i * 3 * k, cy - ry * 0.85], [cx - rx * 0.8 + i * 3 * k, cy - ry * 1.3]], 1.6 * k, i % 2 ? H.base : H.hi); break;
     case 'dreads': cap(-0.4, 0.1, 1.05, g); for (let i = 0; i < 5; i++) stroke(ctx, [[cx - rx * 0.6 + i * 3 * k, cy - ry * 0.9], [cx - rx * 0.7 + i * 3 * k, cy - ry * 1.2]], 1.8 * k, H.base); break;
     case 'braids': cap(-0.42, 0.05, 1.02, g); for (let i = 0; i < 5; i++) stroke(ctx, [[cx + rx * 0.5 - i * 3.2 * k, cy - ry * 0.55], [cx - rx * 0.1 - i * 3.2 * k, cy - ry * 0.95]], 1.1, H.hi, 0.75); break;
-    case 'mohawk': { cap(-0.3, 0.1, 1.0, H.deep); poly(ctx, [[cx - rx * 0.5, cy - ry * 0.85], [cx - rx * 0.1, cy - ry * 1.6], [cx + rx * 0.35, cy - ry * 1.55], [cx + rx * 0.55, cy - ry * 0.8]], g); break; }
+    // round 80j: a mohawk is shaved on the sides (faint stubble), hair only in the strip
+    case 'mohawk': { stubble(() => cap(-0.3, 0.1, 1.0, H.sh)); poly(ctx, [[cx - rx * 0.5, cy - ry * 0.85], [cx - rx * 0.1, cy - ry * 1.6], [cx + rx * 0.35, cy - ry * 1.55], [cx + rx * 0.55, cy - ry * 0.8]], g); break; }
     case 'bun': cap(-0.42, 0, 1.03, g); break;
     case 'curly': cap(-0.36, 0.12, 1.1, g); for (let i = 0; i < 7; i++) ellipse(ctx, cx - rx * 0.9 + i * 2.8 * k, cy - ry * (0.95 + (i % 2) * 0.12), 1.5 * k, 1.3 * k, i % 2 ? H.hi : H.base); break;
   }
@@ -742,7 +800,7 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
   // part pictures (faceParts.ts): features at the turned center, hair at the skull center
   const pic = (t: PartType, x: number, dy = 0) => !only && drawPart(ctx, t, 'front', x, hy, k, a, ramps, { dy, open: opts.open });
   if (want('hairBack') && !pic('hairBack', cx0)) {
-    if (a.hair === 'afro') ellipse(ctx, cx0, hy - ry * 0.35, rx * 1.6, ry * 1.25, H.base);
+    if (a.hair === 'afro') { const ag = ctx.createLinearGradient(cx0 - rx, hy - ry * 1.3, cx0 + rx, hy); ag.addColorStop(0, H.hi); ag.addColorStop(0.5, H.base); ag.addColorStop(1, H.deep); ellipse(ctx, cx0, hy - ry * 0.35, rx * 1.6, ry * 1.25, ag); } // round 80j: the cap's shading
     if (a.hair === 'dreads' || a.hair === 'braids') for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) stroke(ctx, [[cx0 + sx * (rx * 0.8 + i * 1.2 * k), hy - ry * 0.4], [cx0 + sx * (rx * 0.9 + i * 1.3 * k), hy + ry * 1.0]], 1.6 * k, i % 2 ? H.base : H.sh);
   }
   const ey = hy - ry * 0.05 + a.eyeY * k;
@@ -785,7 +843,7 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
     switch (a.hair) {
       case 'bald': ellipse(ctx, cx - rx * 0.3, hy - ry * 0.6, 2 * k, 1.1 * k, S.hi); break;
       case 'hightop': poly(ctx, [[cx - rx * 0.95, hy - ry * 0.5], [cx - rx * 0.9, hy - ry * 1.9], [cx + rx * 0.9, hy - ry * 1.9], [cx + rx * 0.95, hy - ry * 0.5]], g); capTo(-0.45); break;
-      case 'mohawk': poly(ctx, [[cx - rx * 0.25, hy - ry * 0.7], [cx - rx * 0.2, hy - ry * 1.55], [cx + rx * 0.2, hy - ry * 1.55], [cx + rx * 0.25, hy - ry * 0.7]], g); break;
+      case 'mohawk': ctx.save(); ctx.globalAlpha = 0.25; capTo(-0.55, 1.0); ctx.restore(); poly(ctx, [[cx - rx * 0.25, hy - ry * 0.7], [cx - rx * 0.2, hy - ry * 1.55], [cx + rx * 0.2, hy - ry * 1.55], [cx + rx * 0.25, hy - ry * 0.7]], g); break; // round 80j: shaved sides
       case 'bun': capTo(-0.5); ellipse(ctx, cx, hy - ry * 1.15, 3 * k, 2.6 * k, H.base); break;
       case 'afro': capTo(-0.45, 1.1); break;
       case 'curly': case 'twists': capTo(-0.4, 1.12); for (let i = -3; i <= 3; i++) ellipse(ctx, cx + i * 2.2 * k, hy - ry * 1.02, 1.4 * k, 1.3 * k, i % 2 ? H.hi : H.base); break;
@@ -793,7 +851,7 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
     }
   }
   if (only) return;
-  if (a.headband) stroke(ctx, [[cx - rx, hy - ry * 0.45], [cx + rx, hy - ry * 0.45]], 2.4 * k, a.headband);
+  if (a.headband) { const hb = a.headband; inHead(ctx, cx0, hy, rx, ry, () => stroke(ctx, [[cx - rx, hy - ry * 0.45], [cx + rx, hy - ry * 0.45]], 2.4 * k, hb)); } // round 80j: wraps the head
   if (opts.shades) { poly(ctx, [[cx - rx * 0.95, ey - 1.6 * k], [cx + rx * 0.95, ey - 1.6 * k], [cx + rx * 0.8, ey + 1.8 * k], [cx + 1 * k, ey + 1.2 * k], [cx - 1 * k, ey + 1.2 * k], [cx - rx * 0.8, ey + 1.8 * k]], opts.shades); px(ctx, cx - rx * 0.55, ey - 0.6 * k, '#ffffff', 2, 1); }
   else if (a.goggles) { stroke(ctx, [[cx - rx, ey], [cx + rx, ey]], 1.2, '#1c1c1c'); for (const sx of [-1, 1]) ellipse(ctx, cx + sx * rx * 0.42, ey + 0.3, 2.2 * k, 1.6 * k, '#8fd3ff'); }
   else if (a.mask) {
