@@ -158,6 +158,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80g (owner):** Kingston's lines wear out (each time he says one it's about half as likely to come out
+  again, fresh lines preferred); iso lines are "Let's dance." and "Guard up."; **defenders learn your pump fake**:
+  every time one bites on your fake he's 30% less likely to bite on it again (his teammates learn a little from
+  watching), never below a quarter, and the feed tells you "They're reading your pump fake". Applies in every mode.
 - **Round 80f (owner):** from behind, every hairstyle covers the back of the head (no bare patch); the rain is quieter;
   the national final is a **neutral site**: the left half of the arena is Lincoln's fans, the right half Crestview's,
   each cheering (and booing) for its own school; at halftime the **starters huddle round their head coach and face

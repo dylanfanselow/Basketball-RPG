@@ -261,6 +261,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80g: `StoryRun.said` + `TALK_WEAR` 0.55 (`talk` weights + gates by uses), `KINGSTON_TALK.iso`;
+  `GameSim.fakeBites` / `fakeWise` / `noteBite`, `FAKE_LEARN` { per 0.7, seen 0.35, floor 0.25 } in both bite checks;
+  `tests/round80g.test.ts`.
   Round 80f: back-view hair = code cap + the side picture over it (`drawHead` / `hairFront` backView, high top and
   mohawk keep their height); rain gain 0.14; `Crowd` / `FanRow` `split` (GameScene `splitCrowd` for story arena games,
   boos per side, equal cheers); halftime huddle ring round the head coach (`startHalf`, `faceCoach`).

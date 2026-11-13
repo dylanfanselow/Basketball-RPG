@@ -175,6 +175,8 @@ const JUMPERS = ['mid', 'three', 'deep3', 'fade', 'stepThroughJumper'];
 export const sizeScore = (p: Player) => p.height * 12 + p.core.strength * 0.25;
 /** Round 69: forced isos for a CPU star's saved ult (more only in the clutch). */
 export const ULT_ISO_TRIES = 3;
+/** Round 80g: pump-fake learning: x`per` bite chance per time caught, a teammate's bite counts `seen`, floor. */
+export const FAKE_LEARN = { per: 0.7, seen: 0.35, floor: 0.25 };
 /** Round 64: how long after a screen Roller / Popper speed you up (s). */
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
@@ -278,6 +280,26 @@ export class GameSim {
   /** Round 49: a human player's recent dribble moves (the defense learns them). */
   moveLog: Record<string, { id: string; side: number; at: number }[]> = {};
   private readSaid: Record<string, number> = {};
+  /** Round 80g: pump-fake bites this game, by faker then defender (defenders learn your fake). */
+  fakeBites: Record<string, Record<string, number>> = {};
+  /** Round 80g: how much a defender still bites on this player's fakes: 0.7 per time he got caught himself, 0.35 of
+   *  that for each time a teammate did (he saw it), never below a quarter. */
+  fakeWise(faker: Player, def: Player): number {
+    const log = this.fakeBites[faker.id]; if (!log) return 1;
+    let n = 0;
+    for (const [id, c] of Object.entries(log)) n += id === def.id ? c : this.players.some((q) => q.id === id && q.team === def.team) ? c * FAKE_LEARN.seen : 0;
+    return Math.max(FAKE_LEARN.floor, FAKE_LEARN.per ** n);
+  }
+  /** Round 80g: a defender bit on this player's fake: remember it (and tell you when they start reading it). */
+  private noteBite(faker: Player, def: Player) {
+    const log = (this.fakeBites[faker.id] ??= {});
+    log[def.id] = (log[def.id] ?? 0) + 1;
+    const total = Object.values(log).reduce((a, b) => a + b, 0);
+    if (this.isHuman(faker) && total >= 2 && this.time - (this.readSaid.pumpfake ?? -99) > 20) {
+      this.readSaid.pumpfake = this.time;
+      this.emit({ kind: 'read', text: 'They\'re reading your pump fake', pid: faker.id, team: (1 - faker.team) as 0 | 1 });
+    }
+  }
   /** How fresh this move still is against this defense: the 3rd+ use in 45 s works less (×0.8 each, floor 0.35). */
   moveRead(p: Player, id: string, early = false): number {
     const n = (this.moveLog[p.id] ?? []).filter((m) => m.id === id && this.time - m.at < 45).length;
@@ -1429,8 +1451,8 @@ export class GameSim {
       const ratio = (p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20);
       const prox = clamp01(1 - (dd - 2) / 4);
       const L = this.cpuCfg(def); // round 61: 1v1 CPU level (Easy bites more, Hard rarely twice)
-      if (this.isAI(def) && this.rng.chance(Math.min(0.95, (0.22 + 0.3 * ratio * prox) * sell * (L?.bite ?? 1)) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? L?.biteAgain ?? 0.4 : 1))) {
-        def.lastBitAt = this.time; this.jump(def, 0.9);
+      if (this.isAI(def) && this.rng.chance(Math.min(0.95, (0.22 + 0.3 * ratio * prox) * sell * (L?.bite ?? 1)) * (def.lastBitAt && this.time - def.lastBitAt < 2 ? L?.biteAgain ?? 0.4 : 1) * this.fakeWise(p, def))) {
+        def.lastBitAt = this.time; this.jump(def, 0.9); this.noteBite(p, def);
         this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id });
       }
     }
@@ -1881,7 +1903,7 @@ export class GameSim {
       const ratio = Math.pow((p.sub.ankleBreak + 20) / (def.sub.ankleResist + 20), 2);
       const chance = m.ankle * p.mods.pMult('ankleMult') * (isCross ? p.mods.pMult('crossAnkle') : 1) * ratio * prox * read;
       if (m.pumpFake) {
-        if (this.rng.chance(Math.min(0.95, (0.25 + 0.3 * ratio * prox) * (LD?.bite ?? 1)))) { this.jump(def, 0.9); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
+        if (this.rng.chance(Math.min(0.95, (0.25 + 0.3 * ratio * prox) * (LD?.bite ?? 1)) * this.fakeWise(p, def))) { this.jump(def, 0.9); this.noteBite(p, def); this.emit({ kind: 'move', text: `${def.name} bit on the pump fake`, pid: def.id }); }
       } else if (def.mods.pAdd('ironNate') <= 0 && this.rng.chance(chance)) { // round 64: Iron Nate can't be dropped
         this.knockDown(def, 1.3, 'ankles');
         this.emit({ kind: 'ankles', text: `ANKLES! ${def.name} hits the floor`, big: true, pid: p.id, team: p.team });

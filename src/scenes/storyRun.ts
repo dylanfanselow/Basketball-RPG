@@ -47,6 +47,8 @@ export class StoryRun {
   private talkUntil = 0;
   private nextTalkAt = 0;
   private halfDone = false;
+  /** Round 80g: how many times Kingston has said each line tonight. */
+  private said = new Map<string, number>();
   /** Round 80e: halftime at the bench: walk over, the coach talks, walk back (court ft per player). */
   private half: { phase: 'toBench' | 'talk' | 'back'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }>; coach: Map<0 | 1, { x: number; y: number }> } | null = null;
   private wasLate = false;
@@ -192,7 +194,7 @@ export class StoryRun {
     // round 80e: his signature moments always get their line
     if (e.kind === 'ult' && his && e.data?.id === 'deepStepback') this.talk(['Let\'s dance.'], true);
     else if (e.kind === 'ult' && his && e.data?.id === 'ftTakeoff') this.talk(['Too small.'], true);
-    else if (e.kind === 'play' && his && e.data?.iso && Math.random() < 0.4) this.talk(['Let\'s dance.']);
+    else if (e.kind === 'play' && his && e.data?.iso && Math.random() < 0.4) this.talk(KINGSTON_TALK.iso);
     else if (e.kind === 'score' && his && e.data?.post) this.talk(['Too small.'], true);
     else if (e.kind === 'score' && his && e.data?.pts === 3 && Math.random() < 0.7) this.talk(['Splash.'], Math.random() < 0.5);
     else if (e.kind === 'score' && his && Math.random() < 0.75) this.talk(KINGSTON_TALK.scores);
@@ -206,8 +208,16 @@ export class StoryRun {
     const now = this.gs.time.now, g = this.talkG, t = this.talkT;
     if (!g || !t || (!force && now < this.nextTalkAt)) return;
     if (!this.gs.sim.players.some((p) => p.id === RIVAL_ID)) return;
+    // round 80g (owner): lines wear out: weighted toward the fresh ones, and a line said n times only gets said WEAR^n
+    // of the time (forced lines too: force only skips the wait)
+    const fresh = lines.map((l) => TALK_WEAR ** (this.said.get(l) ?? 0));
+    let r = Math.random() * fresh.reduce((a, b) => a + b, 0), pick = 0;
+    for (; pick < lines.length - 1; pick++) { r -= fresh[pick]; if (r <= 0) break; }
+    if (Math.random() >= fresh[pick]) return;
+    const line = lines[pick];
+    this.said.set(line, (this.said.get(line) ?? 0) + 1);
     this.talkUntil = now + 2600; this.nextTalkAt = now + 9000;
-    t.setText(lines[Math.floor(Math.random() * lines.length)]);
+    t.setText(line);
     const w = t.width + 22, h = t.height + 14;
     g.clear();
     g.fillStyle(0x000000, 0.35); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 3, w, h, 8);
@@ -478,6 +488,8 @@ const KINGSTON_TALK = {
   gas: ['Time to turn on the gas.'],
   mock: ['What\'d your coach tell you in there? Pray?'],
   clutch: ['This is my moment, not yours.'],
+  // round 80g: an iso called for him
+  iso: ['Let\'s dance.', 'Guard up.'],
 };
 /** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
 const NEED_TO_WIN = 6;
@@ -492,3 +504,5 @@ export function storyBenchSeats(team: 0 | 1): { reserves: number[]; empty: numbe
     ? { empty: [0, 1, 2, 3, 4].map(seat), reserves: [5, 6, 7, 8].map(seat) }
     : { reserves: [0, 1, 2, 3].map(seat), empty: [4, 5, 6, 7, 8].map(seat) };
 }
+/** Round 80g: each time Kingston says a line it's this much less likely to come out again. */
+const TALK_WEAR = 0.55;
