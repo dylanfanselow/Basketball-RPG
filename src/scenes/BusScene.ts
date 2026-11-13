@@ -7,7 +7,7 @@ import { StoryBox, BoxSpeaker } from '../render/storyBox';
 import { buildBusArt, BUS_ART, VW, ROWS, BUS_W, BUS_H, WHEELS, WHEEL_Y, WHEEL_R } from '../render/busArt';
 import { setStage, storyScene, ensureStory } from './setup';
 import { prepareStory } from './preload';
-import { lincolnSquad, squadCaptain } from '../sim/story';
+import { academySquad, squadCaptain } from '../sim/story';
 
 interface Line { who: BoxSpeaker; text: string; name?: string; then?: () => void; choices?: { text: string; pick: () => void }[] }
 
@@ -77,14 +77,14 @@ export class BusScene extends Phaser.Scene {
   /** The ride's talk (see the class comment). Names come from the saved squad, the same guys as in the final. */
   private script(): Line[] {
     const c = app.career, you = c.firstName || c.name.split(' ')[0];
-    const squad = lincolnSquad(c), cap = squadCaptain(c, squad);
+    const squad = academySquad(c), cap = squadCaptain(c, squad); // round 80i: your Ridgemont Academy teammates
     const [a, b] = squad.filter((p) => p !== cap);
     const first = (n: string) => n.split(' ')[0];
     const C = `${first(cap.name)} (Captain)`, A = first(a.name), B = first(b.name);
     const mate = (name: string, text: string): Line => ({ who: 'mate', name, text });
     const me = (text: string): Line => ({ who: 'me', name: you, text });
     return [
-      { who: 'narrator', text: 'The road to the national final. Three hours, one heater, twelve guys.' },
+      { who: 'narrator', text: 'Ridgemont Academy. The road to the national final. Three hours, one heater, twelve guys.' },
       mate(A, `Captain, my captain. Permission to crack a window? It smells like ${B}'s feet back here.`),
       mate(C, 'Denied. Captain\'s orders. We\'re keeping every bit of heat this bus has got.'),
       mate(B, 'What heat? This heater\'s been broke since my brother rode this bus. He\'s thirty.'),
@@ -97,8 +97,9 @@ export class BusScene extends Phaser.Scene {
       { who: 'narrator', text: 'Nobody laughs.' },
       mate(A, '...Too soon?'),
       mate(C, 'Y\'all seen his tape at Crestview? Thirty a night. Against prep schools.'),
-      mate(B, 'He just left. Didn\'t say bye, didn\'t say nothing.'),
-      mate(C, `${you}, you talk to him since?`),
+      mate(B, `${you}, y'all came up together, right? Back at Lincoln?`),
+      me('Best friends since we were eight. Then he just left. Didn\'t say bye, didn\'t say nothing.'),
+      mate(C, 'You talk to him since?'),
       me('Not since the court. He said he\'d figure out a way.'),
       mate(C, 'Guess he did. Tonight we see what that way looks like.'),
       { who: 'narrator', text: 'Your phone buzzes. MOM.', then: () => sfx.phoneRing() },

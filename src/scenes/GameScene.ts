@@ -173,7 +173,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     hiRes(this);
     // round 60c: a story game built (and its sheets drawn) ahead of time skips most of "Lacing up…"
-    this.sim = (this.mode === 'story' ? takeStory(this.initData?.story ?? 'tutorial') : null) ?? createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
+    this.sim = this.initData?.reuse ?? (this.mode === 'story' ? takeStory(this.initData?.story ?? 'tutorial') : null) ?? createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);

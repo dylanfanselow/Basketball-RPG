@@ -30,4 +30,13 @@ describe('round 80g: defenders learn your pump fake', () => {
     (sim as any).noteBite(me, d);
     expect(sim.drainEvents().some((e) => e.kind === 'read' && /pump fake/.test(e.text))).toBe(true);
   });
+  it('round 80i: real shots with a man on you make the fake work better (capped)', () => {
+    const sim = finalSim(), me = sim.user!, d = sim.teams[1].onCourt[0];
+    sim.honestShots[me.id] = 3;
+    expect(sim.fakeWise(me, d)).toBeCloseTo(1 + 3 * FAKE_LEARN.honest);
+    (sim as any).noteBite(me, d);
+    expect(sim.fakeWise(me, d)).toBeCloseTo(FAKE_LEARN.per * (1 + 3 * FAKE_LEARN.honest));
+    sim.honestShots[me.id] = 50;
+    expect(sim.fakeWise(me, d)).toBe(FAKE_LEARN.max);
+  });
 });

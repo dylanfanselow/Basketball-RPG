@@ -176,7 +176,7 @@ export const sizeScore = (p: Player) => p.height * 12 + p.core.strength * 0.25;
 /** Round 69: forced isos for a CPU star's saved ult (more only in the clutch). */
 export const ULT_ISO_TRIES = 3;
 /** Round 80g: pump-fake learning: x`per` bite chance per time caught, a teammate's bite counts `seen`, floor. */
-export const FAKE_LEARN = { per: 0.7, seen: 0.35, floor: 0.25 };
+export const FAKE_LEARN = { per: 0.7, seen: 0.35, floor: 0.25, /** round 80i: each guarded real shot */ honest: 0.12, max: 1.5 };
 /** Round 64: how long after a screen Roller / Popper speed you up (s). */
 export const SLIP_S = 2.0;
 /** round 72: Uncle Drew can cancel a dribble move once it has run this long (s), so a double tap doesn't eat it */
@@ -285,11 +285,15 @@ export class GameSim {
   /** Round 80g: how much a defender still bites on this player's fakes: 0.7 per time he got caught himself, 0.35 of
    *  that for each time a teammate did (he saw it), never below a quarter. */
   fakeWise(faker: Player, def: Player): number {
-    const log = this.fakeBites[faker.id]; if (!log) return 1;
+    const log = this.fakeBites[faker.id] ?? {};
     let n = 0;
     for (const [id, c] of Object.entries(log)) n += id === def.id ? c : this.players.some((q) => q.id === id && q.team === def.team) ? c * FAKE_LEARN.seen : 0;
-    return Math.max(FAKE_LEARN.floor, FAKE_LEARN.per ** n);
+    // round 80i: every real shot he takes with a man on him sells the next fake (they have to respect the jumper)
+    const honest = 1 + FAKE_LEARN.honest * (this.honestShots[faker.id] ?? 0);
+    return Math.min(FAKE_LEARN.max, Math.max(FAKE_LEARN.floor, FAKE_LEARN.per ** n) * honest);
   }
+  /** Round 80i: real shots taken with a defender within 6 ft, by shooter (they make the pump fake believable). */
+  honestShots: Record<string, number> = {};
   /** Round 80g: a defender bit on this player's fake: remember it (and tell you when they start reading it). */
   private noteBite(faker: Player, def: Player) {
     const log = (this.fakeBites[faker.id] ??= {});
@@ -1491,6 +1495,7 @@ export class GameSim {
     const windmill = windmillGather(p, type, speedToRim);
     p.pendingShot = { type, override, dunk: dunk?.id, windmill };
     p.shotFromPost = !!p.post; // round 80e: a post-up bucket (story lines)
+    if (this.opp(p.team).some((d) => dist(d.p, p.p) < 6 && d.state !== 'fallen')) this.honestShots[p.id] = (this.honestShots[p.id] ?? 0) + 1; // round 80i
     if (type === 'dunk') p.dunkStartAt = this.time;
     onPostShot(this, p, this.time + p.stateDur); // out of the post: the defender stays locked / sealed through the release
     p.anim = { name: (dunk ? dunk.clip : `shot_${type}`) + (windmill ? '_wm' : ''), start: this.time, release: this.time + p.stateDur };

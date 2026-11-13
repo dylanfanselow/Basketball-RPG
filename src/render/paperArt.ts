@@ -55,7 +55,7 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 /** Your photo: the front-view figure in the Lincoln jersey (a team-photo pose), cropped to the chest, grey and
  *  dithered; the face is posterized without the dither so the eyes stay clean (W I . . I W). */
 function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo) {
-  const kit: Kit = { jersey: '#7a1f2b', jerseyShade: '#5a1520', trim: '#e0b33a', shorts: '#6e1c27', number: who.number };
+  const kit: Kit = { jersey: '#1f5a3a', jerseyShade: '#16442b', trim: '#e8e2d0', shorts: '#1b5034', number: who.number }; // round 80i: Ridgemont green
   const sheet = buildCoachSheet(who.heightFt, who.appearance, kit);
   const sc = sheet.getContext('2d')!;
   const src = sc.getImageData(0, 0, FRONT_W, FRONT_H).data;
@@ -101,8 +101,8 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   ink(c, 'WINTER EDITION  ·  50¢', PAPER_W - 16 - 118, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   // headline across the top
-  let y = ink(c, 'LIONS HEADED TO NATIONALS', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
-  y = ink(c, `Behind ${who.name}, Lincoln High will play for the national championship`, PAPER_W / 2, y + 3, 'italic bold 10px Georgia, serif', INK, 'center', PAPER_W - 40);
+  let y = ink(c, 'RIDGEMONT HEADED TO NATIONALS', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
+  y = ink(c, `Lincoln transfer ${who.name} leads Ridgemont Academy into the title game`, PAPER_W / 2, y + 3, 'italic bold 10px Georgia, serif', INK, 'center', PAPER_W - 40);
   const colTop = y + 6;
   R(c, 14, colTop - 3, PAPER_W - 28, 1, INK);
   // left column: the story, a couple of black sub-heads like the reference
@@ -111,7 +111,7 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   // right: your photo + caption
   const px = 170, pw = 144, ph = 112;
   photo(c, px, colTop + 2, pw, ph, who);
-  const cy = ink(c, `${who.name.toUpperCase()} (#${who.number}) has carried the Lions all winter.`, px, colTop + ph + 5, 'bold 10px Arial, sans-serif', INK, 'left', pw, 12);
+  const cy = ink(c, `${who.name.toUpperCase()} (#${who.number}) joined Ridgemont after a scout saw him play at Lincoln.`, px, colTop + ph + 5, 'bold 10px Arial, sans-serif', INK, 'left', pw, 12);
   bodyLines(c, px, cy + 3, pw, Math.max(3, Math.floor((colTop + ph + 71 - cy - 3) / 5)), 12);
   // the weather box (left, lower)
   const by = colTop + 98;

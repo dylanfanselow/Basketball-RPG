@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createCareer, migrateCareer, newCareer, STARTER_CORE, STARTER_PERKS, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
-import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW, kingstonFinalPerks, newStory as newStory2, CAPTAIN_BUFF, KINGSTON_FINAL } from '../src/sim/story';
+import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW, ACADEMY, academySquad, kingstonFinalPerks, newStory as newStory2, CAPTAIN_BUFF, KINGSTON_FINAL } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
 import { NODES } from '../src/sim/data';
 import { GameSim, UserInput, emptyInput } from '../src/sim/game';
@@ -251,7 +251,9 @@ describe('round 60 story', () => {
     const sim = buildFinal(c, 11);
     expect(sim.teams[1].def).toBe(CRESTVIEW);
     expect(sim.cfg.venue).toBe('arena');
-    const names = lincolnSquad(c).map((p) => p.name);
+    const names = academySquad(c).map((p) => p.name);
+    expect(sim.teams[0].def).toBe(ACADEMY);
+    expect(names).not.toEqual(lincolnSquad(c).map((p) => p.name)); // round 80i: new school, new teammates
     expect(sim.teams[0].roster.filter((p) => p !== sim.user).slice(0, 4).map((p) => p.name)).toEqual(names);
     expect(sim.teams[0].roster.length).toBe(9); expect(sim.teams[0].onCourt.length).toBe(5); // round 80e: reserves sit
     const king = sim.players.find((p) => p.id === RIVAL_ID)!;

@@ -21,7 +21,7 @@ export type StoryGame = 'tutorial' | 'ones' | 'bigGame' | 'kingston' | 'final';
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
 /** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
-export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue; /** round 60: a prologue game */ story?: StoryGame }
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue; /** round 60: a prologue game */ story?: StoryGame; /** round 80i: reopen a finished game (the final's after-scene) */ reuse?: GameSim }
 
 export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup, story?: StoryGame): GameSim {
   if (mode === 'story') return createStorySim(story ?? 'tutorial');

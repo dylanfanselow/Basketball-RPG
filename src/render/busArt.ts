@@ -194,7 +194,7 @@ function drawBus(): HTMLCanvasElement {
     R(c, o + dx + 20, winY + 11, 10, 6, '#232a33');
     // black trim lines, the name, the white stripe low on the side
     R(c, o + x0 + 1, winY + winH + 3, 148, 1, OUT);
-    text3(c, o + x0 + 8 + Math.round((140 - textW('LINCOLN HIGH SCHOOL')) / 2), winY + winH + 7, 'LINCOLN HIGH SCHOOL', '#1b1408');
+    text3(c, o + x0 + 8 + Math.round((140 - textW('RIDGEMONT ACADEMY')) / 2), winY + winH + 7, 'RIDGEMONT ACADEMY', '#1b1408'); // round 80i
     R(c, o + x0 + 1, bot - 13, x1 - x0 - 2, 4, '#f4f0e4'); R(c, o + x0 + 1, bot - 9, x1 - x0 - 2, 1, '#cfc8b4');
     // the engine grille and headlight at the front, the stop arm folded, a red tail light at the back
     for (let y = 0; y < 12; y++) R(c, o + x1 - 12, winY + winH + 6 + y, 10, 1, y % 2 ? '#8a6a1a' : '#c79a3a');
@@ -223,7 +223,7 @@ export function buildBusArt(tm: Phaser.Textures.TextureManager): BusTextures {
     near: add(tm, 'bus_near_v1', drawNear()),
     road: add(tm, 'bus_road_v1', drawRoad()),
     verge: add(tm, 'bus_verge_v1', drawVerge()),
-    bus: add(tm, 'bus_body_v2', drawBus(), 2, BUS_W),
+    bus: add(tm, 'bus_body_v3', drawBus(), 2, BUS_W),
     wheel: add(tm, 'bus_wheel_v1', drawWheel(), 4, WHEEL_R * 2 + 2),
   };
 }

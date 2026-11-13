@@ -48,7 +48,7 @@ export class PostGameScene extends Phaser.Scene {
       app.career.story!.final = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
       app.career.story!.winter = true;
       setStage('done');
-      lines.push(v.won ? 'NATIONAL CHAMPIONS! Lincoln High takes the title.' : 'Crestview Prep takes the title. Kingston gets the last word.');
+      lines.push(v.won ? 'NATIONAL CHAMPIONS! Ridgemont Academy takes the title.' : 'Crestview Prep takes the title. Kingston gets the last word.');
       lines.push(`Your night: ${v.mine.toFixed(1)} (points, rebounds x1.3, assists x1.5, steals and blocks x3), best on the floor: ${v.best.toFixed(1)}.`);
     } else if (this.mode === 'story') {
       // round 60d: the big game. How it went decides Mom's scene back home (great: won + the best stat sum)
@@ -100,7 +100,7 @@ export class PostGameScene extends Phaser.Scene {
       return;
     }
     if (this.inp.confirm()) {
-      if (this.mode === 'story' && this.replay?.story === 'final') { this.scene.start('Trailer'); return; } // round 80: home, in the snow
+      if (this.mode === 'story' && this.replay?.story === 'final' && this.sim) { this.scene.start('Game', { mode: 'story', story: 'final', venue: 'arena', reuse: this.sim }); return; } // round 80i: the huddles and Kingston, then home
       if (this.mode === 'story') { const [scene, data] = storyScene('after'); this.scene.start(scene, data); return; }
       this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
     }

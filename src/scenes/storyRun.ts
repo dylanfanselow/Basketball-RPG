@@ -3,7 +3,7 @@ import type { GameScene } from './GameScene';
 import type { GameEvent } from '../sim/game';
 import { StoryBox, BoxContent, BoxSpeaker } from '../render/storyBox';
 import { TutorialDirector } from '../sim/tutorial';
-import { RIVAL_ID, LOCKED_IN, squadCaptain } from '../sim/story';
+import { RIVAL_ID, LOCKED_IN, squadCaptain, statSum } from '../sim/story';
 import { CORE_STATS } from '../sim/data';
 import { setStage, storyScene, StoryGame } from './setup';
 import { prepareStory, prewarmRoom } from './preload';
@@ -50,10 +50,14 @@ export class StoryRun {
   /** Round 80g: how many times Kingston has said each line tonight. */
   private said = new Map<string, number>();
   /** Round 80e: halftime at the bench: walk over, the coach talks, walk back (court ft per player). */
-  private half: { phase: 'toBench' | 'talk' | 'back'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }>; coach: Map<0 | 1, { x: number; y: number }> } | null = null;
+  private half: { kind: 'half' | 'end'; phase: 'toBench' | 'talk' | 'back' | 'meet' | 'talk2'; t: number; home: Map<string, { x: number; y: number }>; bench: Map<string, { x: number; y: number }>; coach: Map<0 | 1, { x: number; y: number }>; meet?: Map<string, { x: number; y: number }> } | null = null;
+  /** Round 80i: the final is over (GameScene reopened with the finished game after the box score): huddles, Kingston. */
+  afterGame = false;
+  private finishing = false;
   private wasLate = false;
 
   constructor(private gs: GameScene, public which: StoryGame) {
+    this.afterGame = which === 'final' && !!gs.initData?.reuse;
     this.box = new StoryBox(gs);
     this.dir = gs.sim.director instanceof TutorialDirector ? gs.sim.director : null;
     const c = app.career, k = c.story?.rival;
@@ -90,10 +94,11 @@ export class StoryRun {
       this.talkG = gs.add.graphics().setDepth(9150).setVisible(false);
       this.talkT = gs.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#14121e', fontStyle: 'bold', align: 'center', wordWrap: { width: 260 } }).setOrigin(0.5).setDepth(9151).setVisible(false);
       this.nextTalkAt = gs.time.now + 6000;
-      this.say([
-        { who: 'narrator', text: 'The national championship. Lincoln vs. Crestview Prep.' },
+      if (this.afterGame) { this.halfDone = true; this.startHalf('end'); } // round 80i: after the box score
+      else this.say([
+        { who: 'narrator', text: 'The national championship. Ridgemont Academy vs. Crestview Prep.' },
         { who: 'kingston', text: `Told you I'd figure out a way, ${you}.` },
-        { who: 'you', text: line, then: () => this.banner('NATIONAL CHAMPIONSHIP', 'LINCOLN LIONS  vs  CRESTVIEW PREP FALCONS') },
+        { who: 'you', text: line, then: () => this.banner('NATIONAL CHAMPIONSHIP', 'RIDGEMONT RAMS  vs  CRESTVIEW PREP FALCONS') },
       ]);
     } else if (which === 'bigGame') {
       this.buildCoach(); this.buildScout();
@@ -273,7 +278,7 @@ export class StoryRun {
    * Round 80e: the end of the first half. Everyone walks over to stand in front of his team's empty seats (the
    * reserves sit next to the assistant coaches); then the coach talks (`halftime`); then back out to the floor.
    */
-  private startHalf() {
+  private startHalf(kind: 'half' | 'end' = 'half') {
     const sim = this.gs.sim, home = new Map<string, { x: number; y: number }>(), bench = new Map<string, { x: number; y: number }>();
     // round 80f (owner): the starters huddle round their head coach (on the sideline at y -1.6) and face him; the ring
     // is open toward the camera so he stays in the picture
@@ -289,7 +294,7 @@ export class StoryRun {
         bench.set(p.id, { x: at.x + Math.cos(a) * 3.8, y: at.y + Math.sin(a) * 2.4 });
       });
     }
-    this.half = { phase: 'toBench', t: 0, home, bench, coach: coachOf };
+    this.half = { kind, phase: 'toBench', t: 0, home, bench, coach: coachOf };
   }
 
   /** Round 80f: a player in the huddle looks at his coach. */
@@ -306,16 +311,25 @@ export class StoryRun {
     h.t += dt;
     if (h.phase === 'talk') {
       for (const p of sim.players) { p.vel = { x: 0, y: 0 }; p.face = this.faceCoach(p); }
-      if (!this.line && !this.queue.length) { h.phase = 'back'; h.t = 0; }
+      if (!this.line && !this.queue.length) { if (h.kind === 'half') { h.phase = 'back'; h.t = 0; } else this.startMeet(); }
       return;
     }
-    const spots = h.phase === 'toBench' ? h.bench : h.home;
+    if (h.phase === 'talk2') {
+      // round 80i: you and Kingston face each other; when it's said, the night's over
+      const me = sim.user, king = sim.players.find((p) => p.id === RIVAL_ID);
+      for (const p of sim.players) p.vel = { x: 0, y: 0 };
+      if (me && king) { const dx = king.p.x - me.p.x, s = dx >= 0 ? 1 : -1; me.face = { x: s, y: 0 }; king.face = { x: -s, y: 0 }; }
+      if (!this.line && !this.queue.length && !this.finishing) this.finishNight();
+      return;
+    }
+    const spots = h.phase === 'toBench' ? h.bench : h.phase === 'meet' ? h.meet! : h.home;
     let moving = false;
     for (const p of sim.players) {
       const to = spots.get(p.id); if (!to) continue;
       const dx = to.x - p.p.x, dy = to.y - p.p.y, d = Math.hypot(dx, dy);
       p.state = 'idle'; p.anim = null; p.z = 0; p.vz = 0;
       if (d < 0.25) { p.vel = { x: 0, y: 0 }; if (h.phase === 'toBench') p.face = this.faceCoach(p); continue; }
+      if (h.phase === 'meet' && d < 0.25) continue;
       moving = true;
       const sp = Math.min(h.phase === 'toBench' ? 9 : 12, d / dt);
       p.vel = { x: dx / d * sp, y: dy / d * sp };
@@ -326,7 +340,8 @@ export class StoryRun {
     if (moving && !late) return;
     if (late) for (const p of sim.players) { const to = spots.get(p.id); if (to) p.p = { ...to }; }
     for (const p of sim.players) p.vel = { x: 0, y: 0 };
-    if (h.phase === 'toBench') { h.phase = 'talk'; h.t = 0; this.halftime(); return; }
+    if (h.phase === 'toBench') { h.phase = 'talk'; h.t = 0; if (h.kind === 'half') this.halftime(); else this.endTalk(); return; }
+    if (h.phase === 'meet') { h.phase = 'talk2'; h.t = 0; this.meetLines(); return; }
     // back on the floor: play resumes, and Kingston has something to say about it
     this.half = null;
     const me = sim.user;
@@ -335,6 +350,67 @@ export class StoryRun {
       this.nextTalkAt = 0;
       this.gs.time.delayedCall(900, () => this.talk(crestview > lincoln ? KINGSTON_TALK.mock : KINGSTON_TALK.gas, true));
     }
+  }
+
+  /**
+   * Round 80i: after the final, both teams huddle; your coach talks. Won: champions, and a shout-out if you were the
+   * best on the team. Lost: heads up, and a shout-out if you were the best player in the game anyway.
+   */
+  private endTalk() {
+    const sim = this.gs.sim, me = sim.user, c = app.career;
+    if (!me) return;
+    const you = c.firstName || c.name.split(' ')[0];
+    const mine = sim.teams[me.team].score, theirs = sim.teams[1 - me.team].score, won = mine > theirs;
+    const mates = sim.teams[me.team].roster.filter((p) => p !== me);
+    const cap = squadCaptain(c, mates.filter((p) => !p.id.includes('-B'))), capName = `${cap.name.split(' ')[0]} (Captain)`;
+    const best = (ps: typeof mates) => Math.max(0, ...ps.map(statSum));
+    const myNight = statSum(me), bestTeam = myNight >= best(mates), bestGame = myNight >= best([...mates, ...sim.teams[1 - me.team].roster]);
+    const line = `${me.box.pts} points, ${me.box.reb} boards, ${me.box.ast} assists`;
+    if (won) this.say([
+      { who: 'narrator', text: `Final: Ridgemont ${mine}, Crestview ${theirs}. National champions.` },
+      { who: 'coach', text: 'THAT is how you play for a title! National champions! Every single one of you!' },
+      ...(bestTeam ? [{ who: 'coach' as const, text: `And ${you}. ${line}. You put this team on your back tonight. Hear me? That's on you, kid.` }] : []),
+      { who: 'mate', name: capName, text: 'I told y\'all. I told y\'all on that bus.' },
+      { who: 'coach', text: 'Enjoy it. You earned every second of it.' },
+    ]);
+    else this.say([
+      { who: 'narrator', text: `Final: Crestview ${theirs}, Ridgemont ${mine}.` },
+      { who: 'coach', text: 'Heads up. Look at me. Heads up.' },
+      { who: 'coach', text: 'Nobody in here quit. I watched every one of you leave it all out there.' },
+      ...(bestGame ? [{ who: 'coach' as const, text: `${you}. ${line}. Best player on that floor tonight, both teams. Don't you dare hang your head.` }] : []),
+      { who: 'mate', name: capName, text: 'We\'ll be back. All of us.' },
+    ]);
+  }
+
+  /** Round 80i: won: you walk over to Kingston; lost: he walks over to you. */
+  private startMeet() {
+    const h = this.half!, sim = this.gs.sim, me = sim.user, king = sim.players.find((p) => p.id === RIVAL_ID);
+    if (!me || !king) { this.finishNight(); return; }
+    const won = sim.teams[me.team].score > sim.teams[1 - me.team].score;
+    const [mover, still] = won ? [me, king] : [king, me];
+    const side = mover.p.x < still.p.x ? -1 : 1;
+    h.meet = new Map([[mover.id, { x: still.p.x + side * 2.4, y: still.p.y + 0.6 }]]);
+    h.phase = 'meet'; h.t = 0;
+  }
+  private meetLines() {
+    const sim = this.gs.sim, me = sim.user!, c = app.career, you = c.firstName || c.name.split(' ')[0];
+    const won = sim.teams[me.team].score > sim.teams[1 - me.team].score;
+    if (won) this.say([
+      { who: 'kingston', text: '...Good game.' },
+      { who: 'me', name: you, text: 'Kingston, I...' },
+      { who: 'kingston', text: 'Nah. Let me say it. You really are great, man. I was wrong about you.' },
+      { who: 'kingston', text: 'Now go home. Take care of your mom.' },
+    ]);
+    else this.say([
+      { who: 'kingston', text: 'You got better. I\'ll give you that.' },
+      { who: 'kingston', text: 'But you\'re gonna need more than luck to stay ahead of me.' },
+    ]);
+  }
+  /** The night is over: fade out, home to the snowy trailer (PostGame already saved the result and the stage). */
+  private finishNight() {
+    this.finishing = true;
+    this.gs.cameras.main.fadeOut(1100, 0, 0, 0);
+    this.gs.time.delayedCall(1200, () => this.gs.scene.start('Trailer'));
   }
 
   /**
@@ -350,7 +426,7 @@ export class StoryRun {
     const capName = `${cap.name.split(' ')[0]} (Captain)`;
     if (mine < theirs) {
       this.say([
-        { who: 'narrator', text: `Halftime. Crestview ${theirs}, Lincoln ${mine}.` },
+        { who: 'narrator', text: `Halftime. Crestview ${theirs}, Ridgemont ${mine}.` },
         { who: 'coach', text: `Bring it in. ${you}. Look at me.` },
         { who: 'coach', text: 'I know who\'s on the other side. We all know. But you\'re playing him, not the game.' },
         { who: 'coach', text: 'Every time he talks, you bite. Focus on the game, not your emotions.' },
@@ -363,7 +439,7 @@ export class StoryRun {
       ]);
     } else {
       this.say([
-        { who: 'narrator', text: `Halftime. Lincoln ${mine}, Crestview ${theirs}.` },
+        { who: 'narrator', text: `Halftime. Ridgemont ${mine}, Crestview ${theirs}.` },
         { who: 'coach', text: 'Good half. Good half. But nobody in here gets comfortable. A lead at the half is just a number.' },
         { who: 'coach', text: `Kingston's still got a few tricks in his bag, ${you}. He's been waiting all year for this one.` },
         { who: 'coach', text: 'Be careful with the ball. Don\'t give him anything easy. Don\'t get complacent.' },
@@ -373,7 +449,7 @@ export class StoryRun {
   }
 
   /** Round 80: a story scene on the court that isn't a game (Kingston at the school): no HUD, no game music. */
-  get cutscene(): boolean { return this.which === 'kingston'; }
+  get cutscene(): boolean { return this.which === 'kingston' || this.afterGame; }
 
   /** The tutorial's shot-chance lines: GameScene shows an example number top right meanwhile. */
   get shotExample(): boolean { return !this.line && this.dir?.view()?.example === 'shot'; }

@@ -158,6 +158,17 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80i (owner):**
+  - **You transfer:** after the big game the scout gets you into **Ridgemont Academy** (Rams, forest green + cream).
+    The newspaper: "RIDGEMONT HEADED TO NATIONALS", "Lincoln transfer {you} leads Ridgemont Academy into the title
+    game", the caption says you joined after a scout saw you at Lincoln. The bus says RIDGEMONT ACADEMY; your bus /
+    final teammates and captain are new (academy squad); the Lincoln squad (and its captain) stays in the big game.
+  - **After the final's box score:** both teams huddle round their coaches; ours talks: won = champions (+ a
+    shout-out if you had the best night on the team); lost = heads up (+ a shout-out if you were the best player in
+    the game). Then, won: you walk over to Kingston, who says good game, you really are great, take care of your mom;
+    lost: he walks over and says you got better but you'll need more than luck to stay ahead of him. Then home.
+  - **Real shots sell the fake:** every shot you take with a defender within 6 ft makes your pump fake 12% more
+    believable (up to 1.5x), on top of the round 80g learning.
 - **Round 80h (owner):** the post-game box score shows every stat (PTS REB AST STL BLK TOV FG 3PT) in its own table;
   a new game opens on **PROLOGUE** on black that fades into the rainy court; the dev menu wraps into two columns;
   the rain is quieter everywhere (games and the main menu).

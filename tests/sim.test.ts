@@ -605,11 +605,15 @@ describe('round 20: net, screens, passing reads, stars', () => {
     expect(p.deadDribble).toBe(true);
   });
   it('every real roster has one or two designated stars, and the coach calls isos for them', () => {
-    const g = makeGame({ seed: 8 });
-    for (const t of g.teams) { const n = t.roster.filter((p) => p.star).length; expect(n).toBeGreaterThanOrEqual(1); expect(n).toBeLessThanOrEqual(2); }
-    simToEnd(g);
-    const isos = g.events.filter((e) => e.kind === 'play' && e.text.includes('Iso for')).length;
-    const plays = g.events.filter((e) => e.kind === 'play').length;
+    // round 80i: three games, not one (a single seeded game sat right on the line)
+    let isos = 0, plays = 0;
+    for (const seed of [8, 9, 10]) {
+      const g = makeGame({ seed });
+      for (const t of g.teams) { const n = t.roster.filter((p) => p.star).length; expect(n).toBeGreaterThanOrEqual(1); expect(n).toBeLessThanOrEqual(2); }
+      simToEnd(g);
+      isos += g.events.filter((e) => e.kind === 'play' && e.text.includes('Iso for')).length;
+      plays += g.events.filter((e) => e.kind === 'play').length;
+    }
     // round 49: the coach gives isos on matchup value (not a fixed 30%), so a game can run fewer of them
     expect(isos).toBeGreaterThan(plays * 0.05);
     expect(isos).toBeLessThan(plays * 0.5);

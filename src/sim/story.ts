@@ -16,6 +16,11 @@ import { CareerState, RivalInfo, StoryState, BigGameResult, STARTER_CORE, HEIGHT
 
 /** Lincoln High (the school on the court): maroon + gold. The 2v2 is two Lincoln sides (team 1 wears white). */
 export const LINCOLN: TeamDef = { id: 'LIN', city: 'Lincoln', name: 'Lions', colors: ['#7a1f2b', '#e0b33a'], seed: 6001 };
+/**
+ * Round 80i (owner): after the big game the scout gets you into a basketball academy: three months later you're the
+ * star of Ridgemont Academy (forest green + cream), not Lincoln, in the national final.
+ */
+export const ACADEMY: TeamDef = { id: 'RMA', city: 'Ridgemont Academy', name: 'Rams', colors: ['#1f5a3a', '#e8e2d0'], seed: 6004 };
 /** The rival school in the big game (they wear white with navy trim). */
 export const JEFFERSON: TeamDef = { id: 'JEF', city: 'Jefferson', name: 'Jaguars', colors: ['#1f3a7a', '#ffffff'], seed: 6002 };
 
@@ -144,11 +149,15 @@ export function buildOnes(c: CareerState, seed: number): GameSim {
  * x1.5, steals and blocks x3) against
  * everyone on the floor; a great game = Lincoln won AND your sum is the highest (a tie counts).
  */
+/** Round 66 / 80i: a player's night, weighted like the box score (steals and blocks x3, assists x1.5, boards x1.3). */
+export function statSum(p: Player): number {
+  const W = STAT_WEIGHTS;
+  return Math.round((p.box.pts * W.pts + p.box.reb * W.reb + p.box.ast * W.ast + p.box.blk * W.blk + p.box.stl * W.stl) * 10) / 10;
+}
 export function bigGameVerdict(sim: GameSim): BigGameResult & { mine: number; best: number } {
   const me = sim.user!;
   // round 66: weighted like the box score (a block or steal is worth 3 points, an assist 1.5, a board 1.3)
-  const W = STAT_WEIGHTS;
-  const sum = (p: Player) => Math.round((p.box.pts * W.pts + p.box.reb * W.reb + p.box.ast * W.ast + p.box.blk * W.blk + p.box.stl * W.stl) * 10) / 10;
+  const sum = statSum;
   const mine = sum(me), best = Math.max(...[...sim.teams[0].roster, ...sim.teams[1].roster].map(sum));
   const won = sim.teams[me.team].score > sim.teams[1 - me.team].score;
   return { won, mine, best, great: won && mine >= best, pts: me.box.pts, reb: me.box.reb, ast: me.box.ast };
@@ -191,9 +200,17 @@ export function squadSeed(c: CareerState): number {
  * the captain among them. Deterministic from the story's squad seed.
  */
 export function lincolnSquad(c: CareerState, o: { base?: number; buff?: number } = {}): Player[] {
-  const rng = new Rng(squadSeed(c));
+  return squadFrom(c, squadSeed(c), 'LIN', o.base ?? 48, o.buff ?? CAPTAIN_BUFF);
+}
+/** Round 80i: your Ridgemont Academy teammates (the bus and the final): a better program (~50), their own captain. */
+export function academySquad(c: CareerState): Player[] {
+  return squadFrom(c, squadSeed(c) ^ 0x51ac, 'RMA', 50, CAPTAIN_BUFF);
+}
+function squadFrom(c: CareerState, seed: number, prefix: string, base: number, buff: number): Player[] {
+  const rng = new Rng(seed);
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const squad = order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, o.base ?? 48));
+  const squad = order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`${prefix}-${i}`, 0, pos, rng, base));
+  const o = { buff };
   // round 80c (owner): the captain is clearly your best teammate (after the names are drawn, so they never change)
   const cap = squadCaptain(c, squad);
   for (const s of CORE_STATS) cap.core[s] = clamp(cap.core[s] + (o.buff ?? CAPTAIN_BUFF), 1, 99);
@@ -263,7 +280,7 @@ export function buildFinal(c: CareerState, seed: number): GameSim {
   const rng = new Rng(seed ^ 0xf1a1);
   const me = storyMe(c, LOCKED_IN);
   me.star = true;
-  const mine = [me, ...lincolnSquad(c)];
+  const mine = [me, ...academySquad(c)]; // round 80i: you play for the academy now
   const r = c.story?.rival ?? fallbackRival(c);
   const king = new Player({
     id: RIVAL_ID, name: `${r.first} ${r.last}`, team: 1, pos: r.pos, core: avgSpread(r.pos, KINGSTON_FINAL), nodes: kingstonFinalPerks(r.pos),
@@ -274,11 +291,11 @@ export function buildFinal(c: CareerState, seed: number): GameSim {
   const theirs = [king, ...order.filter((p) => p !== r.pos).map((pos, i) => extraPlayer(`CRE-${i}`, 1, pos, rng, 52))];
   // round 80e: reserves on both benches (no subs without a rotation: they sit next to the assistant coaches)
   const bench: Position[] = ['PG', 'SF', 'PF', 'C'];
-  mine.push(...bench.map((pos, i) => extraPlayer(`LIN-B${i}`, 0, pos, rng, 44)));
+  mine.push(...bench.map((pos, i) => extraPlayer(`RMA-B${i}`, 0, pos, rng, 46)));
   theirs.push(...bench.map((pos, i) => extraPlayer(`CRE-B${i}`, 1, pos, rng, 48)));
   return new GameSim({
     mode: 'game', quarterLen: FINAL_HALF, periods: 2, seed,
-    teams: [LINCOLN, CRESTVIEW], rosters: [mine, theirs], userId: me.id,
+    teams: [ACADEMY, CRESTVIEW], rosters: [mine, theirs], userId: me.id,
     trust: { team: 75, coach: 75 }, ult: { unlocked: false, id: null, level: 0 },
     featureUser: true, venue: 'arena',
     ultLate: true, // round 80c: Kingston saves his ult for clutch time

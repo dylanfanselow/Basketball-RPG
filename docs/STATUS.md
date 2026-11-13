@@ -261,6 +261,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80i: `ACADEMY` + `academySquad` (squadFrom), `statSum`; final vs Crestview as Ridgemont; paper / bus / intro
+  texts; `GameInit.reuse` (PostGame → Game with the finished sim) + StoryRun `afterGame` (`startHalf('end')`, `endTalk`,
+  `startMeet` / `meetLines`, `finishNight` → Trailer); `GameSim.honestShots` + `FAKE_LEARN.honest` / `max`.
   Round 80h: PostGame box table (right column, all stats), `StoryRun.prologueCard` (tutorial), `MenuList` `cols`
   (dev menu 16 rows x 2), rain gain 0.07.
   Round 80g: `StoryRun.said` + `TALK_WEAR` 0.55 (`talk` weights + gates by uses), `KINGSTON_TALK.iso`;
