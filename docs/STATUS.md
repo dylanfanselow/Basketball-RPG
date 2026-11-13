@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80k: `Appearance.shirt` / `pants` / `longPants`, `CLOTHES_COLORS`, `RoomScene.casualKit` (used by
+  `roomPlayerKit` and the builder tee), three LOOK rows.
   Round 80j: `hairFront` `cap` (bezier nape sweep) / `backCap`, `hightopGrad`, `afroGrad`, `hairBack(backView)`,
   `inHead` clip for headbands, mohawk stubble; back view hair is code only; hair + hairBack PNGs re-exported
   (`partSeeds.renderSeedParts` + `savePartsToRepo`; restart the dev server after: the pictures are inlined).

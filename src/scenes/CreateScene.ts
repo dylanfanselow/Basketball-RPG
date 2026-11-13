@@ -7,12 +7,13 @@ import { newStory, LINCOLN } from '../sim/story';
 import { prepareStory } from './preload';
 import type { CareerState } from '../career/career';
 import { storyScene } from './setup';
+import { casualKit } from './RoomScene';
 import { NODES } from '../sim/data';
 import { createCareer, STARTER_PERKS, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
 import { POSITIONS, Position } from '../sim/attributes';
 import { CORE_STATS, TEAMS } from '../sim/data';
 import {
-  Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, HAIR_COLORS, EYE_COLORS, GEAR_COLORS,
+  Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, HAIR_COLORS, EYE_COLORS, GEAR_COLORS, CLOTHES_COLORS,
   defaultAppearance, randomAppearance, withDefaults,
 } from '../render/appearance';
 import { partVariants } from '../render/faceParts';
@@ -68,7 +69,7 @@ export class CreateScene extends Phaser.Scene {
   private big!: Phaser.GameObjects.Text;
   private rowTexts: Phaser.GameObjects.Text[] = [];
   private keyTexts: Phaser.GameObjects.Text[] = [];
-  private tee!: Kit; private jersey!: Kit;
+  private teeShorts = '#333333'; private jersey!: Kit;
   private leaving = false;
 
   constructor() { super('Create'); }
@@ -85,7 +86,7 @@ export class CreateScene extends Phaser.Scene {
     // round 60g: you're in high school, not on an NBA team yet, so every number is free
     this.taken = new Map();
     this.number = 7;
-    this.tee = { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
+    this.teeShorts = shade(team.colors[0], 0.9); // round 80k: the tee follows your shirt / pants picks (`casualKit`)
     const hs = LINCOLN.colors; // the number preview: your Lincoln High jersey
     this.jersey = { jersey: hs[0], jerseyShade: shade(hs[0], 0.75), trim: hs[1], shorts: shade(hs[0], 0.9), number: this.number };
     // backdrop: a dark purple studio with a spotlight on the floor under you
@@ -186,6 +187,10 @@ export class CreateScene extends Phaser.Scene {
       ['Shoe accent', colorRow('shoeAccent', GEAR_COLORS)],
       ['Goggles', flag('goggles')],
       ['Face mask', flag('mask')],
+      // round 80k: everyday clothes (rooms, the trailer; in games you wear the team's uniform)
+      ['Shirt color', { ...colorRow('shirt', CLOTHES_COLORS), swatch: () => a.shirt ?? '#ebe7de' }],
+      ['Pants color', { ...colorRow('pants', CLOTHES_COLORS), swatch: () => a.pants ?? this.teeShorts }],
+      ['Pants', { label: '', value: () => (a.longPants ? 'long' : 'shorts'), cycle: () => { a.longPants = !a.longPants; } }],
     ];
     return r.map(([label, row]) => ({ ...row, label }));
   }
@@ -194,7 +199,7 @@ export class CreateScene extends Phaser.Scene {
   private redrawPreview() {
     const tex = this.textures.get('cc_prev') as Phaser.Textures.CanvasTexture, ctx = tex.getContext();
     const look = withDefaults({ ...this.look }), H = figureHeight(this.heightIn / 12), yaw = VIEWS[this.view], idle = CLIP.idle;
-    const kit = this.step >= 4 ? { ...this.jersey, number: this.number } : this.tee; // in your jersey from the number step on
+    const kit = this.step >= 4 ? { ...this.jersey, number: this.number } : casualKit(this.look, this.teeShorts); // in your jersey from the number step on
     ctx.clearRect(0, 0, FRAME_W * 4, FRAME_H);
     for (let f = 0; f < 4; f++) {
       ctx.save(); ctx.beginPath(); ctx.rect(f * FRAME_W, 0, FRAME_W, FRAME_H); ctx.clip();

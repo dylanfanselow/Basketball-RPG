@@ -42,10 +42,16 @@ export const ORB_COL: Record<OrbTo, { rim: number; body: number; light: number; 
  * A walkable cutaway room (apartment, garage, …): you walk around (stick / WASD, R2 / Shift to hurry), walls and
  * furniture are solid, ✕ at a door goes through it, L1 leaves to the menu. Subclasses supply the room and its art.
  */
-/** Round 60c: you in the rooms, a plain tee and your team-colour shorts (shared with the preloader). */
-export function roomPlayerKit(c: { teamId: string }): Kit {
+/** Round 60c: you in the rooms, a plain tee and your team-colour shorts (shared with the preloader).
+ *  Round 80k: in the shirt / pants colors (and long pants) you picked in the builder. */
+export function roomPlayerKit(c: { teamId: string; appearance?: Appearance }): Kit {
   const team = TEAMS.find((t) => t.id === c.teamId) ?? TEAMS[0];
-  return { jersey: '#ebe7de', jerseyShade: '#c9c4b8', trim: '#d8d3c8', shorts: shade(team.colors[0], 0.9), number: -1 };
+  return casualKit(c.appearance, shade(team.colors[0], 0.9));
+}
+/** Round 80k: your everyday clothes as a kit (no number). `shorts` = the bottoms color when none was picked. */
+export function casualKit(a: Appearance | undefined, shorts: string): Kit {
+  const shirt = a?.shirt ?? '#ebe7de';
+  return { jersey: shirt, jerseyShade: shade(shirt, 0.82), trim: shade(shirt, 0.9), shorts: a?.pants ?? shorts, number: -1, pants: !!a?.longPants };
 }
 export const roomSheetKey = (c: { teamId: string; appearance: Appearance; height: number }) => playerSheetKey('HOME', c.appearance, c.height, roomPlayerKit(c));
 

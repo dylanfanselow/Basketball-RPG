@@ -158,6 +158,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80k (owner):** the character builder's LOOK step has **Shirt color**, **Pants color** and **Pants** (shorts /
+  long) for your everyday clothes (rooms, the trailer yard, the builder preview); game uniforms stay team colors.
 - **Round 80j (owner): hair and headbands.** Tall hair is one shape in one shading (the high top's block and the
   hair on the skull, the afro's volume and its cap); in profile the hairline sweeps down toward the nape (no square
   corner at the back); from behind every style is drawn whole (code, never the profile picture); a **mohawk is

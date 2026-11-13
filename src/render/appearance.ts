@@ -33,7 +33,12 @@ export interface Appearance {
   socks: (typeof SOCKS)[number]; sockColor: string;
   goggles: boolean; mask: boolean;
   shoe: string; shoeAccent: string;
+  /** round 80k: your everyday clothes (rooms, trailer, the builder): shirt and pants colors, long pants or shorts.
+   *  Unset = the plain off-white tee and team-colour shorts. Game uniforms never use these. */
+  shirt?: string; pants?: string; longPants?: boolean;
 }
+/** Round 80k: the builder's everyday clothes palette. */
+export const CLOTHES_COLORS = ['#ebe7de', '#f4f4f4', '#9aa4b0', '#4a505a', '#111111', '#7a1f2b', '#e03a3e', '#ff7a00', '#fdb927', '#1f5a3a', '#00a86b', '#1d428a', '#2f6fa8', '#7a3fd0', '#ff4fa3', '#6b4a2a', '#c8a26a'];
 
 export const defaultAppearance = (): Appearance => ({
   skin: 2, hair: 'fade', hairColor: HAIR_COLORS[0], facial: 'none',
