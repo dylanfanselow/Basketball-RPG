@@ -188,7 +188,23 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
-- **Round 82 (owner): the story's calendar.**
+- **Round 83 (owner): Stardew-style seasons and a real NBA season.** (Replaces round 82's months.)
+  - The calendar is **four 28-day seasons, Fall, Winter, Spring, Summer** (a 112-day year), shown as "Spring 1, Year 1".
+    Day 1 = **Fall 1, Year 1**, a Monday, so every season is exactly four calendar rows. The calendar pages are seasons
+    (season name at the top, "Year n" beside it); the HUD, the day banners and the title screen show the date.
+  - Story: the prologue starts Fall 1 (big game Fall 2). The national final is **Winter 28** (the paper's card says
+    WINTER, the front page SUNDAY, WINTER 28). **A day later** the letter (Spring 1; the bust paper is dated MONDAY,
+    SPRING 1); the meeting on **Spring 2**; the combine **7 days** later (Spring 9-10), the scrimmage Spring 12; **the
+    draft on Spring 28**, the night the NBA playoffs end. Hale calls the **last 4 mornings** before it (Spring 24-27).
+    The April Fools line, the month / two-month jumps and the "no time to train" thoughts are gone.
+  - **The NBA season** (`career/schedule.ts`): you face **every other team once** (29 games) across **Fall and Winter**
+    (Spring = playoffs, Summer = offseason, both later); your rookie season is Year 2. Teams are put in **tiers of
+    quality** by roster strength (the top 8 players' average rating): **Contender** (top 10 opponents), **Playoff**
+    (next 10), **Lottery** (last 9). **5 key games from each tier** (15 you play; rivals are picked first in their tier);
+    the other 14 are **off-screen**: on the calendar in grey, resolved by team strength when their day passes (the
+    result and the record update). Key and off-screen games alternate, a key game first (Opener) and last (Finale).
+    Calendar tags: OPENER / FINALE / RIVAL / CONTENDER / PLAYOFF / LOTTERY. Old 10-game saves get a fresh season (record reset).
+- **Round 82 (owner): the story's calendar.** (Dates superseded by round 83; the bust-page thoughts and hair stay.)
   - Everything moved a **month later**: day 1 (the rainy night) is **Thu 19 Nov 2026**, the big game Fri 20 Nov
     (`SEASON_DAY1`; the NBA calendar uses the same epoch, so its placeholder opener moved too).
   - The **national final is Sun 28 Feb 2027** (the front page is dated that day). Then **a month passes** ("ONE MONTH

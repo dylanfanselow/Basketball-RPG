@@ -170,13 +170,13 @@ describe('skill levels (round 41)', () => {
 describe('round 43: sleep + calendar', () => {
   it('each night counts the key game down by one, to today (0)', () => {
     const c = newCareer('A', 'SG', 'LAL');
-    c.season.gameNo = 1;
+    c.season.gameNo = 2; // round 83: the second key game (the season starts Fall 1, Year 2)
     const k = nextKeyGame(c)!, start = k.daysAway;
     advanceDay(c);
     expect(nextKeyGame(c)!.daysAway).toBe(start - 1);
-    for (let i = 0; i < 40; i++) advanceDay(c);
+    for (let i = 0; i < 200; i++) advanceDay(c);
     expect(nextKeyGame(c)!.daysAway).toBe(0);
-    expect(c.life.day).toBe(42);
+    expect(c.life.day).toBe(202);
   });
   it('sleep sends enough energy orbs to refill the bar, capped at 100', () => {
     const c = newCareer('A', 'SG');
@@ -200,13 +200,14 @@ describe('career life + key games', () => {
   });
   it('the next key game is the opener first, then a later one after it is played', () => {
     const c = newCareer('A', 'SG', 'LAL');
+    c.life.day = gameDay(c, 0) - 1; // round 83: the season has its own dates (Fall 1, Year 2)
     const k = nextKeyGame(c)!;
     expect(k.index).toBe(0);
     expect(k.daysAway).toBe(1);
-    c.season.gameNo = 1; c.life.day = 2;
+    c.season.gameNo = 1; c.life.day = gameDay(c, 0);
     const k2 = nextKeyGame(c)!;
     expect(k2.index).toBeGreaterThan(0);
-    expect(k2.daysAway).toBe(gameDay(k2.index) - 2);
+    expect(k2.daysAway).toBe(gameDay(c, k2.index) - c.life.day);
     expect(isKeyGame(c, k2.index)).toBeTruthy();
   });
 });

@@ -42,7 +42,7 @@ export class PaperScene extends Phaser.Scene {
     this.phase = 'card'; this.stop = 0; this.t = 0; this.lines = [];
     const c = app.career;
     ensureStory();
-    // it's winter now (the yard stays snowy from here on); three months have gone by: round 82, the final is 28 Feb
+    // it's winter now (the yard stays snowy from here on); round 83: the final is the last day of winter
     if (!c.story!.winter) { c.story!.winter = true; app.changed(); }
     if (c.life.day < storyDay('final')) { skipTo(c, 'final'); app.changed(); }
     prewarmRoom(this); // your trailer walk in the snow is next
@@ -102,7 +102,7 @@ export class PaperScene extends Phaser.Scene {
     const ok = this.inp.pressed('a');
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
     if (this.phase === 'card') {
-      const full = 'THREE MONTHS LATER';
+      const full = 'WINTER'; // round 83 (was THREE MONTHS LATER)
       this.card.setText(full.slice(0, Math.floor(this.t * 14)));
       if ((ok && this.t > 0.4) || this.t > 3.2) {
         this.phase = 'paper'; this.t = 0;

@@ -4,6 +4,7 @@ import { FONT, HI_RES } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { loadCareer } from '../career/career';
+import { longDate } from '../career/calendar';
 import { storyScene } from './setup';
 import { drawCourt, drawHoops, VIEW_W, VIEW_H, WORLD_W } from '../render/view';
 import { Crowd } from '../render/crowd';
@@ -150,7 +151,7 @@ export class TitleScene extends Phaser.Scene {
     });
     const hints: Record<Item['id'], string> = {
       new: 'Create your player and start a career',
-      load: this.hasSave ? `Continue: Day ${c.life.day} · Lv ${c.level} · ${c.name}` : 'No save yet',
+      load: this.hasSave ? `Continue: ${longDate(c.life.day)} · Lv ${c.level} · ${c.name}` : 'No save yet',
       settings: 'Sound, game length, fullscreen, dev tools',
     };
     this.hint.setText(hints[it.id]).setY(it.y + 56);
@@ -213,7 +214,7 @@ export class TitleScene extends Phaser.Scene {
     const c = app.career;
     this.mode = 'confirm';
     this.showPanel('START A NEW CAREER?', 620, 200);
-    this.panel.body.setText(`Your save (Day ${c.life.day}, Lv ${c.level}) will be replaced.\n\n      ✕ Yes, start over      ○ No`).setAlign('center');
+    this.panel.body.setText(`Your save (${longDate(c.life.day)}, Lv ${c.level}) will be replaced.\n\n      ✕ Yes, start over      ○ No`).setAlign('center');
   }
 
   private settingsRows(): { label: string; value: () => string; change?: (d: number) => void; act?: () => void }[] {

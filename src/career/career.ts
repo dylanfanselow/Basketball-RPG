@@ -6,6 +6,8 @@ import { TrustState } from '../sim/ai/trust';
 import { UltState, ULT_MILESTONES } from '../sim/ultimates';
 import type { BoxScore } from '../sim/player';
 import { Appearance, defaultAppearance, withDefaults } from '../render/appearance';
+import { SeasonState, buildSeason, gameDayOf, nextKeyIndex, settleSeason, nextFall, ROOKIE_SEASON_START, RIVALS } from './schedule';
+export { RIVALS };
 
 export const SAVE_VERSION = 4;
 export const STAT_POINT_VALUE = 2; // each core-stat point adds this many rating points
@@ -28,7 +30,8 @@ export interface CareerState {
   teamId: string;
   /** Round 49: the scouting report other teams keep on you (your last games, newest last). */
   scout?: ScoutGame[];
-  season: { gameNo: number; wins: number; losses: number; schedule: string[] };
+  /** round 83: the NBA season (`schedule.ts`): every other team once, key games you play, the rest off-screen */
+  season: SeasonState;
   forceStarter: boolean;
   /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
   life: { day: number; money: number; energy: number; food: number };
@@ -71,8 +74,6 @@ export interface StoryState {
   agent?: string;
   /** round 81: the draft week, career days (set when the agent shows you the calendar) */
   draft?: DraftWeek;
-  /** round 82: slept past the scrimmage, the story jumped to June (the days before the draft) */
-  june?: boolean;
   /** round 82: the last career day Hale called about the teams (one call a morning) */
   callDay?: number;
 }
@@ -89,8 +90,6 @@ export function takeOnDebt(c: CareerState) {
 export function draftWeek(today: number, draft: number): DraftWeek {
   return { combine1: today + 7, combine2: today + 8, scrimmage: today + 10, draft }; // round 81b: 7 days to the combine
 }
-/** Round 82: the story jumps to June when you sleep on (or after) the scrimmage day. */
-export const juneDue = (c: CareerState) => { const st = c.story; return !!st?.draft && !st.june && c.life.day >= st.draft.scrimmage; };
 
 /** One of Hale's calls: his lines, then yours. */
 export interface HaleCall { team: string; lines: { who: 'agent' | 'me'; text: string }[] }
@@ -180,14 +179,12 @@ export const newLife = () => ({ day: 1, money: 250, energy: 100, food: 100 });
 
 export function newCareer(name: string, pos: Position, teamId = 'LAL'): CareerState {
   const core = Object.fromEntries(CORE_STATS.map((s) => [s, SKILL_START])) as CoreStats;
-  const others = TEAMS.filter((t) => t.id !== teamId).map((t) => t.id);
-  const schedule = Array.from({ length: 10 }, (_, i) => others[(i * 7) % others.length]);
   return {
     version: SAVE_VERSION, name, pos, height: HEIGHTS[pos], number: 7, skin: 2, appearance: defaultAppearance(),
     core, level: 1, xp: 0, statPoints: 5, perkPoints: 2, nodes: [], traits: [], backstory: null,
     flags: { ult_unlocked: false }, ult: { id: null, level: 0, evoPoints: 0, seenMilestones: [] },
     trust: { team: 20, coach: 20 }, teamId,
-    season: { gameNo: 0, wins: 0, losses: 0, schedule }, forceStarter: false, life: newLife(), skills: newSkills(),
+    season: buildSeason(teamId, ROOKIE_SEASON_START, name.length * 7919 + 13), forceStarter: false, life: newLife(), skills: newSkills(),
   };
 }
 
@@ -267,7 +264,7 @@ export function spendStatPoint(c: CareerState, stat: keyof CoreStats): boolean {
   return true;
 }
 
-export interface GameResult { box: BoxScore; won: boolean; grade: { good: number; bad: number; points: number }; milestones: string[]; scout?: ScoutGame }
+export interface GameResult { box: BoxScore; won: boolean; /** round 83: the final score (us, them) */ us?: number; them?: number; grade: { good: number; bad: number; points: number }; milestones: string[]; scout?: ScoutGame }
 /** One game in the scouting report: your points and shots, your team's shots, where your points came from. */
 export interface ScoutGame { pts: number; fga: number; teamFga: number; rim: number; jumper: number; post: number }
 
@@ -282,9 +279,12 @@ export function applyGameResult(c: CareerState, r: GameResult) {
   c.xp += xp;
   let levels = 0;
   while (c.xp >= xpToNext(c.level)) { c.xp -= xpToNext(c.level); c.level++; c.statPoints += 3; c.perkPoints += 1; levels++; }
-  c.life.day = Math.max(c.life.day, gameDay(c.season.gameNo)); // the game was played on its day
-  c.season.gameNo++;
-  if (r.won) c.season.wins++; else c.season.losses++;
+  const s = c.season, i = s.gameNo;
+  c.life.day = Math.max(c.life.day, gameDay(c, i)); // the game was played on its day
+  settleSeason(s, c.teamId, gameDay(c, i)); // round 83: the off-screen games before it
+  if (s.results) s.results[i] = { won: r.won, us: r.us ?? 0, them: r.them ?? 0 };
+  if (r.won) s.wins++; else s.losses++;
+  s.gameNo = s.key ? nextKeyIndex(s) : i + 1;
   if (r.scout) { (c.scout ??= []).push(r.scout); if (c.scout.length > 5) c.scout.shift(); }
   const evo: string[] = [];
   if (c.flags.ult_unlocked) {
@@ -332,31 +332,31 @@ export function migrateCareer(c: any): CareerState | null {
   if (c.version !== SAVE_VERSION) return null;
   c.appearance = withDefaults(c.appearance);
   if (!c.story) c.story = { stage: 'done', rival: null, home: 'apartment' }; // round 60: saves from before the prologue
+  // round 83: the old 10-game placeholder schedules become a real season (record reset): the rookie season while the
+  // story's still going, otherwise the next Fall
+  if (!c.season?.key) c.season = buildSeason(c.teamId ?? 'LAL', c.story.stage === 'done' ? nextFall(c.life?.day ?? 1) : ROOKIE_SEASON_START, (c.name?.length ?? 5) * 7919 + 13);
+  if (c.story.june !== undefined) delete c.story.june; // round 82's June jump is gone
   syncSkillsToCore(c as CareerState); // the cards show the real ratings
   return c as CareerState;
 }
 
 /**
- * Key games (round 36, placeholder until real calendars): the season opener, the finale, games against the team's
- * rivals, and a national-TV game every 4th game. Games are every other day, the next one tomorrow.
+ * Key games (round 36; round 83, owner: by tiers of team quality, the same number from each tier, see schedule.ts):
+ * the opener, the finale, rivals, else the opponent's tier. Off-screen games (`key[i]` false) aren't key: null.
  */
-export const RIVALS: Record<string, string[]> = {
-  LAL: ['BOS', 'LAC', 'GSW'], BOS: ['LAL', 'NYK', 'PHI'], NYK: ['BKN', 'BOS', 'MIA'], BKN: ['NYK'], LAC: ['LAL'],
-  GSW: ['LAL', 'CLE'], CLE: ['GSW'], MIA: ['NYK', 'BOS'], PHI: ['BOS'], CHI: ['DET'], DET: ['CHI'], DAL: ['HOU', 'SAS'],
-  HOU: ['DAL', 'SAS'], SAS: ['DAL', 'HOU'], OKC: ['DEN'], DEN: ['OKC'],
-};
 export function isKeyGame(c: CareerState, i: number): string | null {
-  const n = c.season.schedule.length, opp = c.season.schedule[i % n];
+  const s = c.season, n = s.schedule.length, opp = s.schedule[i % n];
+  if (s.key && !s.key[i]) return null;
   if (i === 0) return 'Opener';
   if (i === n - 1) return 'Finale';
   if ((RIVALS[c.teamId] ?? []).includes(opp)) return 'Rivalry';
-  if (i % 4 === 3) return 'National TV';
-  return null;
+  if (s.tier?.[i]) return s.tier[i];
+  return i % 4 === 3 ? 'National TV' : null;
 }
-/** Games are on the calendar (round 43): game i is on day 2 + 2i (the opener is tomorrow from day 1). */
-export const gameDay = (i: number) => 2 + 2 * i;
+/** The career day of game i (round 83: the season's own dates, Fall 1 to Winter 28). */
+export const gameDay = (c: CareerState, i: number) => gameDayOf(c.season, i);
 /** Days from today until game i (0 = today). */
-export const daysUntilGame = (c: CareerState, i: number) => Math.max(0, gameDay(i) - c.life.day);
+export const daysUntilGame = (c: CareerState, i: number) => Math.max(0, gameDay(c, i) - c.life.day);
 /** Sleeping refills energy with orbs worth this much each. */
 export const ENERGY_ORB = 10, ENERGY_MAX = 100;
 /** How many energy orbs a night's sleep sends (enough to refill the bar). */
@@ -364,7 +364,10 @@ export const sleepPlan = (c: CareerState) => Math.ceil(Math.max(0, ENERGY_MAX - 
 /** Add energy (capped). */
 export function addEnergy(c: CareerState, n: number) { c.life.energy = Math.min(ENERGY_MAX, Math.max(0, c.life.energy + n)); }
 /** Sleep: the next day starts (energy comes back through the orbs the room sends). */
-export function advanceDay(c: CareerState) { c.life.day++; }
+export function advanceDay(c: CareerState) {
+  c.life.day++;
+  if (!c.story || c.story.stage === 'done') settleSeason(c.season, c.teamId, c.life.day); // round 83: off-screen games resolve
+}
 /**
  * Round 60b: the schedule card while you're in high school, the big game against Jefferson (tomorrow until the
  * night before, today on game day, played after). Null once the story isn't in the prologue (the NBA schedule).

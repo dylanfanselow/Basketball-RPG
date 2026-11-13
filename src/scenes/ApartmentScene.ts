@@ -5,11 +5,11 @@ import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay, juneDue, haleCalls } from '../career/career';
+import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay, haleCalls } from '../career/career';
 import { AgentTalk } from './agentTalk';
 import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage, storyScene } from './setup';
-import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, monthRange, storyDay, skipTo, MONTHS, WEEKDAYS } from '../career/calendar';
+import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, HALE_CALL_DAYS, SEASONS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
 
@@ -64,25 +64,19 @@ export class ApartmentScene extends RoomScene {
   }
 
   /**
-   * Round 82 (owner): the days before the draft, Hale calls every morning about a team thinking of picking you (one
-   * call a day, Jun 20-23). The first morning back you think about the two months first: no time to train, work to
-   * make the debt payments.
+   * Round 82 / 83 (owner): Hale calls every morning on the last days before the draft (Spring 24-27) about a team
+   * thinking of picking you, one call a day.
    */
   private maybeCall() {
     const c = app.career, st = c.story;
-    if (!st || st.stage !== 'draftWeek' || !st.june || !st.draft || this.agent) return;
-    const day = c.life.day, first = storyDay('june');
+    if (!st || st.stage !== 'draftWeek' || !st.draft || this.agent) return;
+    const day = c.life.day, first = st.draft.draft - HALE_CALL_DAYS;
     if (day >= st.draft.draft || st.callDay === day || day < first) return;
     const calls = haleCalls(c), call = calls[Math.min(calls.length - 1, day - first)];
     st.callDay = day; app.changed();
-    const you = c.firstName || c.name.split(' ')[0], left = st.draft.draft - day;
-    const think = (text: string) => ({ say: { who: 'you' as const, text } });
+    const you = c.firstName || c.name.split(' ')[0];
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
       { wait: 0.5 },
-      ...(day === first ? [
-        think('Two months of double shifts, just to keep up with the debt payments.'),
-        think(`Haven't had time to touch a ball since the scrimmage. And the draft's in ${left === 1 ? 'one day' : `${['zero', 'one', 'two', 'three', 'four', 'five', 'six'][left] ?? left} days`}.`),
-      ] : []),
       { run: () => sfx.phoneRing() },
       { say: { who: 'narrator' as const, text: 'Your phone buzzes. VICTOR HALE.' } },
       ...call.lines.map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'VICTOR HALE (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
@@ -99,7 +93,7 @@ export class ApartmentScene extends RoomScene {
     const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
     const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
     const P = AGENT_PATHS.apartment;
-    this.dateBanner('THURSDAY, APRIL 1', 700); // round 82 (owner): your first day here
+    this.dateBanner(dateLabel(c.life.day).toUpperCase(), 700); // round 82: your first day here (round 83: SPRING 2)
     this.agent = new AgentTalk(this, P.haleStart, [
       { wait: 1.8 },
       hale(`You came. Good. ${st.agent ?? 'Victor Hale'}.`),
@@ -111,7 +105,6 @@ export class ApartmentScene extends RoomScene {
       hale('So here\'s what we\'ll do. This place? It\'s yours.'),
       // round 81b (owner): free until you make it, then about your whole first contract plus the generator
       hale('Rent free until you make it.'),
-      me('Better not be an April Fools joke.'), // round 82 (owner): it's the first of April
       hale('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
       hale('One condition.'),
       hale('You can\'t fail.'),
@@ -122,7 +115,7 @@ export class ApartmentScene extends RoomScene {
       { run: () => { st.draft = draftWeek(c.life.day, storyDay('draft')); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
       hale('This is your week. Seven days from today: the combine.'),
       hale('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
-      hale('Then you wait. The draft\'s not till June. The twenty-fourth.'), // round 82
+      hale('Then the draft. Last day of spring, the night the playoffs end.'), // round 83
       hale('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
       { run: () => this.closeCalendar() },
       hale('Now. The garage.'),
@@ -171,11 +164,8 @@ export class ApartmentScene extends RoomScene {
     });
     sfx.blip(true);
     this.time.delayedCall(1900, () => {
-      // round 82 (owner): after the scrimmage the story jumps to June, a few days before the draft
-      const june = juneDue(c);
-      if (june) { c.story!.june = true; skipTo(c, 'june'); } else advanceDay(c);
-      app.changed();
-      this.dateBanner(june ? 'TWO MONTHS LATER' : `DAY ${c.life.day}`, june ? 1100 : 700);
+      advanceDay(c); app.changed();
+      this.dateBanner(dateLabel(c.life.day).toUpperCase(), 700); // round 83: the date, e.g. SPRING 3
     });
     this.time.delayedCall(3000, () => {
       this.tweens.add({ targets: night, alpha: 0, duration: 700, ease: 'Sine.easeInOut', onComplete: () => night.destroy() });
@@ -187,7 +177,7 @@ export class ApartmentScene extends RoomScene {
       this.pos = { ...SPOTS.couch }; this.face = { x: 0, y: 1 }; this.view = undefined; this.vel = { x: 0, y: 0 };
       this.busy = false;
       this.sendEnergyOrbs(sleepPlan(c), ENERGY_ORB, { x: sxOf(SPOTS.couch.x), y: syOf(SPOTS.couch.y) - 110 });
-      this.time.delayedCall(900, () => this.maybeCall()); // round 82: Hale's morning call (June)
+      this.time.delayedCall(900, () => this.maybeCall()); // round 82: Hale's morning call (the days before the draft)
     });
   }
 
@@ -204,19 +194,18 @@ export class ApartmentScene extends RoomScene {
     this.blanket.setScale(s).setPosition(sxOf(ApartmentScene.SLEEP_AT.x) + this.blanketOff.x * s, syOf(ApartmentScene.SLEEP_AT.y) + this.blanketOff.y * s + breathe).setDepth(this.player.depth + 0.1);
   }
 
-  // ------------------------------------------------------------ season calendar (round 46)
-  /** The calendar screen: which month is showing, the season's months, and its objects. */
-  cal: { i: number; months: [number, number][]; objs: Phaser.GameObjects.GameObject[]; stickX: number } | null = null;
+  // ------------------------------------------------------------ season calendar (round 46; round 83: seasons)
+  /** The calendar screen: which page (season) is showing, the pages, and its objects. */
+  cal: { i: number; pages: [number, number][]; objs: Phaser.GameObjects.GameObject[]; stickX: number } | null = null;
 
-  /** ✕ at the calendar: the month you're in, with the key games flying pennants. ◀ ▶ = month, L1 / ○ = close. */
+  /** ✕ at the calendar: the season you're in, with the key games flying pennants. ◀ ▶ = season, L1 / ○ = close. */
   openCalendar() {
     if (this.busy) return;
     this.busy = true;
-    const c = app.career, now = dateOfDay(c.life.day);
-    const want = [now, ...(c.story?.draft ? [dateOfDay(c.story.draft.draft)] : [])]; // round 81: the draft's month too
-    // round 82: no gaps (April to the June draft goes through May)
-    const months = monthRange([...seasonMonths(c), ...want.map((w): [number, number] => [w.y, w.m])]);
-    this.cal = { i: months.findIndex(([y, m]) => y === now.y && m === now.m), months, objs: [], stickX: 0 };
+    const c = app.career, now = pageOf(c.life.day), inLeague = !c.story || c.story.stage === 'done';
+    // today's season, the draft's (round 81), and the NBA season once you're in the league; no gaps between them
+    const pages = pageRange([now, ...(c.story?.draft ? [pageOf(c.story.draft.draft)] : []), ...(inLeague ? seasonPages(c) : [])]);
+    this.cal = { i: pages.findIndex(([y, s]) => y === now[0] && s === now[1]), pages, objs: [], stickX: 0 };
     this.drawCalendar();
     sfx.blip(true);
   }
@@ -231,10 +220,11 @@ export class ApartmentScene extends RoomScene {
   drawCalendar() {
     const cal = this.cal!; for (const o of cal.objs) o.destroy(); cal.objs = [];
     // round 81: no NBA schedule on the calendar until you're in the league (the story's draft week instead)
-    const c = app.career, [yr, mo] = cal.months[cal.i], weeks = monthGrid(yr, mo), storyEv = storyEventsByDay(c);
-    const keys = !c.story || c.story.stage === 'done' ? keyGamesByDay(c) : new Map<number, ReturnType<typeof keyGamesByDay> extends Map<number, infer V> ? V : never>();
+    const c = app.career, [yr, se] = cal.pages[cal.i], weeks = seasonGrid(yr, se), storyEv = storyEventsByDay(c);
+    const inLeague = !c.story || c.story.stage === 'done';
+    const keys = inLeague ? keyGamesByDay(c) : new Map<number, ReturnType<typeof keyGamesByDay> extends Map<number, infer V> ? V : never>();
+    const sims = inLeague ? simGamesByDay(c) : new Map<number, ReturnType<typeof simGamesByDay> extends Map<number, infer V> ? V : never>();
     const cells: (CalCell | null)[][] = weeks.map((w) => w.map((d) => {
-      if (!d) return null;
       const kg = keys.get(d.day), team = kg ? TEAMS.find((t) => t.id === kg.opponent) : undefined;
       return { past: d.day >= 1 && d.day < c.life.day, today: d.day === c.life.day, pennant: kg ? [team?.colors[0] ?? '#6a3fa0', team?.colors[1] ?? '#f0f0f0'] : undefined };
     }));
@@ -249,18 +239,23 @@ export class ApartmentScene extends RoomScene {
     add(this.add.image(ox, oy, 'cal_page').setOrigin(0, 0).setScale(ART).setDepth(9601));
     const T = (x: number, y: number, str: string, size: number, col = '#2d2218', o: Phaser.Types.GameObjects.Text.TextStyle = {}) =>
       add(this.add.text(x, y, str, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: 'bold', ...o }).setDepth(9602));
-    // the month at the top (where the reference has the season)
-    T(X(CAL.W / 2), Y(CAL.titleH / 2 + 2), MONTHS[mo], 40).setOrigin(0.5);
-    T(X(CAL.W - 70), Y(CAL.titleH / 2 + 6), String(yr), 18, '#6e5a40').setOrigin(0.5);
+    // the season at the top (where the owner's reference has it), the year beside it
+    T(X(CAL.W / 2), Y(CAL.titleH / 2 + 2), SEASONS[se], 40).setOrigin(0.5);
+    T(X(CAL.W - 70), Y(CAL.titleH / 2 + 6), `Year ${yr}`, 18, '#6e5a40').setOrigin(0.5);
     WEEKDAYS.forEach((d, k) => T(X(CAL.gx0 + CAL.colW * (k + 0.5)), Y(CAL.titleH + CAL.headH / 2 + 1), d, 26).setOrigin(0.5));
-    const rh = calRowH(weeks.length), WHY: Record<string, string> = { Opener: 'OPENER', Finale: 'FINALE', Rivalry: 'RIVAL', 'National TV': 'NAT TV' };
+    const rh = calRowH(weeks.length), WHY: Record<string, string> = { Opener: 'OPENER', Finale: 'FINALE', Rivalry: 'RIVAL', 'National TV': 'NAT TV', Contender: 'CONTENDER', Playoff: 'PLAYOFF', Lottery: 'LOTTERY' };
     weeks.forEach((w, r) => w.forEach((d, k) => {
-      if (!d) return;
       const x0 = CAL.gx0 + CAL.colW * k + 2, y0 = CAL.titleH + CAL.headH + rh * r + 2, cw = CAL.colW - 2, ch = rh - 2;
       T(X(x0 + 3), Y(y0 + 1), String(d.d), 22, d.day < c.life.day ? '#6e5e4a' : '#2d2218');
       // round 81: the draft week (combine days, the scrimmage, the draft) as coloured tags
       const ev = storyEv.get(d.day);
       if (ev) T(X(x0 + cw / 2), Y(y0 + ch * 0.62), ev.label, ev.label.length > 7 ? 12 : 15, '#ffffff', { backgroundColor: ev.color, padding: { x: 4, y: 2 } }).setOrigin(0.5);
+      // round 83: an off-screen game (you don't play it): the opponent small and grey, then the result
+      const sg = sims.get(d.day);
+      if (sg) {
+        T(X(x0 + cw / 2), Y(y0 + ch * 0.5), `vs ${sg.opponent}`, 12, '#7a6a54').setOrigin(0.5);
+        if (sg.result) T(X(x0 + cw / 2), Y(y0 + ch * 0.76), `${sg.result.won ? 'W' : 'L'} ${sg.result.us}-${sg.result.them}`, 11, sg.result.won ? '#2f6a3a' : '#8a2a14').setOrigin(0.5);
+      }
       const kg = keys.get(d.day); if (!kg) return;
       const team = TEAMS.find((t) => t.id === kg.opponent), main = team?.colors[0] ?? '#6a3fa0';
       const lum = parseInt(main.slice(1, 3), 16) * 0.3 + parseInt(main.slice(3, 5), 16) * 0.59 + parseInt(main.slice(5, 7), 16) * 0.11;
@@ -269,8 +264,8 @@ export class ApartmentScene extends RoomScene {
       T(X(px + 3), Y(py + 18), WHY[kg.why] ?? kg.why.toUpperCase(), 11, '#8a2a14').setOrigin(0, 0);
       add(this.add.image(X(x0 + cw - 4), Y(y0 + 4), 'icon_ball').setOrigin(1, 0).setScale(ART * 0.75 * 2).setDepth(9602));
     }));
-    const prev = cal.i > 0, next = cal.i < cal.months.length - 1;
-    T(640, oy + ph + 22, `${prev ? '◀' : ' '}  ${next ? '▶' : ' '} month   ·   L1 close`, 16, '#ffffff', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
+    const prev = cal.i > 0, next = cal.i < cal.pages.length - 1;
+    T(640, oy + ph + 22, `${prev ? '◀' : ' '}  ${next ? '▶' : ' '} season   ·   L1 close`, 16, '#ffffff', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
   }
 
   /** Calendar input (the room is `busy` while it's open, so it doesn't walk). */
@@ -280,7 +275,7 @@ export class ApartmentScene extends RoomScene {
     const sx = inp.move.x, flick = Math.abs(sx) > 0.6 && Math.abs(cal.stickX) <= 0.6 ? Math.sign(sx) : 0;
     cal.stickX = sx;
     const dir = inp.pressed('left') || inp.pressed('tabPrev') || flick < 0 ? -1 : inp.pressed('right') || inp.pressed('tabNext') || flick > 0 ? 1 : 0;
-    const i = Math.max(0, Math.min(cal.months.length - 1, cal.i + dir));
+    const i = Math.max(0, Math.min(cal.pages.length - 1, cal.i + dir));
     if (i !== cal.i) { cal.i = i; this.drawCalendar(); sfx.blip(true); }
   }
 

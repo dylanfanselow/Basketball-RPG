@@ -1,36 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { dateOfDay, dayOfDate, monthGrid, keyGamesByDay, seasonMonths } from '../src/career/calendar';
+import { dateOf, dayOf, dateLabel, longDate, seasonGrid, pageRange, keyGamesByDay, seasonPages, YEAR_DAYS } from '../src/career/calendar';
 import { newCareer, gameDay, isKeyGame } from '../src/career/career';
 
-describe('season calendar (round 46)', () => {
-  it('day 1 is Thursday 19 Nov 2026 (round 82: a month later) and the next day is Friday the 20th', () => {
-    expect(dateOfDay(1)).toEqual({ y: 2026, m: 10, d: 19, wd: 3 });
-    expect(dateOfDay(gameDay(0))).toEqual({ y: 2026, m: 10, d: 20, wd: 4 });
+describe('season calendar (round 46; round 83: Stardew-style seasons)', () => {
+  it('day 1 is Fall 1 of Year 1, a Monday; every season is 28 days and starts on a Monday', () => {
+    expect(dateOf(1)).toEqual({ year: 1, season: 0, d: 1, wd: 0 });
+    expect(dateOf(2)).toEqual({ year: 1, season: 0, d: 2, wd: 1 });
+    expect(dateOf(29)).toEqual({ year: 1, season: 1, d: 1, wd: 0 });
+    expect(dateOf(YEAR_DAYS + 1)).toEqual({ year: 2, season: 0, d: 1, wd: 0 });
+    expect(dateLabel(57)).toBe('Spring 1');
+    expect(longDate(YEAR_DAYS)).toBe('Summer 28, Year 1');
   });
 
-  it('dates and days round-trip, across months and the new year', () => {
-    for (const n of [1, 13, 14, 44, 74, 75, 200]) { const t = dateOfDay(n); expect(dayOfDate(t.y, t.m, t.d)).toBe(n); }
-    expect(dateOfDay(44)).toMatchObject({ y: 2027, m: 0, d: 1 });
+  it('dates and days round-trip, across seasons and years', () => {
+    for (const n of [1, 13, 28, 29, 56, 84, 85, 112, 113, 300]) { const t = dateOf(n); expect(dayOf(t.year, t.season, t.d)).toBe(n); }
   });
 
-  it('month grids start on Monday and pad outside the month', () => {
-    const oct = monthGrid(2026, 9); // 1 Oct 2026 is a Thursday
-    expect(oct.length).toBe(5);
-    expect(oct[0].slice(0, 3)).toEqual([null, null, null]);
-    expect(oct[0][3]).toEqual({ d: 1, day: dayOfDate(2026, 9, 1) });
-    expect(oct.flat().filter(Boolean).length).toBe(31);
-    expect(monthGrid(2026, 10).flat().find((c) => c?.d === 19)!.day).toBe(1);
-    const feb = monthGrid(2027, 1); // 1 Feb 2027 is a Monday: exactly 4 rows
-    expect(feb.length).toBe(4);
-    expect(feb[0][0]).toMatchObject({ d: 1 });
-    for (const w of [...oct, ...feb]) expect(w.length).toBe(7);
+  it('a season page is always 4 full weeks, Monday first', () => {
+    const g = seasonGrid(1, 2);
+    expect(g.length).toBe(4);
+    for (const w of g) expect(w.length).toBe(7);
+    expect(g[0][0]).toEqual({ d: 1, day: dayOf(1, 2, 1) });
+    expect(g[3][6]).toEqual({ d: 28, day: dayOf(1, 2, 28) });
+    expect(pageRange([[2, 1], [1, 3]])).toEqual([[1, 3], [2, 0], [2, 1]]);
   });
 
-  it('key games sit on their game days; regular games are left off', () => {
+  it('key games sit on their game days; the NBA season is Fall and Winter of Year 2', () => {
     const c = newCareer('T', 'SG', 'LAL');
     const kg = keyGamesByDay(c);
-    expect(kg.get(gameDay(0))?.why).toBe('Opener');
-    c.season.schedule.forEach((_, i) => expect(kg.has(gameDay(i))).toBe(!!isKeyGame(c, i)));
-    expect(seasonMonths(c)[0]).toEqual([2026, 10]);
+    expect(kg.get(gameDay(c, 0))?.why).toBe('Opener');
+    c.season.schedule.forEach((_, i) => expect(kg.has(gameDay(c, i))).toBe(!!isKeyGame(c, i)));
+    expect(seasonPages(c)).toEqual([[2, 0], [2, 1]]);
+    expect(dateLabel(gameDay(c, 0))).toBe('Fall 1');
+    expect(dateLabel(gameDay(c, c.season.schedule.length - 1))).toBe('Winter 28');
   });
 });

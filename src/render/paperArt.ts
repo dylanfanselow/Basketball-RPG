@@ -123,7 +123,7 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   R(c, 14, 10, PAPER_W - 28, 2, INK);
   ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
   R(c, 14, 46, PAPER_W - 28, 1, INK);
-  ink(c, 'SUNDAY, FEBRUARY 28', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'SUNDAY, WINTER 28', 16, 49, 'bold 10px Arial, sans-serif');
   ink(c, 'WINTER EDITION  ·  50¢', PAPER_W - 16 - 118, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   // headline across the top
@@ -174,7 +174,7 @@ export function drawUnderPage(seed: number): HTMLCanvasElement {
 
 /**
  * Round 81: the paper when Ridgemont lost the final: Crestview's star suspended for performance-enhancing drugs.
- * Same 4x page, Kingston's photo in his Crestview kit. Round 82: it comes with the letter, a month after the final.
+ * Same 4x page, Kingston's photo in his Crestview kit. Round 83: it comes with the letter, the morning after the final.
  */
 export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   const cv = canvas(PAPER_W * K, PAPER_H * K), c = cv.getContext('2d')!;
@@ -185,7 +185,7 @@ export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   R(c, 14, 10, PAPER_W - 28, 2, INK);
   ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
   R(c, 14, 46, PAPER_W - 28, 1, INK);
-  ink(c, 'WEDNESDAY, MARCH 31', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'MONDAY, SPRING 1', 16, 49, 'bold 10px Arial, sans-serif');
   ink(c, 'SPORTS  ·  50¢', PAPER_W - 16 - 80, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   let y = ink(c, 'CRESTVIEW STAR SUSPENDED', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
@@ -193,8 +193,8 @@ export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   const colTop = y + 8;
   R(c, 14, colTop - 3, PAPER_W - 28, 1, INK);
   photo(c, 16, colTop + 2, 144, 112, king);
-  ink(c, 'KINGSTON WILLIAMS (#' + king.number + ') led Crestview Prep to the national title on February 28.', 16, colTop + 119, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
-  let ry2 = ink(c, `Test results released this week show the Crestview transfer used a banned substance this season. Ridgemont Academy, led by ${you}, fell to the Falcons in the final.`, 170, colTop + 2, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  ink(c, 'KINGSTON WILLIAMS (#' + king.number + ') led Crestview Prep to the national title on Sunday.', 16, colTop + 119, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  let ry2 = ink(c, `Test results released this morning show the Crestview transfer used a banned substance this season. Ridgemont Academy, led by ${you}, fell to the Falcons in the final.`, 170, colTop + 2, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
   ry2 = ink(c, '"We are reviewing every game," a league official said.', 170, ry2 + 6, 'italic bold 10px Georgia, serif', INK, 'left', 144, 12);
   bodyLines(c, 170, ry2 + 6, 144, Math.floor((PAPER_H - 20 - ry2) / 5), 21);
   bodyLines(c, 16, colTop + 160, 144, Math.floor((PAPER_H - 20 - colTop - 160) / 5), 22);

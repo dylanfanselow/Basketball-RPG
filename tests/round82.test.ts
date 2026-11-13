@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createCareer, draftWeek, juneDue, haleCalls, storyKeyGame } from '../src/career/career';
-import { dateOfDay, storyDay, skipTo, stageDay, monthRange } from '../src/career/calendar';
+import { createCareer, draftWeek, haleCalls, storyKeyGame } from '../src/career/career';
+import { dateOf, dateLabel, storyDay, skipTo, stageDay, HALE_CALL_DAYS } from '../src/career/calendar';
 import { defaultAppearance } from '../src/render/appearance';
 import { newStory } from '../src/sim/story';
 import { TEAMS } from '../src/sim/data';
@@ -11,45 +11,41 @@ function career(seed = 42) {
   return c;
 }
 
-describe('round 82: the story calendar', () => {
-  it('the story dates fall on the owner\'s days', () => {
-    expect(dateOfDay(storyDay('final'))).toEqual({ y: 2027, m: 1, d: 28, wd: 6 }); // Sunday 28 Feb
-    expect(dateOfDay(storyDay('letter'))).toEqual({ y: 2027, m: 2, d: 31, wd: 2 }); // Wednesday 31 Mar
-    expect(dateOfDay(storyDay('agent'))).toEqual({ y: 2027, m: 3, d: 1, wd: 3 }); // Thursday 1 Apr
-    expect(dateOfDay(storyDay('june'))).toMatchObject({ y: 2027, m: 5, d: 20 });
-    expect(dateOfDay(storyDay('draft'))).toEqual({ y: 2027, m: 5, d: 24, wd: 3 }); // Thursday 24 Jun
+describe('round 82 / 83: the story calendar', () => {
+  it('the story dates fall on the owner\'s days (round 83: seasons)', () => {
+    expect(dateLabel(storyDay('final'))).toBe('Winter 28');
+    expect(dateOf(storyDay('final')).wd).toBe(6); // a Sunday
+    expect(dateLabel(storyDay('letter'))).toBe('Spring 1'); // a day after the final
+    expect(dateLabel(storyDay('agent'))).toBe('Spring 2');
+    expect(dateLabel(storyDay('draft'))).toBe('Spring 28'); // the night the playoffs end
+    expect(storyDay('letter') - storyDay('final')).toBe(1);
     expect(storyDay('agent') - storyDay('letter')).toBe(1);
   });
   it('skipTo only moves forward; dev jumps land on the stage date', () => {
     const c = career();
     skipTo(c, 'final'); expect(c.life.day).toBe(storyDay('final'));
-    c.life.day = storyDay('june'); skipTo(c, 'agent'); expect(c.life.day).toBe(storyDay('june'));
+    c.life.day = storyDay('draft'); skipTo(c, 'agent'); expect(c.life.day).toBe(storyDay('draft'));
     expect(stageDay('bus')).toBe(storyDay('final'));
     expect(stageDay('letter')).toBe(storyDay('letter'));
     expect(stageDay('agentGarage')).toBe(storyDay('agent'));
     expect(stageDay('done')).toBeNull();
   });
-  it('the combine and scrimmage stay in April, the draft is 24 June; June comes after the scrimmage', () => {
+  it('the combine 7 days after the meeting, the scrimmage, the draft on Spring 28; Hale calls the last 4 mornings', () => {
     const c = career(), d = storyDay('agent');
     c.life.day = d; c.story!.stage = 'draftWeek';
     c.story!.draft = draftWeek(d, storyDay('draft'));
-    expect(dateOfDay(c.story!.draft.combine1)).toMatchObject({ m: 3, d: 8 });
-    expect(dateOfDay(c.story!.draft.scrimmage)).toMatchObject({ m: 3, d: 11 });
-    expect(juneDue(c)).toBe(false);
-    c.life.day = c.story!.draft.scrimmage; expect(juneDue(c)).toBe(true);
-    c.story!.june = true; expect(juneDue(c)).toBe(false);
-    c.life.day = storyDay('june'); expect(storyKeyGame(c)).toEqual({ when: '4 DAYS', what: 'The draft' });
+    expect(dateLabel(c.story!.draft.combine1)).toBe('Spring 9');
+    expect(dateLabel(c.story!.draft.combine2)).toBe('Spring 10');
+    expect(dateLabel(c.story!.draft.scrimmage)).toBe('Spring 12');
+    expect(dateLabel(c.story!.draft.draft - HALE_CALL_DAYS)).toBe('Spring 24');
+    c.life.day = storyDay('draft') - HALE_CALL_DAYS; expect(storyKeyGame(c)).toEqual({ when: '4 DAYS', what: 'The draft' });
   });
   it('Hale calls four mornings about four different real teams, the same every time', () => {
     const c = career(), calls = haleCalls(c);
-    expect(calls.length).toBe(4);
+    expect(calls.length).toBe(HALE_CALL_DAYS);
     expect(new Set(calls.map((k) => k.team)).size).toBe(4);
     for (const k of calls) expect(TEAMS.some((t) => t.city === k.team)).toBe(true);
     expect(haleCalls(c)).toEqual(calls);
     expect(calls[0].lines[0].text).toContain('Dee');
-  });
-  it('the calendar months have no gaps', () => {
-    expect(monthRange([[2027, 5], [2027, 3]])).toEqual([[2027, 3], [2027, 4], [2027, 5]]);
-    expect(monthRange([[2026, 11], [2027, 0]])).toEqual([[2026, 11], [2027, 0]]);
   });
 });

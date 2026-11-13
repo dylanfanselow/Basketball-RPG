@@ -16,7 +16,7 @@ import { setStage, storyScene } from './setup';
 import { prepareStory } from './preload';
 import { drawBustPage, drawLetter, PAPER_W, PAPER_H, LETTER_W, LETTER_H } from '../render/paperArt';
 import { kingstonLook } from '../sim/story';
-import { skipTo } from '../career/calendar';
+import { skipTo, dateLabel } from '../career/calendar';
 
 /**
  * Hooks for the story element at the trailer door (round 57: the owner will add one). Each runs when you go inside,
@@ -160,7 +160,7 @@ export class TrailerScene extends RoomScene {
     if (this.busy) return;
     this.busy = true;
     sfx.footstep('grass', 0);
-    if (stage === 'agent') { skipTo(app.career, 'agent'); app.changed(); } // round 82: the next day, Thursday 1 April
+    if (stage === 'agent') { skipTo(app.career, 'agent'); app.changed(); } // round 82: the next day (round 83: Spring 2)
     setStage(stage);
     this.cameras.main.fadeOut(650, 0, 0, 0);
     this.time.delayedCall(700, () => { const [scene, data] = storyScene(stage); this.scene.start(scene, data); });
@@ -364,7 +364,7 @@ export class TrailerScene extends RoomScene {
     const c = app.career;
     advanceDay(c);
     setStage('bigGame');
-    const banner = this.add.text(640, 330, `DAY ${c.life.day}`, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+    const banner = this.add.text(640, 330, dateLabel(c.life.day).toUpperCase(), { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
     this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 600 });
     sfx.greenChime();
     // (before goInside's morning callbacks at +1.7 s: this scene is gone by then)
@@ -386,7 +386,7 @@ export class TrailerScene extends RoomScene {
       if (this.story === 'night') { this.nextDay(); return; }
       if (this.story === 'homecoming') { this.toLetterMorning(); return; }
       advanceDay(c); app.changed();
-      const banner = this.add.text(640, 330, `DAY ${c.life.day}`, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+      const banner = this.add.text(640, 330, dateLabel(c.life.day).toUpperCase(), { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
       this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 800, yoyo: true, onComplete: () => banner.destroy() });
       sfx.greenChime();
     });
@@ -444,11 +444,11 @@ export class TrailerScene extends RoomScene {
     sfx.groan();
   }
 
-  /** After the homecoming: night, then (round 82) a month on, the letter morning, 31 March (the day art, so a fresh scene). */
+  /** After the homecoming: night, then the letter morning, Spring 1 (round 83; the day art, so a fresh scene). */
   private toLetterMorning() {
     const c = app.career;
     skipTo(c, 'letter'); setStage('letter');
-    const banner = this.add.text(640, 330, 'ONE MONTH LATER', { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+    const banner = this.add.text(640, 330, dateLabel(c.life.day).toUpperCase(), { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
     this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 600 });
     sfx.greenChime();
     this.time.delayedCall(900, () => this.cameras.main.fadeOut(450, 0, 0, 0));

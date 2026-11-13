@@ -261,6 +261,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 83: `career/calendar.ts` seasons (`SEASONS`, `dateOf` / `dayOf`, `dateLabel` / `longDate`, `seasonGrid`,
+  `pageRange` / `pageOf`, `seasonPages`, `simGamesByDay`, `STORY_DATES` as [year, season, day], `HALE_CALL_DAYS`);
+  new `career/schedule.ts` (`teamStrength`, `opponentTiers`, `TIERS`, `KEY_PER_TIER`, `RIVALS` (moved), `buildSeason`,
+  `gameDayOf`, `simResult`, `settleSeason`, `nextKeyIndex`, `nextFall`, `ROOKIE_SEASON_START`); `CareerState.season` =
+  `SeasonState` (`key`, `tier`, `start`, `results`), `gameDay(c, i)`, `advanceDay` settles off-screen games once in
+  the league, `applyGameResult` records the score and moves `gameNo` to the next key game, migration rebuilds old
+  schedules; June jump removed (`juneDue`, `StoryState.june`); ApartmentScene season pages + grey off-screen games;
+  dev menu *Story: Before the draft*.
   Round 82: `calendar.SEASON_DAY1` = 19 Nov 2026, `STORY_DATES` / `storyDay` / `skipTo` (never back) / `stageDay`
   (dev jumps) / `monthRange` (calendar months without gaps); `career.draftWeek(today, draft)`, `juneDue`, `haleCalls`
   (4 calls, 4 teams from `TEAMS` by squad seed), `StoryState.june` / `callDay`; PaperScene `skipTo('final')`;

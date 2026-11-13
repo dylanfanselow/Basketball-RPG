@@ -4,6 +4,7 @@ import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
 import { xpToNext, nextKeyGame, storyKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
+import { dateLabel } from '../career/calendar';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
@@ -244,7 +245,7 @@ export abstract class RoomScene extends Phaser.Scene {
     // money / day
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
     icon(882, 40, 'coin', 2); T(902, 30, L.money < 0 ? `-$${(-L.money).toLocaleString('en-US')}` : `$${L.money.toLocaleString('en-US')}`, 18, L.money < 0 ? '#ff8a7a' : '#bfe86a'); // round 81: debt shows red
-    T(882, 58, `DAY ${L.day}`, 15, '#ffe9a8');
+    T(882, 58, dateLabel(L.day), 15, '#ffe9a8'); // round 83: the season and day ("Fall 2")
     this.hud = { g, objs, sig: this.hudSig() };
     // a skill that went up since it was last shown flashes and pops a "+n"
     for (const st of CORE_STATS) {
