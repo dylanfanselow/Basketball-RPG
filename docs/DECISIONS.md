@@ -188,6 +188,23 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 82 (owner): the story's calendar.**
+  - Everything moved a **month later**: day 1 (the rainy night) is **Thu 19 Nov 2026**, the big game Fri 20 Nov
+    (`SEASON_DAY1`; the NBA calendar uses the same epoch, so its placeholder opener moved too).
+  - The **national final is Sun 28 Feb 2027** (the front page is dated that day). Then **a month passes** ("ONE MONTH
+    LATER"): the mail comes **Wed 31 Mar**, so **Thu 1 Apr** is your first day at Hale's place (a THURSDAY, APRIL 1
+    card). When he says it's rent free: "Better not be an April Fools joke."
+  - The bust paper comes with the letter, dated 31 Mar (Kingston "led Crestview to the national title on February
+    28"). After it: "Kingston... no way.", then "Wait. There's more in here.", then the letter.
+  - **The combine and scrimmage stay in April** (owner's pick): Apr 8-9 and Apr 11. The draft is **Thu 24 Jun 2027**.
+    Sleeping on or after the scrimmage day jumps **TWO MONTHS LATER** to **Sun 20 Jun**: "Two months of double
+    shifts, just to keep up with the debt payments." / "Haven't had time to touch a ball since the scrimmage."
+  - The days before the draft you roam; **Hale calls every morning** (owner's pick: he relays it, not the teams) about
+    a team thinking of picking you: four real teams (seeded per story), the interest building from the second round
+    to the late first, the last call the night before.
+  - Front-view **high top** redrawn as hair (owner: Kingston had no hair on the bust photo): as wide as the head, down
+    over the temples, a curved hairline, no hat-brim line; `hair/hightop_front.png` re-exported. In newspaper photos
+    dark hair prints solid ink.
 - **Round 80k (owner):** the character builder's LOOK step has **Shirt color**, **Pants color** and **Pants** (shorts /
   long) for your everyday clothes (rooms, the trailer yard, the builder preview); game uniforms stay team colors.
 - **Round 80j (owner): hair and headbands.** Tall hair is one shape in one shading (the high top's block and the
@@ -436,7 +453,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   `M T W Th F Sa Su`) but with **our own damage** (torn top-left, notched right edge, dog-eared bottom-left, coffee
   ring), the **month name at the top** (year beside it) and **key games only** (pennant in the opponent's colours +
   OPENER / RIVAL / NAT TV / FINALE) instead of the reference's events. Day 1 = Mon 19 Oct 2026, so the opener is
-  Tue 20 Oct (2026-27 opening night). ✕ at the wall calendar opens it; ◀ ▶ months, L1 closes. Sleeping: the whole
+  Tue 20 Oct (2026-27 opening night). (Round 82: day 1 moved to Thu 19 Nov 2026 for the story.) ✕ at the wall calendar opens it; ◀ ▶ months, L1 closes. Sleeping: the whole
   head stays in frame (propped up on the pillow, knees softly bent) and **the couch's own blanket** comes off the
   couch and covers his legs (no second blanket).
 - **Round 45: you lie on the couch to sleep; jump shots face the basket.** Sleeping shows the player on his back on

@@ -69,6 +69,23 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
   find: for (let yy = 0; yy < FRONT_H; yy++) for (let xx = 0; xx < FRONT_W; xx++) if (src[(yy * FRONT_W + xx) * 4 + 3] > 0) { top = yy; break find; }
   const k = 2; // 2 art px per sprite px
   const ox = x + Math.round((w - FRONT_W * k) / 2), oy = y + 14 - top * k; // round 81: headroom (tall hair touched the frame)
+  // round 82: the jersey starts at the shoulders (the first row with a shoulders-wide run of jersey color); dark hair above it never
+  // counts as jersey (Kingston's black high top matched Crestview's navy and came out dithered like a grey hat)
+  const isJersey = (i: number) => near(src[i], src[i + 1], src[i + 2], jc, 90) || near(src[i], src[i + 1], src[i + 2], kit.jerseyShade, 70);
+  let shoulders = FRONT_H;
+  rows: for (let yy = top; yy < FRONT_H; yy++) {
+    let run = 0;
+    for (let xx = 0; xx < FRONT_W; xx++) {
+      const i = (yy * FRONT_W + xx) * 4;
+      run = src[i + 3] > 0 && isJersey(i) ? run + 1 : 0;
+      if (run >= 22) { shoulders = yy; break rows; } // wider than any hair style
+    }
+  }
+  // round 82: dark hair prints as one flat tone at the hair's own lightness (black hair = solid ink, not a two-tone
+  // diagonal from its shading; lighter hair keeps its shading). Hair pixels = the ones that change when the same figure is drawn with marker hair.
+  const hc = who.appearance.hairColor, [hr, hg, hb] = hexRgb(hc), hairLum = Math.min(255, (0.3 * hr + 0.59 * hg + 0.11 * hb) * 1.15 + 10);
+  const marked = buildCoachSheet(who.heightFt, { ...who.appearance, hairColor: '#00ff00' }, kit).getContext('2d')!.getImageData(0, 0, FRONT_W, FRONT_H).data;
+  const isHair = (i: number) => Math.abs(marked[i] - src[i]) + Math.abs(marked[i + 1] - src[i + 1]) + Math.abs(marked[i + 2] - src[i + 2]) > 40;
   const pcv = canvas(PAPER_W, PAPER_H), pc = pcv.getContext('2d')!;
   const out = pc.getImageData(0, 0, PAPER_W, PAPER_H), od = out.data;
   for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
@@ -79,8 +96,9 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
     else lum = 150 + ((yy - y) / h) * 50 + (hn(xx >> 3, yy >> 3, 9) - 0.5) * 20; // a grey gym wall behind
     // round 81: only the jersey (and the wall behind) is dithered: hair, face and arms stay clean, whatever the hair
     // style's height (a fixed 15-row band put tall styles' faces in the dither)
-    const jersey = inside && (() => { const i = (sy * FRONT_W + sx) * 4; return near(src[i], src[i + 1], src[i + 2], jc, 90) || near(src[i], src[i + 1], src[i + 2], kit.jerseyShade, 70); })();
+    const jersey = inside && sy >= shoulders && isJersey((sy * FRONT_W + sx) * 4);
     const face = inside && !jersey;
+    if (face && sy < shoulders && hairLum < 110) { const i = (sy * FRONT_W + sx) * 4; if (isHair(i)) lum = hairLum; }
     const t = face ? 0.5 : BAYER[(yy & 3) * 4 + (xx & 3)] / 16;
     const level = Math.max(0, Math.min(3, Math.floor(lum / 64 + t - 0.5)));
     const col = [[29, 27, 24], [88, 84, 77], [170, 164, 150], [244, 236, 210]][level];
@@ -105,7 +123,7 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   R(c, 14, 10, PAPER_W - 28, 2, INK);
   ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
   R(c, 14, 46, PAPER_W - 28, 1, INK);
-  ink(c, 'SATURDAY, FEBRUARY 21', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'SUNDAY, FEBRUARY 28', 16, 49, 'bold 10px Arial, sans-serif');
   ink(c, 'WINTER EDITION  ·  50¢', PAPER_W - 16 - 118, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   // headline across the top
@@ -155,8 +173,8 @@ export function drawUnderPage(seed: number): HTMLCanvasElement {
 }
 
 /**
- * Round 81: the next morning's paper when Ridgemont lost the final: Crestview's star suspended for performance-
- * enhancing drugs. Same 4x page, Kingston's photo in his Crestview kit.
+ * Round 81: the paper when Ridgemont lost the final: Crestview's star suspended for performance-enhancing drugs.
+ * Same 4x page, Kingston's photo in his Crestview kit. Round 82: it comes with the letter, a month after the final.
  */
 export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   const cv = canvas(PAPER_W * K, PAPER_H * K), c = cv.getContext('2d')!;
@@ -167,7 +185,7 @@ export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   R(c, 14, 10, PAPER_W - 28, 2, INK);
   ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
   R(c, 14, 46, PAPER_W - 28, 1, INK);
-  ink(c, 'SUNDAY, FEBRUARY 22', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'WEDNESDAY, MARCH 31', 16, 49, 'bold 10px Arial, sans-serif');
   ink(c, 'SPORTS  ·  50¢', PAPER_W - 16 - 80, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   let y = ink(c, 'CRESTVIEW STAR SUSPENDED', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
@@ -175,8 +193,8 @@ export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
   const colTop = y + 8;
   R(c, 14, colTop - 3, PAPER_W - 28, 1, INK);
   photo(c, 16, colTop + 2, 144, 112, king);
-  ink(c, 'KINGSTON WILLIAMS (#' + king.number + ') led Crestview Prep to the title on Saturday night.', 16, colTop + 119, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
-  let ry2 = ink(c, `Test results released Sunday morning show the Crestview transfer used a banned substance this season. Ridgemont Academy, led by ${you}, fell to the Falcons in the final.`, 170, colTop + 2, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  ink(c, 'KINGSTON WILLIAMS (#' + king.number + ') led Crestview Prep to the national title on February 28.', 16, colTop + 119, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  let ry2 = ink(c, `Test results released this week show the Crestview transfer used a banned substance this season. Ridgemont Academy, led by ${you}, fell to the Falcons in the final.`, 170, colTop + 2, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
   ry2 = ink(c, '"We are reviewing every game," a league official said.', 170, ry2 + 6, 'italic bold 10px Georgia, serif', INK, 'left', 144, 12);
   bodyLines(c, 170, ry2 + 6, 144, Math.floor((PAPER_H - 20 - ry2) / 5), 21);
   bodyLines(c, 16, colTop + 160, 144, Math.floor((PAPER_H - 20 - colTop - 160) / 5), 22);

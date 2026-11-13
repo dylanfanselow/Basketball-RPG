@@ -16,6 +16,7 @@ import { setStage, storyScene } from './setup';
 import { prepareStory } from './preload';
 import { drawBustPage, drawLetter, PAPER_W, PAPER_H, LETTER_W, LETTER_H } from '../render/paperArt';
 import { kingstonLook } from '../sim/story';
+import { skipTo } from '../career/calendar';
 
 /**
  * Hooks for the story element at the trailer door (round 57: the owner will add one). Each runs when you go inside,
@@ -159,6 +160,7 @@ export class TrailerScene extends RoomScene {
     if (this.busy) return;
     this.busy = true;
     sfx.footstep('grass', 0);
+    if (stage === 'agent') { skipTo(app.career, 'agent'); app.changed(); } // round 82: the next day, Thursday 1 April
     setStage(stage);
     this.cameras.main.fadeOut(650, 0, 0, 0);
     this.time.delayedCall(700, () => { const [scene, data] = storyScene(stage); this.scene.start(scene, data); });
@@ -212,7 +214,8 @@ export class TrailerScene extends RoomScene {
         if (this.inp.pressed('a')) { if (this.box.typing) this.box.finishTyping(); else { this.lines.shift(); sfx.blip(true); l.then?.(); } }
       } else this.box.hide();
       this.box.draw();
-      if (this.thinking && !this.lines.length) { this.thinking = false; this.busy = false; }
+      // round 82: a line can put up a page (the letter after the bust paper): stay busy while it's up
+      if (this.thinking && !this.lines.length) { this.thinking = false; this.busy = this.pages.length > 0; }
     }
     this.momScene(dt);
     this.drawSnow(dt);
@@ -441,11 +444,11 @@ export class TrailerScene extends RoomScene {
     sfx.groan();
   }
 
-  /** After the homecoming: night, the next day, the letter morning (the day art, so a fresh scene). */
+  /** After the homecoming: night, then (round 82) a month on, the letter morning, 31 March (the day art, so a fresh scene). */
   private toLetterMorning() {
     const c = app.career;
-    advanceDay(c); setStage('letter');
-    const banner = this.add.text(640, 330, `DAY ${c.life.day}`, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+    skipTo(c, 'letter'); setStage('letter');
+    const banner = this.add.text(640, 330, 'ONE MONTH LATER', { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
     this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 600 });
     sfx.greenChime();
     this.time.delayedCall(900, () => this.cameras.main.fadeOut(450, 0, 0, 0));
@@ -505,17 +508,22 @@ export class TrailerScene extends RoomScene {
     const agent = AGENT_NAME;
     this.piece('mailbox')?.setFrame(0);
     sfx.paperRustle();
-    if (!st.final?.won) {
-      const r = st.rival;
-      const king = { name: 'Kingston Williams', number: r?.number ?? 23, heightFt: (r?.heightIn ?? 76) / 12, appearance: kingstonLook(r?.appearance ?? randomAppearance(() => 0.4)), colors: ['#1c2b4a', '#c0c6cf'] as [string, string] };
-      this.pushPage('mail_bust', drawBustPage(king, c.name), PAPER_W, PAPER_H);
-    }
-    this.pushPage('mail_letter', drawLetter(you, agent), LETTER_W, LETTER_H, () => {
+    const letter = () => this.pushPage('mail_letter', drawLetter(you, agent), LETTER_W, LETTER_H, () => {
       st.agent = agent; app.changed();
       this.lines = [{ who: 'you', text: `${agent}. An agent.` }, { who: 'you', text: 'Ma\'s dealt with enough already. I\'ll go on my own.' }];
       this.thinking = true; this.busy = true;
       if (!this.box) this.box = new StoryBox(this, { y: 590 });
     });
+    if (!st.final?.won) {
+      const r = st.rival;
+      const king = { name: 'Kingston Williams', number: r?.number ?? 23, heightFt: (r?.heightIn ?? 76) / 12, appearance: kingstonLook(r?.appearance ?? randomAppearance(() => 0.4)), colors: ['#1c2b4a', '#c0c6cf'] as [string, string] };
+      // round 82 (owner): you take it in, then find the letter under it
+      this.pushPage('mail_bust', drawBustPage(king, c.name), PAPER_W, PAPER_H, () => {
+        this.lines = [{ who: 'you', text: 'Kingston... no way.' }, { who: 'you', text: 'Wait. There\'s more in here.', then: letter }];
+        this.thinking = true; this.busy = true;
+        if (!this.box) this.box = new StoryBox(this, { y: 590 });
+      });
+    } else letter();
   }
   private pushPage(key: string, cv: HTMLCanvasElement, w: number, h: number, then?: () => void) {
     if (this.textures.exists(key)) this.textures.remove(key);

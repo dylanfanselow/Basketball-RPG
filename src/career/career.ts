@@ -71,6 +71,10 @@ export interface StoryState {
   agent?: string;
   /** round 81: the draft week, career days (set when the agent shows you the calendar) */
   draft?: DraftWeek;
+  /** round 82: slept past the scrimmage, the story jumped to June (the days before the draft) */
+  june?: boolean;
+  /** round 82: the last career day Hale called about the teams (one call a morning) */
+  callDay?: number;
 }
 export interface DraftWeek { combine1: number; combine2: number; scrimmage: number; draft: number }
 /** Round 81: the debt from fixing the generator and the trailer (owner: your money goes negative). */
@@ -80,9 +84,51 @@ export function takeOnDebt(c: CareerState) {
   const st = c.story; if (!st || st.debt) return;
   st.debt = GENERATOR_DEBT; c.life.money -= GENERATOR_DEBT;
 }
-/** Round 81: the week before the draft, from the day the agent shows it to you. */
-export function draftWeek(today: number): DraftWeek {
-  return { combine1: today + 7, combine2: today + 8, scrimmage: today + 10, draft: today + 12 }; // round 81b: 7 days to the combine
+/** Round 81: the combine and the scrimmage, from the day the agent shows them to you; round 82: the draft is its own
+ *  date (in June, see `calendar.STORY_DATES`). */
+export function draftWeek(today: number, draft: number): DraftWeek {
+  return { combine1: today + 7, combine2: today + 8, scrimmage: today + 10, draft }; // round 81b: 7 days to the combine
+}
+/** Round 82: the story jumps to June when you sleep on (or after) the scrimmage day. */
+export const juneDue = (c: CareerState) => { const st = c.story; return !!st?.draft && !st.june && c.life.day >= st.draft.scrimmage; };
+
+/** One of Hale's calls: his lines, then yours. */
+export interface HaleCall { team: string; lines: { who: 'agent' | 'me'; text: string }[] }
+/**
+ * Round 82 (owner): the days before the draft, Hale calls every morning about a team thinking of picking you. Four
+ * calls, four different teams (deterministic from the story's squad seed), the interest building up.
+ */
+export function haleCalls(c: CareerState): HaleCall[] {
+  let seed = ((c.story?.squadSeed ?? c.name.length * 7919) ^ 0x4a1e) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pool = [...TEAMS], teams: string[] = [];
+  while (teams.length < 4 && pool.length) teams.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0].city);
+  const [a, b, t3, d] = teams;
+  const you = c.firstName || c.name.split(' ')[0];
+  return [
+    { team: a, lines: [
+      { who: 'agent', text: `${you}. Hale. Your phone's about to get busy.` },
+      { who: 'agent', text: `${a} called this morning. They've got you on their board. Second round, but it's a start.` },
+      { who: 'me', text: `${a}? For real?` },
+      { who: 'agent', text: 'For real. Keep your phone on.' },
+    ] },
+    { team: b, lines: [
+      { who: 'agent', text: `${b} asked for your scrimmage tape. Then they called back and asked again.` },
+      { who: 'agent', text: 'They pick twice in the forties. That\'s two chances.' },
+      { who: 'me', text: 'Two chances. I\'ll take it.' },
+    ] },
+    { team: t3, lines: [
+      { who: 'agent', text: `${t3} is thinking about you. Late first round.` },
+      { who: 'agent', text: 'Don\'t get excited. Thinking isn\'t picking.' },
+      { who: 'me', text: 'Late first...' },
+    ] },
+    { team: d, lines: [
+      { who: 'agent', text: 'Last call before the big night.' },
+      { who: 'agent', text: `${d} is the team I'd watch. Late first, if the board falls right.` },
+      { who: 'agent', text: 'Get some sleep. Tomorrow, they call your name.' },
+      { who: 'me', text: 'Tomorrow.' },
+    ] },
+  ];
 }
 /** Round 81: the draft week's events by career day (the calendar draws them as tags). */
 export function storyEventsByDay(c: CareerState): Map<number, { label: string; color: string }> {

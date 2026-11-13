@@ -5,11 +5,11 @@ import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
+import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay, juneDue, haleCalls } from '../career/career';
 import { AgentTalk } from './agentTalk';
 import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage, storyScene } from './setup';
-import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, MONTHS, WEEKDAYS } from '../career/calendar';
+import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, monthRange, storyDay, skipTo, MONTHS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
 
@@ -53,6 +53,40 @@ export class ApartmentScene extends RoomScene {
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
     if (this.story === 'agent') this.startAgent();
+    else this.maybeCall(); // round 82: a June morning Hale hasn't called yet (Load Save, back from the garage)
+  }
+
+  /** Round 82: a big date card (the DAY banner's style), up and gone. */
+  private dateBanner(text: string, hold = 800) {
+    const banner = this.add.text(640, 330, text, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
+    this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold, yoyo: true, onComplete: () => banner.destroy() });
+    sfx.greenChime();
+  }
+
+  /**
+   * Round 82 (owner): the days before the draft, Hale calls every morning about a team thinking of picking you (one
+   * call a day, Jun 20-23). The first morning back you think about the two months first: no time to train, work to
+   * make the debt payments.
+   */
+  private maybeCall() {
+    const c = app.career, st = c.story;
+    if (!st || st.stage !== 'draftWeek' || !st.june || !st.draft || this.agent) return;
+    const day = c.life.day, first = storyDay('june');
+    if (day >= st.draft.draft || st.callDay === day || day < first) return;
+    const calls = haleCalls(c), call = calls[Math.min(calls.length - 1, day - first)];
+    st.callDay = day; app.changed();
+    const you = c.firstName || c.name.split(' ')[0], left = st.draft.draft - day;
+    const think = (text: string) => ({ say: { who: 'you' as const, text } });
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      { wait: 0.5 },
+      ...(day === first ? [
+        think('Two months of double shifts, just to keep up with the debt payments.'),
+        think(`Haven't had time to touch a ball since the scrimmage. And the draft's in ${left === 1 ? 'one day' : `${['zero', 'one', 'two', 'three', 'four', 'five', 'six'][left] ?? left} days`}.`),
+      ] : []),
+      { run: () => sfx.phoneRing() },
+      { say: { who: 'narrator' as const, text: 'Your phone buzzes. VICTOR HALE.' } },
+      ...call.lines.map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'VICTOR HALE (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
+    ], { phone: true });
   }
 
   /**
@@ -65,8 +99,9 @@ export class ApartmentScene extends RoomScene {
     const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
     const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
     const P = AGENT_PATHS.apartment;
+    this.dateBanner('THURSDAY, APRIL 1', 700); // round 82 (owner): your first day here
     this.agent = new AgentTalk(this, P.haleStart, [
-      { wait: 0.6 },
+      { wait: 1.8 },
       hale(`You came. Good. ${st.agent ?? 'Victor Hale'}.`),
       hale('I represent players in the NBA. I was at the national final. I\'ve done this a long time, and I know what I saw.'),
       hale('Natural talent. And the drive to go with it. That combination doesn\'t come around often.'),
@@ -76,6 +111,7 @@ export class ApartmentScene extends RoomScene {
       hale('So here\'s what we\'ll do. This place? It\'s yours.'),
       // round 81b (owner): free until you make it, then about your whole first contract plus the generator
       hale('Rent free until you make it.'),
+      me('Better not be an April Fools joke.'), // round 82 (owner): it's the first of April
       hale('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
       hale('One condition.'),
       hale('You can\'t fail.'),
@@ -83,9 +119,10 @@ export class ApartmentScene extends RoomScene {
       // round 81b: around the kitchen island, not through it
       { agentTo: P.haleToCalendar },
       { youTo: P.youToCalendar },
-      { run: () => { st.draft = draftWeek(c.life.day); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
+      { run: () => { st.draft = draftWeek(c.life.day, storyDay('draft')); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
       hale('This is your week. Seven days from today: the combine.'),
-      hale('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league. Then the draft.'),
+      hale('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
+      hale('Then you wait. The draft\'s not till June. The twenty-fourth.'), // round 82
       hale('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
       { run: () => this.closeCalendar() },
       hale('Now. The garage.'),
@@ -134,10 +171,11 @@ export class ApartmentScene extends RoomScene {
     });
     sfx.blip(true);
     this.time.delayedCall(1900, () => {
-      advanceDay(c); app.changed();
-      const banner = this.add.text(640, 330, `DAY ${c.life.day}`, { fontFamily: FONT, fontSize: '54px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 8 }).setOrigin(0.5).setDepth(8960).setAlpha(0).setScale(0.8);
-      this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut', hold: 700, yoyo: true, onComplete: () => banner.destroy() });
-      sfx.greenChime();
+      // round 82 (owner): after the scrimmage the story jumps to June, a few days before the draft
+      const june = juneDue(c);
+      if (june) { c.story!.june = true; skipTo(c, 'june'); } else advanceDay(c);
+      app.changed();
+      this.dateBanner(june ? 'TWO MONTHS LATER' : `DAY ${c.life.day}`, june ? 1100 : 700);
     });
     this.time.delayedCall(3000, () => {
       this.tweens.add({ targets: night, alpha: 0, duration: 700, ease: 'Sine.easeInOut', onComplete: () => night.destroy() });
@@ -149,6 +187,7 @@ export class ApartmentScene extends RoomScene {
       this.pos = { ...SPOTS.couch }; this.face = { x: 0, y: 1 }; this.view = undefined; this.vel = { x: 0, y: 0 };
       this.busy = false;
       this.sendEnergyOrbs(sleepPlan(c), ENERGY_ORB, { x: sxOf(SPOTS.couch.x), y: syOf(SPOTS.couch.y) - 110 });
+      this.time.delayedCall(900, () => this.maybeCall()); // round 82: Hale's morning call (June)
     });
   }
 
@@ -173,10 +212,10 @@ export class ApartmentScene extends RoomScene {
   openCalendar() {
     if (this.busy) return;
     this.busy = true;
-    const c = app.career, now = dateOfDay(c.life.day), months = seasonMonths(c);
+    const c = app.career, now = dateOfDay(c.life.day);
     const want = [now, ...(c.story?.draft ? [dateOfDay(c.story.draft.draft)] : [])]; // round 81: the draft's month too
-    for (const w of want) if (!months.some(([y, m]) => y === w.y && m === w.m)) months.push([w.y, w.m]);
-    months.sort((a, b) => a[0] * 12 + a[1] - (b[0] * 12 + b[1]));
+    // round 82: no gaps (April to the June draft goes through May)
+    const months = monthRange([...seasonMonths(c), ...want.map((w): [number, number] => [w.y, w.m])]);
     this.cal = { i: months.findIndex(([y, m]) => y === now.y && m === now.m), months, objs: [], stickX: 0 };
     this.drawCalendar();
     sfx.blip(true);

@@ -18,7 +18,7 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   step uses them (slow motion no longer drops them).
 - L1 = escape everywhere (pause → quit in game). Pause menu stays open (it used to close on the same frame).
 - **R1 (hold) icon pass** (keyboard Q): ✕ ○ □ △ glyphs over teammates, "hold R1 ICON PASS" hint above the diamond.
-- Round 46: season calendar, `career/calendar.ts` (`dateOfDay`: day 1 = Mon 19 Oct 2026, `monthGrid` Monday-first,
+- Round 46: season calendar, `career/calendar.ts` (`dateOfDay`: day 1 = Mon 19 Oct 2026 (round 82: Thu 19 Nov 2026), `monthGrid` Monday-first,
   `keyGamesByDay`, `seasonMonths`); ✕ Calendar at `SPOTS.calendar` → `ApartmentScene.openCalendar()` overlay (page baked
   by `roomArt.drawCalendarPage` + `CAL` layout, text on top; ◀ ▶ / L2 R1 / stick = month, L1 / ○ close). Sleep pose
   re-fit inside the 96-px frame (head was cut off; test in anim.test.ts); couch has 2 frames (1 = bare) and
@@ -261,6 +261,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 82: `calendar.SEASON_DAY1` = 19 Nov 2026, `STORY_DATES` / `storyDay` / `skipTo` (never back) / `stageDay`
+  (dev jumps) / `monthRange` (calendar months without gaps); `career.draftWeek(today, draft)`, `juneDue`, `haleCalls`
+  (4 calls, 4 teams from `TEAMS` by squad seed), `StoryState.june` / `callDay`; PaperScene `skipTo('final')`;
+  TrailerScene ONE MONTH LATER (`skipTo('letter')`), `storyExit('agent')` → `skipTo('agent')`, bust page → two
+  thoughts → letter (`busy` stays while a page is up); ApartmentScene `dateBanner`, April Fools line, `sleep` jump
+  (`juneDue` → TWO MONTHS LATER), `maybeCall` (after waking and on create); `AgentTalk` `{ phone: true }` (no
+  figure) and hides its box when a script ends on a line; `paperArt.photo` jersey only below the shoulder line, dark
+  hair flat (marker-hair second render); `frontHead` high top redrawn + `hightop_front.png`; dev menu *Story: June*.
   Round 81b: `world/agentPaths.ts` (`AGENT_PATHS`), `AgentTalk` steps `agentTo` / `youTo` take waypoint lists,
   `agentOut` (walks out a door); `RoomScene.music()` hook ('home' in Apartment + Garage; `sfx` track `home`);
   `draftWeek` +7/+8/+10/+12, `storyKeyGame` names the next event.

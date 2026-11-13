@@ -7,6 +7,7 @@ import { StoryBox, BoxSpeaker } from '../render/storyBox';
 import { drawFrontPage, drawUnderPage, PAPER_W, PAPER_H, PAPER_SPOTS, K } from '../render/paperArt';
 import { setStage, storyScene, ensureStory } from './setup';
 import { prewarmRoom } from './preload';
+import { skipTo, storyDay } from '../career/calendar';
 
 /** The paper on the table: its centre (scene units), scale (scene units per art px) and tilt (the reference's). */
 const PX = 660, PY = 380, PS = 2.2, TILT = -0.2;
@@ -41,8 +42,9 @@ export class PaperScene extends Phaser.Scene {
     this.phase = 'card'; this.stop = 0; this.t = 0; this.lines = [];
     const c = app.career;
     ensureStory();
-    // it's winter now (the yard stays snowy from here on); three months have gone by
-    if (!c.story!.winter) { c.story!.winter = true; c.life.day += 90; app.changed(); }
+    // it's winter now (the yard stays snowy from here on); three months have gone by: round 82, the final is 28 Feb
+    if (!c.story!.winter) { c.story!.winter = true; app.changed(); }
+    if (c.life.day < storyDay('final')) { skipTo(c, 'final'); app.changed(); }
     prewarmRoom(this); // your trailer walk in the snow is next
     this.cameras.main.setBackgroundColor('#e9dbb8');
     // the table: warm cream with a faint grain

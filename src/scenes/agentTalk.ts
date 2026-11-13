@@ -33,7 +33,8 @@ export class AgentTalk {
   private wp = 0;
   private outAt = -1;
 
-  constructor(private room: RoomScene & { inp: { pressed(k: string): boolean } }, start: V, private steps: AgentStep[]) {
+  /** `phone` (round 82): he's on the phone, not in the room (no figure; the lines and the room's busy work the same). */
+  constructor(private room: RoomScene & { inp: { pressed(k: string): boolean } }, start: V, private steps: AgentStep[], opts: { phone?: boolean } = {}) {
     const key = 'story_agent_v1', tm = room.textures;
     if (!tm.exists(key)) {
       const a = randomAppearance(() => 0.23);
@@ -44,6 +45,7 @@ export class AgentTalk {
     }
     this.at = { ...start };
     this.sprite = room.add.sprite(sxOf(start.x), syOf(start.y), key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95);
+    if (opts.phone) this.sprite.setVisible(false);
     this.box = new StoryBox(room, { y: 590, depth: 9650 }); // over the apartment calendar
     room.busy = true;
   }
@@ -88,7 +90,8 @@ export class AgentTalk {
     // the agent: talks with his hands now and then, bobs as he walks
     const talking = step && 'say' in step && step.say.who === 'agent' && Math.sin(this.t * 2.4) > 0.55;
     if (this.sprite.active) this.sprite.setFrame(talking ? 4 : 0).setPosition(sxOf(this.at.x), syOf(this.at.y) - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(syOf(this.at.y));
-    if (this.done) { room.busy = false; return false; }
+    // round 82: a scene can end on a line (a phone call): put the box away with it
+    if (this.done) { this.box.hide(); room.busy = false; return false; }
     return true;
   }
 

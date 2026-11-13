@@ -19,7 +19,7 @@ describe('round 81: the debt, the draft week', () => {
   });
   it('the draft week: the combine 7 days out (two days), a scrimmage, the draft, on the calendar and the HUD card', () => {
     const c = career(); c.life.day = 100;
-    c.story!.draft = draftWeek(100);
+    c.story!.draft = draftWeek(100, 112);
     const ev = storyEventsByDay(c);
     expect([...ev.values()].map((e) => e.label)).toEqual(['COMBINE', 'COMBINE', 'SCRIMMAGE', 'DRAFT']);
     expect(ev.get(107)?.label).toBe('COMBINE');

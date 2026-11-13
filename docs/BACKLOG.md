@@ -100,6 +100,9 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 82:** the combine and scrimmage (Apr 8-9, 11) are still calendar tags only, and sleeping past them jumps to
+  June; the draft day (24 Jun) has nothing yet. Ask whether the trailer yard should still be snowy on 31 March, and
+  how the new front-view high top looks on benches / fans.
 - **Round 81 follow-ups:** the combine (two days of skill tests), the scrimmage and the draft itself; paying the debt off; the reveal that Hale made the generator fail and the fire-or-keep choice; Mom's scene after the repairs.
 - **Round 80i:** ask about the academy name (Ridgemont Academy Rams, easy to rename: `ACADEMY` in sim/story.ts + paper / bus / story texts).
 - **Round 80e:** ask whether the halftime walk speed / length feels right and how often Kingston talks now.

@@ -842,7 +842,16 @@ export function frontHead(ctx: Ctx, cx0: number, hy: number, a: Appearance, k: n
     const capTo = (y: number, puff = 1.05) => { ctx.save(); ctx.beginPath(); ctx.ellipse(cx0, hy, rx * puff, ry * puff, 0, 0, Math.PI * 2); ctx.clip(); poly(ctx, [[cx0 - rx * 2, hy - ry * 2], [cx0 + rx * 2, hy - ry * 2], [cx0 + rx * 2, hy + ry * y], [cx0 - rx * 2, hy + ry * y]], g); ctx.restore(); };
     switch (a.hair) {
       case 'bald': ellipse(ctx, cx - rx * 0.3, hy - ry * 0.6, 2 * k, 1.1 * k, S.hi); break;
-      case 'hightop': poly(ctx, [[cx - rx * 0.95, hy - ry * 0.5], [cx - rx * 0.9, hy - ry * 1.9], [cx + rx * 0.9, hy - ry * 1.9], [cx + rx * 0.95, hy - ry * 0.5]], g); capTo(-0.45); break;
+      case 'hightop': {
+        // round 82 (owner: on the bust photo it read as a hat on a bald head): as wide as the head, the sides down
+        // over the temples, a flat top with soft corners and a hairline that dips at the temples (no brim line)
+        const X = (f: number) => cx0 + rx * f, Y = (f: number) => hy - ry * f;
+        poly(ctx, [[X(-0.92), Y(1.48)], [X(0.92), Y(1.48)], [X(1.08), Y(1.36)], [X(1.08), Y(0.22)], [X(0.86), Y(0.28)], [X(0.62), Y(0.5)], [X(0), Y(0.56)], [X(-0.62), Y(0.5)], [X(-0.86), Y(0.28)], [X(-1.08), Y(0.22)], [X(-1.08), Y(1.36)]], g);
+        ctx.save(); ctx.globalAlpha = 0.55; // the light along the flat top
+        poly(ctx, [[X(-0.88), Y(1.48)], [X(0.88), Y(1.48)], [X(0.84), Y(1.36)], [X(-0.84), Y(1.36)]], H.hi);
+        ctx.restore();
+        break;
+      }
       case 'mohawk': ctx.save(); ctx.globalAlpha = 0.25; capTo(-0.55, 1.0); ctx.restore(); poly(ctx, [[cx - rx * 0.25, hy - ry * 0.7], [cx - rx * 0.2, hy - ry * 1.55], [cx + rx * 0.2, hy - ry * 1.55], [cx + rx * 0.25, hy - ry * 0.7]], g); break; // round 80j: shaved sides
       case 'bun': capTo(-0.5); ellipse(ctx, cx, hy - ry * 1.15, 3 * k, 2.6 * k, H.base); break;
       case 'afro': capTo(-0.45, 1.1); break;

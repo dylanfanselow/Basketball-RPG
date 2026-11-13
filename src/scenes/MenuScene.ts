@@ -4,7 +4,8 @@ import { MenuList, title, FONT, COL, hiRes } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { storyScene, setStage } from './setup';
-import type { StoryStage } from '../career/career';
+import { draftWeek, takeOnDebt, type StoryStage } from '../career/career';
+import { stageDay, storyDay } from '../career/calendar';
 
 export class MenuScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
@@ -37,7 +38,8 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Home (won final)', action: () => this.home(true), hint: 'Round 81: the wrecked trailer at night, Mom, the debt.' },
       { label: 'Story: Home (lost final)', action: () => this.home(false), hint: 'Round 81: the same, after a loss (the next morning brings the Kingston paper too).' },
       { label: 'Story: The letter', action: () => this.story('letter'), hint: 'Round 81: the morning after: the mail carrier, the letter from the agent.' },
-      { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Victor Hale at the apartment, the calendar, then the garage.' },
+      { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Victor Hale at the apartment (1 April), the calendar, then the garage.' },
+      { label: 'Story: June (before the draft)', action: () => this.june(), hint: 'Round 82: two months later, 20 June: no time to train, Hale calls about a team each morning, the draft on the 24th.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -65,15 +67,30 @@ export class MenuScene extends Phaser.Scene {
   /** Round 60: jump to a story stage (sets it on the career, like Load Save would resume it). */
   private story(stage: StoryStage) {
     setStage(stage);
+    const day = stageDay(stage); if (day !== null) app.career.life.day = day; // round 82: the stage's date
+    if (stage === 'agent') Object.assign(app.career.story!, { draft: undefined, june: undefined, callDay: undefined });
     if (['snow', 'bus', 'final', 'letter', 'agent'].includes(stage)) { app.career.story!.winter = true; app.changed(); } // round 80
     if (stage === 'letter' || stage === 'agent') { const st = app.career.story!; st.trailerWrecked = true; if (stage === 'letter') st.agent = undefined; else st.agent ??= 'Victor Hale'; app.changed(); } // round 81
     const [scene, data] = storyScene(stage); this.scene.start(scene, data);
   }
+  /** Round 82: the June days before the draft (after the April combine and scrimmage). */
+  private june() {
+    const c = app.career;
+    setStage('draftWeek');
+    const st = c.story!;
+    Object.assign(st, { winter: true, trailerWrecked: true, home: 'apartment', june: true, callDay: undefined, draft: draftWeek(storyDay('agent'), storyDay('draft')) });
+    st.agent ??= 'Victor Hale';
+    if (!st.debt) takeOnDebt(c);
+    c.life.day = storyDay('june');
+    app.changed();
+    this.scene.start('Apartment');
+  }
   /** Round 81: home after the final, with a made-up result. */
   private home(won: boolean) {
     setStage('homecoming');
+    app.career.life.day = storyDay('final'); // round 82: the night of 28 February
     const st = app.career.story!;
-    Object.assign(st, { winter: true, final: { great: won, won, pts: 24, reb: 7, ast: 5 }, trailerWrecked: true, debt: undefined, agent: undefined, draft: undefined });
+    Object.assign(st, { winter: true, final: { great: won, won, pts: 24, reb: 7, ast: 5 }, trailerWrecked: true, debt: undefined, agent: undefined, draft: undefined, june: undefined, callDay: undefined });
     app.changed();
     const [scene, data] = storyScene('homecoming'); this.scene.start(scene, data);
   }
