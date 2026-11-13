@@ -44,7 +44,10 @@ export interface CareerState {
 }
 /** Round 80: after `after` (Mom's talk) the yard is yours (`done` + `checkKingston`); the path end then leads on:
  *  Kingston at the court → three months later (the paper) → the snowy morning → the bus → the national final. */
-export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'kingston' | 'paper' | 'snow' | 'bus' | 'final' | 'done';
+/** Round 81: after the final: home to the wrecked trailer (`homecoming`), the letter the next morning (`letter`), the
+ *  agent at the apartment (`agent`) and in the garage (`agentGarage`), then the week before the draft (`draftWeek`). */
+export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'kingston' | 'paper' | 'snow' | 'bus' | 'final'
+  | 'homecoming' | 'letter' | 'agent' | 'agentGarage' | 'draftWeek' | 'done';
 export interface RivalInfo { first: string; last: string; pos: Position; number: number; heightIn: number; appearance: Appearance }
 export interface StoryState {
   stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment';
@@ -60,6 +63,36 @@ export interface StoryState {
   momCall?: 'go' | 'stay';
   /** round 80: how the national final went */
   final?: BigGameResult;
+  /** round 81: the generator blew up during the final and took part of the trailer with it */
+  trailerWrecked?: boolean;
+  /** round 81: what fixing it put the family in for (taken off your money once) */
+  debt?: number;
+  /** round 81: the agent who wrote to you after the final (later: he made the generator fail) */
+  agent?: string;
+  /** round 81: the draft week, career days (set when the agent shows you the calendar) */
+  draft?: DraftWeek;
+}
+export interface DraftWeek { combine1: number; combine2: number; scrimmage: number; draft: number }
+/** Round 81: the debt from fixing the generator and the trailer (owner: your money goes negative). */
+export const GENERATOR_DEBT = 15000;
+/** Round 81: put the family in debt for the repairs, once. */
+export function takeOnDebt(c: CareerState) {
+  const st = c.story; if (!st || st.debt) return;
+  st.debt = GENERATOR_DEBT; c.life.money -= GENERATOR_DEBT;
+}
+/** Round 81: the week before the draft, from the day the agent shows it to you. */
+export function draftWeek(today: number): DraftWeek {
+  return { combine1: today + 2, combine2: today + 3, scrimmage: today + 5, draft: today + 7 };
+}
+/** Round 81: the draft week's events by career day (the calendar draws them as tags). */
+export function storyEventsByDay(c: CareerState): Map<number, { label: string; color: string }> {
+  const out = new Map<number, { label: string; color: string }>(), d = c.story?.draft;
+  if (!d) return out;
+  out.set(d.combine1, { label: 'COMBINE', color: '#1d428a' });
+  out.set(d.combine2, { label: 'COMBINE', color: '#1d428a' });
+  out.set(d.scrimmage, { label: 'SCRIMMAGE', color: '#1f5a3a' });
+  out.set(d.draft, { label: 'DRAFT', color: '#b8860b' });
+  return out;
 }
 export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
 
@@ -293,6 +326,11 @@ export function advanceDay(c: CareerState) { c.life.day++; }
 export function storyKeyGame(c: CareerState): { when: string; what: string } | null {
   const st = c.story;
   if (!st) return null;
+  // round 81: the draft is the next big date
+  if (st.draft && c.life.day <= st.draft.draft) {
+    const n = st.draft.draft - c.life.day;
+    return { when: n === 0 ? 'TODAY' : `${n} DAY${n === 1 ? '' : 'S'}`, what: 'The draft' };
+  }
   // round 80: three months later, the national final against Crestview Prep
   const fin = 'Final vs CRE';
   if (st.stage === 'snow' || st.stage === 'bus' || st.stage === 'final') return { when: 'TODAY', what: fin };

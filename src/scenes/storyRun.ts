@@ -410,7 +410,8 @@ export class StoryRun {
   private finishNight() {
     this.finishing = true;
     this.gs.cameras.main.fadeOut(1100, 0, 0, 0);
-    this.gs.time.delayedCall(1200, () => this.gs.scene.start('Trailer'));
+    // round 81: home to the trailer that night: the generator blew up while you were gone
+    this.gs.time.delayedCall(1200, () => { setStage('homecoming'); const [scene, data] = storyScene('homecoming'); this.gs.scene.start(scene, data); });
   }
 
   /**

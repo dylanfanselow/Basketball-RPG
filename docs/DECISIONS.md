@@ -158,6 +158,24 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 81 (owner): coming home, the debt, the agent.**
+  - After the final, home that night: the generator **blew up and took the side of the trailer with it** (owner's
+    pick): no power (no lights), a burned-out generator still smoking, scorch on the snow and soot up the trailer's
+    right end, the back window blown in. Stays that way.
+  - Mom: "Did you win?" You choose: "I played well." or the result; she answers each. She called around about the
+    repairs: more than they have, real debt. You: "Then we'll probably have to." **Money goes negative** (owner's
+    pick): -$15,000 (the HUD shows it red).
+  - Next morning a mail carrier puts a letter in the box (the flag goes up). If you **lost** the final, the paper
+    first: "CRESTVIEW STAR SUSPENDED", Kingston tested positive for performance-enhancing drugs. The letter: agent
+    **Victor Hale** (my pick, rename freely) saw the final and wants to talk about your future (vague). You go alone
+    ("Ma's dealt with enough").
+  - The meeting is at the **apartment**: NBA agent, natural talent and drive; you tell him about the debt ("I heard.
+    Rough luck."); you can stay here, one condition: **you can't fail**. At the calendar: the draft is seven days out,
+    two combine days, a scrimmage, the draft; you should get picked, maybe late. In the garage: his old equipment,
+    every station works skills and costs energy (the bar up top). Then the draft week is yours; home = apartment.
+  - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
+    story reveals Hale made the generator fail, and you choose to fire or keep him.
+  - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
 - **Round 80k (owner):** the character builder's LOOK step has **Shirt color**, **Pants color** and **Pants** (shorts /
   long) for your everyday clothes (rooms, the trailer yard, the builder preview); game uniforms stay team colors.
 - **Round 80j (owner): hair and headbands.** Tall hair is one shape in one shading (the high top's block and the

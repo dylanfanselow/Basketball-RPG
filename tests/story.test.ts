@@ -312,7 +312,7 @@ describe('round 60 story', () => {
     expect(on.n).toBeGreaterThan(off.n * 1.5);
     expect(on.scores.length).toBeGreaterThan(0);
     for (const e of on.scores) { expect(typeof e.data.type).toBe('string'); expect([1, 2, 3]).toContain(e.data.pts); expect(typeof e.data.post).toBe('boolean'); }
-  });
+  }, 30000); // two whole finals
   it('round 80e: the big game has the squad (same names, the captain) and new stories fix the squad seed', () => {
     const c = career('SF');
     expect(typeof c.story!.squadSeed).toBe('number');

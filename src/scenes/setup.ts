@@ -116,6 +116,12 @@ export function storyScene(stage: StoryStage): [string, object | undefined] {
     case 'snow': return ['Trailer', { story: 'snow' }];
     case 'bus': return ['Bus', undefined];
     case 'final': return ['Game', { mode: 'story', story: 'final', venue: 'arena' }];
+    // round 81: home to the wrecked trailer, the letter, the agent, the draft week
+    case 'homecoming': return ['Trailer', { night: true, story: 'homecoming' }];
+    case 'letter': return ['Trailer', { story: 'letter' }];
+    case 'agent': return ['Apartment', { story: 'agent' }];
+    case 'agentGarage': return ['Garage', { story: 'agent' }];
+    case 'draftWeek': return ['Apartment', undefined];
     default: return c.story?.home === 'trailer' ? ['Trailer', undefined] : ['Apartment', undefined];
   }
 }

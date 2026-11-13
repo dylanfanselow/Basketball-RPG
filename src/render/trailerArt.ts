@@ -23,8 +23,10 @@ const GRASS = ['#5f8f3a', '#6c9c42', '#557f33', '#78a84a', '#4c7430'];
 // ---------------------------------------------------------------- night (round 57c)
 /** Drawing the night version? Things that glow at night register a rect here; they're repainted after the grade. */
 let NIGHT = false;
+/** Round 81: drawing the wrecked yard (the generator blew up): no power, so nothing glows. */
+let WRECK = false;
 let EMIT: { x: number; y: number; w: number; h: number; col: string; folds?: boolean }[] = [];
-const glow = (x: number, y: number, w: number, h: number, col: string, folds = false) => { if (NIGHT) EMIT.push({ x, y, w, h, col, folds }); };
+const glow = (x: number, y: number, w: number, h: number, col: string, folds = false) => { if (NIGHT && !WRECK) EMIT.push({ x, y, w, h, col, folds }); };
 /** Darken + cool everything (moonlight), then repaint the lights: lamp-lit windows (curtain folds), the porch light. */
 function gradeNight(c: C, w: number, h: number, sky = false) {
   const img = c.getImageData(0, 0, w, h), d = img.data;
@@ -135,6 +137,62 @@ function gradeSnow(c: C, w: number, h: number, bg: boolean, caps = true) {
   for (const [y0, y1, hh] of STEPS.rows) { const top = Gy(y1) - up(hh); for (let x = Xa(STEPS.x0); x < Xa(STEPS.x1); x++) for (let y = Gy(y0) - up(hh); y <= top; y++) P(c, x, y, hn(x, y, 807) < 0.2 ? SNOW[1] : SNOW[0]); }
 }
 
+// ---------------------------------------------------------------- the wreck (round 81)
+/** Scale a pixel's color in an ImageData buffer (one read and one write per canvas, not per pixel). */
+const darken = (img: ImageData, x: number, y: number, k: number) => {
+  if (x < 0 || y < 0 || x >= img.width || y >= img.height) return;
+  const i = (y * img.width + x) * 4, d = img.data; if (!d[i + 3]) return;
+  d[i] = Math.round(d[i] * k); d[i + 1] = Math.round(d[i + 1] * k); d[i + 2] = Math.round(d[i + 2] * k);
+};
+/**
+ * Round 81: the generator blew up while you were at the final and took the side of the trailer with it: a black
+ * scorch on the snow around it, soot climbing the trailer's right end, the back window blown in (jagged glass,
+ * shards on the snow), the power cord burned through.
+ */
+function wreckYard(c: C) {
+  const gx = Xa(33), gy = Gy(2.4), img = c.getImageData(0, 0, ART_W, ART_H);
+  // scorch on the ground: dark in the middle, ragged at the edge, ash flecks
+  for (let y = gy - 30; y < gy + 34; y++) for (let x = gx - 110; x < gx + 110; x++) {
+    const d = Math.hypot((x - gx) / 110, (y - gy) / 30) + (hn(x >> 1, y >> 1, 901) - 0.5) * 0.35;
+    if (d < 1) darken(img, x, y, 0.18 + 0.7 * d * d);
+    else if (d < 1.15 && hn(x, y, 902) < 0.25) darken(img, x, y, 0.7);
+  }
+  // soot up the trailer's right end, thickest low and near the generator
+  for (let y = T_TOP; y < FACE; y++) for (let x = Xa(26.5); x < T_X1 + 2; x++) {
+    const up01 = (FACE - y) / (FACE - T_TOP), side = (x - Xa(26.5)) / (T_X1 - Xa(26.5));
+    const k = 1 - Math.max(0, side * 1.1 - up01 * 0.55 + (hn(x >> 1, y >> 2, 903) - 0.5) * 0.4) * 0.85;
+    if (k < 0.98) darken(img, x, y, Math.max(0.12, k));
+  }
+  c.putImageData(img, 0, 0);
+  // the back window blown in: a black hole with jagged glass around the edge, shards on the snow below
+  const wx0 = Xa(28.2), wx1 = Xa(31.4), wy0 = T_TOP + 38, wy1 = T_TOP + 68;
+  for (let y = wy0; y < wy1; y++) for (let x = wx0; x < wx1; x++) {
+    const edge = Math.min(x - wx0, wx1 - 1 - x, y - wy0, wy1 - 1 - y);
+    const jag = 2 + Math.floor(hn(x, y >> 1, 904) * 4) * (hn(x >> 2, y >> 2, 905) < 0.5 ? 1 : 0);
+    P(c, x, y, edge < jag ? (hn(x, y, 906) < 0.5 ? '#c8d8e0' : '#8aa0ac') : (hn(x, y, 907) < 0.06 ? '#3a2a1a' : '#0b0b0d'));
+  }
+  for (let i = 0; i < 26; i++) { const x = wx0 + Math.round(hn(i, 1, 908) * (wx1 - wx0 + 30)) - 10, y = FACE + 4 + Math.round(hn(i, 2, 909) * 26); P(c, x, y, hn(i, 3, 910) < 0.5 ? '#d8e6ee' : '#9ab4c0'); }
+  // charred debris thrown on the snow
+  for (let i = 0; i < 40; i++) { const x = gx + Math.round((hn(i, 4, 911) - 0.5) * 260), y = gy + Math.round((hn(i, 5, 912) - 0.3) * 50); R(c, x, y, 1 + Math.round(hn(i, 6, 913) * 3), 1 + Math.round(hn(i, 7, 914) * 2), hn(i, 8, 915) < 0.5 ? '#141414' : '#2a2420'); }
+}
+/** Round 81: the generator after the blast: burned black, the top torn open, embers in the guts. */
+function charGenerator(c: C, p: Piece) {
+  const x0 = Xa(p.x) - 6, x1 = Xa(p.x + p.w) + 6, y0 = Gy(p.y) - up(3.4), y1 = Gy(p.y + p.d) + 8;
+  const img = c.getImageData(0, 0, ART_W, ART_H), D = img.data;
+  for (let y = Math.max(0, y0); y < Math.min(ART_H, y1); y++) for (let x = Math.max(0, x0); x < Math.min(ART_W, x1); x++) {
+    const i = (y * ART_W + x) * 4; if (!D[i + 3]) continue;
+    const lum = 0.3 * D[i] + 0.59 * D[i + 1] + 0.11 * D[i + 2];
+    const [r, g, b] = lum > 150 && hn(x, y, 920) < 0.5 ? [58, 54, 50] : hn(x >> 1, y >> 1, 921) < 0.08 ? [74, 42, 20] : [lum * 0.22, lum * 0.2, lum * 0.19];
+    D[i] = Math.round(r); D[i + 1] = Math.round(g); D[i + 2] = Math.round(b);
+  }
+  c.putImageData(img, 0, 0);
+  // torn open: a jagged gap in the top, bent panels, glowing embers inside
+  const tx = Math.round((x0 + x1) / 2), ty = Gy(p.y) - up(2.5);
+  for (let x = tx - 16; x < tx + 18; x++) { const dep = 3 + Math.floor(hn(x, 0, 922) * 7); for (let y = ty - 2; y < ty + dep; y++) c.clearRect(x, y, 1, 1); }
+  for (let i = 0; i < 14; i++) P(c, tx - 12 + Math.round(hn(i, 1, 923) * 26), ty + 8 + Math.round(hn(i, 2, 924) * 10), hn(i, 3, 925) < 0.5 ? '#ff7a1a' : '#ffb84a');
+  for (const [dx, dy] of [[-20, -6], [19, -4], [-24, 2]]) { R(c, tx + dx, ty + dy, 7, 2, '#26221e'); R(c, tx + dx + 1, ty + dy - 1, 4, 1, '#3a3430'); }
+}
+
 // ---------------------------------------------------------------- background
 function blobTree(c: C, blobs: [number, number, number][], x0 = 0, x1 = ART_W) {
   for (const [bx, by, r] of blobs) for (let y = Math.max(0, by - r); y < by + r; y++) for (let x = Math.max(x0, bx - r); x < Math.min(x1, bx + r); x++) {
@@ -189,8 +247,8 @@ function farTrailer(c: C, x0: number, x1: number, top: number, bot: number, body
   for (let x = x0; x < x1; x += 3) R(c, x, bot - 4 - Math.round(hn(x, seed, 103) * 9), 2, 12, hn(x, 1, 104) < 0.5 ? '#557f33' : '#6c9c42'); // weeds
 }
 
-function drawBackground(night: boolean, snow = false): HTMLCanvasElement {
-  NIGHT = night; EMIT = [];
+function drawBackground(night: boolean, snow = false, wreck = false): HTMLCanvasElement {
+  NIGHT = night; EMIT = []; WRECK = wreck;
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   // sky + clouds
   const HZ = 262;
@@ -271,6 +329,7 @@ function drawBackground(night: boolean, snow = false): HTMLCanvasElement {
   drawSteps(c);
   drawJunk(c);
   if (snow) gradeSnow(c, ART_W, ART_H, true);
+  if (wreck) wreckYard(c);
   if (night) gradeNight(c, ART_W, ART_H, true);
   NIGHT = false;
   return cv;
@@ -511,11 +570,13 @@ function drawCooler(c: C, p: Piece) {
 
 /** Round 57c: a dented mailbox on a leaning post at the end of the path (where you leave). Round 71: its own piece
  *  (depth-sorted, solid, ✕ checks it). */
-function drawMailbox(c: C) {
+function drawMailbox(c: C, f = 0) {
   const mb = { x: Xa(MAILBOX.x), y: Gy(MAILBOX.y) };
   for (let i = 0; i < 44; i++) R(c, mb.x + Math.round(i * 0.12), mb.y - i, 4, 1, i % 7 === 0 ? '#5a3e26' : '#7a5838');
   R(c, mb.x - 4, mb.y - 58, 22, 13, '#4a4e52'); R(c, mb.x - 4, mb.y - 58, 22, 3, '#6a7074'); R(c, mb.x - 5, mb.y - 52, 1, 6, '#2a2c2e');
-  R(c, mb.x + 4, mb.y - 50, 6, 2, '#2a2c2e'); R(c, mb.x + 17, mb.y - 52, 2, 2, '#6a2020'); R(c, mb.x + 18, mb.y - 52, 11, 2, '#b03030'); R(c, mb.x + 25, mb.y - 54, 4, 4, '#b03030'); // round 71: the flag's down (no mail)
+  R(c, mb.x + 4, mb.y - 50, 6, 2, '#2a2c2e'); R(c, mb.x + 17, mb.y - 52, 2, 2, '#6a2020');
+  if (f === 0) { R(c, mb.x + 18, mb.y - 52, 11, 2, '#b03030'); R(c, mb.x + 25, mb.y - 54, 4, 4, '#b03030'); } // round 71: the flag's down (no mail)
+  else { R(c, mb.x + 17, mb.y - 64, 2, 12, '#b03030'); R(c, mb.x + 17, mb.y - 66, 6, 4, '#b03030'); P(c, mb.x + 18, mb.y - 66, '#e05050'); } // round 81: flag up, mail
   for (let x = mb.x - 4; x < mb.x + 18; x++) if (hn(x, 1, 125) < 0.4) P(c, x, mb.y - 46, '#9a5a32');
 }
 
@@ -533,25 +594,27 @@ function drawBush(c: C, p: Piece) {
 
 const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
   trailerDoor: drawDoor, hitch: (c) => drawHitch(c), barrel: (c, p) => drawBarrel(c, p), generator: drawGenerator,
-  cooler: (c, p) => drawCooler(c, p), bush: (c, p) => drawBush(c, p), mailbox: (c) => drawMailbox(c),
+  cooler: (c, p) => drawCooler(c, p), bush: (c, p) => drawBush(c, p), mailbox: (c, _p, f) => drawMailbox(c, f),
 };
-const FRAMES: Record<string, number> = { trailerDoor: 2, generator: 2 };
+const FRAMES: Record<string, number> = { trailerDoor: 2, generator: 2, mailbox: 2 };
 const CACHE = new Map<string, Omit<ArtPiece, 'depthFt'>>();
 
 /** Round 57c: `night` = the night version (darkened, moon and stars, the trailer's lamps lit by the generator).
  *  Round 80: `snow` = winter (snow on the ground and on every top, overcast). */
-export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false, snow = false): { bg: string; pieces: ArtPiece[] } {
-  const sfx = (night ? '_n' : '') + (snow ? '_s' : '');
+export function buildTrailerArt(tm: Phaser.Textures.TextureManager, night = false, snow = false, wreck = false): { bg: string; pieces: ArtPiece[] } {
+  const sfx = (night ? '_n' : '') + (snow ? '_s' : '') + (wreck ? '_x' : '');
   const bg = `trailer_bg${sfx}_v3`; // v3: the mailbox moved out to a piece (round 71)
-  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night, snow));
+  if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground(night, snow, wreck));
+  WRECK = false;
   const pieces: ArtPiece[] = [];
   for (const p of TRAILER_FURNITURE) {
     const draw = DRAW[p.kind]; if (!draw) continue;
-    const key = `trailer_${p.id}${sfx}_v4`;
+    const key = `trailer_${p.id}${sfx}_v5`; // v5: the mailbox's flag-up frame (round 81)
     const art = (tm.exists(key) && CACHE.get(key)) || bake(tm, key, FRAMES[p.kind] ?? 1, (c, f) => {
-      NIGHT = night; EMIT = [];
+      NIGHT = night; EMIT = []; WRECK = wreck;
       draw(c, p, f);
       if (snow) gradeSnow(c, ART_W, ART_H, false, p.kind !== 'trailerDoor');
+      if (wreck && p.kind === 'generator') charGenerator(c, p);
       if (night) gradeNight(c, ART_W, ART_H);
       NIGHT = false;
     });

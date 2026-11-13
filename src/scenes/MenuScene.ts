@@ -34,6 +34,10 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Snowy morning', action: () => this.story('snow'), hint: 'Round 80: the trailer yard in snow; ✕ at the end of the path catches the bus.' },
       { label: 'Story: Bus ride', action: () => this.story('bus'), hint: 'Round 80: jokes, Kingston, then Mom calls: the generator broke (your choice is saved).' },
       { label: 'Story: National final', action: () => this.story('final'), hint: 'Round 80: the arena, Lincoln vs Crestview Prep (Kingston).' },
+      { label: 'Story: Home (won final)', action: () => this.home(true), hint: 'Round 81: the wrecked trailer at night, Mom, the debt.' },
+      { label: 'Story: Home (lost final)', action: () => this.home(false), hint: 'Round 81: the same, after a loss (the next morning brings the Kingston paper too).' },
+      { label: 'Story: The letter', action: () => this.story('letter'), hint: 'Round 81: the morning after: the mail carrier, the letter from the agent.' },
+      { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Victor Hale at the apartment, the calendar, then the garage.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -61,8 +65,17 @@ export class MenuScene extends Phaser.Scene {
   /** Round 60: jump to a story stage (sets it on the career, like Load Save would resume it). */
   private story(stage: StoryStage) {
     setStage(stage);
-    if (stage === 'snow' || stage === 'bus' || stage === 'final') { app.career.story!.winter = true; app.changed(); } // round 80
+    if (['snow', 'bus', 'final', 'letter', 'agent'].includes(stage)) { app.career.story!.winter = true; app.changed(); } // round 80
+    if (stage === 'letter' || stage === 'agent') { const st = app.career.story!; st.trailerWrecked = true; if (stage === 'letter') st.agent = undefined; else st.agent ??= 'Victor Hale'; app.changed(); } // round 81
     const [scene, data] = storyScene(stage); this.scene.start(scene, data);
+  }
+  /** Round 81: home after the final, with a made-up result. */
+  private home(won: boolean) {
+    setStage('homecoming');
+    const st = app.career.story!;
+    Object.assign(st, { winter: true, final: { great: won, won, pts: 24, reb: 7, ast: 5 }, trailerWrecked: true, debt: undefined, agent: undefined, draft: undefined });
+    app.changed();
+    const [scene, data] = storyScene('homecoming'); this.scene.start(scene, data);
   }
   /** Round 60d: Mom's after-game scene with a made-up result. */
   private after(great: boolean) {

@@ -261,6 +261,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 81: stages `homecoming` / `letter` / `agent` / `agentGarage` / `draftWeek` (`storyScene`), `StoryState`
+  `trailerWrecked` / `debt` / `agent` / `draft`, `takeOnDebt` (`GENERATOR_DEBT` 15000), `draftWeek`,
+  `storyEventsByDay`, `storyKeyGame` "The draft"; `trailerArt` wreck (`wreckYard`, `charGenerator`, `_x` keys, no
+  glows), mailbox flag-up frame; TrailerScene homecoming (choice lines, `debtPop`, `toLetterMorning`), letter morning
+  (`startMailman` / `stepMailman`, `readMail`, `pushPage` / `stepPages`, `AGENT_NAME`), smoke; `paperArt.drawBustPage`
+  / `drawLetter`, photo kit colors; `scenes/agentTalk.ts` (`AgentTalk`: sprite, lines, walks); ApartmentScene / GarageScene
+  `story: 'agent'`; calendar draft tags; HUD money red when negative; StoryBox speaker `agent`; dev menu entries.
   Round 80k: `Appearance.shirt` / `pants` / `longPants`, `CLOTHES_COLORS`, `RoomScene.casualKit` (used by
   `roomPlayerKit` and the builder tee), three LOOK rows.
   Round 80j: `hairFront` `cap` (bezier nape sweep) / `backCap`, `hightopGrad`, `afroGrad`, `hairBack(backView)`,

@@ -239,7 +239,7 @@ export abstract class RoomScene extends Phaser.Scene {
     T(730, 58, hs ? hs.what : kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
     // money / day
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
-    icon(882, 40, 'coin', 2); T(902, 30, `$${L.money}`, 18, '#bfe86a');
+    icon(882, 40, 'coin', 2); T(902, 30, L.money < 0 ? `-$${(-L.money).toLocaleString('en-US')}` : `$${L.money.toLocaleString('en-US')}`, 18, L.money < 0 ? '#ff8a7a' : '#bfe86a'); // round 81: debt shows red
     T(882, 58, `DAY ${L.day}`, 15, '#ffe9a8');
     this.hud = { g, objs, sig: this.hudSig() };
     // a skill that went up since it was last shown flashes and pops a "+n"

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { FONT } from '../scenes/ui';
 
 /** Who's talking in the box (round 60). The narrator (tutorial) has no name tag. */
-export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you' | 'me' | 'mom' | 'mate' | 'phone';
+export type BoxSpeaker = 'narrator' | 'kingston' | 'coach' | 'you' | 'me' | 'mom' | 'mate' | 'phone' | 'agent';
 /** `name` overrides the speaker's tag (`me` = your first name, `mate` = the teammate's). */
 export interface BoxContent { who: BoxSpeaker; text: string; blocking: boolean; title?: string; sub?: string; name?: string; /** round 80: a dialogue choice (↑↓ + ✕); `choice` = the highlighted one */ choices?: string[]; choice?: number }
 
@@ -17,6 +17,8 @@ const TAG: Record<BoxSpeaker, { name: string; color: number; text: string } | nu
   mate: { name: 'TEAMMATE', color: 0x7a1f2b, text: '#ffffff' },
   // round 80: Mom on the phone
   phone: { name: 'MOM (PHONE)', color: 0x8a5a2a, text: '#fff1dc' },
+  // round 81: the agent
+  agent: { name: 'VICTOR HALE', color: 0x1d2b45, text: '#e8eefc' },
 };
 
 /**
@@ -38,14 +40,16 @@ export class StoryBox {
   private flashAt = -1e9;
   visible = false;
 
-  constructor(private scene: Phaser.Scene, opts: { y?: number } = {}) {
+  /** depth (round 81): the box's layer; above the apartment calendar (9600) when a scene needs it */
+  constructor(private scene: Phaser.Scene, opts: { y?: number; depth?: number } = {}) {
     if (opts.y !== undefined) this.Y = opts.y;
+    const D = (opts.depth ?? 9200) - 9200;
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor>(o: T) => { o.setScrollFactor(0); return o; };
-    this.g = fixed(scene.add.graphics().setDepth(9200));
-    this.body = fixed(scene.add.text(StoryBox.X + 22, this.Y + 18, '', { fontFamily: FONT, fontSize: '19px', color: '#ffffff', wordWrap: { width: StoryBox.W - 44 }, lineSpacing: 5 }).setDepth(9201));
-    this.tag = fixed(scene.add.text(StoryBox.X + 18, this.Y - 13, '', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', fontStyle: 'bold', padding: { x: 9, y: 4 } }).setDepth(9202));
-    this.head = fixed(scene.add.text(StoryBox.X + StoryBox.W - 18, this.Y - 13, '', { fontFamily: FONT, fontSize: '13px', color: '#ffe680', fontStyle: 'bold', backgroundColor: '#141a2c', padding: { x: 8, y: 4 } }).setOrigin(1, 0).setDepth(9202));
-    this.hint = fixed(scene.add.text(StoryBox.X + StoryBox.W - 16, this.Y + StoryBox.H - 10, '✕ next', { fontFamily: FONT, fontSize: '13px', color: '#9fb0d8', fontStyle: 'bold' }).setOrigin(1, 1).setDepth(9202));
+    this.g = fixed(scene.add.graphics().setDepth(9200 + D));
+    this.body = fixed(scene.add.text(StoryBox.X + 22, this.Y + 18, '', { fontFamily: FONT, fontSize: '19px', color: '#ffffff', wordWrap: { width: StoryBox.W - 44 }, lineSpacing: 5 }).setDepth(9201 + D));
+    this.tag = fixed(scene.add.text(StoryBox.X + 18, this.Y - 13, '', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', fontStyle: 'bold', padding: { x: 9, y: 4 } }).setDepth(9202 + D));
+    this.head = fixed(scene.add.text(StoryBox.X + StoryBox.W - 18, this.Y - 13, '', { fontFamily: FONT, fontSize: '13px', color: '#ffe680', fontStyle: 'bold', backgroundColor: '#141a2c', padding: { x: 8, y: 4 } }).setOrigin(1, 0).setDepth(9202 + D));
+    this.hint = fixed(scene.add.text(StoryBox.X + StoryBox.W - 16, this.Y + StoryBox.H - 10, '✕ next', { fontFamily: FONT, fontSize: '13px', color: '#9fb0d8', fontStyle: 'bold' }).setOrigin(1, 1).setDepth(9202 + D));
     this.hide();
   }
 

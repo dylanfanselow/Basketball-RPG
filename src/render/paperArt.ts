@@ -18,7 +18,7 @@ export const PAPER_SPOTS = {
   kingston: { x: 165, y: 368 },
 };
 
-export interface PaperInfo { name: string; number: number; heightFt: number; appearance: Appearance }
+export interface PaperInfo { name: string; number: number; heightFt: number; appearance: Appearance; /** round 81: jersey colors (default Ridgemont green) */ colors?: [string, string] }
 
 type C = CanvasRenderingContext2D;
 const R = (c: C, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -49,13 +49,18 @@ function bodyLines(c: C, x: number, y: number, w: number, rows: number, seed: nu
   }
 }
 
+const hexRgb = (h: string) => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const shadeHex = (h: string, k: number) => '#' + hexRgb(h).map((v) => Math.round(v * k).toString(16).padStart(2, '0')).join('');
+const near = (r: number, g: number, b: number, h: string, tol: number) => { const [R2, G2, B2] = hexRgb(h); return Math.abs(r - R2) + Math.abs(g - G2) + Math.abs(b - B2) < tol; };
+
 /** 4x4 ordered dither: newsprint grey levels. */
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /** Your photo: the front-view figure in the Lincoln jersey (a team-photo pose), cropped to the chest, grey and
  *  dithered; the face is posterized without the dither so the eyes stay clean (W I . . I W). */
 function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo) {
-  const kit: Kit = { jersey: '#1f5a3a', jerseyShade: '#16442b', trim: '#e8e2d0', shorts: '#1b5034', number: who.number }; // round 80i: Ridgemont green
+  const [jc, tc] = who.colors ?? ['#1f5a3a', '#e8e2d0']; // round 80i: Ridgemont green (round 81: any team)
+  const kit: Kit = { jersey: jc, jerseyShade: shadeHex(jc, 0.72), trim: tc, shorts: shadeHex(jc, 0.88), number: who.number };
   const sheet = buildCoachSheet(who.heightFt, who.appearance, kit);
   const sc = sheet.getContext('2d')!;
   const src = sc.getImageData(0, 0, FRONT_W, FRONT_H).data;
@@ -63,7 +68,7 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
   let top = 0;
   find: for (let yy = 0; yy < FRONT_H; yy++) for (let xx = 0; xx < FRONT_W; xx++) if (src[(yy * FRONT_W + xx) * 4 + 3] > 0) { top = yy; break find; }
   const k = 2; // 2 art px per sprite px
-  const ox = x + Math.round((w - FRONT_W * k) / 2), oy = y + 6 - top * k;
+  const ox = x + Math.round((w - FRONT_W * k) / 2), oy = y + 14 - top * k; // round 81: headroom (tall hair touched the frame)
   const pcv = canvas(PAPER_W, PAPER_H), pc = pcv.getContext('2d')!;
   const out = pc.getImageData(0, 0, PAPER_W, PAPER_H), od = out.data;
   for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
@@ -72,7 +77,10 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
     const inside = sx >= 0 && sy >= 0 && sx < FRONT_W && sy < FRONT_H && src[(sy * FRONT_W + sx) * 4 + 3] > 0;
     if (inside) { const i = (sy * FRONT_W + sx) * 4; lum = 0.3 * src[i] + 0.59 * src[i + 1] + 0.11 * src[i + 2]; lum = Math.min(255, lum * 1.15 + 10); }
     else lum = 150 + ((yy - y) / h) * 50 + (hn(xx >> 3, yy >> 3, 9) - 0.5) * 20; // a grey gym wall behind
-    const face = inside && sy < top + 15; // the head: no dither
+    // round 81: only the jersey (and the wall behind) is dithered: hair, face and arms stay clean, whatever the hair
+    // style's height (a fixed 15-row band put tall styles' faces in the dither)
+    const jersey = inside && (() => { const i = (sy * FRONT_W + sx) * 4; return near(src[i], src[i + 1], src[i + 2], jc, 90) || near(src[i], src[i + 1], src[i + 2], kit.jerseyShade, 70); })();
+    const face = inside && !jersey;
     const t = face ? 0.5 : BAYER[(yy & 3) * 4 + (xx & 3)] / 16;
     const level = Math.max(0, Math.min(3, Math.floor(lum / 64 + t - 0.5)));
     const col = [[29, 27, 24], [88, 84, 77], [170, 164, 150], [244, 236, 210]][level];
@@ -143,5 +151,54 @@ export function drawUnderPage(seed: number): HTMLCanvasElement {
   R(c, 172, 84, 142, 96, '#7c776c');
   bodyLines(c, 172, 190, 142, 42, seed + 1);
   R(c, 0, PAPER_H - 1, PAPER_W, 1, '#b8ad8c'); R(c, PAPER_W - 1, 0, 1, PAPER_H, '#b8ad8c');
+  return cv;
+}
+
+/**
+ * Round 81: the next morning's paper when Ridgemont lost the final: Crestview's star suspended for performance-
+ * enhancing drugs. Same 4x page, Kingston's photo in his Crestview kit.
+ */
+export function drawBustPage(king: PaperInfo, you: string): HTMLCanvasElement {
+  const cv = canvas(PAPER_W * K, PAPER_H * K), c = cv.getContext('2d')!;
+  c.scale(K, K);
+  R(c, 0, 0, PAPER_W, PAPER_H, PAPER);
+  R(c, PAPER_W / 2, 0, PAPER_W / 2, PAPER_H, '#efe6ca');
+  for (let i = 0; i < 900; i++) R(c, hn(i, 5, 30) * PAPER_W, hn(i, 6, 31) * PAPER_H, 1, 1, PAPER_D);
+  R(c, 14, 10, PAPER_W - 28, 2, INK);
+  ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
+  R(c, 14, 46, PAPER_W - 28, 1, INK);
+  ink(c, 'SUNDAY, FEBRUARY 22', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'SPORTS  ·  50¢', PAPER_W - 16 - 80, 49, 'bold 10px Arial, sans-serif');
+  R(c, 14, 61, PAPER_W - 28, 3, INK);
+  let y = ink(c, 'CRESTVIEW STAR SUSPENDED', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
+  y = ink(c, 'Kingston Williams tests positive for performance-enhancing drugs; the national title is under review', PAPER_W / 2, y + 3, 'italic bold 10px Georgia, serif', INK, 'center', PAPER_W - 40);
+  const colTop = y + 8;
+  R(c, 14, colTop - 3, PAPER_W - 28, 1, INK);
+  photo(c, 16, colTop + 2, 144, 112, king);
+  ink(c, 'KINGSTON WILLIAMS (#' + king.number + ') led Crestview Prep to the title on Saturday night.', 16, colTop + 119, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  let ry2 = ink(c, `Test results released Sunday morning show the Crestview transfer used a banned substance this season. Ridgemont Academy, led by ${you}, fell to the Falcons in the final.`, 170, colTop + 2, 'bold 10px Arial, sans-serif', INK, 'left', 144, 12);
+  ry2 = ink(c, '"We are reviewing every game," a league official said.', 170, ry2 + 6, 'italic bold 10px Georgia, serif', INK, 'left', 144, 12);
+  bodyLines(c, 170, ry2 + 6, 144, Math.floor((PAPER_H - 20 - ry2) / 5), 21);
+  bodyLines(c, 16, colTop + 160, 144, Math.floor((PAPER_H - 20 - colTop - 160) / 5), 22);
+  R(c, 0, 0, PAPER_W, 1, '#c9bf9f'); R(c, 0, PAPER_H - 1, PAPER_W, 1, '#b8ad8c'); R(c, 0, 0, 1, PAPER_H, '#d4caa9'); R(c, PAPER_W - 1, 0, 1, PAPER_H, '#b8ad8c');
+  return cv;
+}
+
+/** Round 81: the agent's letter: cream stationery, a letterhead, a short vague note, a signature (4x, real type). */
+export const LETTER_W = 250, LETTER_H = 320;
+export function drawLetter(to: string, agent: string): HTMLCanvasElement {
+  const cv = canvas(LETTER_W * K, LETTER_H * K), c = cv.getContext('2d')!;
+  c.scale(K, K);
+  R(c, 0, 0, LETTER_W, LETTER_H, '#f7f1df');
+  for (let i = 0; i < 500; i++) R(c, hn(i, 9, 40) * LETTER_W, hn(i, 10, 41) * LETTER_H, 1, 1, '#ece4cc');
+  R(c, 0, 102, LETTER_W, 1, '#e2d8bc'); R(c, 0, 206, LETTER_W, 1, '#e2d8bc'); // the folds
+  ink(c, agent.toUpperCase(), LETTER_W / 2, 16, 'bold 15px Georgia, "Times New Roman", serif', '#1d2b45', 'center');
+  ink(c, 'PLAYER REPRESENTATION', LETTER_W / 2, 34, 'bold 8px Arial, sans-serif', '#6a6250', 'center');
+  R(c, 30, 46, LETTER_W - 60, 1, '#1d2b45');
+  let y = ink(c, `${to},`, 20, 60, 'italic 12px Georgia, serif', INK, 'left', LETTER_W - 40, 15);
+  y = ink(c, 'I was in the stands for the national final. I liked what I saw.', 20, y + 6, '12px Georgia, serif', INK, 'left', LETTER_W - 40, 15);
+  y = ink(c, 'I represent players at the next level, and I would like to talk to you about your future. There is more I can tell you in person.', 20, y + 8, '12px Georgia, serif', INK, 'left', LETTER_W - 40, 15);
+  y = ink(c, 'Come see me. 1200 Westlake Ave, Apt 4B. Tomorrow, noon.', 20, y + 8, 'bold 12px Georgia, serif', INK, 'left', LETTER_W - 40, 15);
+  ink(c, agent, LETTER_W - 80, y + 22, 'italic bold 18px "Brush Script MT", "Segoe Script", cursive', '#1d2b45', 'center');
   return cv;
 }

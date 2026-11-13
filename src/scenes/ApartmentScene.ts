@@ -5,7 +5,9 @@ import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { advanceDay, sleepPlan, ENERGY_ORB } from '../career/career';
+import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
+import { AgentTalk } from './agentTalk';
+import { setStage, storyScene } from './setup';
 import { dateOfDay, monthGrid, keyGamesByDay, seasonMonths, MONTHS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
@@ -27,8 +29,12 @@ export class ApartmentScene extends RoomScene {
   room(): RoomDef { return APARTMENT; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildRoomArt(tm); }
 
-  init(data?: { at?: string }) {
+  /** Round 81: the agent's first meeting here. */
+  story: 'agent' | null = null;
+  agent: AgentTalk | null = null;
+  init(data?: { at?: string; story?: 'agent' }) {
     super.init(data);
+    this.story = data?.story ?? null; this.agent = null;
     this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null;
   }
 
@@ -44,6 +50,42 @@ export class ApartmentScene extends RoomScene {
     this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(this.textures)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
+    if (this.story === 'agent') this.startAgent();
+  }
+
+  /**
+   * Round 81: Victor Hale's first meeting, here: who he is, your situation, "you can't fail", the draft week on the
+   * calendar, then off to the garage.
+   */
+  private startAgent() {
+    const c = app.career, you = c.firstName || c.name.split(' ')[0];
+    const st = c.story!;
+    const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
+    const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
+    const calSpot = { x: SPOTS.calendar.x + 1.6, y: SPOTS.calendar.y + 0.4 };
+    this.agent = new AgentTalk(this, { x: 17.6, y: 13.6 }, [
+      { wait: 0.6 },
+      hale(`You came. Good. ${st.agent ?? 'Victor Hale'}.`),
+      hale('I represent players in the NBA. I was at the national final. I\'ve done this a long time, and I know what I saw.'),
+      hale('Natural talent. And the drive to go with it. That combination doesn\'t come around often.'),
+      me('I appreciate it, Mr. Hale. I really do. But I can\'t think about the NBA right now.'),
+      me('Our generator blew up. Took half the trailer with it. We\'re fifteen thousand in debt, and my mom...'),
+      hale('I heard. Rough luck.'),
+      hale('So here\'s what we\'ll do. This place? It\'s yours. Stay as long as you need.'),
+      hale('One condition.'),
+      hale('You can\'t fail.'),
+      hale('Come here. Let me show you something.'),
+      { agentTo: { x: calSpot.x + 1.6, y: calSpot.y + 0.6 } },
+      { youTo: calSpot },
+      { run: () => { st.draft = draftWeek(c.life.day); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
+      hale('This is your week. The draft is seven days out.'),
+      hale('Two days of combine: skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
+      hale('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
+      { run: () => this.closeCalendar() },
+      hale('Now. The garage.'),
+      { run: () => { setStage('agentGarage'); this.cameras.main.fadeOut(600, 0, 0, 0); this.time.delayedCall(650, () => { const [scene, data] = storyScene('agentGarage'); this.scene.start(scene, data); }); } },
+      { wait: 2 },
+    ]);
   }
 
   actions() {
@@ -124,7 +166,9 @@ export class ApartmentScene extends RoomScene {
     if (this.busy) return;
     this.busy = true;
     const c = app.career, now = dateOfDay(c.life.day), months = seasonMonths(c);
-    if (!months.some(([y, m]) => y === now.y && m === now.m)) { months.push([now.y, now.m]); months.sort((a, b) => a[0] * 12 + a[1] - (b[0] * 12 + b[1])); }
+    const want = [now, ...(c.story?.draft ? [dateOfDay(c.story.draft.draft)] : [])]; // round 81: the draft's month too
+    for (const w of want) if (!months.some(([y, m]) => y === w.y && m === w.m)) months.push([w.y, w.m]);
+    months.sort((a, b) => a[0] * 12 + a[1] - (b[0] * 12 + b[1]));
     this.cal = { i: months.findIndex(([y, m]) => y === now.y && m === now.m), months, objs: [], stickX: 0 };
     this.drawCalendar();
     sfx.blip(true);
@@ -139,7 +183,9 @@ export class ApartmentScene extends RoomScene {
 
   drawCalendar() {
     const cal = this.cal!; for (const o of cal.objs) o.destroy(); cal.objs = [];
-    const c = app.career, [yr, mo] = cal.months[cal.i], weeks = monthGrid(yr, mo), keys = keyGamesByDay(c);
+    // round 81: no NBA schedule on the calendar until you're in the league (the story's draft week instead)
+    const c = app.career, [yr, mo] = cal.months[cal.i], weeks = monthGrid(yr, mo), storyEv = storyEventsByDay(c);
+    const keys = !c.story || c.story.stage === 'done' ? keyGamesByDay(c) : new Map<number, ReturnType<typeof keyGamesByDay> extends Map<number, infer V> ? V : never>();
     const cells: (CalCell | null)[][] = weeks.map((w) => w.map((d) => {
       if (!d) return null;
       const kg = keys.get(d.day), team = kg ? TEAMS.find((t) => t.id === kg.opponent) : undefined;
@@ -165,6 +211,9 @@ export class ApartmentScene extends RoomScene {
       if (!d) return;
       const x0 = CAL.gx0 + CAL.colW * k + 2, y0 = CAL.titleH + CAL.headH + rh * r + 2, cw = CAL.colW - 2, ch = rh - 2;
       T(X(x0 + 3), Y(y0 + 1), String(d.d), 22, d.day < c.life.day ? '#6e5e4a' : '#2d2218');
+      // round 81: the draft week (combine days, the scrimmage, the draft) as coloured tags
+      const ev = storyEv.get(d.day);
+      if (ev) T(X(x0 + cw / 2), Y(y0 + ch * 0.62), ev.label, ev.label.length > 7 ? 12 : 15, '#ffffff', { backgroundColor: ev.color, padding: { x: 4, y: 2 } }).setOrigin(0.5);
       const kg = keys.get(d.day); if (!kg) return;
       const team = TEAMS.find((t) => t.id === kg.opponent), main = team?.colors[0] ?? '#6a3fa0';
       const lum = parseInt(main.slice(1, 3), 16) * 0.3 + parseInt(main.slice(3, 5), 16) * 0.59 + parseInt(main.slice(5, 7), 16) * 0.11;
@@ -191,7 +240,8 @@ export class ApartmentScene extends RoomScene {
   extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
 
   onUpdate(dt: number) {
-    if (this.cal) this.calendarInput();
+    if (this.agent) { if (!this.agent.update(dt)) this.agent = null; else this.busy = true; } // round 81
+    else if (this.cal) this.calendarInput();
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);
     const f = cat.hop ? 2 : cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : cat.state === 'loaf' ? 1 : 0;

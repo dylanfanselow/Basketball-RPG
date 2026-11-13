@@ -11,6 +11,8 @@ import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, FaceBtn, O
 import { RoomDef, Station, RS, syOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
+import { AgentTalk } from './agentTalk';
+import { setStage } from './setup';
 
 /**
  * The garage gym behind the apartment's left door (round 37): hoop, squat rack, bench press, treadmill, dip station +
@@ -37,6 +39,10 @@ export class GarageScene extends RoomScene {
   private lastTick = 0; private lastStep = 0; private lastShotPhase = '';
 
   constructor() { super('Garage'); }
+  /** Round 81: the agent walks you through his old equipment. */
+  story: 'agent' | null = null;
+  agent: AgentTalk | null = null;
+  init(data?: { at?: string; story?: 'agent' }) { super.init(data); this.story = data?.story ?? null; this.agent = null; }
   room(): RoomDef { return GARAGE; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildGarageArt(tm); }
 
@@ -54,6 +60,19 @@ export class GarageScene extends RoomScene {
     this.shotText = T(20).setOrigin(0.5, 1);
     this.greenText = T(16, '#7dff9a').setOrigin(0, 0.5);
     this.netFront = this.add.graphics();
+    if (this.story === 'agent') {
+      const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
+      this.agent = new AgentTalk(this, { x: 24.5, y: 10.5 }, [
+        { wait: 0.6 },
+        hale('All this was mine. Back when I still thought I could play.'),
+        hale('Every station works a skill. Treadmill: mobility. Squat rack: strength and mobility. Bench: strength and finishing.'),
+        hale('The hoop is shooting and finishing. The dribble mat is playmaking and shooting.'),
+        hale('And every rep costs energy. See that bar up top? When it\'s empty, you\'re done. Sleep it back.'),
+        hale('Use the week. I\'ll be in touch.'),
+        { run: () => { this.agent?.leave(); const c = app.career; if (c.story) c.story.home = 'apartment'; setStage('draftWeek'); } },
+        { wait: 0.7 },
+      ]);
+    }
   }
 
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
@@ -70,7 +89,8 @@ export class GarageScene extends RoomScene {
     if (!st) { for (const o of [this.hudTitle, this.hudHint, this.hudBig, this.cardText, this.shotText, this.greenText]) o.setVisible(false); this.hudG.clear(); this.cardG.clear(); }
   }
 
-  onUpdate() {
+  onUpdate(dt = 1 / 60) {
+    if (this.agent && !this.agent.update(dt)) this.agent = null; // round 81
     const g = this.gear.clear(), gb = this.gearBack.clear();
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
