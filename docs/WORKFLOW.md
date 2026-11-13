@@ -55,4 +55,5 @@ npm run build:single # single-file build for the browser link
 - Official NBA/roster sites are blocked from the cloud environment; use web search results.
 - Garage mini-games keep their own clock (`MiniGame.t`): compare mini-game times (`shotAt`, `missUntil`) with
   `mini.t`, never with the scene's `this.t` (round 39d bug: the shot ball skipped its whole flight).
+- **Text is LINEAR, art is NEAREST (round 80b):** `main.ts` patches `Text.updateText` so text textures are smoothed (with `pixelArt` a 2x text canvas at the 1.5x camera otherwise loses every 4th pixel row). Never draw small writing onto a pixel-art canvas: draw it at Kx density (see `paperArt.K`) and give that texture a LINEAR filter.
 - Stick space = court space (x along the court, y across it); move directions are relative to the player→rim vector.

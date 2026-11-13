@@ -4,7 +4,7 @@ import { InputMapper } from '../input/input';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { StoryBox, BoxSpeaker } from '../render/storyBox';
-import { drawFrontPage, drawUnderPage, PAPER_W, PAPER_H, PAPER_SPOTS } from '../render/paperArt';
+import { drawFrontPage, drawUnderPage, PAPER_W, PAPER_H, PAPER_SPOTS, K } from '../render/paperArt';
 import { setStage, storyScene, ensureStory } from './setup';
 import { prewarmRoom } from './preload';
 
@@ -53,13 +53,15 @@ export class PaperScene extends Phaser.Scene {
     const make = (key: string, cv: HTMLCanvasElement) => { if (this.textures.exists(key)) this.textures.remove(key); this.textures.addCanvas(key, cv); return key; };
     const under = [make('paper_under1', drawUnderPage(3)), make('paper_under2', drawUnderPage(9))];
     const front = make('paper_front', drawFrontPage({ name: c.name, number: c.number, heightFt: c.height, appearance: c.appearance }));
-    const place = (key: string, dx: number, dy: number, rot: number, depth: number) => {
-      this.add.image(PX + dx + 18, PY + dy + 22, key).setScale(PS).setRotation(rot).setTint(0x000000).setAlpha(0.18).setDepth(depth - 1);
-      return this.add.image(PX + dx, PY + dy, key).setScale(PS).setRotation(rot).setDepth(depth);
+    const place = (key: string, dx: number, dy: number, rot: number, depth: number, k = 1) => {
+      this.add.image(PX + dx + 18, PY + dy + 22, key).setScale(PS / k).setRotation(rot).setTint(0x000000).setAlpha(0.18).setDepth(depth - 1);
+      return this.add.image(PX + dx, PY + dy, key).setScale(PS / k).setRotation(rot).setDepth(depth);
     };
     place(under[1], -250, 60, TILT - 0.18, 1);
     place(under[0], -130, 40, TILT - 0.09, 3);
-    place(front, 0, 0, TILT, 5);
+    // round 80b: the front page is drawn at K x detail with real type; smooth sampling keeps the letters whole
+    this.textures.get(front).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    place(front, 0, 0, TILT, 5, K);
     // the overlays (story box, black card, hint) live on their own camera so the zooms don't scale them
     const world = [...this.children.list];
     this.box = new StoryBox(this, { y: 590 });

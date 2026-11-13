@@ -172,9 +172,9 @@ export class PerkTreeScene extends Phaser.Scene {
       else if (n.type === 'passive') g.fillCircle(p.x, p.y, r);
       else { g.fillPoints([new Phaser.Math.Vector2(p.x, p.y - r), new Phaser.Math.Vector2(p.x + r, p.y), new Phaser.Math.Vector2(p.x, p.y + r), new Phaser.Math.Vector2(p.x - r, p.y)], true); }
       if (i === this.sel) { g.lineStyle(2, 0xffcc33, 1); g.strokeCircle(p.x, p.y, r + 7); }
-      const nameCol = n.goat ? (owned || can ? '#ffcc33' : '#9a8540') : owned ? '#ffffff' : can ? '#d8def0' : '#68708c';
+      const nameCol = n.goat ? (owned || can ? '#ffcc33' : '#b39a4a') : owned ? '#ffffff' : can ? '#e2e7f6' : '#8c94b2';
       const wrap = tree.labelWrap ? { wordWrap: { width: tree.labelWrap }, align: 'center' } : {};
-      this.names.push(this.add.text(p.x, n.labelAbove ? p.y - r - 4 : p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '12px', color: nameCol, fontStyle: n.goat ? 'bold' : 'normal', ...wrap }).setOrigin(0.5, n.labelAbove ? 1 : 0));
+      this.names.push(this.add.text(p.x, n.labelAbove ? p.y - r - 4 : p.y + r + 6, n.name, { fontFamily: FONT, fontSize: '13px', color: nameCol, fontStyle: 'bold', stroke: '#0b0e18', strokeThickness: 3, ...wrap }).setOrigin(0.5, n.labelAbove ? 1 : 0));
     });
     const n = tree.nodes[this.sel];
     const chk = canUnlock(c, n.id);

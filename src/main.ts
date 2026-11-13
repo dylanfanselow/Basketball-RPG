@@ -28,6 +28,15 @@ const textFactory = Phaser.GameObjects.GameObjectFactory.prototype.text;
 Phaser.GameObjects.GameObjectFactory.prototype.text = function (this: Phaser.GameObjects.GameObjectFactory, x: number, y: number, text: string | string[], style?: Phaser.Types.GameObjects.Text.TextStyle) {
   return textFactory.call(this, x, y, text, { resolution: 2, ...(style ?? {}) });
 };
+// round 80b: legible text. pixelArt samples every texture NEAREST and Phaser re-uploads text NEAREST on each update;
+// a 2x text canvas shown at 1.5x then loses every 4th pixel row / column (thin letters break). Text alone goes LINEAR.
+const updateText = Phaser.GameObjects.Text.prototype.updateText;
+Phaser.GameObjects.Text.prototype.updateText = function (this: Phaser.GameObjects.Text) {
+  const out = updateText.call(this);
+  const src = this.frame?.source;
+  if (src?.glTexture && src.renderer && 'gl' in src.renderer) src.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return out;
+};
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

@@ -158,6 +158,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80b (owner): all writing must be clearly legible** (the newspaper, perk names, everything). Text is smooth
+  (LINEAR) even though the art is pixel art; small print on drawn objects is real type, not thresholded pixels.
 - **Round 80 (owner): the next chapter of the story.**
   - ✕ at the **trailer's path end** (after Mom's talk, while you should check on Kingston) leads to **Kingston on the
     school court in the day**. He can't explain being sick for one day (fine, ate, had his coffee, then his stomach

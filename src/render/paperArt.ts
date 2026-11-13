@@ -23,34 +23,20 @@ export interface PaperInfo { name: string; number: number; heightFt: number; app
 type C = CanvasRenderingContext2D;
 const R = (c: C, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 
-/** Text in hard-edged ink (antialiasing thresholded away, like printed pixel type). Returns the next line's y. */
+/** Round 80b: the page is drawn at K times the art resolution (the art pixels stay KxK blocks), so the type is real,
+ *  smooth text, readable at every camera stop. */
+export const K = 4;
+
+/** Printed type (word wrapped to `maxW` art px). Returns the next line's y. */
 function ink(c: C, text: string, x: number, y: number, font: string, col = INK, align: 'left' | 'center' = 'left', maxW = 999, lineH = 0): number {
-  const s = canvas(PAPER_W, 80), sc = s.getContext('2d')!;
-  sc.font = font; sc.textBaseline = 'top';
-  // word wrap
+  c.font = font; c.textBaseline = 'top'; c.textAlign = align; c.fillStyle = col;
   const words = text.split(' '), lines: string[] = [];
   let cur = '';
-  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (sc.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
   if (cur) lines.push(cur);
-  const size = parseInt(/(\d+)px/.exec(font)?.[1] ?? '10', 10), lh = lineH || Math.round(size * 1.15);
-  const n = parseInt(col.slice(1), 16), cr = n >> 16, cg = (n >> 8) & 255, cb = n & 255;
-  for (const line of lines) {
-    sc.clearRect(0, 0, s.width, s.height);
-    sc.fillStyle = '#000'; sc.font = font; sc.textBaseline = 'top';
-    const w = Math.ceil(sc.measureText(line).width);
-    sc.fillText(line, 0, 2);
-    const img = sc.getImageData(0, 0, Math.min(s.width, w + 2), size + 6), d = img.data;
-    const out = c.getImageData(0, 0, PAPER_W, PAPER_H), od = out.data;
-    const x0 = Math.round(align === 'center' ? x - w / 2 : x);
-    for (let yy = 0; yy < img.height; yy++) for (let xx = 0; xx < img.width; xx++) {
-      if (d[(yy * img.width + xx) * 4 + 3] < 110) continue;
-      const px = x0 + xx, py = y + yy - 2;
-      if (px < 0 || py < 0 || px >= PAPER_W || py >= PAPER_H) continue;
-      const o = (py * PAPER_W + px) * 4; od[o] = cr; od[o + 1] = cg; od[o + 2] = cb; od[o + 3] = 255;
-    }
-    c.putImageData(out, 0, 0);
-    y += lh;
-  }
+  const size = parseInt(/(\d+)px/.exec(font)?.[1] ?? '10', 10), lh = lineH || Math.round(size * 1.18);
+  for (const line of lines) { c.fillText(line, x, y); y += lh; }
+  c.textAlign = 'left';
   return y;
 }
 
@@ -78,7 +64,8 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
   find: for (let yy = 0; yy < FRONT_H; yy++) for (let xx = 0; xx < FRONT_W; xx++) if (src[(yy * FRONT_W + xx) * 4 + 3] > 0) { top = yy; break find; }
   const k = 2; // 2 art px per sprite px
   const ox = x + Math.round((w - FRONT_W * k) / 2), oy = y + 6 - top * k;
-  const out = c.getImageData(0, 0, PAPER_W, PAPER_H), od = out.data;
+  const pcv = canvas(PAPER_W, PAPER_H), pc = pcv.getContext('2d')!;
+  const out = pc.getImageData(0, 0, PAPER_W, PAPER_H), od = out.data;
   for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
     const sx = Math.floor((xx - ox) / k), sy = Math.floor((yy - oy) / k);
     let lum: number;
@@ -91,13 +78,16 @@ function photo(c: C, x: number, y: number, w: number, h: number, who: PaperInfo)
     const col = [[29, 27, 24], [88, 84, 77], [170, 164, 150], [244, 236, 210]][level];
     const o = (yy * PAPER_W + xx) * 4; od[o] = col[0]; od[o + 1] = col[1]; od[o + 2] = col[2]; od[o + 3] = 255;
   }
-  c.putImageData(out, 0, 0);
+  pc.putImageData(out, 0, 0);
+  c.imageSmoothingEnabled = false;
+  c.drawImage(pcv, x, y, w, h, x, y, w, h);
   R(c, x - 1, y - 1, w + 2, 1, INK); R(c, x - 1, y + h, w + 2, 1, INK); R(c, x - 1, y, 1, h, INK); R(c, x + w, y, 1, h, INK);
 }
 
 /** The front page. */
 export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
-  const cv = canvas(PAPER_W, PAPER_H), c = cv.getContext('2d')!;
+  const cv = canvas(PAPER_W * K, PAPER_H * K), c = cv.getContext('2d')!;
+  c.scale(K, K);
   // newsprint: cream, a fold down the middle (the right half a touch darker), faint fibre speckle
   R(c, 0, 0, PAPER_W, PAPER_H, PAPER);
   R(c, PAPER_W / 2, 0, PAPER_W / 2, PAPER_H, '#efe6ca');
@@ -107,8 +97,8 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   R(c, 14, 10, PAPER_W - 28, 2, INK);
   ink(c, 'THE LINCOLN LEDGER', PAPER_W / 2, 15, 'bold 27px Georgia, "Times New Roman", serif', INK, 'center');
   R(c, 14, 46, PAPER_W - 28, 1, INK);
-  ink(c, 'SATURDAY, FEBRUARY 21', 16, 49, 'bold 9px Arial, sans-serif');
-  ink(c, 'WINTER EDITION  ·  50¢', PAPER_W - 120, 49, 'bold 9px Arial, sans-serif');
+  ink(c, 'SATURDAY, FEBRUARY 21', 16, 49, 'bold 10px Arial, sans-serif');
+  ink(c, 'WINTER EDITION  ·  50¢', PAPER_W - 16 - 118, 49, 'bold 10px Arial, sans-serif');
   R(c, 14, 61, PAPER_W - 28, 3, INK);
   // headline across the top
   let y = ink(c, 'LIONS HEADED TO NATIONALS', PAPER_W / 2, 69, 'bold 25px Impact, "Arial Black", "Arial Narrow", sans-serif', INK, 'center', PAPER_W - 24);
@@ -121,20 +111,20 @@ export function drawFrontPage(who: PaperInfo): HTMLCanvasElement {
   // right: your photo + caption
   const px = 170, pw = 144, ph = 112;
   photo(c, px, colTop + 2, pw, ph, who);
-  ink(c, `${who.name.toUpperCase()} (#${who.number}) has carried the Lions all winter.`, px, colTop + ph + 6, 'bold 8px Arial, sans-serif', INK, 'left', pw);
-  bodyLines(c, px, colTop + ph + 26, pw, 9, 12);
+  const cy = ink(c, `${who.name.toUpperCase()} (#${who.number}) has carried the Lions all winter.`, px, colTop + ph + 5, 'bold 10px Arial, sans-serif', INK, 'left', pw, 12);
+  bodyLines(c, px, cy + 3, pw, Math.max(3, Math.floor((colTop + ph + 71 - cy - 3) / 5)), 12);
   // the weather box (left, lower)
   const by = colTop + 98;
   R(c, 14, by, 136, 1, INK); R(c, 14, by + 74, 136, 1, INK); R(c, 14, by, 1, 75, INK); R(c, 149, by, 1, 75, INK);
   R(c, 15, by + 1, 134, 18, INK);
-  ink(c, 'RECORD LOW TEMPS', 82, by + 4, 'bold 13px Impact, "Arial Black", sans-serif', PAPER, 'center');
-  let wy = ink(c, 'City braces for its coldest week on record. Shelters open, pipes freeze across town.', 20, by + 23, 'bold 9px Arial, sans-serif', INK, 'left', 124, 11);
+  ink(c, 'RECORD LOW TEMPS', 82, by + 4, 'bold 12px Impact, "Arial Black", sans-serif', PAPER, 'center');
+  let wy = ink(c, 'City braces for its coldest week on record. Shelters open, pipes freeze across town.', 20, by + 23, 'bold 10px Arial, sans-serif', INK, 'left', 124, 12);
   bodyLines(c, 20, wy + 2, 124, Math.max(1, Math.floor((by + 70 - wy) / 5)), 13);
   // bottom: Kingston
   const ky = 334;
   R(c, 14, ky, PAPER_W - 28, 2, INK);
   ink(c, 'CRESTVIEW PREP AWAITS', 16, ky + 6, 'bold 18px Impact, "Arial Black", sans-serif');
-  const ny = ink(c, 'The unbeaten Falcons add transfer Kingston Williams, who left Lincoln in the fall. "I told y\'all I\'d find a way," Williams said.', 16, ky + 30, 'bold 9px Arial, sans-serif', INK, 'left', PAPER_W - 34, 11);
+  const ny = ink(c, 'The unbeaten Falcons add transfer Kingston Williams, who left Lincoln in the fall. "I told y\'all I\'d find a way," Williams said.', 16, ky + 30, 'bold 10px Arial, sans-serif', INK, 'left', PAPER_W - 34, 12);
   bodyLines(c, 16, ny + 3, (PAPER_W - 40) / 2, Math.floor((PAPER_H - 10 - ny) / 5), 14);
   bodyLines(c, PAPER_W / 2 + 6, ny + 3, (PAPER_W - 40) / 2, Math.floor((PAPER_H - 10 - ny) / 5), 15);
   // a soft dark edge so the sheet reads on the table
