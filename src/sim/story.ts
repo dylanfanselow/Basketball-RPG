@@ -191,10 +191,17 @@ export function squadSeed(c: CareerState): number {
 export function lincolnSquad(c: CareerState): Player[] {
   const rng = new Rng(squadSeed(c));
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  return order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, 48));
+  const squad = order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`LIN-${i}`, 0, pos, rng, 48));
+  // round 80c (owner): the captain is clearly your best teammate (after the names are drawn, so they never change)
+  const cap = squadCaptain(c, squad);
+  for (const s of CORE_STATS) cap.core[s] = clamp(cap.core[s] + CAPTAIN_BUFF, 1, 99);
+  cap.recompute();
+  return squad;
 }
+/** Round 80c: the captain's edge on every stat. */
+export const CAPTAIN_BUFF = 10;
 /** The captain (see `captainPos`). */
-export function squadCaptain(c: CareerState, squad = lincolnSquad(c)): Player {
+export function squadCaptain(c: CareerState, squad: Player[] = lincolnSquad(c)): Player {
   return squad.find((p) => p.pos === captainPos(c.pos)) ?? squad[0];
 }
 
@@ -223,6 +230,24 @@ export function buildVisit(c: CareerState, seed: number): GameSim {
   return sim;
 }
 
+/**
+ * Round 80c (owner): in the final Kingston's perks fit his position (a PG has no Brick Wall, a C none of the
+ * shooting): every perk of the trees his position plays, and one signature GOAT skill.
+ */
+export const KINGSTON_TREES: Record<Position, { trees: string[]; goat: string }> = {
+  PG: { trees: ['shooting', 'dribbling', 'passing', 'driving', 'perimeter'], goat: 'pa_pointgod' },
+  SG: { trees: ['shooting', 'dribbling', 'driving', 'perimeter'], goat: 'sh_lethal' },
+  SF: { trees: ['shooting', 'finishing', 'driving', 'perimeter'], goat: 'fi_unstoppable' },
+  PF: { trees: ['finishing', 'screens', 'interior', 'driving'], goat: 'dv_freight' },
+  C: { trees: ['interior', 'screens', 'finishing'], goat: 'in_blockparty' },
+};
+export function kingstonFinalPerks(pos: Position): string[] {
+  const k = KINGSTON_TREES[pos];
+  return [...Object.entries(NODES).filter(([, n]) => k.trees.includes(n.tree) && !n.goat).map(([id]) => id), k.goat];
+}
+/** Round 80c: Kingston's edge in the final over an average player (you're locked in at +10). */
+export const KINGSTON_FINAL = LOCKED_IN + 3;
+
 /** Round 80: the national final is two halves like the big game. */
 export const FINAL_HALF = BIG_GAME_HALF;
 
@@ -237,7 +262,7 @@ export function buildFinal(c: CareerState, seed: number): GameSim {
   const mine = [me, ...lincolnSquad(c)];
   const r = c.story?.rival ?? fallbackRival(c);
   const king = new Player({
-    id: RIVAL_ID, name: `${r.first} ${r.last}`, team: 1, pos: r.pos, core: avgSpread(r.pos, LOCKED_IN + RIVAL_EDGE), nodes: Object.keys(NODES),
+    id: RIVAL_ID, name: `${r.first} ${r.last}`, team: 1, pos: r.pos, core: avgSpread(r.pos, KINGSTON_FINAL), nodes: kingstonFinalPerks(r.pos),
     number: r.number, skin: KINGSTON_SKIN, height: r.heightIn / 12, appearance: kingstonLook(r.appearance),
   });
   king.star = true;
@@ -248,5 +273,6 @@ export function buildFinal(c: CareerState, seed: number): GameSim {
     teams: [LINCOLN, CRESTVIEW], rosters: [mine, theirs], userId: me.id,
     trust: { team: 75, coach: 75 }, ult: { unlocked: false, id: null, level: 0 },
     featureUser: true, venue: 'arena',
+    ultLate: true, // round 80c: Kingston saves his ult for clutch time
   });
 }

@@ -3,7 +3,8 @@ import type { GameScene } from './GameScene';
 import type { GameEvent } from '../sim/game';
 import { StoryBox, BoxContent, BoxSpeaker } from '../render/storyBox';
 import { TutorialDirector } from '../sim/tutorial';
-import { RIVAL_ID, LOCKED_IN } from '../sim/story';
+import { RIVAL_ID, LOCKED_IN, squadCaptain } from '../sim/story';
+import { CORE_STATS } from '../sim/data';
 import { setStage, storyScene, StoryGame } from './setup';
 import { prepareStory, prewarmRoom } from './preload';
 import { app } from '../state';
@@ -40,6 +41,14 @@ export class StoryRun {
   private walker: { dir: { x: number; y: number }; speed: number } | null = null;
   private scout: { sprite: Phaser.GameObjects.Sprite; board: Phaser.GameObjects.Graphics; x: number; y: number } | null = null;
 
+  /** Round 80c: Kingston's trash talk in the final (a speech bubble over his head). */
+  private talkG: Phaser.GameObjects.Graphics | null = null;
+  private talkT: Phaser.GameObjects.Text | null = null;
+  private talkUntil = 0;
+  private nextTalkAt = 0;
+  private halfDone = false;
+  private wasLate = false;
+
   constructor(private gs: GameScene, public which: StoryGame) {
     this.box = new StoryBox(gs);
     this.dir = gs.sim.director instanceof TutorialDirector ? gs.sim.director : null;
@@ -73,6 +82,9 @@ export class StoryRun {
     } else if (which === 'final') {
       // round 80: three months later, the national final in the arena; Kingston plays for Crestview now
       const line = c.story?.momCall === 'go' ? 'Play my heart out. For her.' : 'Just hold out, Ma. One more game.';
+      this.talkG = gs.add.graphics().setDepth(9150).setVisible(false);
+      this.talkT = gs.add.text(0, 0, '', { fontFamily: FONT, fontSize: '15px', color: '#14121e', fontStyle: 'bold', align: 'center', wordWrap: { width: 260 } }).setOrigin(0.5).setDepth(9151).setVisible(false);
+      this.nextTalkAt = gs.time.now + 6000;
       this.say([
         { who: 'narrator', text: 'The national championship. Lincoln vs. Crestview Prep.' },
         { who: 'kingston', text: `Told you I'd figure out a way, ${you}.` },
@@ -166,8 +178,83 @@ export class StoryRun {
 
   /** Feed from GameScene.onEvent: the coach reacts in the big game. */
   onEvent(e: GameEvent) {
-    if (!this.coach) return;
-    if (e.kind === 'score' && e.team === 0) this.coach.cheerUntil = this.gs.time.now + 1600;
+    if (this.coach && e.kind === 'score' && e.team === 0) this.coach.cheerUntil = this.gs.time.now + 1600;
+    if (this.which !== 'final') return;
+    // round 80c: Kingston talks trash; the coach talks to you at the half
+    const me = this.gs.sim.user;
+    if (e.kind === 'period' && e.text === 'End of H1' && !this.halfDone) { this.halfDone = true; this.halftime(); return; }
+    if (e.kind === 'score' && e.pid === RIVAL_ID && Math.random() < 0.75) this.talk(KINGSTON_TALK.scores);
+    else if ((e.kind === 'block' || e.kind === 'steal') && e.pid === RIVAL_ID) this.talk(KINGSTON_TALK.stops);
+    else if (e.kind === 'score' && me && e.pid === me.id && Math.random() < 0.5) this.talk(KINGSTON_TALK.youScore);
+  }
+
+  /** Round 80c: one of Kingston's lines in a bubble over his head (throttled; `force` skips the wait). */
+  private talk(lines: string[], force = false) {
+    const now = this.gs.time.now, g = this.talkG, t = this.talkT;
+    if (!g || !t || (!force && now < this.nextTalkAt)) return;
+    if (!this.gs.sim.players.some((p) => p.id === RIVAL_ID)) return;
+    this.talkUntil = now + 2600; this.nextTalkAt = now + 9000;
+    t.setText(lines[Math.floor(Math.random() * lines.length)]);
+    const w = t.width + 22, h = t.height + 14;
+    g.clear();
+    g.fillStyle(0x000000, 0.35); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 3, w, h, 8);
+    g.fillStyle(0xffffff, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
+    g.fillTriangle(-6, h / 2 - 1, 6, h / 2 - 1, 0, h / 2 + 10);
+    g.lineStyle(2, 0x1c2b4a, 1); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+    g.lineBetween(-6, h / 2, 0, h / 2 + 10); g.lineBetween(6, h / 2, 0, h / 2 + 10);
+    g.setData('h', h);
+  }
+
+  /** Keep the bubble over Kingston's head; hide it while a story line is up or once it's said. */
+  private drawTalk() {
+    const g = this.talkG, t = this.talkT; if (!g || !t) return;
+    const sim = this.gs.sim;
+    if (!this.wasLate && sim.lateWindow && !sim.over) { this.wasLate = true; this.talk(KINGSTON_TALK.clutch, true); }
+    const spr = this.gs.sprites.get(RIVAL_ID);
+    const show = !!spr && spr.visible && !this.line && this.gs.time.now < this.talkUntil;
+    g.setVisible(show); t.setVisible(show);
+    if (!show || !spr) return;
+    const top = spr.getTopCenter(), h = (g.getData('h') as number) ?? 30;
+    // on screen: inside the view's sides, below the top bar
+    const cam = this.gs.cameras.main, w = t.width + 22;
+    const x = Phaser.Math.Clamp(top.x ?? spr.x, cam.scrollX + w / 2 + 8, cam.scrollX + VIEW_W - w / 2 - 8);
+    const y = Math.max(cam.scrollY + 70 + h / 2, (top.y ?? spr.y) - h / 2 - 4);
+    g.setPosition(x, y); t.setPosition(x, y);
+  }
+
+  /**
+   * Round 80c: the end of the first half. Down: the coach tells you to play the game, not the emotions, and you lock
+   * back in ("I NEED TO WIN THIS": +6 on every stat). Up or tied: don't get complacent, Kingston still has tricks.
+   */
+  private halftime() {
+    const sim = this.gs.sim, me = sim.user, c = app.career;
+    if (!me) return;
+    const you = c.firstName || c.name.split(' ')[0];
+    const mine = sim.teams[me.team].score, theirs = sim.teams[1 - me.team].score;
+    const cap = squadCaptain(c, sim.teams[me.team].roster.filter((p) => p !== me));
+    const capName = `${cap.name.split(' ')[0]} (C)`;
+    if (mine < theirs) {
+      this.say([
+        { who: 'narrator', text: `Halftime. Crestview ${theirs}, Lincoln ${mine}.` },
+        { who: 'coach', text: `Bring it in. ${you}. Look at me.` },
+        { who: 'coach', text: 'I know who\'s on the other side. We all know. But you\'re playing him, not the game.' },
+        { who: 'coach', text: 'Every time he talks, you bite. Focus on the game, not your emotions.' },
+        { who: 'coach', text: 'Run our stuff. Make the extra pass. Box out. The score takes care of itself.' },
+        { who: 'you', text: 'I need to win this.', then: () => {
+          for (const s of CORE_STATS) me.core[s] = Math.min(99, me.core[s] + NEED_TO_WIN);
+          me.recompute();
+          this.banner('I NEED TO WIN THIS', `+${NEED_TO_WIN} ALL STATS  ·  FOCUS ON THE GAME`);
+        } },
+      ]);
+    } else {
+      this.say([
+        { who: 'narrator', text: `Halftime. Lincoln ${mine}, Crestview ${theirs}.` },
+        { who: 'coach', text: 'Good half. Good half. But nobody in here gets comfortable. A lead at the half is just a number.' },
+        { who: 'coach', text: `Kingston's still got a few tricks in his bag, ${you}. He's been waiting all year for this one.` },
+        { who: 'coach', text: 'Be careful with the ball. Don\'t give him anything easy. Don\'t get complacent.' },
+        { who: 'mate', name: capName, text: 'You heard him. One more half.' },
+      ]);
+    }
   }
 
   /** Round 80: a story scene on the court that isn't a game (Kingston at the school): no HUD, no game music. */
@@ -272,6 +359,7 @@ export class StoryRun {
 
   private animate() {
     this.walkOff();
+    this.drawTalk();
     const now = this.gs.time.now;
     if (this.coach) {
       const c = this.coach, fit = !!this.line?.fit;
@@ -297,3 +385,13 @@ export class StoryRun {
     }
   }
 }
+
+/** Round 80c: Kingston's trash talk in the national final. */
+const KINGSTON_TALK = {
+  scores: ['Too easy.', 'Remember the 1s? Same thing.', 'That\'s what the scout should\'ve seen.', 'You still can\'t guard me.', 'Crestview, baby!'],
+  stops: ['Not in my house.', 'Get that weak stuff outta here.', 'You borrowed my spot. I\'m taking it back.'],
+  youScore: ['Lucky.', 'Enjoy it. Won\'t happen again.', 'Oh, now you wanna hoop?'],
+  clutch: ['This is my moment, not yours.'],
+};
+/** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
+const NEED_TO_WIN = 6;

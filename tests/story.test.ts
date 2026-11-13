@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createCareer, migrateCareer, newCareer, STARTER_CORE, STARTER_PERKS, storyKeyGame, nextKeyGame } from '../src/career/career';
 import { defaultAppearance } from '../src/render/appearance';
-import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW } from '../src/sim/story';
+import { newStory, buildTutorial, buildOnes, buildBigGame, bigGameVerdict, complementPos, avgSpread, rivalPlayer, RIVAL_ID, LOCKED_IN, RIVAL_EDGE, captainPos, lincolnSquad, squadCaptain, buildVisit, buildFinal, CRESTVIEW, kingstonFinalPerks, CAPTAIN_BUFF, KINGSTON_FINAL } from '../src/sim/story';
 import { TutorialDirector } from '../src/sim/tutorial';
 import { NODES } from '../src/sim/data';
 import { GameSim, UserInput, emptyInput } from '../src/sim/game';
@@ -256,8 +256,8 @@ describe('round 60 story', () => {
     const king = sim.players.find((p) => p.id === RIVAL_ID)!;
     expect(king.team).toBe(1);
     expect(king.star).toBe(true);
-    expect(king.nodes.size).toBe(Object.keys(NODES).length);
-    expect(king.core.shooting).toBe(Math.min(99, avgSpread(king.pos).shooting + LOCKED_IN + RIVAL_EDGE));
+    expect(king.nodes.size).toBe(kingstonFinalPerks(king.pos).length);
+    expect(king.core.shooting).toBe(Math.min(99, avgSpread(king.pos).shooting + KINGSTON_FINAL));
     let guard = 0;
     while (!sim.over && guard++ < 60 * 60 * 20) sim.update(1 / 60, emptyInput());
     expect(sim.over).toBe(true);
@@ -266,5 +266,33 @@ describe('round 60 story', () => {
     const c = career('PG');
     for (const st of ['snow', 'bus', 'final'] as const) { c.story!.stage = st; expect(storyKeyGame(c)).toEqual({ when: 'TODAY', what: 'Final vs CRE' }); }
     c.story!.stage = 'done'; c.story!.winter = true; expect(storyKeyGame(c)!.when).toBe('PLAYED');
+  });
+
+  it('round 80c: Kingston\'s final perks fit his position, one GOAT', () => {
+    const goats = (pos: Position) => kingstonFinalPerks(pos).filter((id) => NODES[id].goat);
+    for (const pos of ['PG', 'SG', 'SF', 'PF', 'C'] as const) expect(goats(pos).length).toBe(1);
+    const pg = kingstonFinalPerks('PG'), c = kingstonFinalPerks('C');
+    expect(pg).not.toContain('sc_root'); expect(pg).not.toContain('in_blockparty');
+    expect(c.some((id) => NODES[id].tree === 'shooting')).toBe(false);
+    expect(c).toContain('in_blockparty');
+  });
+  it('round 80c: the captain is buffed, names unchanged', () => {
+    const c = career('SG'); c.story!.squadSeed = 99;
+    const a = lincolnSquad(c), cap = squadCaptain(c, a);
+    expect(cap.pos).toBe('PG');
+    const others = a.filter((p) => p !== cap);
+    expect(cap.overall).toBeGreaterThan(Math.max(...others.map((p) => p.overall)));
+    expect(lincolnSquad(c).map((p) => p.name)).toEqual(a.map((p) => p.name));
+    expect(CAPTAIN_BUFF).toBe(10);
+  });
+  it('round 80c: Kingston saves his ult for the clutch-time clock; close late shots are crunch time', () => {
+    const c = career('PG'); c.story!.squadSeed = 5;
+    const sim = buildFinal(c, 21), king = sim.players.find((p) => p.id === RIVAL_ID)!;
+    sim.quarter = 2; sim.clock = 120;
+    expect(sim.ultReady(king)).toBe(false);
+    sim.clock = 20;
+    expect(sim.ultReady(king)).toBe(true);
+    sim.teams[0].score = 40; sim.teams[1].score = 42;
+    expect(sim.crunchTime).toBe(true);
   });
 });

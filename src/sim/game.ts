@@ -61,6 +61,8 @@ export interface GameConfig {
   quarterLen: number;
   /** round 66: periods in regulation (default 4 quarters; the story's big game plays 2 halves) */
   periods?: number;
+  /** round 80c: CPU stars hold their ultimate until the late window (last period, clutch-time clock, any score) */
+  ultLate?: boolean;
   seed?: number;
   teams: [TeamDef, TeamDef];
   rosters: [Player[], Player[]];
@@ -410,6 +412,8 @@ export class GameSim {
   clockCalls = new Set<string>();
   /** Round 75/76: shots hush the arena in clutch time (the final period's last stretch, a close game, see `clutch`). */
   get crunchTime() { return this.cfg.mode === 'game' && !this.cfg.oneOnOne && this.clutch && this.clock > 0; }
+  /** Round 80c: the clutch-time clock (the last period's final 17%, or overtime), whatever the score. */
+  get lateWindow() { return this.cfg.mode === 'game' && (this.quarter > this.periods || (this.quarter === this.periods && this.clock < this.cfg.quarterLen * 0.17)); }
   get clutch() { return this.forceClutch || (this.cfg.mode === 'game' && this.quarter >= this.periods && this.clock < this.cfg.quarterLen * 0.17 && Math.abs(this.teams[0].score - this.teams[1].score) <= 5); }
   get elapsed() { return Math.min(this.periods, this.quarter - 1) * this.cfg.quarterLen + (this.cfg.quarterLen - this.clock); }
   /** Round 61: a 1v1 CPU's level (null for humans and outside 1v1). */
@@ -2063,6 +2067,7 @@ export class GameSim {
   /** Round 69: can he ult right now? Has one, unused tonight, and a full rhythm meter (CPU stars don't need the meter). */
   ultReady(p: Player): boolean {
     const u = this.ultOf(p);
+    if (this.cfg.ultLate && this.isAI(p) && !this.lateWindow) return false; // round 80c
     return !!u?.id && !this.ultsUsed[p.id] && (this.isAI(p) || p.rhythm >= 100);
   }
   /** Round 69: a CPU star whose offensive ult is saved for the last period: the iso called for it (this possession). */

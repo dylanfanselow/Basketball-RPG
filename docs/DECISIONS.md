@@ -158,6 +158,19 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80c (owner): the national final.**
+  - The clutch-time hush works in the final like any 5v5 (close score in the last ~40 s of the second half).
+  - **Kingston's perks fit his position** (only in the final; the 1s keep every perk): every perk of the trees his
+    position plays plus one signature GOAT: PG shooting / handles / passing / driving / perimeter + Point God; SG
+    shooting / handles / driving / perimeter + Lethal Shooter; SF shooting / finishing / driving / perimeter +
+    Unstoppable; PF finishing / screens / post / driving + Freight Train; C post / screens / finishing + Block Party.
+    His stats: average +13 (you're +10 locked in).
+  - **The captain is buffed** (+10 on every stat): clearly your best teammate.
+  - **Kingston talks trash** in a bubble over his head (when he scores, blocks or steals, sometimes when you score,
+    and once when clutch time starts).
+  - **Halftime:** down, the coach says focus on the game, not your emotions, then **I NEED TO WIN THIS** (+6 on every
+    stat, on top of locked in); up or tied, he warns against complacency (Kingston still has tricks in his bag).
+  - **Kingston's ult waits for the clutch-time clock** (last ~40 s of the second half or overtime, any score).
 - **Round 80b (owner): all writing must be clearly legible** (the newspaper, perk names, everything). Text is smooth
   (LINEAR) even though the art is pixel art; small print on drawn objects is real type, not thresholded pixels.
 - **Round 80 (owner): the next chapter of the story.**

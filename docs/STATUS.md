@@ -261,6 +261,9 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 80c: `KINGSTON_TREES` / `kingstonFinalPerks` / `KINGSTON_FINAL` (+13), `CAPTAIN_BUFF` in `lincolnSquad`,
+  `GameConfig.ultLate` + `GameSim.lateWindow` gate CPU `ultReady`; StoryRun final: `talk` / `drawTalk` (Kingston's
+  bubble, `KINGSTON_TALK`, throttled, cosmetic random), `halftime` on "End of H1" (down: `NEED_TO_WIN` +6 banner).
   Round 80b: text textures LINEAR (`main.ts` `updateText` patch); `paperArt.K` = 4 (front page drawn at 4x with
   real type, photo copied nearest, LINEAR texture placed at `PS / K`); perk names 13px bold + stroke.
   Round 80: stages `kingston` → `paper` → `snow` → `bus` → `final` (`StoryState.winter` / `squadSeed` / `momCall` /
