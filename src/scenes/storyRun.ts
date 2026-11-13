@@ -58,6 +58,7 @@ export class StoryRun {
     this.dir = gs.sim.director instanceof TutorialDirector ? gs.sim.director : null;
     const c = app.career, k = c.story?.rival;
     const you = c.firstName || c.name.split(' ')[0];
+    if (which === 'tutorial') this.prologueCard();
     if (which === 'ones') {
       this.say([
         { who: 'kingston', text: `Just us now. Make it, take it. Don't cry when I cook you, ${you}.` },
@@ -118,6 +119,28 @@ export class StoryRun {
     }
   }
 
+  /** Round 80h: a new game opens on "PROLOGUE" on black, then fades into the rainy court (held until it's gone). */
+  private card: { bg: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text; shownAt: number; fading: boolean } | null = null;
+  private prologueCard() {
+    const gs = this.gs;
+    const bg = gs.add.rectangle(0, 0, VIEW_W, 720, 0x000000, 1).setOrigin(0, 0).setScrollFactor(0).setDepth(9700);
+    const text = gs.add.text(VIEW_W / 2, 340, 'PROLOGUE', { fontFamily: FONT, fontSize: '54px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(9701).setAlpha(0);
+    gs.tweens.add({ targets: text, alpha: 1, duration: 700 });
+    this.card = { bg, text, shownAt: -1, fading: false };
+  }
+  /** True while the card holds the game. It stays up at least 2 s once the game is ready, then fades out. */
+  private stepCard(): boolean {
+    const c = this.card; if (!c) return false;
+    const now = this.gs.time.now;
+    if (c.shownAt < 0) c.shownAt = now;
+    if (!c.fading && now - c.shownAt > 2000) {
+      c.fading = true;
+      this.gs.tweens.add({ targets: c.text, alpha: 0, duration: 500 });
+      this.gs.tweens.add({ targets: c.bg, alpha: 0, duration: 1300, delay: 300, onComplete: () => { c.bg.destroy(); c.text.destroy(); if (this.card === c) this.card = null; } });
+    }
+    return true;
+  }
+
   private say(lines: Say[]) { this.queue.push(...lines); if (!this.line) this.next(); }
   private next() { this.line = this.queue.shift() ?? null; }
 
@@ -132,6 +155,7 @@ export class StoryRun {
     }
     const ok = inp.pressed('a');
     let content: BoxContent | null = null;
+    if (this.stepCard()) { this.box.hide(); this.box.draw(); return true; } // round 80h: the PROLOGUE card first
     let hold = this.cutscene || !!this.half; // round 80: the court visit never plays; round 80e: halftime holds the game
     this.stepHalf();
     if (this.line) {

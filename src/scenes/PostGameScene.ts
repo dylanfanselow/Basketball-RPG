@@ -61,12 +61,19 @@ export class PostGameScene extends Phaser.Scene {
     } else {
       lines.push('(Quick games don\'t affect your career save.)');
     }
-    lines.push('', 'Box score:');
+    // round 80h: the box score is its own table (right side) with every stat: points, boards, assists, steals, blocks,
+    // turnovers and shooting (it used to run off the bottom of the screen under the summary)
+    const box: string[] = [`${'BOX SCORE'.padEnd(21)}POS PTS REB AST STL BLK TOV    FG   3PT`];
+    const n = (v: number, w = 4) => String(v).padStart(w);
     for (const t of sim.teams) {
-      lines.push(`  ${t.def.id}`);
-      for (const p of t.roster.filter((p) => p.box.secs > 0)) lines.push(`    ${(p.isUser || p.id === 'USER' ? '★ ' : '  ') + p.name.padEnd(20)} ${p.pos.padEnd(3)} ${String(p.box.pts).padStart(3)} pts ${String(p.box.reb).padStart(2)} reb ${String(p.box.ast).padStart(2)} ast  ${p.box.fgm}/${p.box.fga}`);
+      box.push('', `${t.def.city} ${t.def.name}`.toUpperCase());
+      for (const p of t.roster.filter((p) => p.box.secs > 0 || t.onCourt.includes(p))) {
+        const x = p.box;
+        box.push(`${(p.isUser || p.id === 'USER' ? '★ ' : '  ') + p.name.slice(0, 18).padEnd(19)}${p.pos.padEnd(3)}${n(x.pts)}${n(x.reb)}${n(x.ast)}${n(x.stl)}${n(x.blk)}${n(x.tov)}${`${x.fgm}/${x.fga}`.padStart(6)}${`${x.tpm}/${x.tpa}`.padStart(6)}`);
+      }
     }
-    this.add.text(60, 130, lines.join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3 });
+    this.add.text(60, 130, lines.join('\n'), { fontFamily: FONT, fontSize: '14px', color: COL.text, lineSpacing: 3, wordWrap: { width: 560 } });
+    this.add.text(640, 130, box.join('\n'), { fontFamily: FONT, fontSize: '13px', color: COL.text, lineSpacing: 3 });
     this.add.text(1220, 690, '✕ / Enter: continue', { fontFamily: FONT, fontSize: '14px', color: COL.dim }).setOrigin(1, 0);
   }
   /** 1v1 result: winner, both stat lines, rematch / change players / menu. */

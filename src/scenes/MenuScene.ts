@@ -41,9 +41,9 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Career Hub', action: () => this.scene.start('Hub') },
       { label: 'Perk Trees', action: () => this.scene.start('PerkTree', { back: 'Menu' }) },
       { label: 'Fullscreen  (F)', action: () => (window as any).__toggleFullscreen?.(), hint: 'Or click ⛶ in the top-right corner.' },
-    ], 13);
-    this.add.text(640, 140, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
-    this.add.text(640, 168, [
+    ], 13, { rows: 16, w: 290 }); // round 80h: two columns (the list ran off the screen)
+    this.add.text(680, 140, `Player: ${c.name}  ·  ${c.pos}  ·  Lv ${c.level}`, { fontFamily: FONT, fontSize: '16px', color: COL.dim });
+    this.add.text(680, 168, [
       'CONTROLS (gamepad)                    KEYBOARD',
       'Left stick  move                      WASD',
       '✕  shoot  |  block                    K / Space',

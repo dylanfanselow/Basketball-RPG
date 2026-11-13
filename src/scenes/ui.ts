@@ -12,13 +12,15 @@ export const COL = { bg: '#0d0f1a', panel: 0x161a2b, accent: '#ffcc33', dim: '#8
 export class MenuList {
   idx = 0;
   texts: Phaser.GameObjects.Text[] = [];
-  constructor(private scene: Phaser.Scene, private x: number, private y: number, public items: { label: string; action: () => void; disabled?: boolean; hint?: string }[], private size = 22) {
+  /** round 80h: `cols` = { rows, w }: wrap into columns of `rows` items, `w` apart (←/→ moves across) */
+  constructor(private scene: Phaser.Scene, private x: number, private y: number, public items: { label: string; action: () => void; disabled?: boolean; hint?: string }[], private size = 22, private cols?: { rows: number; w: number }) {
     this.build();
   }
   build() {
     for (const t of this.texts) t.destroy();
     this.texts = this.items.map((it, i) => {
-      const t = this.scene.add.text(this.x, this.y + i * (this.size + 16), it.label, { fontFamily: FONT, fontSize: `${this.size}px`, color: it.disabled ? '#555b70' : COL.text }).setInteractive({ useHandCursor: true });
+      const row = this.cols ? i % this.cols.rows : i, col = this.cols ? Math.floor(i / this.cols.rows) : 0;
+      const t = this.scene.add.text(this.x + col * (this.cols?.w ?? 0), this.y + row * (this.size + 16), it.label, { fontFamily: FONT, fontSize: `${this.size}px`, color: it.disabled ? '#555b70' : COL.text }).setInteractive({ useHandCursor: true });
       t.on('pointerover', () => { this.idx = i; this.refresh(); });
       t.on('pointerdown', () => { this.idx = i; this.fire(); });
       return t;
@@ -36,6 +38,8 @@ export class MenuList {
   update(inp: InputMapper) {
     if (inp.pressed('down')) { this.idx = (this.idx + 1) % this.items.length; this.refresh(); }
     if (inp.pressed('up')) { this.idx = (this.idx + this.items.length - 1) % this.items.length; this.refresh(); }
+    if (this.cols && inp.pressed('right')) { this.idx = Math.min(this.items.length - 1, this.idx + this.cols.rows); this.refresh(); }
+    if (this.cols && inp.pressed('left')) { this.idx = Math.max(0, this.idx - this.cols.rows); this.refresh(); }
     if (inp.confirm()) this.fire();
   }
 }

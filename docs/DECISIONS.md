@@ -158,6 +158,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     kitchen stuffed with paper balls, and **missed shots** on the floor around it.
 - **Round 52: no fake shadows in the garage; footsteps in rooms.** The garage's baked footprint shadows (grey slabs
   offset under every piece) and the oil stain are gone. Walking in the apartment / garage plays a footstep per stride.
+- **Round 80h (owner):** the post-game box score shows every stat (PTS REB AST STL BLK TOV FG 3PT) in its own table;
+  a new game opens on **PROLOGUE** on black that fades into the rainy court; the dev menu wraps into two columns;
+  the rain is quieter everywhere (games and the main menu).
 - **Round 80g (owner):** Kingston's lines wear out (each time he says one it's about half as likely to come out
   again, fresh lines preferred); iso lines are "Let's dance." and "Guard up."; **defenders learn your pump fake**:
   every time one bites on your fake he's 30% less likely to bite on it again (his teammates learn a little from
