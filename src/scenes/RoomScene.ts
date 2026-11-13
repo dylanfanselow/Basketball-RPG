@@ -3,7 +3,8 @@ import { InputMapper } from '../input/input';
 import { hiRes, FONT } from './ui';
 import { app } from '../state';
 import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
-import { xpToNext, nextKeyGame, storyKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
+import { nextEvent, eventLine } from '../career/draft';
+import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
 import { dateLabel } from '../career/calendar';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
@@ -165,7 +166,7 @@ export abstract class RoomScene extends Phaser.Scene {
   /** Everything the HUD shows, so it rebuilds only when something changes. */
   private hudSig(): string {
     const c = app.career;
-    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo, c.story?.stage]);
+    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo, c.story?.stage, eventLine(nextEvent(c, nextKeyGame(c)))]);
   }
 
   makeHud() {
@@ -235,17 +236,14 @@ export abstract class RoomScene extends Phaser.Scene {
       T(x + 3, y + top + 2.5, k.tag, 7, '#ffffff', 0).setAlpha(0.55);
       pill(x + 20, y + top + 4, cw - 24, 5, sk.xp / skillXpToNext(sk.level), k.track, k.fill);
     });
-    // key game
+    // round 84 (owner): the date card: today ("Spring 2") and the days to the next big event under it
     panel(694, 22, 168, 66, 0x1f6f9a, 0x58a8d8);
-    const kg = nextKeyGame(c), hs = storyKeyGame(c); // round 60b: in high school it's the big game
-    const opp = kg ? TEAMS.find((t) => t.id === kg.opponent) : null;
     icon(702, 46, 'ball', 3);
-    T(730, 28, hs ? hs.when : !kg ? 'SEASON DONE' : kg.daysAway === 0 ? 'TODAY' : `${kg.daysAway} DAY${kg.daysAway === 1 ? '' : 'S'}`, 20);
-    T(730, 58, hs ? hs.what : kg && opp ? `${kg.why} vs ${opp.id}` : '', 12, '#d8f0ff');
-    // money / day
+    T(730, 26, dateLabel(L.day), 20);
+    T(730, 58, eventLine(nextEvent(c, nextKeyGame(c))), 11, '#d8f0ff');
+    // money (round 84: money only; the salary goes under it later)
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
-    icon(882, 40, 'coin', 2); T(902, 30, L.money < 0 ? `-$${(-L.money).toLocaleString('en-US')}` : `$${L.money.toLocaleString('en-US')}`, 18, L.money < 0 ? '#ff8a7a' : '#bfe86a'); // round 81: debt shows red
-    T(882, 58, dateLabel(L.day), 15, '#ffe9a8'); // round 83: the season and day ("Fall 2")
+    icon(882, 48, 'coin', 2); T(902, 38, L.money < 0 ? `-$${(-L.money).toLocaleString('en-US')}` : `$${L.money.toLocaleString('en-US')}`, 18, L.money < 0 ? '#ff8a7a' : '#bfe86a'); // round 81: debt shows red
     this.hud = { g, objs, sig: this.hudSig() };
     // a skill that went up since it was last shown flashes and pops a "+n"
     for (const st of CORE_STATS) {

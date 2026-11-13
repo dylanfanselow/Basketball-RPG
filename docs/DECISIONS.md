@@ -188,6 +188,35 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 84 (owner): Donovan Garcia and the road to the draft.**
+  - The agent is **Donovan Garcia** (was Victor Hale; old saves are renamed). He leaves the garage through the **side
+    door into the backyard**; you: "Wait, that's not an exit. Doesn't that lead to the backyard?" and you see him
+    **hop the fence** (then "...Who is this guy?").
+  - **Dates:** the national final **Winter 27**, the letter **Winter 28**, the meeting **Spring 1** (seasons stay 28 days).
+    Combine Spring 8-9, scrimmage Spring 11, draft Spring 28.
+  - **Top bar:** the blue card is the **date** ("Spring 2") with the **next big event** under it ("Combine in 7 days",
+    "Key game vs MEM in 3 days"). The money panel is money only (the salary goes under it later).
+  - **Mom:** the first night at the apartment you call her; "We can hold out for a bit now. Spring's here. The snow'll
+    start to melt."
+  - **Going places:** on an event day the apartment's front door goes there (combine, scrimmage, a workout). Sleeping
+    past an event = missed (Garcia brings up a missed combine). Two workouts on one day: you choose, the other is missed.
+  - **The combine** (playable): day 1 in the facility (the garage re-dressed: a combine banner, scouts, no van):
+    sprint (treadmill), squat, bench, 30 s each; day 2 the **shooting drill** on a court (5 spots x 5 shots). **The
+    scrimmage** (playable): you + 4 prospects vs 5, two 4-minute halves, the arena. Results are saved; the draft range
+    stays **Late first** for now (owner).
+  - **The week of work** after the scrimmage (owner): Spring 12 the trailer (spring: snow gone, the trailer patched
+    up) and you push the **new generator** into place, Mom at the door; Spring 14 **Burger Barn** (an original
+    fast-food place, our own name and barn logo, red + yellow) at the register, +$600 toward the debt; Spring 17 the
+    garage at night after a shift. You wake Spring 18.
+  - **Garcia's calls:** Spring 18, 19, 20, one team from each tier (Contender / Playoff / Lottery, the league split
+    10/10/10 by roster strength), each adds a **workout** on a random day up to Spring 25 (same-day overlaps happen).
+  - **Workouts by tier** (owner), the three always different: **Contender** ("impact out of the gate"): a scrimmage
+    with their whole team (you + their bench vs their starters) or the shooting drill. **Playoff** ("flexibility"): the
+    **pressure drill** (button prompts, the window shrinks every rep, 3 strikes) or the shooting drill. **Lottery**
+    ("foundational piece"): a **1v1 vs one of their starters** (not a star) or the pressure drill.
+  - **Draft night** (Spring 28) at the apartment with **Mom, the Lincoln captain + 2 Lincoln teammates and 2 Ridgemont
+    teammates** (Garcia isn't there), the broadcast in a corner inset. The **Lottery team that called always picks
+    you**, at a pick in **15-30**. Your team is set and its Year 2 season built. Summer (the offseason) comes next.
 - **Round 83 (owner): Stardew-style seasons and a real NBA season.** (Replaces round 82's months.)
   - The calendar is **four 28-day seasons, Fall, Winter, Spring, Summer** (a 112-day year), shown as "Spring 1, Year 1".
     Day 1 = **Fall 1, Year 1**, a Monday, so every season is exactly four calendar rows. The calendar pages are seasons

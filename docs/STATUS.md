@@ -261,6 +261,16 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 84: `career/draft.ts` (`WORKOUT_KINDS`, `TIER_PITCH`, `assignWorkouts`, `leagueTiers`, `storyRng`,
+  `draftDays`, `planWorkouts`, `callLines`, `draftRange` ('late'), `RANGE_PICKS`, `draftResult`, `todaysEvents` /
+  `eventName` / `markMissed`, `nextEvent` / `eventLine`); `StoryState` `momCall2` / `combine` / `scrimmage` / `montage` /
+  `workouts` / `going` / `drafted`, stage `montage`; `sim/draftGames.ts` (`ShootingDrill` director, `buildShootingDrill`,
+  `buildDraftScrimmage`, `starterFor`, `buildStarterOnes`, `buildTeamScrimmage`); `GauntletGame` (minigames.ts);
+  `StoryGame` combineShoot / scrimmage / wkShoot / wk1v1 / wkTeam (StoryRun intros, PostGame `recordDraftGame`);
+  `scenes/draftRoad.ts` (`goTo`), `scenes/castSprites.ts` (Mom / mates / scouts), `scenes/MontageScene.ts` (Burger
+  Barn beat, `montageGo`, `banner`), `render/burgerArt.ts`; GarageScene test mode (`combine1` / `gauntlet`), fence
+  jump (`AgentTalk` `fenceJump`, `choose`, `phone`), night workout; TrailerScene `generator`; ApartmentScene calls,
+  Mom's call, event doors, workout choice, draft night; HUD date card; `AGENT_NAME` Donovan Garcia.
   Round 83: `career/calendar.ts` seasons (`SEASONS`, `dateOf` / `dayOf`, `dateLabel` / `longDate`, `seasonGrid`,
   `pageRange` / `pageOf`, `seasonPages`, `simGamesByDay`, `STORY_DATES` as [year, season, day], `HALE_CALL_DAYS`);
   new `career/schedule.ts` (`teamStrength`, `opponentTiers`, `TIERS`, `KEY_PER_TIER`, `RIVALS` (moved), `buildSeason`,

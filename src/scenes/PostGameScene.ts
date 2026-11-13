@@ -7,7 +7,8 @@ import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
 import type { GameInit } from './setup';
 import { setStage, storyScene, ensureStory } from './setup';
-import { bigGameVerdict } from '../sim/story';
+import { bigGameVerdict, statSum } from '../sim/story';
+import { ShootingDrill, DRILL_SHOTS } from '../sim/draftGames';
 
 export class PostGameScene extends Phaser.Scene {
   inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null; replay?: GameInit;
@@ -50,6 +51,9 @@ export class PostGameScene extends Phaser.Scene {
       setStage('done');
       lines.push(v.won ? 'NATIONAL CHAMPIONS! Ridgemont Academy takes the title.' : 'Crestview Prep takes the title. Kingston gets the last word.');
       lines.push(`Your night: ${v.mine.toFixed(1)} (points, rebounds x1.3, assists x1.5, steals and blocks x3), best on the floor: ${v.best.toFixed(1)}.`);
+    } else if (this.mode === 'story' && DRAFT_GAMES.includes(this.replay?.story ?? '')) {
+      // round 84: the road to the draft: save how it went, then home to the apartment
+      for (const l of recordDraftGame(this.replay!.story!, sim)) lines.push(l);
     } else if (this.mode === 'story') {
       // round 60d: the big game. How it went decides Mom's scene back home (great: won + the best stat sum)
       const v = bigGameVerdict(sim);
@@ -101,8 +105,37 @@ export class PostGameScene extends Phaser.Scene {
     }
     if (this.inp.confirm()) {
       if (this.mode === 'story' && this.replay?.story === 'final' && this.sim) { this.scene.start('Game', { mode: 'story', story: 'final', venue: 'arena', reuse: this.sim }); return; } // round 80i: the huddles and Kingston, then home
+      if (this.mode === 'story' && DRAFT_GAMES.includes(this.replay?.story ?? '')) { const [scene, data] = storyScene('draftWeek'); this.scene.start(scene, data); return; } // round 84
       if (this.mode === 'story') { const [scene, data] = storyScene('after'); this.scene.start(scene, data); return; }
       this.scene.start(this.mode === 'career' ? 'Hub' : 'Menu');
     }
   }
+}
+
+/** Round 84: the story games on the road to the draft (PostGame records them, then home). */
+const DRAFT_GAMES: string[] = ['combineShoot', 'wkShoot', 'scrimmage', 'wk1v1', 'wkTeam'];
+/** Round 84: save a draft event's result on the story; returns the summary lines. */
+function recordDraftGame(which: string, sim: GameSim): string[] {
+  ensureStory();
+  const st = app.career.story!, u = sim.user!, b = u.box;
+  const won = sim.teams[u.team].score > sim.teams[1 - u.team].score;
+  const drill = sim.director instanceof ShootingDrill ? sim.director : null;
+  const w = st.workouts?.[st.going ?? -1];
+  const out: string[] = [];
+  if (which === 'combineShoot' && drill) {
+    (st.combine ??= {}).day2 = { makes: drill.makes, shots: Math.max(drill.shots, DRILL_SHOTS) };
+    out.push(`Combine shooting drill: ${drill.makes}/${DRILL_SHOTS}.`);
+  } else if (which === 'scrimmage') {
+    st.scrimmage = { pts: b.pts, reb: b.reb, ast: b.ast, sum: statSum(u), won };
+    out.push(`The scrimmage: ${b.pts} pts, ${b.reb} reb, ${b.ast} ast. The scouts wrote it all down.`);
+  } else if (w) {
+    const text = which === 'wkShoot' && drill ? `${drill.makes}/${DRILL_SHOTS} in the shooting drill`
+      : which === 'wk1v1' ? `${won ? 'Won' : 'Lost'} the 1-on-1, ${sim.teams[u.team].score}-${sim.teams[1 - u.team].score}`
+      : `${won ? 'Won' : 'Lost'} the scrimmage vs their starters (${b.pts} pts, ${b.reb} reb, ${b.ast} ast)`;
+    w.result = { score: which === 'wkShoot' && drill ? drill.makes : which === 'wk1v1' ? sim.teams[u.team].score : statSum(u), text };
+    st.going = undefined;
+    out.push(`Workout: ${text}.`);
+  }
+  app.changed();
+  return out;
 }

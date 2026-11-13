@@ -15,10 +15,14 @@ export type AgentStep =
   /** round 81b: he walks out through a door: it opens, he steps through (toward `to`), it closes behind him */
   | { agentOut: V }
   | { wait: number }
-  | { run: () => void };
+  | { run: () => void }
+  /** round 84: in the backyard (screen px): he walks to `to` (x), then hops the fence (top at `fenceY`) and is gone */
+  | { fenceJump: { from: { x: number; y: number }; to: number; fenceY: number } }
+  /** round 84: a choice in the box (↑↓ + ✕); `pick` gets the index */
+  | { choose: { who: BoxSpeaker; text: string; options: string[]; pick: (i: number) => void } };
 
 /**
- * Round 81: Victor Hale, the agent, in a room (the apartment, the garage): a front-view figure in a dark suit (the
+ * Round 81: the agent (round 84: Donovan Garcia), in a room (the apartment, the garage): a front-view figure in a dark suit (the
  * celebs' drawing), walking with a little bob, and a scripted scene of lines and moves. The room stays `busy` while
  * it runs; `update` returns false once it's over.
  */
@@ -32,6 +36,10 @@ export class AgentTalk {
   /** the waypoint the current walk is on (round 81b: walks follow paths around the furniture) */
   private wp = 0;
   private outAt = -1;
+  private choice = 0;
+  /** round 84: a screen-space position (the backyard, outside the room's floor) */
+  private scr: { x: number; y: number } | null = null;
+  private hopT = -1;
 
   /** `phone` (round 82): he's on the phone, not in the room (no figure; the lines and the room's busy work the same). */
   constructor(private room: RoomScene & { inp: { pressed(k: string): boolean } }, start: V, private steps: AgentStep[], opts: { phone?: boolean } = {}) {
@@ -58,7 +66,13 @@ export class AgentTalk {
     this.t += dt;
     let walking = false, youWalk = false;
     if (step) {
-      if ('say' in step) {
+      if ('choose' in step) {
+        const ch = step.choose;
+        if (room.inp.pressed('down')) { this.choice = (this.choice + 1) % ch.options.length; sfx.blip(true); }
+        if (room.inp.pressed('up')) { this.choice = (this.choice + ch.options.length - 1) % ch.options.length; sfx.blip(true); }
+        this.box.show({ who: ch.who, text: '', blocking: true, choices: ch.options, choice: this.choice });
+        if (room.inp.pressed('a')) { const k = this.choice; this.choice = 0; sfx.blip(true); this.next(); ch.pick(k); }
+      } else if ('say' in step) {
         const l = step.say;
         this.box.show({ who: l.who, text: l.text, name: l.name, blocking: true });
         if (room.inp.pressed('a')) { if (this.box.typing) this.box.finishTyping(); else { sfx.blip(true); this.next(); } }
@@ -80,6 +94,23 @@ export class AgentTalk {
           if (d > sp) { this.at = { x: this.at.x + dx / d * sp, y: this.at.y + dy / d * sp }; walking = true; this.sprite.setFlipX(dx < 0); }
           if (this.sprite.active) this.sprite.setAlpha(Math.max(0, 1 - this.outAt / 0.45));
           if (this.outAt >= 0.45) { this.sprite.setVisible(false); this.room.time.delayedCall(150, () => sfx.doorClose()); this.next(); }
+        } else if ('fenceJump' in step) {
+          // round 84 (owner): out in the backyard he walks to the fence and hops it, gone behind the pickets
+          const f = step.fenceJump, left = f.to < f.from.x;
+          if (!this.scr) { this.scr = { ...f.from }; this.sprite.setVisible(true).setAlpha(1).setFlipX(left); this.hopT = -1; this.sprite.setCrop(); }
+          if (this.hopT < 0) {
+            const dx = f.to - this.scr.x, sp = 95 * dt;
+            if (Math.abs(dx) <= sp) { this.scr.x = f.to; this.hopT = 0; sfx.effort(); } else { this.scr.x += Math.sign(dx) * sp; walking = true; }
+          } else {
+            this.hopT += dt;
+            const k = Math.min(1, this.hopT / 0.9), H = f.from.y - f.fenceY + 46;
+            this.scr.x = f.to + (left ? -1 : 1) * 70 * k;
+            this.scr.y = f.from.y - 14 * k - Math.sin(k * Math.PI) * H;
+            // past the top, everything below the fence line is behind the pickets
+            const top = this.scr.y - this.sprite.displayHeight, vis = (f.fenceY - top) / this.sprite.scaleY;
+            if (k > 0.5) this.sprite.setCrop(0, 0, this.sprite.frame.width, Math.max(0, Math.min(this.sprite.frame.height, vis)));
+            if (k >= 1) { this.sprite.setVisible(false); this.sprite.setCrop(); this.scr = null; this.next(); }
+          }
         } else if ('wait' in step) { if (this.t >= step.wait) this.next(); }
         else { step.run(); this.next(); }
       }
@@ -89,7 +120,8 @@ export class AgentTalk {
     if (!youWalk && room.playerReady()) { room.drawPlayer(0); if (!room.player.visible) room.player.setVisible(true); }
     // the agent: talks with his hands now and then, bobs as he walks
     const talking = step && 'say' in step && step.say.who === 'agent' && Math.sin(this.t * 2.4) > 0.55;
-    if (this.sprite.active) this.sprite.setFrame(talking ? 4 : 0).setPosition(sxOf(this.at.x), syOf(this.at.y) - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(syOf(this.at.y));
+    if (this.sprite.active && this.scr) this.sprite.setFrame(0).setPosition(this.scr.x, this.scr.y - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(-500);
+    else if (this.sprite.active) this.sprite.setFrame(talking ? 4 : 0).setPosition(sxOf(this.at.x), syOf(this.at.y) - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(syOf(this.at.y));
     // round 82: a scene can end on a line (a phone call): put the box away with it
     if (this.done) { this.box.hide(); room.busy = false; return false; }
     return true;

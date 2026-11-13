@@ -132,7 +132,7 @@ export class DribbleGame extends RepBar {
   move: FaceBtn | null = null;
   moveAt = -9;
   constructor(rand?: () => number) { super(rand); this.want = this.pick(); }
-  private pick(): FaceBtn { const all: FaceBtn[] = ['a', 'b', 'x', 'y'].filter((b) => b !== this.want) as FaceBtn[]; return all[Math.floor(this.rand() * all.length) % all.length]; }
+  protected pick(): FaceBtn { const all: FaceBtn[] = ['a', 'b', 'x', 'y'].filter((b) => b !== this.want) as FaceBtn[]; return all[Math.floor(this.rand() * all.length) % all.length]; }
   protected step(dt: number, inp: MiniInput) {
     const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
     if (pressed.length) {
@@ -153,6 +153,35 @@ export class DribbleGame extends RepBar {
     return { clip: POUND.clip, u: (this.t - from) / POUND.dur };
   }
   animU() { return this.clip().u; }
+}
+
+// ---------------------------------------------------------------- pressure drill (round 84)
+/**
+ * Round 84 (owner): the workouts' escalating drill. The dribbling mat's prompts, but each one has a time window that
+ * shrinks after every rep; a wrong button or running out of time is a strike, and the third strike ends it. The bar
+ * shows the time left on this prompt. Score = reps.
+ */
+export class GauntletGame extends DribbleGame {
+  id = 'gauntlet';
+  controls = ['Press the button shown before the bar runs out  (✕ K  ○ L  □ J  △ I)', 'It gets faster every rep · 3 strikes'];
+  static START = 1.7; static MIN = 0.38; static SHRINK = 0.9; static STRIKES = 3;
+  window = GauntletGame.START; left = GauntletGame.START; strikes = 0; over = false;
+  protected step(_dt: number, inp: MiniInput) {
+    if (this.over || this.missing) return;
+    this.left -= _dt; this.fill = Math.max(0, this.left / this.window);
+    const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
+    if (pressed.length) {
+      if (pressed.length === 1 && pressed[0] === this.want) {
+        this.move = this.want; this.moveAt = this.t; this.reps++; this.emit('press'); this.emit('rep');
+        this.window = Math.max(GauntletGame.MIN, this.window * GauntletGame.SHRINK); this.left = this.window; this.want = this.pick();
+      } else this.strike();
+    } else if (this.left <= 0) this.strike();
+  }
+  private strike() {
+    this.strikes++; this.miss();
+    if (this.strikes >= GauntletGame.STRIKES) { this.over = true; this.emit('over'); return; }
+    this.left = this.window; this.want = this.pick();
+  }
 }
 
 // ---------------------------------------------------------------- shooting

@@ -6,6 +6,8 @@ import { sfx } from '../audio/sfx';
 import { storyScene, setStage } from './setup';
 import { draftWeek, takeOnDebt, type StoryStage } from '../career/career';
 import { stageDay, storyDay } from '../career/calendar';
+import { draftDays, planWorkouts, leagueTiers } from '../career/draft';
+import { goTo } from './draftRoad';
 
 export class MenuScene extends Phaser.Scene {
   inp!: InputMapper; menu!: MenuList;
@@ -38,8 +40,13 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Home (won final)', action: () => this.home(true), hint: 'Round 81: the wrecked trailer at night, Mom, the debt.' },
       { label: 'Story: Home (lost final)', action: () => this.home(false), hint: 'Round 81: the same, after a loss (the next morning brings the Kingston paper too).' },
       { label: 'Story: The letter', action: () => this.story('letter'), hint: 'Round 81: the morning after: the mail carrier, the letter from the agent.' },
-      { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Victor Hale at the apartment (1 April), the calendar, then the garage.' },
-      { label: 'Story: Before the draft', action: () => this.beforeDraft(), hint: 'Round 83: Spring 24, Hale calls about a team each morning until the draft on Spring 28.' },
+      { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Donovan Garcia at the apartment (1 April), the calendar, then the garage.' },
+      { label: 'Story: Combine (day 1)', action: () => this.draftRoad('combine'), hint: 'Round 84: Spring 8 in the facility: sprint, squat, bench (30 s each). Sleep for day 2 (the shooting drill).' },
+      { label: 'Story: Scrimmage', action: () => this.draftRoad('scrimmage'), hint: 'Round 84: Spring 11, you + four prospects vs five, every scout watching.' },
+      { label: 'Story: The week of work', action: () => this.draftRoad('montage'), hint: 'Round 84: after the scrimmage: the new generator, the Burger Barn register, workouts.' },
+      { label: 'Story: Garcia\'s calls', action: () => this.draftRoad('calls'), hint: 'Round 84: Spring 18: three calls (one team per tier), each a workout on the calendar.' },
+      { label: 'Story: A workout (next kind)', action: () => this.draftRoad('workout'), hint: 'Round 84: each press tries the next kind: shooting, pressure drill, 1-on-1, team scrimmage.' },
+      { label: 'Story: Draft night', action: () => this.draftRoad('draft'), hint: 'Round 84: Spring 28 at the apartment with Mom and your old teammates.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
       { label: 'Quick 3v3 Game', action: () => this.scene.start('ThreeSetup'), hint: 'Real rosters, Guard / Wing / Big, 3v3 sets + iso ball. Full or half court.' },
@@ -70,21 +77,36 @@ export class MenuScene extends Phaser.Scene {
     const day = stageDay(stage); if (day !== null) app.career.life.day = day; // round 82: the stage's date
     if (stage === 'agent') Object.assign(app.career.story!, { draft: undefined, callDay: undefined });
     if (['snow', 'bus', 'final', 'letter', 'agent'].includes(stage)) { app.career.story!.winter = true; app.changed(); } // round 80
-    if (stage === 'letter' || stage === 'agent') { const st = app.career.story!; st.trailerWrecked = true; if (stage === 'letter') st.agent = undefined; else st.agent ??= 'Victor Hale'; app.changed(); } // round 81
+    if (stage === 'letter' || stage === 'agent') { const st = app.career.story!; st.trailerWrecked = true; if (stage === 'letter') st.agent = undefined; else st.agent ??= 'Donovan Garcia'; app.changed(); } // round 81
     const [scene, data] = storyScene(stage); this.scene.start(scene, data);
   }
-  /** Round 83: the last days before the draft (Hale's calls), after the combine and the scrimmage. */
-  private beforeDraft() {
+  /** Round 84: jump into the road to the draft (the state as if you got there by playing). */
+  private draftRoad(to: 'combine' | 'scrimmage' | 'montage' | 'calls' | 'workout' | 'draft') {
     const c = app.career;
     setStage('draftWeek');
-    const st = c.story!;
-    Object.assign(st, { winter: true, trailerWrecked: true, home: 'apartment', callDay: undefined, draft: draftWeek(storyDay('agent'), storyDay('draft')) });
-    st.agent ??= 'Victor Hale';
+    const st = c.story!, d = draftDays();
+    Object.assign(st, { winter: true, trailerWrecked: true, home: 'apartment', callDay: undefined, momCall2: true, going: undefined, drafted: undefined, draft: draftWeek(storyDay('agent'), storyDay('draft')) });
+    st.agent ??= 'Donovan Garcia';
     if (!st.debt) takeOnDebt(c);
-    c.life.day = storyDay('draft') - 4;
-    app.changed();
-    this.scene.start('Apartment');
+    const after = to !== 'combine' && to !== 'scrimmage';
+    st.combine = after || to === 'scrimmage' ? { day1: { sprint: 12, squat: 6, bench: 4 }, day2: { makes: 14, shots: 25 } } : undefined;
+    st.scrimmage = after ? { pts: 14, reb: 5, ast: 4, sum: 26, won: true } : undefined;
+    st.montage = to === 'calls' || to === 'workout' || to === 'draft' ? true : undefined;
+    st.workouts = to === 'workout' || to === 'draft' ? planWorkouts(c) : [];
+    if (to === 'combine') { c.life.day = d.combine1; app.changed(); goTo(this, { kind: 'combine1' }); return; }
+    if (to === 'scrimmage') { c.life.day = d.scrimmage; app.changed(); goTo(this, { kind: 'scrimmage' }); return; }
+    if (to === 'montage') { c.life.day = d.scrimmage + 1; setStage('montage'); app.changed(); this.scene.start('Montage'); return; }
+    if (to === 'calls') { c.life.day = d.back; app.changed(); this.scene.start('Apartment'); return; }
+    if (to === 'draft') { c.life.day = d.draft; app.changed(); this.scene.start('Apartment', { story: 'draftNight' }); return; }
+    // a workout: each press the next kind, with a team from a tier that can ask for it
+    const kinds = ['shooting', 'gauntlet', 'oneOnOne', 'scrimmage'] as const, k = kinds[MenuScene.wk++ % kinds.length];
+    const tier = k === 'oneOnOne' ? 'Lottery' : k === 'scrimmage' ? 'Contender' : 'Playoff';
+    const team = leagueTiers()[tier][0];
+    st.workouts = [{ team, tier, kind: k, callDay: d.back, day: d.back + 2 }];
+    c.life.day = d.back + 2; app.changed();
+    goTo(this, { kind: 'workout', index: 0 });
   }
+  static wk = 0;
   /** Round 81: home after the final, with a made-up result. */
   private home(won: boolean) {
     setStage('homecoming');

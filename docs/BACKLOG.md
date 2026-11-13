@@ -100,8 +100,11 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
-- **Round 83:** the combine (Spring 9-10), scrimmage (Spring 12) and draft (Spring 28) are calendar tags only; the draft
-  should set your team and `buildSeason` its Year 2 schedule. Playoffs (Spring) and the offseason (Summer) aren't built.
+- **Round 84 follow-ups:** the combine and scrimmage results should set the draft range (`draftRange` is fixed 'late'),
+  and the range should change who calls; the salary under the money panel after each game; the combine facility and
+  the teams' practice facilities reuse the garage room (a real gym room later); Summer (the offseason) and the
+  rookie season's playoffs (Spring) aren't built; the Garcia reveal (the generator) is still to come.
+- **Round 83:** playoffs (Spring) and the offseason (Summer) aren't built.
   A missed key game just waits (no forfeit). Ask: are 3 tiers x 5 the right split, does the off-screen result rate
   feel right, should the yard still be snowy on Spring 1, and how the front-view high top looks on benches / fans.
 - **Round 81 follow-ups:** the combine (two days of skill tests), the scrimmage and the draft itself; paying the debt off; the reveal that Hale made the generator fail and the fire-or-keep choice; Mom's scene after the repairs.

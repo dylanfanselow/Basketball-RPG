@@ -4,7 +4,9 @@ import type { GameEvent } from '../sim/game';
 import { StoryBox, BoxContent, BoxSpeaker } from '../render/storyBox';
 import { TutorialDirector } from '../sim/tutorial';
 import { RIVAL_ID, LOCKED_IN, squadCaptain, statSum } from '../sim/story';
-import { CORE_STATS } from '../sim/data';
+import { CORE_STATS, TEAMS } from '../sim/data';
+import { TIER_PITCH } from '../career/draft';
+import { DRILL_SHOTS } from '../sim/draftGames';
 import { setStage, storyScene, StoryGame } from './setup';
 import { prepareStory, prewarmRoom } from './preload';
 import { app } from '../state';
@@ -100,6 +102,33 @@ export class StoryRun {
         { who: 'kingston', text: `Told you I'd figure out a way, ${you}.` },
         { who: 'you', text: line, then: () => this.banner('NATIONAL CHAMPIONSHIP', 'RIDGEMONT RAMS  vs  CRESTVIEW PREP FALCONS') },
       ]);
+    } else if (which === 'combineShoot' || which === 'wkShoot' || which === 'scrimmage' || which === 'wk1v1' || which === 'wkTeam') {
+      // round 84: the road to the draft: a scout sets it up, then a banner
+      const w = c.story?.workouts?.[c.story.going ?? -1];
+      const team = w ? TEAMS.find((t) => t.id === w.team) : undefined;
+      const who = team ? `${team.city.toUpperCase()} SCOUT` : 'COMBINE SCOUT';
+      const scout = (text: string, then?: () => void) => ({ who: 'coach' as const, name: who, text, then });
+      const pitch = w ? TIER_PITCH[w.tier] : '';
+      if (which === 'combineShoot') this.say([
+        scout('Day two. Shooting.'),
+        scout(`Five spots around the arc, five shots from each. ${DRILL_SHOTS} shots. The ball comes back to you.`, () => this.banner('THE COMBINE  ·  DAY 2', 'SHOOTING DRILL')),
+      ]);
+      else if (which === 'wkShoot') this.say([
+        scout(pitch),
+        scout(`Shooting drill. Five spots, five shots each. Show us you can stretch the floor.`, () => this.banner(`${team?.city.toUpperCase() ?? ''} WORKOUT`, 'SHOOTING DRILL')),
+      ]);
+      else if (which === 'scrimmage') this.say([
+        { who: 'narrator', text: 'The scrimmage. Every scout in the league is in the building.' },
+        scout('Two halves. Play your game. We\'re watching everything.', () => this.banner('THE SCRIMMAGE', 'EVERY SCOUT IN THE LEAGUE IS WATCHING')),
+      ]);
+      else if (which === 'wk1v1') this.say([
+        scout(pitch),
+        scout(`One of our starters wants a piece of you. First to 11, ones and twos, make it take it.`, () => this.banner(`${team?.city.toUpperCase() ?? ''} WORKOUT`, '1-ON-1 VS A STARTER')),
+      ]);
+      else this.say([
+        scout(pitch),
+        scout('You\'re running with our second unit against the starters. Two halves. Show us.', () => this.banner(`${team?.city.toUpperCase() ?? ''} WORKOUT`, 'SCRIMMAGE VS THE STARTERS')),
+      ]);
     } else if (which === 'bigGame') {
       this.buildCoach(); this.buildScout();
       const last = c.lastName || c.name.split(' ').slice(-1)[0];
@@ -191,6 +220,7 @@ export class StoryRun {
   /** The sim says the game is over. True = the story handles what's next (no PostGame). */
   onOver(): boolean {
     if (this.which === 'bigGame' || this.which === 'final') return false; // PostGame (story branch) → home
+    if (['combineShoot', 'wkShoot', 'scrimmage', 'wk1v1', 'wkTeam'].includes(this.which)) return false; // round 84: PostGame records it → home
     if (this.overHandled) return true;
     this.overHandled = true;
     if (this.which === 'ones') {

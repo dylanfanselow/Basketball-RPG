@@ -50,7 +50,7 @@ export interface CareerState {
 /** Round 81: after the final: home to the wrecked trailer (`homecoming`), the letter the next morning (`letter`), the
  *  agent at the apartment (`agent`) and in the garage (`agentGarage`), then the week before the draft (`draftWeek`). */
 export type StoryStage = 'tutorial' | 'ones' | 'night' | 'bigGame' | 'after' | 'kingston' | 'paper' | 'snow' | 'bus' | 'final'
-  | 'homecoming' | 'letter' | 'agent' | 'agentGarage' | 'draftWeek' | 'done';
+  | 'homecoming' | 'letter' | 'agent' | 'agentGarage' | 'draftWeek' | 'montage' | 'done';
 export interface RivalInfo { first: string; last: string; pos: Position; number: number; heightIn: number; appearance: Appearance }
 export interface StoryState {
   stage: StoryStage; rival: RivalInfo | null; home: 'trailer' | 'apartment';
@@ -74,8 +74,33 @@ export interface StoryState {
   agent?: string;
   /** round 81: the draft week, career days (set when the agent shows you the calendar) */
   draft?: DraftWeek;
-  /** round 82: the last career day Hale called about the teams (one call a morning) */
+  /** round 82: the last career day the agent called (one call a morning) */
   callDay?: number;
+  /** round 84: you called Mom the first night at the apartment */
+  momCall2?: boolean;
+  /** round 84: the combine (day 1: athletic tests, day 2: the shooting drill), or the days you missed */
+  combine?: CombineResult;
+  /** round 84: the scrimmage in front of the scouts (your box line), or missed */
+  scrimmage?: ScrimmageResult | 'missed';
+  /** round 84: the week after the scrimmage (the generator, the register, the workouts) has played */
+  montage?: boolean;
+  /** round 84: the teams' workouts (one call each, from each tier) */
+  workouts?: Workout[];
+  /** round 84: the workout you're at (an index into `workouts`) */
+  going?: number;
+  /** round 84: draft night: who picked you, and where */
+  drafted?: { team: string; pick: number };
+}
+export interface CombineResult {
+  day1?: { sprint: number; squat: number; bench: number }; day2?: { makes: number; shots: number };
+  missed1?: boolean; missed2?: boolean;
+}
+export interface ScrimmageResult { pts: number; reb: number; ast: number; sum: number; won: boolean }
+export type WorkoutKind = 'scrimmage' | 'shooting' | 'gauntlet' | 'oneOnOne';
+/** Round 84: a team's workout: the team, its tier, what they have you do, the day they called, the day of it. */
+export interface Workout {
+  team: string; tier: 'Contender' | 'Playoff' | 'Lottery'; kind: WorkoutKind; callDay: number; day: number;
+  result?: { score: number; text: string } | 'missed';
 }
 export interface DraftWeek { combine1: number; combine2: number; scrimmage: number; draft: number }
 /** Round 81: the debt from fixing the generator and the trailer (owner: your money goes negative). */
@@ -85,50 +110,12 @@ export function takeOnDebt(c: CareerState) {
   const st = c.story; if (!st || st.debt) return;
   st.debt = GENERATOR_DEBT; c.life.money -= GENERATOR_DEBT;
 }
-/** Round 81: the combine and the scrimmage, from the day the agent shows them to you; round 82: the draft is its own
- *  date (in June, see `calendar.STORY_DATES`). */
+/** Round 81: the combine and the scrimmage, from the day the agent shows them to you; the draft is its own date
+ *  (round 83: Spring 28, see `calendar.STORY_DATES`). */
 export function draftWeek(today: number, draft: number): DraftWeek {
   return { combine1: today + 7, combine2: today + 8, scrimmage: today + 10, draft }; // round 81b: 7 days to the combine
 }
 
-/** One of Hale's calls: his lines, then yours. */
-export interface HaleCall { team: string; lines: { who: 'agent' | 'me'; text: string }[] }
-/**
- * Round 82 (owner): the days before the draft, Hale calls every morning about a team thinking of picking you. Four
- * calls, four different teams (deterministic from the story's squad seed), the interest building up.
- */
-export function haleCalls(c: CareerState): HaleCall[] {
-  let seed = ((c.story?.squadSeed ?? c.name.length * 7919) ^ 0x4a1e) >>> 0;
-  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const pool = [...TEAMS], teams: string[] = [];
-  while (teams.length < 4 && pool.length) teams.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0].city);
-  const [a, b, t3, d] = teams;
-  const you = c.firstName || c.name.split(' ')[0];
-  return [
-    { team: a, lines: [
-      { who: 'agent', text: `${you}. Hale. Your phone's about to get busy.` },
-      { who: 'agent', text: `${a} called this morning. They've got you on their board. Second round, but it's a start.` },
-      { who: 'me', text: `${a}? For real?` },
-      { who: 'agent', text: 'For real. Keep your phone on.' },
-    ] },
-    { team: b, lines: [
-      { who: 'agent', text: `${b} asked for your scrimmage tape. Then they called back and asked again.` },
-      { who: 'agent', text: 'They pick twice in the forties. That\'s two chances.' },
-      { who: 'me', text: 'Two chances. I\'ll take it.' },
-    ] },
-    { team: t3, lines: [
-      { who: 'agent', text: `${t3} is thinking about you. Late first round.` },
-      { who: 'agent', text: 'Don\'t get excited. Thinking isn\'t picking.' },
-      { who: 'me', text: 'Late first...' },
-    ] },
-    { team: d, lines: [
-      { who: 'agent', text: 'Last call before the big night.' },
-      { who: 'agent', text: `${d} is the team I'd watch. Late first, if the board falls right.` },
-      { who: 'agent', text: 'Get some sleep. Tomorrow, they call your name.' },
-      { who: 'me', text: 'Tomorrow.' },
-    ] },
-  ];
-}
 /** Round 81: the draft week's events by career day (the calendar draws them as tags). */
 export function storyEventsByDay(c: CareerState): Map<number, { label: string; color: string }> {
   const out = new Map<number, { label: string; color: string }>(), d = c.story?.draft;
@@ -137,6 +124,11 @@ export function storyEventsByDay(c: CareerState): Map<number, { label: string; c
   out.set(d.combine2, { label: 'COMBINE', color: '#1d428a' });
   out.set(d.scrimmage, { label: 'SCRIMMAGE', color: '#1f5a3a' });
   out.set(d.draft, { label: 'DRAFT', color: '#b8860b' });
+  // round 84: the workouts (in the team's colors; two on one day share the tag)
+  for (const w of c.story?.workouts ?? []) {
+    const t = TEAMS.find((x) => x.id === w.team), had = out.get(w.day);
+    out.set(w.day, had?.label.endsWith('WORKOUT') ? { label: `${had.label.split(' ')[0]}+${w.team}`, color: had.color } : { label: `${w.team} WORKOUT`, color: t?.colors[0] ?? '#6a3fa0' });
+  }
   return out;
 }
 export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
@@ -336,6 +328,7 @@ export function migrateCareer(c: any): CareerState | null {
   // story's still going, otherwise the next Fall
   if (!c.season?.key) c.season = buildSeason(c.teamId ?? 'LAL', c.story.stage === 'done' ? nextFall(c.life?.day ?? 1) : ROOKIE_SEASON_START, (c.name?.length ?? 5) * 7919 + 13);
   if (c.story.june !== undefined) delete c.story.june; // round 82's June jump is gone
+  if (c.story.agent === 'Victor Hale') c.story.agent = 'Donovan Garcia'; // round 84: the agent's new name
   syncSkillsToCore(c as CareerState); // the cards show the real ratings
   return c as CareerState;
 }

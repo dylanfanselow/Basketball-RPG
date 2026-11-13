@@ -69,20 +69,18 @@ export function seasonPages(c: CareerState): [number, number][] {
 }
 
 /**
- * Round 82 / 83 (owner): the story's fixed dates. The national final is the last day of winter (Winter 28); the next
- * morning the letter comes (Spring 1), the meeting is the day after (Spring 2); the combine is 7 days after that,
- * then the scrimmage; the draft is the last day of spring (Spring 28), the night the NBA playoffs end.
+ * Round 82 / 83 / 84 (owner): the story's fixed dates. The national final is Winter 27; the next morning the letter
+ * comes (Winter 28), and the meeting is the day after, Spring 1; the combine is 7 days after that, then the scrimmage;
+ * the draft is the last day of spring (Spring 28), the night the NBA playoffs end.
  */
 export const STORY_DATES = {
-  final: [1, 1, 28], letter: [1, 2, 1], agent: [1, 2, 2], draft: [1, 2, 28],
+  final: [1, 1, 27], letter: [1, 1, 28], agent: [1, 2, 1], draft: [1, 2, 28], // round 84: the final a day earlier, the letter on Winter 28
 } as const satisfies Record<string, readonly [number, number, number]>;
 export type StoryDate = keyof typeof STORY_DATES;
 /** The career day of a story date. */
 export const storyDay = (k: StoryDate) => { const [y, s, d] = STORY_DATES[k]; return dayOf(y, s, d); };
 /** Move today forward to a story date (never back). */
 export function skipTo(c: CareerState, k: StoryDate) { c.life.day = Math.max(c.life.day, storyDay(k)); }
-/** Round 83: Hale calls about the teams on the last mornings before the draft. */
-export const HALE_CALL_DAYS = 4;
 /** Round 82: the day a story stage happens on (dev jumps); null = left as is. */
 export function stageDay(stage: StoryStage): number | null {
   switch (stage) {

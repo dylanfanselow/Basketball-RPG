@@ -18,7 +18,7 @@ const TAG: Record<BoxSpeaker, { name: string; color: number; text: string } | nu
   // round 80: Mom on the phone
   phone: { name: 'MOM (PHONE)', color: 0x8a5a2a, text: '#fff1dc' },
   // round 81: the agent
-  agent: { name: 'VICTOR HALE', color: 0x1d2b45, text: '#e8eefc' },
+  agent: { name: 'DONOVAN GARCIA', color: 0x1d2b45, text: '#e8eefc' },
 };
 
 /**

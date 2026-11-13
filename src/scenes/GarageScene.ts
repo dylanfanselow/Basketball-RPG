@@ -7,8 +7,17 @@ import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, FaceBtn, ORBS } from '../world/minigames';
-import { RoomDef, Station, RS, syOf } from '../world/apartment';
+import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, FaceBtn, ORBS } from '../world/minigames';
+import { scoutTexture } from './castSprites';
+import { storyScene } from './setup';
+import { TIER_PITCH } from '../career/draft';
+import { TEAMS } from '../sim/data';
+import { BoxSpeaker } from '../render/storyBox';
+import { ART } from './RoomScene';
+import { POST_L } from '../render/roomArt';
+import { banner, montageGo } from './MontageScene';
+import { dateLabel } from '../career/calendar';
+import { RoomDef, Station, RS, syOf, sxOf } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
 import { AgentTalk } from './agentTalk';
@@ -41,9 +50,14 @@ export class GarageScene extends RoomScene {
 
   constructor() { super('Garage'); }
   /** Round 81: the agent walks you through his old equipment. */
-  story: 'agent' | null = null;
+  story: 'agent' | 'montage' | null = null;
   agent: AgentTalk | null = null;
-  init(data?: { at?: string; story?: 'agent' }) { super.init(data); this.story = data?.story ?? null; this.agent = null; }
+  /** Round 84: a timed test here, dressed as the facility: the combine's day 1, or a team's pressure drill. */
+  testKind: 'combine1' | 'gauntlet' | null = null;
+  private test: { steps: { station: string; label: string; secs: number }[]; i: number; endsAt: number; running: boolean; scores: number[]; timer: Phaser.GameObjects.Text } | null = null;
+  init(data?: { at?: string; story?: 'agent' | 'montage'; test?: 'combine1' | 'gauntlet' }) {
+    super.init(data); this.story = data?.story ?? null; this.agent = null; this.testKind = data?.test ?? null; this.test = null;
+  }
   room(): RoomDef { return GARAGE; }
   music() { return 'home' as const; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildGarageArt(tm); }
@@ -62,23 +76,117 @@ export class GarageScene extends RoomScene {
     this.shotText = T(20).setOrigin(0.5, 1);
     this.greenText = T(16, '#7dff9a').setOrigin(0, 0.5);
     this.netFront = this.add.graphics();
+    if (this.testKind) this.startTest(); // round 84: the combine's day 1, a team's pressure drill
+    if (this.story === 'montage') this.nightWorkout(); // round 84: the week of work, the last beat
     if (this.story === 'agent') {
-      const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
+      const ag = (text: string) => ({ say: { who: 'agent' as const, text } }); // Donovan Garcia
+      const you = app.career.firstName || app.career.name.split(' ')[0];
+      // round 84 (owner): the side door goes to the backyard: you see him through the gap, hopping the fence
+      const fenceY = 233 * ART, yardX = POST_L[0] * ART;
       const P = AGENT_PATHS.garage, out = GARAGE.doors.find((d) => d.id === 'outside')!.spot;
       this.agent = new AgentTalk(this, P.haleStart, [
         { youTo: P.youIn }, // in through the apartment door
         { wait: 0.3 },
-        hale('All this was mine. Back when I still thought I could play.'),
-        hale('Every station works a different part of your game.'),
-        hale('And every rep costs energy. See that bar up top? When it\'s empty, you\'re done. Sleep it back.'),
-        hale('Use the week. I\'ll be in touch.'),
+        ag('All this was mine. Back when I still thought I could play.'),
+        ag('Every station works a different part of your game.'),
+        ag('And every rep costs energy. See that bar up top? When it\'s empty, you\'re done. Sleep it back.'),
+        ag('Use the week. I\'ll be in touch.'),
         // round 81b: he walks out the side door (not a fade in place)
         { agentTo: P.haleOut },
         { agentOut: { x: out.x - 1.4, y: out.y - 0.4 } },
+        { say: { who: 'me' as BoxSpeaker, name: you, text: 'Wait, that\'s not an exit. Doesn\'t that lead to the backyard?' } },
+        { fenceJump: { from: { x: yardX - 12, y: 300 * ART }, to: 40 * ART, fenceY } },
+        { wait: 0.5 },
+        { say: { who: 'you' as BoxSpeaker, text: '...Who is this guy?' } },
         { run: () => { const c = app.career; if (c.story) c.story.home = 'apartment'; setStage('draftWeek'); } },
-        { wait: 0.7 },
+        { wait: 0.4 },
       ]);
     }
+  }
+
+  /** Round 84 (owner): the week of work, beat 3: the garage at night after a shift, you on the bench. */
+  private nightWorkout() {
+    const c = app.career;
+    this.add.rectangle(0, 0, 1280, 720, 0x0c1640, 0.45).setOrigin(0, 0).setDepth(8800);
+    this.busy = true;
+    const bench = GARAGE.stations!.find((x) => x.id === 'bench')!;
+    this.pos = { ...bench.spot };
+    this.cameras.main.fadeIn(600, 0, 0, 0);
+    this.time.delayedCall(300, () => { this.startActivity(bench); this.mini = null; banner(this, dateLabel(c.life.day).toUpperCase(), 'AFTER EVERY SHIFT'); });
+    const you = c.firstName || c.name.split(' ')[0];
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      { wait: 2.6 },
+      { say: { who: 'you' as BoxSpeaker, text: 'Off the register at ten. In here till midnight.' } },
+      { say: { who: 'you' as BoxSpeaker, text: `Somebody's gonna call. Be ready, ${you}.` } },
+      { run: () => { this.stopActivity(); this.cameras.main.fadeOut(800, 0, 0, 0); this.time.delayedCall(850, () => montageGo(this, 3)); } },
+      { wait: 2 },
+    ], { phone: true });
+  }
+
+  /**
+   * Round 84: the timed tests. The combine's day 1 (sprint on the treadmill, the squat, the bench press, 30 s each)
+   * or a team's pressure drill (the shrinking-window dribble prompts, 3 strikes). Scouts watch, the van's gone, a
+   * banner over the back wall; L1 ends a test early. Scores are saved, then home.
+   */
+  private startTest() {
+    const c = app.career, st = c.story!, kind = this.testKind!;
+    this.piece('car')?.setVisible(false);
+    const w = kind === 'gauntlet' ? st.workouts?.[st.going ?? -1] : undefined;
+    const team = w ? TEAMS.find((t) => t.id === w.team) : undefined;
+    const col = team?.colors[0] ?? '#1d428a', colN = Phaser.Display.Color.HexStringToColor(col).color;
+    // banner + scouts along the back
+    const g = this.add.graphics().setDepth(40);
+    g.fillStyle(colN, 0.95).fillRect(360, 118, 560, 46).lineStyle(3, 0xffffff, 0.9).strokeRect(360, 118, 560, 46);
+    this.add.text(640, 141, team ? `${team.city.toUpperCase()} ${team.name.toUpperCase()}  ·  PRACTICE FACILITY` : 'PRO PROSPECT COMBINE  ·  DAY 1', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(41);
+    [[11.5, 2.2], [16.0, 2.0], [26.0, 2.4], [33.5, 9.5]].forEach(([x, y], i) => this.add.sprite(sxOf(x), syOf(y), scoutTexture(this, i, team ? col : '#3a3f52'), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setDepth(syOf(y)));
+    const timer = this.add.text(640, 196, '', { fontFamily: FONT, fontSize: '24px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9400);
+    const steps = kind === 'combine1'
+      ? [{ station: 'treadmill', label: 'Sprint', secs: 30 }, { station: 'squat', label: 'Squat', secs: 30 }, { station: 'bench', label: 'Bench press', secs: 30 }]
+      : [{ station: 'dribble', label: 'Pressure drill', secs: 999 }];
+    this.test = { steps, i: 0, endsAt: 0, running: false, scores: [], timer };
+    const scout = (text: string) => ({ say: { who: 'coach' as BoxSpeaker, name: team ? `${team.city.toUpperCase()} SCOUT` : 'COMBINE SCOUT', text } });
+    const intro = kind === 'combine1'
+      ? [scout('Welcome to the combine. Measurements first.'), scout(`Height ${Math.floor(c.height)}'${Math.round((c.height % 1) * 12)}". Wingspan checks out.`), scout('Three tests today. Thirty seconds each. Sprint, squat, bench. Give us everything.')]
+      : [scout(TIER_PITCH[w!.tier]), scout('Pressure drill. Hit the button we call before the bar runs out. It speeds up every rep.'), scout('Three strikes and you\'re done. Go as long as you can.')];
+    this.busy = true;
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ wait: 0.8 }, ...intro, { run: () => this.nextTest() }], { phone: true });
+  }
+  private nextTest() {
+    const t = this.test!, step = t.steps[t.i];
+    const station = GARAGE.stations!.find((x) => x.id === step.station)!;
+    this.pos = { ...station.spot };
+    this.agent = null; this.busy = false;
+    this.startActivity(station);
+    if (this.testKind === 'gauntlet') this.mini = new GauntletGame();
+    t.endsAt = this.t + step.secs; t.running = true;
+  }
+  /** Per frame while a test is on: the timer, and the end of each test. */
+  private stepTest() {
+    const t = this.test; if (!t || !t.running) return;
+    const step = t.steps[t.i], left = Math.max(0, t.endsAt - this.t);
+    const m = this.mini;
+    t.timer.setText(this.testKind === 'gauntlet' && m instanceof GauntletGame ? `${step.label.toUpperCase()}  ·  ${m.reps} reps  ·  strikes ${m.strikes}/3` : `${step.label.toUpperCase()}  ·  0:${String(Math.ceil(left)).padStart(2, '0')}  ·  ${m?.reps ?? 0}`);
+    const done = !this.activity || left <= 0 || (m instanceof GauntletGame && m.over && !m.missing);
+    if (!done) return;
+    t.running = false; t.scores.push(m?.reps ?? 0);
+    this.stopActivity();
+    t.timer.setText('');
+    const scout = (text: string) => ({ say: { who: 'coach' as BoxSpeaker, name: 'SCOUT', text } });
+    t.i++;
+    const more = t.i < t.steps.length;
+    this.busy = true;
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      scout(`${step.label}: ${t.scores[t.scores.length - 1]}${this.testKind === 'gauntlet' ? ' reps' : ''}. ${more ? 'Next one.' : 'That\'s it. We\'ll be in touch.'}`),
+      { run: () => (more ? this.nextTest() : this.finishTest()) },
+    ], { phone: true });
+  }
+  private finishTest() {
+    const c = app.career, st = c.story!, t = this.test!;
+    if (this.testKind === 'combine1') (st.combine ??= {}).day1 = { sprint: t.scores[0] ?? 0, squat: t.scores[1] ?? 0, bench: t.scores[2] ?? 0 };
+    else if (st.going !== undefined && st.workouts?.[st.going]) { st.workouts[st.going].result = { score: t.scores[0] ?? 0, text: `${t.scores[0] ?? 0} reps in the pressure drill` }; st.going = undefined; }
+    app.changed();
+    this.cameras.main.fadeOut(700, 0, 0, 0);
+    this.time.delayedCall(750, () => { const [scene, data] = storyScene('draftWeek'); this.scene.start(scene, data); });
   }
 
   private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
@@ -97,6 +205,7 @@ export class GarageScene extends RoomScene {
 
   onUpdate(dt = 1 / 60) {
     if (this.agent && !this.agent.update(dt)) this.agent = null; // round 81
+    this.stepTest(); // round 84
     const g = this.gear.clear(), gb = this.gearBack.clear();
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
@@ -267,6 +376,7 @@ export class GarageScene extends RoomScene {
       else if (e === 'release') sfx.release();
       else if (e === 'green') sfx.greenChime();
       else if (e === 'perfect') sfx.perfect();
+      else if (e === 'orb' && this.test) continue; // round 84: no training XP from a test
       else if (e === 'orb') {
         // a made shot sends its orbs once the ball is through the net (out of the rim); the rest from your chest
         if (m instanceof ShootGame) this.shotOrbPending = true;
@@ -329,7 +439,7 @@ export class GarageScene extends RoomScene {
     g.fillStyle(0x10131c, 0.82).fillRoundedRect(px, py, W, H, 8).lineStyle(2, 0x3c4876, 1).strokeRoundedRect(px, py, W, H, 8);
     const cx = px + W / 2;
     const isShoot = m instanceof ShootGame;
-    this.hudTitle.setVisible(true).setPosition(cx, py + 6).setText(isShoot ? `${st.label.toUpperCase()}  ${m.reps}/${(m as ShootGame).attempts}` : `${st.label.toUpperCase()}  ×${m.reps}`);
+    this.hudTitle.setVisible(true).setPosition(cx, py + 6).setText(isShoot ? `${st.label.toUpperCase()}  ${m.reps}/${(m as ShootGame).attempts}` : m instanceof GauntletGame ? `PRESSURE  ×${m.reps}` : `${st.label.toUpperCase()}  ×${m.reps}`);
     // the hint hangs under the panel on the side away from you (centred it ran across the player)
     const right = px > this.player.x;
     this.hudHint.setVisible(true).setOrigin(right ? 0 : 1, 0).setPosition(right ? px : px + W, py + H + 4).setText(`${m.controls[0].replace(/\s+\(.*\)$/, '')}   ·   L1 stop`);

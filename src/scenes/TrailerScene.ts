@@ -17,6 +17,7 @@ import { prepareStory } from './preload';
 import { drawBustPage, drawLetter, PAPER_W, PAPER_H, LETTER_W, LETTER_H } from '../render/paperArt';
 import { kingstonLook } from '../sim/story';
 import { skipTo, dateLabel } from '../career/calendar';
+import { banner, montageGo } from './MontageScene';
 
 /**
  * Hooks for the story element at the trailer door (round 57: the owner will add one). Each runs when you go inside,
@@ -34,7 +35,7 @@ export class TrailerScene extends RoomScene {
   /** Round 57c: the night version (Menu → Trailer (night); story events can ask for it). */
   night = false;
   /** Round 60: 'night' = home after the 1s with Kingston (the next day is the big game). */
-  story: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' | null = null;
+  story: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' | 'generator' | null = null;
   /** Round 81: the generator blew up during the final and took part of the trailer with it (no power, smoke). */
   wreck = false;
   /** Round 80: winter (from the snowy morning on): snow on everything, flakes falling, your breath in the air. */
@@ -65,10 +66,12 @@ export class TrailerScene extends RoomScene {
   private mom: Phaser.GameObjects.Sprite | null = null;
   /** Round 71: a thought from looking at something in the yard is up (✕ closes it). */
   private thinking = false;
-  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' }) {
+  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' | 'generator' }) {
     super.init(data); this.night = !!data?.night; this.story = data?.story ?? null;
     const st = app.career.story;
     if ((this.story === 'homecoming' || this.story === 'letter') && st && !st.trailerWrecked) { st.trailerWrecked = true; app.changed(); }
+    // round 84: spring: the snow's gone and the trailer's been patched up; the new generator arrives
+    if (this.story === 'generator' && st) { st.trailerWrecked = false; st.winter = false; app.changed(); }
     this.wreck = !!st?.trailerWrecked;
     this.snow = this.story === 'snow' || this.story === 'homecoming' || this.story === 'letter' || (!this.story && !!st?.winter);
   }
@@ -97,6 +100,13 @@ export class TrailerScene extends RoomScene {
     if (this.story === 'snow') {
       // round 80: Mom woke you; you come out the door into the snow (the yard is yours, the bus is waiting)
       this.pos = { ...DOOR_SPOT }; this.face = { x: 0, y: 1 };
+      this.cameras.main.fadeOut(0, 0, 0, 0);
+      this.shown = false; this.busy = true;
+    }
+    if (this.story === 'generator') {
+      // round 84: you push the new generator up the yard into the burned one's spot
+      this.pos = { ...GEN_FROM }; this.face = { x: 0.6, y: -1 };
+      this.genPhase = 'wait'; this.genHome = null;
       this.cameras.main.fadeOut(0, 0, 0, 0);
       this.shown = false; this.busy = true;
     }
@@ -231,6 +241,7 @@ export class TrailerScene extends RoomScene {
       this.time.delayedCall(520, () => { door?.setFrame(0); sfx.doorClose(); });
       if (!app.career.story?.agent) this.time.delayedCall(1400, () => this.startMailman()); else this.busy = false;
     }
+    if (this.story === 'generator') this.stepGenerator(dt);
     if (this.story === 'snow' && !this.shown && this.playerReady()) {
       // round 80: fade in on the top step as the door shuts behind you
       this.shown = true; this.drawPlayer(0);
@@ -455,6 +466,44 @@ export class TrailerScene extends RoomScene {
     this.time.delayedCall(1400, () => { const [scene, data] = storyScene('letter'); this.scene.start(scene, data); });
   }
 
+  /**
+   * Round 84 (owner): the week after the scrimmage, beat 1: the new generator. You push it up from the path to where
+   * the burned one stood (it moves with you), Mom comes to the door, then on to the next beat.
+   */
+  private genPhase: 'wait' | 'push' | 'talk' | 'done' = 'wait';
+  /** where the generator piece sits (it's moved by an offset from there while you push it) */
+  private genHome: { x: number; y: number; depth: number } | null = null;
+  private stepGenerator(dt: number) {
+    const gen = this.piece('generator');
+    const off = () => ({ x: sxOf(this.pos.x) - sxOf(GEN_TO.x), y: syOf(this.pos.y) - syOf(GEN_TO.y) });
+    if (this.genPhase === 'wait') {
+      if (!this.playerReady()) return;
+      this.genPhase = 'push'; this.drawPlayer(0);
+      if (gen) this.genHome = { x: gen.x, y: gen.y, depth: gen.depth };
+      this.cameras.main.fadeIn(700, 0, 0, 0);
+      banner(this, dateLabel(app.career.life.day).toUpperCase(), 'THE NEW GENERATOR');
+    }
+    if (this.genPhase === 'push') {
+      const arrived = this.walkTowards(GEN_TO, dt * 0.55);
+      const o = off();
+      const h = this.genHome;
+      if (gen && h) gen.setPosition(h.x + o.x, h.y + o.y).setDepth(this.player.depth - 0.5);
+      if (arrived) {
+        if (gen && h) gen.setPosition(h.x, h.y).setDepth(h.depth);
+        this.genPhase = 'talk'; sfx.genHum(1);
+        this.mom = this.buildMom(); this.tweens.add({ targets: this.mom, alpha: 1, duration: 500 });
+        const you = app.career.firstName || app.career.name.split(' ')[0];
+        if (!this.box) this.box = new StoryBox(this, { y: 590 });
+        this.lines = [
+          { who: 'mom', text: 'Listen to that. Lights back on.' },
+          { who: 'me', name: you, text: 'Told you I\'d handle it, Ma.' },
+          { who: 'mom', text: 'Go on. You\'ll be late for work.', then: () => { this.genPhase = 'done'; this.cameras.main.fadeOut(700, 0, 0, 0); this.time.delayedCall(750, () => montageGo(this, 1)); } },
+        ];
+        this.thinking = true;
+      }
+    }
+  }
+
   /** Smoke still curling up out of the burned generator. */
   private drawSmoke(dt: number) {
     const g = this.smokeG; if (!g) return;
@@ -555,7 +604,9 @@ export class TrailerScene extends RoomScene {
 }
 
 /** Round 81: the agent who writes after the final (later: he's the one who made the generator fail). */
-export const AGENT_NAME = 'Victor Hale';
+/** Round 84: where you push the new generator from (down the yard) and to (beside its spot). */
+const GEN_FROM = { x: 24.5, y: 16.5 }, GEN_TO = { x: 29.4, y: 4.6 };
+export const AGENT_NAME = 'Donovan Garcia'; // round 84 (owner; was Victor Hale)
 /** The pages are drawn at this many canvas px per art px. */
 const PAGE_K = 4;
 type TLine = { who: BoxSpeaker; text: string; name?: string; then?: () => void; choices?: { text: string; pick: () => void }[] };

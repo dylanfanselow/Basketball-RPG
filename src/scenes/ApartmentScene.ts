@@ -5,11 +5,18 @@ import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
-import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay, haleCalls } from '../career/career';
+import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
+import { planWorkouts, callLines, todaysEvents, eventName, markMissed, draftResult, GoEvent } from '../career/draft';
+import { buildSeason, ROOKIE_SEASON_START } from '../career/schedule';
+import { goTo } from './draftRoad';
+import { momTexture, mateTexture } from './castSprites';
+import { lincolnSquad, academySquad, squadCaptain } from '../sim/story';
+import { SPRITE_SCALE } from '../render/sprites';
+import { BoxSpeaker } from '../render/storyBox';
 import { AgentTalk } from './agentTalk';
 import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage, storyScene } from './setup';
-import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, HALE_CALL_DAYS, SEASONS, WEEKDAYS } from '../career/calendar';
+import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, SEASONS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
 
@@ -31,10 +38,10 @@ export class ApartmentScene extends RoomScene {
   music() { return 'home' as const; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildRoomArt(tm); }
 
-  /** Round 81: the agent's first meeting here. */
-  story: 'agent' | null = null;
+  /** Round 81: the agent's first meeting here; round 84: draft night. */
+  story: 'agent' | 'draftNight' | null = null;
   agent: AgentTalk | null = null;
-  init(data?: { at?: string; story?: 'agent' }) {
+  init(data?: { at?: string; story?: 'agent' | 'draftNight' }) {
     super.init(data);
     this.story = data?.story ?? null; this.agent = null;
     this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null;
@@ -53,7 +60,8 @@ export class ApartmentScene extends RoomScene {
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
     if (this.story === 'agent') this.startAgent();
-    else this.maybeCall(); // round 82: a June morning Hale hasn't called yet (Load Save, back from the garage)
+    else if (this.story === 'draftNight') this.startDraftNight();
+    else this.maybeCall(); // a morning the agent hasn't called yet (Load Save, back from the garage)
   }
 
   /** Round 82: a big date card (the DAY banner's style), up and gone. */
@@ -64,61 +72,84 @@ export class ApartmentScene extends RoomScene {
   }
 
   /**
-   * Round 82 / 83 (owner): Hale calls every morning on the last days before the draft (Spring 24-27) about a team
-   * thinking of picking you, one call a day.
+   * Round 84 (owner): after the week of work, Donovan Garcia calls three mornings in a row, once for a team from each
+   * tier; each call puts that team's workout on the calendar (a random day, maybe the same day as another).
    */
   private maybeCall() {
     const c = app.career, st = c.story;
-    if (!st || st.stage !== 'draftWeek' || !st.draft || this.agent) return;
-    const day = c.life.day, first = st.draft.draft - HALE_CALL_DAYS;
-    if (day >= st.draft.draft || st.callDay === day || day < first) return;
-    const calls = haleCalls(c), call = calls[Math.min(calls.length - 1, day - first)];
-    st.callDay = day; app.changed();
+    if (!st || st.stage !== 'draftWeek' || !st.draft || !st.montage || this.agent) return;
+    const day = c.life.day, have = st.workouts ?? [];
+    const next = planWorkouts(c).find((w) => w.callDay <= day && !have.some((x) => x.team === w.team));
+    if (!next || st.callDay === day || day >= st.draft.draft) return;
+    const first = have.length === 0;
+    st.workouts = [...have, next]; st.callDay = day; app.changed();
     const you = c.firstName || c.name.split(' ')[0];
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
       { wait: 0.5 },
       { run: () => sfx.phoneRing() },
-      { say: { who: 'narrator' as const, text: 'Your phone buzzes. VICTOR HALE.' } },
-      ...call.lines.map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'VICTOR HALE (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
+      { say: { who: 'narrator' as const, text: 'Your phone buzzes. DONOVAN GARCIA.' } },
+      ...callLines(c, next, first).map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'DONOVAN GARCIA (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
+    ], { phone: true });
+  }
+
+  /** Round 84 (owner): the first night here you call Mom: the agent, this place, the combine. Spring's here. */
+  private momCall(then: () => void) {
+    const c = app.career, you = c.firstName || c.name.split(' ')[0], st = c.story!;
+    st.momCall2 = true; app.changed();
+    const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
+    const mom = (text: string) => ({ say: { who: 'phone' as const, text } });
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      { wait: 0.3 },
+      { say: { who: 'narrator' as const, text: 'You call Mom.' } },
+      { run: () => sfx.phoneRing() },
+      mom('Baby? You okay? Where are you?'),
+      me('I\'m okay, Ma. Better than okay. That letter was from an agent. Donovan Garcia.'),
+      me('He\'s putting me up in an apartment. Rent free. There\'s a whole gym in the garage.'),
+      me('The combine\'s in a week. Then a scrimmage. Then the draft, Ma.'),
+      mom('An agent... The draft. Lord.'),
+      mom('Don\'t you worry about me. We can hold out for a bit now. Spring\'s here. The snow\'ll start to melt.'),
+      mom('You go do what you were born to do. I love you, baby.'),
+      me('Love you too, Ma.'),
+      { run: then },
     ], { phone: true });
   }
 
   /**
-   * Round 81: Victor Hale's first meeting, here: who he is, your situation, "you can't fail", the draft week on the
-   * calendar, then off to the garage.
+   * Round 81: the agent's first meeting, here (round 84: Donovan Garcia): who he is, your situation, "you can't fail",
+   * the draft week on the calendar, then off to the garage.
    */
   private startAgent() {
     const c = app.career, you = c.firstName || c.name.split(' ')[0];
     const st = c.story!;
     const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
-    const hale = (text: string) => ({ say: { who: 'agent' as const, text } });
+    const ag = (text: string) => ({ say: { who: 'agent' as const, text } }); // Donovan Garcia
     const P = AGENT_PATHS.apartment;
     this.dateBanner(dateLabel(c.life.day).toUpperCase(), 700); // round 82: your first day here (round 83: SPRING 2)
     this.agent = new AgentTalk(this, P.haleStart, [
       { wait: 1.8 },
-      hale(`You came. Good. ${st.agent ?? 'Victor Hale'}.`),
-      hale('I represent players in the NBA. I was at the national final. I\'ve done this a long time, and I know what I saw.'),
-      hale('Natural talent. And the drive to go with it. That combination doesn\'t come around often.'),
-      me('I appreciate it, Mr. Hale. I really do. But I can\'t think about the NBA right now.'),
+      ag(`You came. Good. ${st.agent ?? 'Donovan Garcia'}.`),
+      ag('I represent players in the NBA. I was at the national final. I\'ve done this a long time, and I know what I saw.'),
+      ag('Natural talent. And the drive to go with it. That combination doesn\'t come around often.'),
+      me('I appreciate it, Mr. Garcia. I really do. But I can\'t think about the NBA right now.'),
       me('Our generator blew up. Took half the trailer with it. We\'re fifteen thousand in debt, and my mom...'),
-      hale('I heard. Rough luck.'),
-      hale('So here\'s what we\'ll do. This place? It\'s yours.'),
+      ag('I heard. Rough luck.'),
+      ag('So here\'s what we\'ll do. This place? It\'s yours.'),
       // round 81b (owner): free until you make it, then about your whole first contract plus the generator
-      hale('Rent free until you make it.'),
-      hale('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
-      hale('One condition.'),
-      hale('You can\'t fail.'),
-      hale('Come here. Let me show you something.'),
+      ag('Rent free until you make it.'),
+      ag('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
+      ag('One condition.'),
+      ag('You can\'t fail.'),
+      ag('Come here. Let me show you something.'),
       // round 81b: around the kitchen island, not through it
       { agentTo: P.haleToCalendar },
       { youTo: P.youToCalendar },
       { run: () => { st.draft = draftWeek(c.life.day, storyDay('draft')); app.changed(); this.busy = false; this.openCalendar(); } }, // (it only opens outside a cutscene)
-      hale('This is your week. Seven days from today: the combine.'),
-      hale('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
-      hale('Then the draft. Last day of spring, the night the playoffs end.'), // round 83
-      hale('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
+      ag('This is your week. Seven days from today: the combine.'),
+      ag('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
+      ag('Then the draft. Last day of spring, the night the playoffs end.'), // round 83
+      ag('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
       { run: () => this.closeCalendar() },
-      hale('Now. The garage.'),
+      ag('Now. The garage.'),
       { agentTo: P.haleToGarage },
       { youTo: P.youToGarage },
       { run: () => { sfx.doorOpen(); setStage('agentGarage'); this.cameras.main.fadeOut(600, 0, 0, 0); this.time.delayedCall(650, () => { const [scene, data] = storyScene('agentGarage'); this.scene.start(scene, data); }); } },
@@ -126,11 +157,100 @@ export class ApartmentScene extends RoomScene {
     ]);
   }
 
+  /**
+   * Round 84 (owner): draft night at the apartment. Mom and your old teammates (Lincoln and Ridgemont) around the TV;
+   * Garcia isn't there. The picks go by, then the Lottery team that called you takes you, late in the first round.
+   */
+  private startDraftNight() {
+    const c = app.career, st = c.story!, you = c.firstName || c.name.split(' ')[0], full = c.name;
+    this.add.rectangle(0, 0, 1280, 720, 0x0c1640, 0.42).setOrigin(0, 0).setDepth(8800); // night, the lamp on
+    const lin = lincolnSquad(c), cap = squadCaptain(c, lin), lin2 = lin.filter((p) => p !== cap).slice(0, 2), ram = academySquad(c).slice(0, 2);
+    const stand = (key: string, x: number, y: number, flip = false) => this.add.sprite(sxOf(x), syOf(y), key, 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setDepth(syOf(y)).setFlipX(flip);
+    stand(momTexture(this), 23.4, 4.6);
+    [cap, ...lin2].forEach((p, i) => stand(mateTexture(this, p.id, p.appearance, '#7a1f2b', '#e0b33a'), [31.6, 33.4, 21.0][i], [4.6, 6.6, 6.8][i], i === 1));
+    ram.forEach((p, i) => stand(mateTexture(this, p.id, p.appearance, '#1f5a3a', '#e8e2d0'), [19.6, 35.0][i], [4.8, 8.6][i], i === 1));
+    this.pos = { x: 27.2, y: 4.3 }; this.face = { x: 0, y: 1 }; this.view = undefined;
+    // the TV: the broadcast
+    // (the TV faces the couch, its back to us: the broadcast shows as an inset in the corner, over the wall)
+    const tvX = 1070, tvY = 230;
+    const tv = this.add.graphics().setDepth(8850);
+    tv.fillStyle(0x0a0d18, 1).fillRoundedRect(tvX - 150, tvY - 70, 300, 140, 8).lineStyle(3, 0x2c3350, 1).strokeRoundedRect(tvX - 150, tvY - 70, 300, 140, 8);
+    tv.fillStyle(0x1d2b5a, 1).fillRect(tvX - 140, tvY - 60, 280, 30);
+    this.add.text(tvX, tvY - 45, 'THE DRAFT  ·  ROUND 1', { fontFamily: FONT, fontSize: '15px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(8851);
+    const tvText = this.add.text(tvX, tvY + 18, 'Coming up next...', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'center', wordWrap: { width: 270 } }).setOrigin(0.5).setDepth(8851);
+    const res = draftResult(c), team = TEAMS.find((t) => t.id === res.team)!, teamName = `${team.city} ${team.name}`;
+    const ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+    const others = TEAMS.filter((t) => t.id !== res.team);
+    const pickLine = (n: number) => { const t = others[(n * 7) % others.length]; return `Pick ${n}: ${t.city} ${t.name}`; };
+    const mate = (p: { name: string }, school: string, text: string) => ({ say: { who: 'mate' as BoxSpeaker, name: `${p.name.split(' ')[0]} (${school})`, text } });
+    const mom = (text: string) => ({ say: { who: 'mom' as BoxSpeaker, text } });
+    const me = (text: string) => ({ say: { who: 'me' as BoxSpeaker, name: you, text } });
+    const tvSay = (text: string) => ({ say: { who: 'coach' as BoxSpeaker, name: 'ON TV', text } });
+    const show = (t: string) => ({ run: () => tvText.setText(t) });
+    this.dateBanner('DRAFT NIGHT', 900);
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      { wait: 1.6 },
+      { say: { who: 'narrator' as BoxSpeaker, text: 'Spring 28. Draft night. Everybody came.' } },
+      mom('Turn it up! I can\'t hear a thing with all y\'all in here.'),
+      mate(cap, 'Lincoln', `Look at this. ${you} on draft night. From the rain court to this.`),
+      mate(ram[0], 'Ridgemont', 'Your agent not coming?'),
+      me('Said he\'d call. Doesn\'t matter. Everybody I need is right here.'),
+      show('The commissioner steps up to the podium.'),
+      tvSay('Welcome to the draft. The first round is now underway.'),
+      show(pickLine(1)), { wait: 0.8 }, show(pickLine(2)), { wait: 0.8 }, show(pickLine(3)), { wait: 0.8 },
+      mate(lin2[0] ?? cap, 'Lincoln', 'Relax, man. You\'re squeezing the remote to death.'),
+      show(`...  Pick ${Math.max(4, res.pick - 2)}  ...`), { wait: 0.8 }, show(pickLine(res.pick - 1)), { wait: 1.0 },
+      mom('Come on... come on...'),
+      show(`With the ${ord(res.pick)} pick in the draft, the ${teamName} select...`),
+      tvSay(`With the ${ord(res.pick)} pick in the draft, the ${teamName} select...`),
+      { run: () => { tvText.setText(`${full.toUpperCase()}\n${teamName}`); sfx.greenChime(); this.dateBanner('YOU\'RE IN THE NBA', 1400); } },
+      tvSay(`...${full}.`),
+      mom('That\'s my baby! THAT\'S MY BABY!'),
+      mate(cap, 'Lincoln', 'LET\'S GOOO!'),
+      mate(ram[1] ?? ram[0], 'Ridgemont', `${team.city}! You\'re going to ${team.city}!`),
+      me('Ma... we did it.'),
+      mom('No, baby. You did it.'),
+      { run: () => {
+        st.drafted = { team: res.team, pick: res.pick };
+        c.teamId = res.team; c.season = buildSeason(res.team, ROOKIE_SEASON_START, c.name.length * 7919 + res.pick);
+        st.home = 'apartment'; setStage('done'); app.changed();
+        this.cameras.main.fadeOut(900, 0, 0, 0);
+        this.time.delayedCall(950, () => this.scene.restart({}));
+      } },
+      { wait: 2 },
+    ], { phone: true });
+  }
+
   actions() {
-    return [
+    const c = app.career, st = c.story, out: { label: string; spot: V; reach?: number; run: () => void }[] = [
       { label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() },
       { label: 'Calendar', spot: SPOTS.calendar, run: () => this.openCalendar() },
     ];
+    // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
+    const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
+    if (evs.length === 1) out.push({ label: `Go to ${eventName(c, evs[0])}`, spot: front, reach: 1.6, run: () => this.go(evs[0]) });
+    else if (evs.length > 1) out.push({ label: 'Go to a workout', spot: front, reach: 1.6, run: () => this.pickWorkout(evs) });
+    // round 84: draft night, on the couch in front of the TV
+    if (st?.stage === 'draftWeek' && st.draft && c.life.day >= st.draft.draft && !st.drafted) out.unshift({ label: 'Watch the draft', spot: SPOTS.couch, run: () => this.scene.restart({ story: 'draftNight' }) });
+    return out;
+  }
+  /** Your thought in the box (the room waits until ✕). */
+  private thinkLine(text: string) {
+    if (this.busy) return;
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ say: { who: 'you' as const, text } }], { phone: true });
+  }
+  private go(e: GoEvent) { if (this.busy) return; this.busy = true; goTo(this, e); }
+  /** Two workouts on one day: choose; the other one is missed. */
+  private pickWorkout(evs: GoEvent[]) {
+    if (this.busy) return;
+    const c = app.career;
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      { say: { who: 'you' as const, text: 'Two workouts on the same day. I can only make one of them.' } },
+      { choose: { who: 'you' as const, text: 'Which one?', options: evs.map((e) => eventName(c, e).replace(/^the /, '')), pick: (i: number) => {
+        evs.forEach((e, k) => { if (k !== i && e.kind === 'workout') c.story!.workouts![e.index].result = 'missed'; });
+        app.changed(); this.agent = null; this.busy = false; this.go(evs[i]);
+      } } },
+    ], { phone: true });
   }
 
   /**
@@ -145,8 +265,11 @@ export class ApartmentScene extends RoomScene {
 
   sleep() {
     if (this.busy) return;
+    const c = app.career, st = c.story;
+    // round 84: the first night here you call Mom first; on draft day the TV's on
+    if (st?.stage === 'draftWeek' && !st.momCall2 && st.draft) { this.momCall(() => { this.agent = null; this.busy = false; this.sleep(); }); return; }
+    if (st?.stage === 'draftWeek' && st.draft && c.life.day >= st.draft.draft && !st.drafted) { this.thinkLine('Not tonight. The draft\'s on.'); return; }
     this.busy = true;
-    const c = app.career;
     const night = this.add.rectangle(0, 0, 1280, 720, 0x0c1640, 1).setOrigin(0, 0).setDepth(8900).setAlpha(0);
     this.tweens.add({ targets: night, alpha: 0.58, duration: 700, ease: 'Sine.easeInOut' });
     // lie down on the couch: a station with no mini-game, so the room draws him in the `sleep` clip
@@ -164,7 +287,14 @@ export class ApartmentScene extends RoomScene {
     });
     sfx.blip(true);
     this.time.delayedCall(1900, () => {
-      advanceDay(c); app.changed();
+      advanceDay(c); markMissed(c); app.changed();
+      // round 84: the night after the scrimmage the week of work starts (the generator, the register, the gym)
+      const s = c.story;
+      if (s?.stage === 'draftWeek' && s.draft && !s.montage && c.life.day > s.draft.scrimmage) {
+        this.cameras.main.fadeOut(700, 0, 0, 0);
+        this.time.delayedCall(750, () => { setStage('montage'); const [scene, data] = storyScene('montage'); this.scene.start(scene, data); });
+        return;
+      }
       this.dateBanner(dateLabel(c.life.day).toUpperCase(), 700); // round 83: the date, e.g. SPRING 3
     });
     this.time.delayedCall(3000, () => {
