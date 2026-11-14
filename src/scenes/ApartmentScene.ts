@@ -6,7 +6,7 @@ import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
-import { planWorkouts, callLines, todaysEvents, eventName, markMissed, draftResult, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
+import { planWorkouts, callLines, todaysEvents, eventName, markMissed, runDraft, topTwoLine, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
 import { buildSeason, ROOKIE_SEASON_START } from '../career/schedule';
 import { goTo } from './draftRoad';
 import { momTexture, mateTexture } from './castSprites';
@@ -150,6 +150,7 @@ export class ApartmentScene extends RoomScene {
       ag('This is your week. Seven days from today: the combine.'),
       ag('Two days of it. Skill tests, drills, measurements. Then a scrimmage in front of every scout in the league.'),
       ag('Then the draft. Last day of spring, the night the playoffs end.'), // round 83
+      ag(topTwoLine(c)), // round 86: the projected top two
       ag('Do what I tell you, and somebody calls your name on draft night. Late, maybe. But they\'ll call it.'),
       { run: () => this.closeCalendar() },
       ag('Now. The garage.'),
@@ -162,7 +163,8 @@ export class ApartmentScene extends RoomScene {
 
   /**
    * Round 84 (owner): draft night at the apartment. Mom and your old teammates (Lincoln and Ridgemont) around the TV;
-   * Garcia isn't there. The picks go by, then the Lottery team that called you takes you, late in the first round.
+   * Garcia isn't there. Round 86: the real draft goes by on the TV (the projected top two, the picks right before
+   * yours, a team that passed on you), then a bottom-tier team takes you.
    */
   private startDraftNight() {
     const c = app.career, st = c.story!, you = c.firstName || c.name.split(' ')[0], full = c.name;
@@ -179,12 +181,13 @@ export class ApartmentScene extends RoomScene {
     const tv = this.add.graphics().setDepth(8850);
     tv.fillStyle(0x0a0d18, 1).fillRoundedRect(tvX - 150, tvY - 70, 300, 140, 8).lineStyle(3, 0x2c3350, 1).strokeRoundedRect(tvX - 150, tvY - 70, 300, 140, 8);
     tv.fillStyle(0x1d2b5a, 1).fillRect(tvX - 140, tvY - 60, 280, 30);
-    this.add.text(tvX, tvY - 45, `THE DRAFT  ·  ROUND ${draftResult(c).pick > 30 ? 2 : 1}`, { fontFamily: FONT, fontSize: '15px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(8851);
+    const draft = runDraft(c), res = draft.you;
+    this.add.text(tvX, tvY - 45, `THE DRAFT  ·  ROUND ${res.pick > 30 ? 2 : 1}`, { fontFamily: FONT, fontSize: '15px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(8851);
     const tvText = this.add.text(tvX, tvY + 18, 'Coming up next...', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'center', wordWrap: { width: 270 } }).setOrigin(0.5).setDepth(8851);
-    const res = draftResult(c), team = TEAMS.find((t) => t.id === res.team)!, teamName = `${team.city} ${team.name}`;
+    const team = TEAMS.find((t) => t.id === res.team)!, teamName = `${team.city} ${team.name}`;
     const ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
-    const others = TEAMS.filter((t) => t.id !== res.team);
-    const pickLine = (n: number) => { const t = others[(n * 7) % others.length]; return `Pick ${n}: ${t.city} ${t.name}`; };
+    const pickLine = (n: number) => { const p = draft.picks[n - 1], t = TEAMS.find((x) => x.id === p.team); return `Pick ${n}: ${t ? `${t.city} ${t.name}` : p.team}\n${p.who}`; };
+    const passed = draft.passedBy.map((id) => TEAMS.find((t) => t.id === id)).filter((t) => !!t);
     const mate = (p: { name: string }, school: string, text: string) => ({ say: { who: 'mate' as BoxSpeaker, name: `${p.name.split(' ')[0]} (${school})`, text } });
     const mom = (text: string) => ({ say: { who: 'mom' as BoxSpeaker, text } });
     const me = (text: string) => ({ say: { who: 'me' as BoxSpeaker, name: you, text } });
@@ -200,9 +203,12 @@ export class ApartmentScene extends RoomScene {
       me('Said he\'d call. Doesn\'t matter. Everybody I need is right here.'),
       show('The commissioner steps up to the podium.'),
       tvSay('Welcome to the draft. The first round is now underway.'),
-      show(pickLine(1)), { wait: 0.8 }, show(pickLine(2)), { wait: 0.8 }, show(pickLine(3)), { wait: 0.8 },
-      mate(lin2[0] ?? cap, 'Lincoln', 'Relax, man. You\'re squeezing the remote to death.'),
-      show(`...  Pick ${Math.max(4, res.pick - 2)}  ...`), { wait: 0.8 }, show(pickLine(res.pick - 1)), { wait: 1.0 },
+      // round 86: the real picks before yours (the projected top two first)
+      ...[1, 2, 3].filter((n) => n < res.pick).flatMap((n) => [show(pickLine(n)), { wait: 0.9 }]),
+      ...(res.pick > 4 ? [mate(lin2[0] ?? cap, 'Lincoln', 'Relax, man. You\'re squeezing the remote to death.')] : []),
+      ...(res.pick > 6 ? [show(`...  Pick ${res.pick - 2}  ...`), { wait: 0.8 }] : []),
+      ...(res.pick > 4 ? [show(pickLine(res.pick - 1)), { wait: 1.0 }] : []),
+      ...(passed.length ? [mate(ram[0] ?? cap, 'Ridgemont', `${passed[passed.length - 1]!.name} passed on you? Their loss.`)] : []),
       mom('Come on... come on...'),
       show(`With the ${ord(res.pick)} pick in the draft, the ${teamName} select...`),
       tvSay(`With the ${ord(res.pick)} pick in the draft, the ${teamName} select...`),

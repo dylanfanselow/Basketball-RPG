@@ -138,7 +138,7 @@ export function storyEventsByDay(c: CareerState): Map<number, { label: string; c
   }
   return out;
 }
-export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number }
+export interface BigGameResult { great: boolean; won: boolean; pts: number; reb: number; ast: number; /** round 86: your weighted night was the best on the floor (won or lost) */ mvp?: boolean }
 
 export const SKILL_START = 40, SKILL_MAX = 99;
 export const newSkills = () => Object.fromEntries(CORE_STATS.map((s) => [s, { level: SKILL_START, xp: 0 }])) as CareerState['skills'];
@@ -371,6 +371,8 @@ export const ENERGY_ORB = 10, ENERGY_MAX = 100;
 export const sleepPlan = (c: CareerState) => Math.ceil(Math.max(0, ENERGY_MAX - c.life.energy) / ENERGY_ORB);
 /** Add energy (capped). */
 export function addEnergy(c: CareerState, n: number) { c.life.energy = Math.min(ENERGY_MAX, Math.max(0, c.life.energy + n)); }
+/** Round 86 (owner): a big event (a combine day, the scrimmage, a tryout, a key game) leaves you with nothing. */
+export function drainEnergy(c: CareerState) { c.life.energy = 0; }
 /** Sleep: the next day starts (energy comes back through the orbs the room sends). */
 export function advanceDay(c: CareerState) {
   c.life.day++;

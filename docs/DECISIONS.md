@@ -188,6 +188,30 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 86 (owner): the draft class, harder tests, event days.**
+  - **One net** at the hoop (the garage and the arena gym): a second net used to appear on every shot.
+  - **The draft class**: 60 prospects; the average drafted player has **281** points over the five core stats, spread
+    by draft position like a binomial (sd 15: pick 1 about 315, pick 60 about 248), a small random modifier on each
+    total and a random spread over the stats. **Two prospects are projected 1 and 2 before you show up**, at the
+    positions you don't play (you a guard: a forward and a center; a forward: a center and a guard; a center, our
+    pick: a guard and a forward), with their pick-1/2 totals plus the modifier plus **a slight boost (+8)**.
+  - **Your slot comes mostly from how you played** (owner): the combine (50%) and the scrimmage (25%), then **the
+    national final** (17%: won, MVP = best weighted night on the floor, won or lost) and, less, **the big game** from
+    the start (8%). **Your stats only nudge it** (±8 on the class scale). Anything not played yet counts as average.
+  - **Draft night is a real draft** (worst rosters pick first, a few traded picks), but **only a bottom-tier team takes
+    you** for now (the story the owner writes first; later any tier). **Tryouts don't move your projection**: they make
+    that team more likely to take you (even a little early) or to pass on you. You always go (at worst the last
+    bottom-tier pick of round 2). The TV shows the real picks (the projected top two first) and who passed.
+  - **The tests get harder (combine and tryouts only; the garage keeps the plain rules):** shooting in points (a make
+    1, **a perfect 2**) with **the green window narrowing after every make** (around the perfect slice, never smaller
+    than it + 0.02); the **vertical jump** loads for 2.5 s (was 4) and each press counts less; the **squat is 20 s**
+    and **the bar falls faster after every rep** (bench too, still 30 s).
+  - **Event days**: on a combine day, the scrimmage, a tryout or a key game (in the league), **you can't work out
+    before you go** ("I can't work out today. I need to be ready for the combine."); **afterwards your energy is
+    empty** (combine days, the scrimmage, tryouts and key games).
+  - **The combine room**: other prospects work on their own stuff while you test (the projected top two plus two
+    more: laps, a dribble, squats, waiting at the jump pole, name tags), and **the scouts look at the court**, not
+    the camera (heads turned, the bench on the right looking left).
 - **Round 85b (owner, dev): R1 (Q) on a garage workout finishes a set instantly**: a rep plus the station's orbs, each
   paying its energy as usual (out of energy = too tired); hold it to repeat every 0.35 s. Garage only (the arena gym's
   tests send no orbs).

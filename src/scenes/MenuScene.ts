@@ -89,7 +89,7 @@ export class MenuScene extends Phaser.Scene {
     st.agent ??= 'Donovan Garcia';
     if (!st.debt) takeOnDebt(c);
     const after = to !== 'combine' && to !== 'scrimmage';
-    st.combine = after || to === 'scrimmage' ? { scores: { sprint: 3.4, squat: 6, bench: 3, jump: 31, shoot: 8 }, day1: true, day2: true } : undefined;
+    st.combine = after || to === 'scrimmage' ? { scores: { sprint: 3.4, squat: 6, bench: 4, jump: 33, shoot: 10 }, day1: true, day2: true } : undefined;
     st.scrimmage = after ? { pts: 14, reb: 5, ast: 4, sum: 26, won: true } : undefined;
     st.montage = to === 'calls' || to === 'workout' || to === 'draft' ? true : undefined;
     st.workouts = to === 'workout' || to === 'draft' ? planWorkouts(c) : [];

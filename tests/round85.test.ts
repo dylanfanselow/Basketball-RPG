@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ORBS, ShootGame, JumpGame, NO_INPUT, MiniInput, autoSet, makeMiniGame } from '../src/world/minigames';
 import { createCareer, draftWeek } from '../src/career/career';
 import { storyDay } from '../src/career/calendar';
-import { combinePlan, COMBINE_TESTS, draftEstimate, draftResult, estimateLine, garciaLines, momLine, planWorkouts, rangeOf } from '../src/career/draft';
+import { leagueTiers, combinePlan, COMBINE_TESTS, draftEstimate, draftResult, estimateLine, garciaLines, momLine, planWorkouts, rangeOf } from '../src/career/draft';
 import { lapPoint, LAP_LEN, LAPS, ARENA_GYM } from '../src/world/arenaGym';
 import { buildDraftScrimmage, buildStarterOnes, buildTeamScrimmage } from '../src/sim/draftGames';
 import { defaultAppearance } from '../src/render/appearance';
@@ -77,7 +77,7 @@ describe('round 85: workouts, shooting streaks, the combine in the arena, the la
     expect(estimateLine(c)).toMatch(/Too early/);
     const plan = combinePlan(c);
     const set = (scores: Record<string, number>) => { c.story!.combine = { scores, day1: true, day2: true }; };
-    set({ sprint: 5.5, squat: 9, bench: 6, jump: 40, shoot: 12 }); const great = draftEstimate(c)!;
+    set({ sprint: 5.5, squat: 10, bench: 7, jump: 40, shoot: 20 }); const great = draftEstimate(c)!;
     set({ sprint: 2, squat: 2, bench: 1, jump: 24, shoot: 3 }); const poor = draftEstimate(c)!;
     expect(great).toBeLessThan(poor);
     c.story!.combine = { scores: {}, missed1: true, missed2: true }; const missed = draftEstimate(c)!;
@@ -89,8 +89,7 @@ describe('round 85: workouts, shooting streaks, the combine in the arena, the la
     expect(estimateLine(c)).toMatch(new RegExp(`pick ${skip}`));
     c.story!.workouts = planWorkouts(c);
     const r = draftResult(c);
-    expect(Math.abs(r.pick - skip)).toBeLessThanOrEqual(2);
-    expect(r.team).toBe(c.story!.workouts.find((w) => w.tier === 'Lottery')!.team);
+    expect(leagueTiers().Lottery).toContain(r.team); // round 86: a real draft, a bottom-tier team takes you
     expect(rangeOf(5)).toBe('lottery'); expect(rangeOf(22)).toBe('late'); expect(rangeOf(45)).toBe('second');
     expect(garciaLines(c).some((l) => /scrimmage/.test(l))).toBe(true);
     void plan;

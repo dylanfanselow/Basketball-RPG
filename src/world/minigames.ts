@@ -26,6 +26,8 @@ export const ORBS: Record<string, CoreStat[]> = {
   bench: ['strength', 'finishing', 'strength', 'finishing'],
   dribble: ['playmaking', 'shooting', 'playmaking', 'shooting'],
 };
+/** Round 86 (owner): the combine's and the tryouts' versions are harder (the garage keeps the plain rules). */
+export interface MiniOpts { test?: boolean }
 export const NO_INPUT: MiniInput = { stick: { x: 0, y: 0 }, a: false, b: false, x: false, y: false, l2: false, r2: false, aHeld: false };
 
 export abstract class MiniGame {
@@ -36,7 +38,7 @@ export abstract class MiniGame {
   missUntil = -9;
   /** Things that happened this frame (for sounds): 'rep', 'miss', 'hit', 'press', 'hop', 'release', 'make', 'clank', … */
   events: string[] = [];
-  constructor(public rand: () => number = Math.random) {}
+  constructor(public rand: () => number = Math.random, public opts: MiniOpts = {}) {}
   protected emit(e: string) { this.events.push(e); }
   /** Take this frame's events. */
   takeEvents(): string[] { const e = this.events; this.events = []; return e; }
@@ -58,12 +60,15 @@ abstract class RepBar extends MiniGame {
   descendUntil = -9;
   abstract drain: number;
   abstract descendTime: number;
+  /** Round 86 (owner): in a test the bar falls faster after every rep (squat, bench). */
+  static RAMP = 1.15;
+  get ramp() { return this.opts.test && (this.id === 'squat' || this.id === 'bench') ? Math.pow(RepBar.RAMP, this.reps) : 1; }
   protected add(v: number) {
     this.fill = Math.min(1, this.fill + v);
     if (this.fill >= 1) { this.reps++; this.fill = 0; this.descendUntil = this.t + this.descendTime; this.emit('rep'); this.emit('orb'); }
   }
   get descending() { return this.t < this.descendUntil; }
-  protected drainStep(dt: number) { if (!this.descending) this.fill = Math.max(0, this.fill - this.drain * dt); }
+  protected drainStep(dt: number) { if (!this.descending) this.fill = Math.max(0, this.fill - this.drain * this.ramp * dt); }
   /** Clips that go top (0) → bottom (0.42–0.55) → top (1): push up from the bottom as the bar fills. */
   animU() {
     if (this.descending) return 0.45 * (1 - (this.descendUntil - this.t) / this.descendTime);
@@ -132,7 +137,7 @@ export class DribbleGame extends RepBar {
   want: FaceBtn = 'a';
   move: FaceBtn | null = null;
   moveAt = -9;
-  constructor(rand?: () => number) { super(rand); this.want = this.pick(); }
+  constructor(rand?: () => number, opts?: MiniOpts) { super(rand, opts); this.want = this.pick(); }
   protected pick(): FaceBtn { const all: FaceBtn[] = ['a', 'b', 'x', 'y'].filter((b) => b !== this.want) as FaceBtn[]; return all[Math.floor(this.rand() * all.length) % all.length]; }
   protected step(dt: number, inp: MiniInput) {
     const pressed = (['a', 'b', 'x', 'y'] as FaceBtn[]).filter((b) => inp[b]);
@@ -164,8 +169,9 @@ export class DribbleGame extends RepBar {
 export class JumpGame extends MiniGame {
   id = 'jump';
   controls = ['Mash ✕ to load your jump  (K)', 'Three tries · the best one counts'];
-  static LOAD = 4; static AIR = 0.9; static REST = 1.2; static TRIES = 3;
-  static PER_PRESS = 0.045;
+  /** Round 86 (owner): a shorter window (4 → 2.5 s) and each press counts less (0.045 → 0.03). */
+  static LOAD = 2.5; static AIR = 0.9; static REST = 1.2; static TRIES = 3;
+  static PER_PRESS = 0.03;
   phase: 'load' | 'air' | 'rest' | 'done' = 'load';
   power = 0; tries = 0; best = 0; last = 0; phaseAt = 0;
   /** Inches for a power (0..1): 18 at nothing, about 44 maxed. */
@@ -229,6 +235,11 @@ export class ShootGame extends MiniGame {
   /** a tiny red slice in the middle of the green: perfect release */
   static PERFECT: [number, number] = [0.866, 0.886];
   perfect = false;
+  /** Round 86 (owner): this game's green window (a test narrows it after every make, around the perfect slice). */
+  green: [number, number] = [...ShootGame.GREEN];
+  static SHRINK = 0.82;
+  /** Round 86 (owner): a test's score: a make is 1 point, a perfect 2. */
+  points = 0; perfects = 0;
   /** round 85: perfects in a row (any other shot resets it) */
   streak = 0;
   /** round 85: how long this shot's ball takes to come back (a perfect comes back faster) */
@@ -249,16 +260,25 @@ export class ShootGame extends MiniGame {
         if (this.meter < 0) this.meter = 0;
       } else {
         this.releasedAt = this.meter;
-        this.made = this.meter >= ShootGame.GREEN[0] && this.meter <= ShootGame.GREEN[1];
+        this.made = this.meter >= this.green[0] && this.meter <= this.green[1];
         this.attempts++; if (this.made) this.reps++;
         this.state = 'shot'; this.shotAt = this.t; this.jumpAtRelease = this.jumpFt0(this.meter);
         this.perfect = this.meter >= ShootGame.PERFECT[0] && this.meter <= ShootGame.PERFECT[1];
         this.streak = this.perfect ? this.streak + 1 : 0;
         this.flight = this.perfect ? ShootGame.FLIGHT_PERFECT : ShootGame.FLIGHT;
+        if (this.made) { this.points += this.perfect ? 2 : 1; if (this.perfect) this.perfects++; if (this.opts.test) this.narrow(); }
         this.emit('release'); if (this.perfect) { this.emit('perfect'); this.emit('streak'); } else if (this.made) this.emit('green');
         if (this.made) this.emit('orb');
       }
     }
+  }
+  /** Round 86: narrow the green around the perfect slice's centre, never tighter than the slice + 0.02. */
+  private narrow() {
+    const [p0, p1] = ShootGame.PERFECT, mid = (p0 + p1) / 2, minW = p1 - p0 + 0.02;
+    const w = Math.max(minW, (this.green[1] - this.green[0]) * ShootGame.SHRINK);
+    // keep the window's lean (more room below the perfect than above, like the default) as it shrinks
+    const below = (mid - this.green[0]) / (this.green[1] - this.green[0]);
+    this.green = [mid - w * below, mid + w * (1 - below)];
   }
   jumpAtRelease = 0;
   static JUMP = 1.7; static LAND = 0.35;
@@ -286,6 +306,9 @@ export class BenchGame extends RepBar {
   tilt = 0;
   private dir = 1; private flipAt = 0; private creakAt = -9;
   static LEVEL = 0.5;
+  /** Round 86 (owner): in a test each rep is a little heavier to press (its bar only drains when you let go). */
+  static PRESS_RAMP = 0.93;
+  get press() { return this.opts.test ? Math.pow(BenchGame.PRESS_RAMP, this.reps) : 1; }
   protected step(dt: number, inp: MiniInput) {
     if (this.descending) { this.tilt *= 0.9; return; }
     if (this.t > this.flipAt) { this.dir = this.rand() < 0.5 ? -1 : 1; this.flipAt = this.t + 0.8 + this.rand() * 0.8; }
@@ -295,7 +318,7 @@ export class BenchGame extends RepBar {
       this.tilt += (drift + this.tilt * 1.0 + inp.stick.x * 2.6) * dt;
       if (Math.abs(this.tilt) >= 1) { this.miss(); this.emit('drop'); this.fill = 0; this.tilt = 0; return; }
       if (Math.abs(this.tilt) > 0.55 && this.t - this.creakAt > 0.45) { this.creakAt = this.t; this.emit('creak'); }
-      if (Math.abs(this.tilt) < BenchGame.LEVEL) this.add(0.4 * dt);
+      if (Math.abs(this.tilt) < BenchGame.LEVEL) this.add(0.4 * this.press * dt);
     } else {
       this.tilt *= Math.pow(0.2, dt);
       this.drainStep(dt);
@@ -313,14 +336,14 @@ export function autoSet(m: MiniGame): CoreStat[] {
   return ORBS[m.id] ?? [];
 }
 
-export function makeMiniGame(stationId: string, rand: () => number = Math.random): MiniGame | null {
+export function makeMiniGame(stationId: string, rand: () => number = Math.random, opts: MiniOpts = {}): MiniGame | null {
   switch (stationId) {
-    case 'squat': return new SquatGame(rand);
-    case 'treadmill': return new TreadmillGame(rand);
-    case 'dribble': return new DribbleGame(rand);
-    case 'shoot': return new ShootGame(rand);
-    case 'bench': return new BenchGame(rand);
-    case 'jump': return new JumpGame(rand);
+    case 'squat': return new SquatGame(rand, opts);
+    case 'treadmill': return new TreadmillGame(rand, opts);
+    case 'dribble': return new DribbleGame(rand, opts);
+    case 'shoot': return new ShootGame(rand, opts);
+    case 'bench': return new BenchGame(rand, opts);
+    case 'jump': return new JumpGame(rand, opts);
     default: return null;
   }
 }

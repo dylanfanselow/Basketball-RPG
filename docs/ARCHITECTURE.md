@@ -43,7 +43,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 `doorNear(p, reach, room)`; `Door` has `side` (L / R / B), `span`, `to` (scene + door you arrive at).
 
 ## Career (`src/career`)
-`career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `calendar.ts` (round 46: career day ↔ real date, Monday-first month grids, key games by day), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
+`draftClass.ts` (round 86: the 60-man draft class, `storyRng`), `names.ts` (name lists), `draft.ts` (the road to the draft: workouts, combine plan / grades, draft value / projection, `runDraft`, `readyFor`), `career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `calendar.ts` (round 46: career day ↔ real date, Monday-first month grids, key games by day), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
 `rosters.json`, procedural fallback), `story.ts` (future: events/story effects, `unlockUltimate`).
 
 ## Render & scenes

@@ -160,7 +160,7 @@ export function bigGameVerdict(sim: GameSim): BigGameResult & { mine: number; be
   const sum = statSum;
   const mine = sum(me), best = Math.max(...[...sim.teams[0].roster, ...sim.teams[1].roster].map(sum));
   const won = sim.teams[me.team].score > sim.teams[1 - me.team].score;
-  return { won, mine, best, great: won && mine >= best, pts: me.box.pts, reb: me.box.reb, ast: me.box.ast };
+  return { won, mine, best, great: won && mine >= best, mvp: mine >= best, pts: me.box.pts, reb: me.box.reb, ast: me.box.ast };
 }
 
 /** Round 66: the big game is two 4-minute halves (high school). */

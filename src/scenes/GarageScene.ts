@@ -10,7 +10,7 @@ import { FONT } from './ui';
 import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS, autoSet } from '../world/minigames';
 import { scoutTexture } from './castSprites';
 import { storyScene } from './setup';
-import { TIER_PITCH } from '../career/draft';
+import { TIER_PITCH, readyFor } from '../career/draft';
 import { TEAMS } from '../sim/data';
 import { BoxSpeaker } from '../render/storyBox';
 import { ART } from './RoomScene';
@@ -142,6 +142,19 @@ export class GarageScene extends RoomScene {
     this.tweens.add({ targets: t, y: t.y - 30, alpha: 0, duration: 900, onComplete: () => t.destroy() });
   }
 
+  /**
+   * Round 86 (owner): on an event day, before you go, no workouts: "I need to be ready for the combine." Garage only
+   * (the arena gym's tests are the event; the montage's night bench is a cutscene).
+   */
+  startActivity(st: Station) {
+    const why = this.orbsOn() && !this.story ? readyFor(app.career) : null;
+    if (why) {
+      if (!this.agent) this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ say: { who: 'you' as BoxSpeaker, text: `I can't work out today. I need to be ready for ${why}.` } }], { phone: true });
+      return;
+    }
+    super.startActivity(st);
+  }
+
   protected piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
 
   onActivity(st: Station | null) {
@@ -161,11 +174,19 @@ export class GarageScene extends RoomScene {
     if (ag && !ag.update(dt) && this.agent === ag) this.agent = null;
     if (this.agent && this.agent !== ag) this.busy = true;
     this.devAuto();
-    const g = this.gear.clear(), gb = this.gearBack.clear();
+    this.gear.clear(); this.gearBack.clear();
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
     this.drawMiniHud();
     this.playSounds();
+    this.netShot = null;
+    this.drawGear(st, fr);
+    this.drawNet();
+  }
+
+  /** The workout's gear for this frame (the bar, the plates, the shot, the dribbled ball). */
+  private drawGear(st: Station | null, fr: ReturnType<GarageScene['activityFrame']>) {
+    const g = this.gear, gb = this.gearBack;
     if (!st || !fr || !this.player.visible) return;
     const d = this.player.depth;
     g.setDepth(d + 0.2); gb.setDepth(d - 0.2);
@@ -195,6 +216,31 @@ export class GarageScene extends RoomScene {
     } else if (st.id === 'dribble') {
       this.drawDribble(st);
     }
+  }
+
+  /** Round 86: while a shot is at the rim: the net's depth (over the ball), stretch and sway; null = resting. */
+  private netShot: { depth: number; stretch: number; sway: number } | null = null;
+  /**
+   * Round 86 (owner: a second net appeared on every shot): the hoop's one net, drawn here every frame on the art's
+   * pixel grid (1 art px = 1 / AS scene units, the same lattice the hoop picture used to bake in). At rest it sits
+   * just in front of the hoop; while a shot is at the rim it goes over the ball, stretches and sways, with the front of
+   * the ring over it.
+   */
+  drawNet() {
+    const nf = this.netFront.clear(), rim = garageRim(), shot = this.netShot;
+    const hoop = this.piece('hoop');
+    nf.setDepth(shot ? shot.depth : (hoop?.depth ?? syOf(rim.depthFt)) + 0.05);
+    const px = 1 / AS, rwA = 0.75 * 16.5, stretchA = (shot?.stretch ?? 0) * AS, netH = Math.round(1.4 * 16.5 + stretchA);
+    const sway = shot?.sway ?? 0, rimXA = rim.x * AS, top = rim.y + 2 * px;
+    for (let y = 0; y <= netH; y++) {
+      const t = y / netH, hw = rwA * (1 - 0.42 * t), x0 = Math.round(rimXA - hw), x1 = Math.round(rimXA + hw);
+      nf.fillStyle(y % 2 ? 0xf4f4f4 : 0xd8d8d8, 1);
+      for (let x = x0; x <= x1; x++) {
+        const dp = ((x - rimXA) + y * 0.9) % 6, dn = ((x - rimXA) - y * 0.9) % 6;
+        if (Math.abs(dp) < 0.7 || Math.abs(dn) < 0.7 || x === x0 || x === x1) nf.fillRect(x * px + sway * t, top + y * px, px, px);
+      }
+    }
+    if (shot) nf.lineStyle(3, 0xe05a14, 1).beginPath().arc(rim.x, rim.y, rwA * px, 0, Math.PI, false).strokePath(); // front of the ring
   }
 
   /** Round 85: the garage has the rebound wedge; the arena gym doesn't. */
@@ -292,20 +338,10 @@ export class GarageScene extends RoomScene {
     b.fillStyle(0x5a2410, 1).fillCircle(x, y, r + 1); b.fillStyle(0xe0702e, 1).fillCircle(x, y, r); b.fillStyle(0xf09050, 1).fillCircle(x - 2, y - 2, r * 0.45);
     b.lineStyle(1, 0x3a1a0a, 1).lineBetween(x - r, y, x + r, y).lineBetween(x, y - r, x, y + r);
     // the front of the rim and the net go over the ball while it's at the hoop (so it drops *through* them); the net
-    // stretches and sways as it swishes, then settles
-    const nf = this.netFront.clear().setDepth(depth + 0.1);
+    // stretches and sways as it swishes, then settles (drawn by drawNet, the one net)
     if (game.state === 'shot' && T > 0.6 && T < 1.7) {
       const swish = game.made && T > 0.85 ? Math.max(0, 1 - (T - 0.95) / 0.6) : 0;
-      const stretch = 9 * swish * Math.min(1, (T - 0.85) / 0.12), sway = 3 * swish * Math.sin(T * 26);
-      const rw = 0.75 * 16.5 / AS, netH = 1.4 * 16.5 / AS + stretch, ry = rim.y;
-      for (let yy = 0; yy <= netH; yy += 1) {
-        const t2 = yy / netH, hw = rw * (1 - 0.42 * t2), x0 = rim.x - hw + sway * t2, x1 = rim.x + hw + sway * t2;
-        for (let xx = Math.round(x0); xx <= Math.round(x1); xx += 1) {
-          const dp = ((xx - rim.x) + yy * 0.9) % 8, dn = ((xx - rim.x) - yy * 0.9) % 8;
-          if (Math.abs(dp) < 0.9 || Math.abs(dn) < 0.9 || xx === Math.round(x0) || xx === Math.round(x1)) nf.fillStyle(0xf4f4f4, 0.95).fillRect(xx, ry + 3 + yy, 1.4, 1.4);
-        }
-      }
-      nf.lineStyle(3, 0xe05a14, 1).beginPath().arc(rim.x, ry, rw, 0, Math.PI, false).strokePath(); // front of the ring
+      this.netShot = { depth: depth + 0.1, stretch: 9 * swish * Math.min(1, (T - 0.85) / 0.12), sway: 3 * swish * Math.sin(T * 26) };
     }
     // call it when it gets there
     this.shotText.setVisible(game.state === 'shot' && T > 0.85 && T < 1.9).setText(game.made ? 'BUCKET!' : 'MISS').setColor(game.made ? '#7dff9a' : '#ff7d7d').setPosition(rim.x + 10, rim.y - 26);

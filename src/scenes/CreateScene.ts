@@ -9,6 +9,7 @@ import type { CareerState } from '../career/career';
 import { storyScene } from './setup';
 import { casualKit } from './RoomScene';
 import { NODES } from '../sim/data';
+import { FIRST_NAMES, LAST_NAMES } from '../career/names';
 import { createCareer, STARTER_PERKS, STARTER_CORE, HEIGHT_RANGE, fmtHeight, cleanName, NAME_MAX } from '../career/career';
 import { POSITIONS, Position } from '../sim/attributes';
 import { CORE_STATS, TEAMS } from '../sim/data';
@@ -36,8 +37,6 @@ const VIEWS = [90, 45, 0];
 /** The on-screen keyboard (controller): letters, - and ', then space / delete / random / done. */
 const GRID = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '-', "'", 'SPACE', 'DEL', 'RANDOM', 'DONE'];
 const GRID_COLS = 10;
-const FIRST_NAMES = ['Jalen', 'Marcus', 'Tyrese', 'Darius', 'Andre', 'Cam', 'Malik', 'Jaylen', 'Isaiah', 'Devin', 'Trey', 'Miles', 'Jordan', 'Elijah', 'Xavier', 'DeShawn', 'Nico', 'Theo', 'Omar', 'Luca'];
-const LAST_NAMES = ['Carter', 'Brooks', 'Hayes', 'Mitchell', 'Coleman', 'Freeman', 'Banks', 'Ellis', 'Reed', 'Washington', 'Moore', 'Price', 'Grant', 'Holloway', 'Vance', 'Okafor', 'Silva', 'Ramirez', 'Novak', 'Kim'];
 
 interface Row { label: string; value: () => string; swatch?: () => string | null; cycle: (d: number) => void }
 

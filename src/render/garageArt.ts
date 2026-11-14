@@ -349,17 +349,10 @@ function drawHoop(c: C, p: Piece) {
   R(c, bx - 2, bTop, 5, bBot - bTop, '#dfeaf7'); R(c, bx - 2, bTop, 1, bBot - bTop, '#ffffff'); R(c, bx + 2, bTop, 1, bBot - bTop, '#a9bdd6'); // glass edge
   R(c, bx - 3, bBot - 3, 7, 5, '#1f2a44');                              // padded bottom edge
   R(c, bx - 6, Math.round(AY(yc) - 12.0 * HF), 4, 10, '#3e4359');        // arm mount behind the board
-  // rim: a flat ring seen side-on, on a bracket from the board; net below (a tapered mesh)
+  // rim: a flat ring seen side-on, on a bracket from the board. Round 86: the net isn't baked in here any more (a
+  // second, live net used to appear on every shot): GarageScene.drawNet draws the one net, resting or swishing.
   const rimY = Math.round(AY(yc) - 10 * HF), rw = 0.75 * HF, rimX = bx + 4 + rw, rh = 2.2;
   R(c, bx + 2, rimY - 1, 5, 4, '#8a2e0a');
-  const netH = Math.round(1.4 * HF);
-  for (let y = 0; y <= netH; y++) {
-    const t = y / netH, hw = rw * (1 - 0.42 * t), x0 = rimX - hw, x1 = rimX + hw;
-    for (let x = Math.round(x0); x <= Math.round(x1); x++) {
-      const dpos = ((x - rimX) + y * 0.9) % 6, dneg = ((x - rimX) - y * 0.9) % 6;
-      if (Math.abs(dpos) < 0.7 || Math.abs(dneg) < 0.7 || x === Math.round(x0) || x === Math.round(x1)) P(c, x, rimY + 2 + y, y % 2 ? '#f4f4f4' : '#d8d8d8');
-    }
-  }
   for (let k = 0; k <= 40; k++) { const a = (k / 40) * Math.PI * 2; R(c, Math.round(rimX + Math.cos(a) * rw), Math.round(rimY + Math.sin(a) * rh), 2, 2, Math.sin(a) < 0 ? '#b8430e' : '#e05a14'); }
 }
 

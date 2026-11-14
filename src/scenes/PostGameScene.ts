@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
 import { FONT, COL, title, hiRes } from './ui';
 import { app } from '../state';
-import { applyGameResult, xpToNext } from '../career/career';
+import { applyGameResult, xpToNext, isKeyGame, drainEnergy } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
 import type { GameInit } from './setup';
@@ -36,7 +36,9 @@ export class PostGameScene extends Phaser.Scene {
     if (this.mode === 'career') {
       const b = sim.heat[u.id]?.buckets ?? { rim: 0, jumper: 0, post: 0 };
       const teamFga = [...new Set(sim.teams[u.team].roster)].reduce((n, p) => n + p.box.fga, 0);
+      const key = !!isKeyGame(app.career, app.career.season.gameNo); // round 86: a key game leaves you with nothing
       const r = applyGameResult(app.career, { box: bx, won, us: sim.teams[u.team].score, them: sim.teams[1 - u.team].score, grade: sim.grade, milestones: sim.milestones, scout: { pts: bx.pts, fga: bx.fga, teamFga, ...b } });
+      if (key) { drainEnergy(app.career); lines.push('A key game. You left everything out there (energy empty).'); }
       app.changed();
       lines.push(`+${r.xp} XP   (Lv ${app.career.level}, ${app.career.xp}/${xpToNext(app.career.level)})`);
       if (r.levels) lines.push(`LEVEL UP! +${r.levels * 3} stat points, +${r.levels} perk point${r.levels > 1 ? 's' : ''}`);
@@ -45,7 +47,7 @@ export class PostGameScene extends Phaser.Scene {
       // round 80: the national final; afterwards home is the snowy trailer (the story goes on from there later)
       const v = bigGameVerdict(sim);
       ensureStory();
-      app.career.story!.final = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
+      app.career.story!.final = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast, mvp: v.mvp };
       app.career.story!.winter = true;
       setStage('done');
       lines.push(v.won ? 'NATIONAL CHAMPIONS! Ridgemont Academy takes the title.' : 'Crestview Prep takes the title. Kingston gets the last word.');
@@ -57,7 +59,7 @@ export class PostGameScene extends Phaser.Scene {
       // round 60d: the big game. How it went decides Mom's scene back home (great: won + the best stat sum)
       const v = bigGameVerdict(sim);
       ensureStory();
-      app.career.story!.bigGame = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast };
+      app.career.story!.bigGame = { great: v.great, won: v.won, pts: v.pts, reb: v.reb, ast: v.ast, mvp: v.mvp };
       setStage('after');
       lines.push(`Your night: ${v.mine.toFixed(1)} (points, rebounds x1.3, assists x1.5, steals and blocks x3), best on the floor: ${v.best.toFixed(1)}.`);
       lines.push('The man with the clipboard is still writing.');
@@ -130,6 +132,7 @@ function recordDraftGame(which: string, sim: GameSim): string[] {
     st.going = undefined;
     out.push(`Workout: ${text}.`);
   }
+  if (which === 'scrimmage' || w) drainEnergy(app.career); // round 86 (owner): a big day leaves you with nothing
   app.changed();
   return out;
 }

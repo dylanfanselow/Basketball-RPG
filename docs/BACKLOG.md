@@ -100,6 +100,11 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 86 follow-ups:** ask how the harder tests feel (the narrowing green, 2.5 s jump, ramping squat / bench) and
+  whether the `COMBINE_RANGE` grades fit; draft value weights (combine 50, scrimmage 25, nationals 17, big game 8,
+  stats ±8) are first guesses; prospects in the room are side-view loops (no angled frames, no walking between
+  stations) and only at the combine (not the tryouts); later any tier can draft you (`DRAFTS_YOU`); the drafted
+  class isn't on team rosters yet. Old saves' shooting scores were makes of 15 (now points), so they grade a bit low.
 - **Round 85 follow-ups:** film study on the TV (learn advanced moves); the arena gym reuses the garage's frame (a
   dedicated arena room later); scouts are the celeb drawing (a seated-on-bench pose would read better); the draft
   range doesn't yet change which teams call.

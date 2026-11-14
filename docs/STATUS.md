@@ -261,6 +261,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 86: `career/draftClass.ts` (`draftClass`, `storyRng` moved here, `topTwoPositions`, `spreadStats`, 281 mean,
+  binomial totals, `TOP_BOOST`), `career/names.ts` (shared with the builder); `draft.ts` `perfParts` / `performance` /
+  `statNudge` / `yourDraftValue` / `projectedPick` (Garcia's estimate), `topTwoLine`, `tryoutGrade`, `draftOrder`,
+  `runDraft` (`DRAFTS_YOU` = Lottery, `passedBy`), `draftResult` from it, `readyFor`; `career.drainEnergy`;
+  `BigGameResult.mvp`; `MiniOpts { test }` (ShootGame `green` / `points` / `perfects` / narrowing, RepBar `ramp`, Bench
+  `press`), JumpGame 2.5 s / 0.03; ArenaGym per-test timers (squat 20 s), points, prospects (`addProspects` /
+  `stepProspects`), scouts' `turn`; GarageScene `drawNet` (the one net, `netShot`), `startActivity` ready check;
+  PostGame drains energy after the scrimmage, tryouts and key games; draft night TV from `runDraft`.
   Round 85b: `minigames.autoSet` + GarageScene `devAuto` (R1 / Q on a garage workout = one set, orbs at the energy cost).
   Round 85: `ORBS` doubled; `ShootGame` `streak` / `flight` (`FLIGHT_PERFECT`), `'streak'` event; `JumpGame`;
   `CareerState.records`; GarageScene wedge (`hasWedge`, `wedgeAt`, `drawWedge`), `onPerfect` (NEW RECORD), test mode moved
