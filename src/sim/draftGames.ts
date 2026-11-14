@@ -13,7 +13,7 @@ import { generateRoster } from '../career/roster';
 import { CareerState, careerPlayer } from '../career/career';
 import { extraPlayer } from './story';
 import { AI_PERKS } from '../career/roster';
-import { topTwo, prospectLook, Prospect } from '../career/draftClass';
+import { topTwo, prospectLook, Prospect, TOP_PERKS, withPrereqs } from '../career/draftClass';
 
 /** The combine's colors (navy + silver) and the scrimmage's two sides. */
 export const COMBINE: TeamDef = { id: 'CMB', city: 'Draft', name: 'Prospects', colors: ['#1d2b5a', '#c0c6cf'], seed: 8401 };
@@ -22,9 +22,15 @@ export const PROSPECTS_B: TeamDef = { id: 'PRB', city: 'Team', name: 'Blue', col
 
 /** Round 87: the projected top two in the scrimmage (#1 with you, #2 against you). */
 export const TOP1_ID = 'TOP1', TOP2_ID = 'TOP2';
+/** Round 88 (owner): the share of their team's sets called as their iso (#1, #2), and #1's ball-hog chance per touch. */
+export const TOP_ISO: [number, number] = [0.5, 0.55];
+export const TOP1_HOG = 0.6;
 /** A prospect from the class as a player (his stats, height and face). */
 export function prospectPlayer(p: Prospect, id: string, team: 0 | 1, number: number): Player {
-  return new Player({ id, name: p.name, team, pos: p.pos, core: { ...p.core }, nodes: AI_PERKS[p.pos], number, skin: prospectLook(p).skin, height: p.heightIn / 12, appearance: prospectLook(p) });
+  // round 88: the pair get their extra starter perks
+  const extra = p.id === 'P1' ? TOP_PERKS[0] : p.id === 'P2' ? TOP_PERKS[1] : [];
+  const nodes = withPrereqs([...AI_PERKS[p.pos], ...extra]);
+  return new Player({ id, name: p.name, team, pos: p.pos, core: { ...p.core }, nodes, number, skin: prospectLook(p).skin, height: p.heightIn / 12, appearance: prospectLook(p) });
 }
 
 /**
@@ -37,6 +43,7 @@ export function buildDraftScrimmage(c: CareerState, seed: number): GameSim {
   me.star = true;
   const { first, second } = topTwo(c.story, c.pos);
   const one = prospectPlayer(first, TOP1_ID, 0, 1), two = prospectPlayer(second, TOP2_ID, 1, 0);
+  one.ballHog = TOP1_HOG; // round 88 (owner): #1 is a bit of a ball hog
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
   const mine = [me, one, ...order.filter((p) => p !== c.pos && p !== first.pos).map((pos, i) => extraPlayer(`PRW-${i}`, 0, pos, rng, 56))];
   const theirs = [...order.filter((p) => p !== second.pos).map((pos, i) => extraPlayer(`PRB-${i}`, 1, pos, rng, 56)), two];
@@ -45,6 +52,7 @@ export function buildDraftScrimmage(c: CareerState, seed: number): GameSim {
     teams: [PROSPECTS_W, PROSPECTS_B], rosters: [mine, theirs], userId: me.id,
     trust: { team: 65, coach: 65 }, ult: { unlocked: false, id: null, level: 0 }, featureUser: true, venue: 'arena',
     scoutsOnly: true, courtColors: [COMBINE.colors[0], COMBINE.colors[0]], // round 85: an empty arena, scouts on the benches
+    isoStars: [{ pid: TOP1_ID, chance: TOP_ISO[0] }, { pid: TOP2_ID, chance: TOP_ISO[1] }], // round 88: their numbers get called
   });
 }
 

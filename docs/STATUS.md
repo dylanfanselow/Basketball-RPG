@@ -261,6 +261,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 88: `draftClass` `TOP_NAMES`, `TOP_LOOKS`, `TOP_PERKS`, `withPrereqs`; `GameConfig.isoStars`, `Player.ballHog`
+  (`hogFor` / `hogOn`, offense `hogTouch`), `draftGames` `TOP_ISO` / `TOP1_HOG`; quiet `miss` event; StoryRun snide only
+  in H2 while down, `snakeMiss`; `drawShotMeter` uses `m.green`; combine kit (`COMBINE_SHIRT` / `COMBINE_SHORTS`, your
+  `HOME_COMBINE` sheet); ApartmentScene `tv()` / `openBoard()` (`draft.draftBoard`, `draftOrderBase`); GameScene
+  `drawLoading` + `scenes/tips.ts`.
   Round 87: `scenes/roomActor.ts` (`RoomActor`: any player-sheet figure in a room, angled frames), `scenes/combineCrew.ts`
   (`CombineCrew`: prospects on the stations with mini-game bots, walking between them; `ScoutRow`: seated side-on scouts
   with chairs, `standUp`), GarageScene `GearBody` / `drawGearFor` / `drawShotFor` (gear for anybody), ArenaGym beat

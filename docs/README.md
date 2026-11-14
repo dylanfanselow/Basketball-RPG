@@ -13,5 +13,5 @@ what is built, how the code is organized, and how work gets shipped.
 | [BACKLOG.md](BACKLOG.md) | Known gaps, ideas the owner mentioned, things not yet verified. |
 | [WORKFLOW.md](WORKFLOW.md) | Repo, browser link, build/publish/test routine, how the owner plays it, gotchas. |
 
-Last updated: 2026-11-14 (round 87: the projected top two, a living combine room, the scrimmage talkers, open layups).
+Last updated: 2026-11-14 (round 88: Dragić and Jagadeesh, the draft board on the TV, loading screens with tips).
 Next session: start with BACKLOG.md → "Start here next session".

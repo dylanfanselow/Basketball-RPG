@@ -65,6 +65,8 @@ export interface GameConfig {
   ultLate?: boolean;
   /** round 80e: this player gets an iso this share of his team's sets (the story's Kingston) */
   isoStar?: { pid: string; chance: number };
+  /** round 88: more of them (the draft scrimmage's #1 and #2): whichever is on the team with the ball */
+  isoStars?: { pid: string; chance: number }[];
   seed?: number;
   teams: [TeamDef, TeamDef];
   rosters: [Player[], Player[]];
@@ -991,12 +993,14 @@ export class GameSim {
       id = isBig(star) && !perimeter && posts.length ? this.rng.pick(posts) : this.rng.pick(isos);
       swap = PLAYS[id].focus && PLAYS[id].focus !== star.role ? [PLAYS[id].focus!, star.role] : null; focus = star;
     };
+    // round 80e / 88: the iso stars on the team with the ball (AI, on his feet)
+    const isoStar = [...(this.cfg.isoStar ? [this.cfg.isoStar] : []), ...(this.cfg.isoStars ?? [])].find((s) => off.some((p) => p.id === s.pid && this.isAI(p) && p.state !== 'fallen'));
     // round 69: a CPU star saving his offensive ult gets an iso in the last period to use it
     this.ultIso = null;
     const ultStar = isos.length ? this.ultIsoCandidate(off) : null;
     if (ultStar && this.rng.chance(this.clutch || endgame(this) ? 1 : 0.5)) { isoFor(ultStar, true); why = 'ultimate'; this.ultIso = ultStar.id; this.ultIsoTries[ultStar.id] = (this.ultIsoTries[ultStar.id] ?? 0) + 1; }
-    else if (this.cfg.isoStar && isos.length && off.some((p) => p.id === this.cfg.isoStar!.pid && this.isAI(p) && p.state !== 'fallen') && this.rng.chance(this.cfg.isoStar.chance)) {
-      isoFor(off.find((p) => p.id === this.cfg.isoStar!.pid)!); why = 'his night'; // round 80e
+    else if (isoStar && isos.length && this.rng.chance(isoStar.chance)) {
+      isoFor(off.find((p) => p.id === isoStar.pid)!); why = 'his night'; // round 80e (round 88: one per team)
     } else if (this.featureUser && this.user && this.userOnCourt && this.user.team === this.possession && off.length >= 3) {
       if (!this.focusQueue.length) this.focusQueue = off.map((p) => p.id).sort(() => this.rng.next() - 0.5);
       const fid = this.focusQueue.shift()!;
@@ -2618,6 +2622,7 @@ export class GameSim {
       // cosmetic only: must not consume sim RNG
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
     }, s.id);
+    if (!st.made) this.quiet('miss', { type: st.ev.type }, s.id); // round 88: a miss (the scrimmage's talkers react)
     if (st.made) {
       // the ball drops out of the bottom of the net with a little drift toward the baseline, then bounces and rolls
       const pe = st.plan?.end;

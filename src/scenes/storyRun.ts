@@ -275,16 +275,21 @@ export class StoryRun {
    */
   private scrimmageTalk(e: GameEvent) {
     const sim = this.gs.sim, me = sim.user; if (!me) return;
-    const ours = sim.teams[me.team].score, theirs = sim.teams[1 - me.team].score, down = ours < theirs;
+    const ours = sim.teams[me.team].score, theirs = sim.teams[1 - me.team].score;
+    // round 88 (owner): #1 is nice all first half, whatever the score; only in the second half, while you're down, does
+    // he turn snide (italics)
+    const snide = sim.quarter >= 2 && ours < theirs;
     const two = e.pid === TOP2_ID, one = e.pid === TOP1_ID, mine = e.pid === me.id;
     if (e.kind === 'score' && two) this.talk(TOP2_TALK.scores, Math.random() < 0.5, TOP2_ID);
     else if (e.kind === 'block' && two) this.talk(TOP2_TALK.blocks, true, TOP2_ID);
     else if (e.kind === 'steal' && two) this.talk(TOP2_TALK.steals, true, TOP2_ID);
+    // round 88 (owner): "pass it to the first overall pick" only right after you miss
+    else if (e.kind === 'miss' && mine && snide && Math.random() < 0.6) this.talk(TOP1_TALK.snakeMiss, false, TOP1_ID, true);
     else if (e.kind === 'score' && mine && Math.random() < 0.6) {
       if (Math.random() < 0.45) this.talk(TOP2_TALK.youScore, false, TOP2_ID);
-      else this.talk(down ? TOP1_TALK.snakeYou : TOP1_TALK.niceYou, false, TOP1_ID, down);
-    } else if (e.kind === 'score' && one && Math.random() < 0.6) this.talk(down ? TOP1_TALK.snakeHim : TOP1_TALK.niceHim, false, TOP1_ID, down);
-    else if (e.kind === 'score' && e.team !== me.team && down && Math.random() < 0.4) this.talk(TOP1_TALK.snakeThem, false, TOP1_ID, true);
+      else this.talk(snide ? TOP1_TALK.snakeYou : TOP1_TALK.niceYou, false, TOP1_ID, snide);
+    } else if (e.kind === 'score' && one && Math.random() < 0.6) this.talk(snide ? TOP1_TALK.snakeHim : TOP1_TALK.niceHim, false, TOP1_ID, snide);
+    else if (e.kind === 'score' && e.team !== me.team && snide && Math.random() < 0.4) this.talk(TOP1_TALK.snakeThem, false, TOP1_ID, true);
   }
 
   /** Round 80c: one of Kingston's lines in a bubble over his head (throttled; `force` skips the wait). Round 87: over
@@ -651,10 +656,10 @@ const KINGSTON_TALK = {
 };
 /** Round 87 (owner): #2 in the draft scrimmage, a roid rager. */
 const TOP2_TALK = {
-  scores: ['AAARGH! TOO STRONG!', 'GET OFF ME! GET OFF ME!', 'THAT\'S A GROWN MAN BUCKET!', 'WHO\'S NEXT?! WHO WANTS IT?!', 'I EAT RIMS FOR BREAKFAST!', 'FEEL THAT?! YOU FEEL THAT?!'],
+  scores: ['AAARGH! TOO STRONG!', 'GET OFF ME! GET OFF ME!', 'This guy.', 'THAT\'S A GROWN MAN BUCKET!', 'WHO\'S NEXT?! WHO WANTS IT?!', 'I EAT RIMS FOR BREAKFAST!', 'FEEL THAT?! YOU FEEL THAT?!'],
   blocks: ['NOT IN MY HOUSE! NOT EVER!', 'SEND IT BACK! SEND IT ALL BACK!', 'GET THAT WEAK STUFF OUTTA HERE!'],
   steals: ['MINE! MINE!', 'TOO SLOW! TOO SOFT!'],
-  youScore: ['DO THAT AGAIN. I DARE YOU.', 'LUCKY! THAT WAS LUCKY!', 'NOBODY SCORES ON ME! NOBODY!', 'I\'M GONNA REMEMBER THAT.'],
+  youScore: ['This guy.', 'DO THAT AGAIN. I DARE YOU.', 'LUCKY! THAT WAS LUCKY!', 'NOBODY SCORES ON ME! NOBODY!', 'I\'M GONNA REMEMBER THAT.'],
 };
 /** Round 87 (owner): #1 in the draft scrimmage: nice while you're level or ahead, two-sided (italics) once you're down. */
 const TOP1_TALK = {
@@ -662,7 +667,9 @@ const TOP1_TALK = {
   niceHim: ['Good look.', 'Easy. Find me again.', 'Told you we\'d be on the same team.'],
   snakeYou: ['Wow. Great shot... for a second-rounder.', 'See? You can hit one. Sometimes.', 'Keep shooting. Really. It\'s helping. Somebody.'],
   snakeHim: ['Just carrying, don\'t mind me.', 'Somebody has to be first overall out here.', 'You\'re welcome, by the way.'],
-  snakeThem: ['It\'s cool. Somebody has to be the guy we lose with.', 'Don\'t worry. I\'ll make sure the scouts see you... trying.', 'Maybe pass it to the first overall pick next time?', 'We\'re fine. I\'m fine, at least.'],
+  snakeThem: ['It\'s cool. Somebody has to be the guy we lose with.', 'Don\'t worry. I\'ll make sure the scouts see you... trying.', 'We\'re fine. I\'m fine, at least.'],
+  // round 88 (owner): only right after you miss
+  snakeMiss: ['Maybe pass it to the first overall pick next time?'],
 };
 /** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
 const NEED_TO_WIN = 6;

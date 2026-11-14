@@ -125,6 +125,12 @@ function openForPass(sim: GameSim, from: Player, m: Player): boolean {
 
 /** Iso: this set is being run for p. */
 const isoFor = (sim: GameSim, p: Player) => !!sim.runner.play?.tags.includes('iso') && sim.runner.focusPid === p.id && !sim.runner.done;
+/** Round 88 (owner): a ball hog decides once per catch whether this touch is his iso (whatever the play). */
+function hogTouch(sim: GameSim, p: Player): boolean {
+  if (p.ballHog <= 0) return false;
+  if (p.hogFor !== p.receivedAt) { p.hogFor = p.receivedAt; p.hogOn = sim.rng.chance(p.ballHog); if (p.hogOn) { p.aiNote = 'ball hog: my iso'; p.aiNoteAt = sim.time; } }
+  return p.hogOn;
+}
 
 /**
  * Catch read, before the first dribble: wide open = let it fly; a defender flying at you = pump fake (keeps the
@@ -271,7 +277,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   p.aiMode = 'none';
 
   const sinceCatch = sim.time - p.receivedAt;
-  const iso = isoFor(sim, p);
+  const iso = isoFor(sim, p) || hogTouch(sim, p);
   // round 76: the clock at the end of a quarter (2-for-1, hold for the last shot, milk a late lead)
   const plan = sim.clockPlan(p.team);
   const callKey = `${p.team}|${plan}|${sim.quarter}`;

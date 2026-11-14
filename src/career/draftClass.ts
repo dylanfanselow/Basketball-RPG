@@ -6,7 +6,7 @@
  * center: a guard and a forward), with a slight boost on top.
  * Phaser-free, no state.ts; deterministic per story (its seed).
  */
-import { CORE_STATS, CoreStats, CoreStat } from '../sim/data';
+import { CORE_STATS, CoreStats, CoreStat, NODES } from '../sim/data';
 import type { Position } from '../sim/attributes';
 import { STARTER_CORE, HEIGHT_RANGE } from './career';
 import type { StoryState } from './career';
@@ -99,7 +99,8 @@ export function draftClass(st: Pick<StoryState, 'squadSeed'> | undefined, you: P
   const out: Prospect[] = totals.map((t0, i) => {
     let total = Math.round(t0 + jit[i] - jm);
     const pos = i < 2 ? top[i] : POS_MIX[Math.floor(rnd() * POS_MIX.length) % POS_MIX.length];
-    let name = '';
+    // round 88 (owner): the story's pair have their own names
+    let name = i < 2 ? TOP_NAMES[i] : '';
     for (let k = 0; k < 20 && (!name || used.has(name)); k++) name = `${firsts[Math.floor(rnd() * firsts.length) % firsts.length]} ${lasts[Math.floor(rnd() * lasts.length) % lasts.length]}`;
     used.add(name);
     const [lo, hi] = HEIGHT_RANGE[pos];
@@ -124,8 +125,35 @@ export function topTwo(st: Pick<StoryState, 'squadSeed'> | undefined, you: Posit
 /** The class's mean total (the test checks it's 281 before the top two's boost). */
 export const classMean = (c: Prospect[]) => c.reduce((s, p) => s + p.total, 0) / c.length;
 
+/** Round 88 (owner): the projected #1 and #2's names. */
+export const TOP_NAMES = ['Drako Dragić', 'Chinmaya Jagadeesh'];
+/**
+ * Round 88 (owner): their signature looks (skin numbers are the builder's, 1-based: color 1 = index 0). #1: black
+ * headband, one black arm sleeve, one black leg sleeve, high black socks. #2: an afro, goggles, no sleeves, purple
+ * wristbands.
+ */
+export const TOP_LOOKS: [Partial<Appearance>, Partial<Appearance>] = [
+  { skin: 0, headband: '#111111', armSleeve: 'shooting', sleeveColor: '#111111', legSleeve: 'one', legSleeveColor: '#111111', socks: 'high', sockColor: '#111111', goggles: false, mask: false, wristband: null, kneePad: false },
+  { skin: 3, hair: 'afro', goggles: true, mask: false, armSleeve: 'none', legSleeve: 'none', wristband: '#7a3fd0', headband: null, kneePad: false },
+];
 /** Round 87: a prospect's face, hair and skin (the same in the combine room and in the scrimmage). */
 export function prospectLook(p: Prospect): Appearance {
   let seed = (p.look % 2147483646) + 1;
-  return randomAppearance(() => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; });
+  const a = randomAppearance(() => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; });
+  return p.id === 'P1' ? { ...a, ...TOP_LOOKS[0] } : p.id === 'P2' ? { ...a, ...TOP_LOOKS[1] } : a;
+}
+
+/**
+ * Round 88 (owner): the pair's extra starter perks (on top of their position's AI perks), with every prerequisite
+ * filled. #1 (SG / SF) a shooter-scorer-creator; #2 (C / PF) an athlete at the rim.
+ */
+export const TOP_PERKS: [string[], string[]] = [
+  ['sh_root', 'sh_catch', 'sh_afterMove', 'dr_handle', 'dr_cross', 'dr_stepback', 'fi_root', 'fi_euro', 'pa_root'],
+  ['fi_root', 'fi_power', 'fi_lob', 'fi_poster', 'in_root', 'in_wall', 'sc_root', 'sc_roll', 'dv_first'],
+];
+/** These perks plus every prerequisite they need (unknown ids dropped). */
+export function withPrereqs(ids: string[]): string[] {
+  const out = new Set<string>(), add = (id: string) => { const n = NODES[id]; if (!n || out.has(id)) return; out.add(id); for (const r of n.prereqs ?? []) add(r); };
+  ids.forEach(add);
+  return [...out];
 }

@@ -188,6 +188,24 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 88 (owner): Dragić and Jagadeesh.**
+  - **#1 is Drako Dragić, #2 is Chinmaya Jagadeesh.** Looks: Dragić skin color 1, a black headband, one black arm
+    sleeve, one black leg sleeve, high black socks; Jagadeesh skin color 4, an afro, goggles, no sleeves, purple
+    wristbands (skin numbers are the builder's, 1-based). Both get **extra starter perks** for their positions
+    (Dragić: shooting, handles, Euro, Floor General; Jagadeesh: dunking, lobs, Verticality, screens, first step),
+    prerequisites included.
+  - **Dragić is a bit of a ball hog**: about 60% of his touches he plays as his own iso, and half his team's sets are
+    called for him. **More isos for Jagadeesh** too (55%; a big's iso is a post-up).
+  - **Talk:** Dragić is **nice the whole first half** whatever the score; only **in the second half while you're down**
+    does he turn snide (italics). **"Maybe pass it to the first overall pick next time?" only right after you miss.**
+    Jagadeesh also says **"This guy."**
+  - Combine line: **"Second? Then who's number one?"**
+  - **The green window visibly shrinks** on the meter in the tests. **Name tags only** (no "#1 proj.").
+  - **Uniforms:** at the combine **you wear the same grey tee and navy shorts** as every prospect; in the scrimmage
+    everybody is in their team's uniform.
+  - **The TV:** Film study (coming soon) or **the draft board** (who owns each pick, traded picks marked, the teams
+    that called you in green).
+  - **Loading screens with a tip at the bottom** replace "Lacing up".
 - **Round 87 (owner): the top two get a story; the combine room comes alive.**
   - **Scouts fully side-on**, in folding chairs facing the court (left), drawn like players (their own sheets, the sit
     clip); one more stands on the left with a clipboard facing right. No three-quarter heads.

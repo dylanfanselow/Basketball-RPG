@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { hiRes } from './ui';
+import { randomTip } from './tips';
 import { GameSim, GameEvent, UserInput, GRAVITY } from '../sim/game';
 import { Player } from '../sim/player';
 import { InputMapper } from '../input/input';
@@ -147,6 +148,17 @@ export class GameScene extends Phaser.Scene {
   paused = false;
   ready = false;
   loadText!: Phaser.GameObjects.Text;
+  loadTip!: Phaser.GameObjects.Text; loadBg!: Phaser.GameObjects.Rectangle; loadBar!: Phaser.GameObjects.Graphics;
+  /** Round 88: the loading screen (the title, a bar for the players drawn so far, the tip), or hide it. */
+  drawLoading(on: boolean) {
+    for (const o of [this.loadBg, this.loadBar, this.loadText, this.loadTip]) o.setVisible(on);
+    if (!on) return;
+    const n = this.sim.players.filter((p) => this.sheets.has(p.id)).length, N = Math.max(1, this.sim.players.length);
+    const w = 520, x = VIEW_W / 2 - w / 2, y = VIEW_H / 2 - 10, k = n / N;
+    this.loadBar.clear().fillStyle(0x1c2238, 1).fillRoundedRect(x, y, w, 18, 6).fillStyle(0xffcc33, 1).fillRoundedRect(x + 2, y + 2, Math.max(4, (w - 4) * k), 14, 5).lineStyle(2, 0x3c4876, 1).strokeRoundedRect(x, y, w, 18, 6);
+    const dots = '.'.repeat(1 + (Math.floor(this.time.now / 400) % 3));
+    this.loadText.setText(`LOADING${dots}`);
+  }
   pauseText!: Phaser.GameObjects.Text;
   pauseIdx = 0;
   /** Round 60: the prologue running in this game, if any. */
@@ -369,7 +381,11 @@ export class GameScene extends Phaser.Scene {
     this.feedText = fixed(this.add.text(VIEW_W - 16, 100, '', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'right', lineSpacing: 3 }).setOrigin(1, 0).setDepth(9001));
     this.benchText = fixed(this.add.text(VIEW_W / 2, 260, '', { fontFamily: FONT, fontSize: '22px', color: '#ffffff', align: 'center', backgroundColor: '#000000aa', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(9002));
     this.bigText = fixed(this.add.text(VIEW_W / 2, 200, '', { fontFamily: FONT, fontSize: '40px', color: '#ffdd33', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(9003).setAlpha(0));
-    this.loadText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2 - 40, 'Lacing up…', { fontFamily: FONT, fontSize: '26px', color: '#ffe680', fontStyle: 'bold', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9600));
+    // round 88 (owner): a loading screen with a tip at the bottom (it was "Lacing up…")
+    this.loadBg = fixed(this.add.rectangle(0, 0, VIEW_W, VIEW_H, 0x070912, 1).setOrigin(0, 0).setDepth(9600)).setVisible(false);
+    this.loadBar = fixed(this.add.graphics().setDepth(9601)).setVisible(false);
+    this.loadText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2 - 70, 'LOADING', { fontFamily: FONT, fontSize: '34px', color: '#ffe680', fontStyle: 'bold', stroke: '#000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9601)).setVisible(false);
+    this.loadTip = fixed(this.add.text(VIEW_W / 2, VIEW_H - 90, `TIP: ${randomTip()}`, { fontFamily: FONT, fontSize: '17px', color: '#cfd8f0', align: 'center', wordWrap: { width: VIEW_W - 200 }, lineSpacing: 4 }).setOrigin(0.5).setDepth(9601)).setVisible(false);
     this.makeBoxScore();
     this.pauseText = fixed(this.add.text(VIEW_W / 2, VIEW_H / 2, '', { fontFamily: FONT, fontSize: '24px', color: '#ffffff', align: 'center', backgroundColor: '#000000dd', padding: { x: 30, y: 20 } }).setOrigin(0.5).setDepth(9500).setVisible(false));
   }
@@ -383,7 +399,7 @@ export class GameScene extends Phaser.Scene {
     // tip-off waits until every player's sprite sheet has been drawn (built in parallel in the background)
     if (!this.ready) {
       this.ready = this.sheetsReady();
-      this.loadText.setVisible(!this.ready).setText(`Lacing up…  ${this.sim.players.filter((p) => this.sheets.has(p.id)).length}/${this.sim.players.length}`);
+      this.drawLoading(!this.ready);
       if (!this.ready) { this.render(); return; }
     }
     // Options/Enter = pause menu; L1/Esc = pause menu with "Quit" highlighted (press L1 again to leave)

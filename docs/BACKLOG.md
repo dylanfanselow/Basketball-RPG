@@ -100,6 +100,9 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 88 follow-ups:** tune Dragić's hog rate (60% of touches) and both iso rates with the owner; the loading
+  screen only covers games (rooms load fast); film study still "coming soon"; the draft board shows teams, not a mock
+  draft.
 - **Round 87 follow-ups:** the in-game scrimmage scouts (GameScene benches) are still the front-view celeb drawing;
   #2's jump uses the jumper's release pose in the air (no dedicated leap); prospects walk between stations side-on;
   the snake reveal for #1 is only in his scrimmage lines so far (owner: "he's really a snake", more story later);

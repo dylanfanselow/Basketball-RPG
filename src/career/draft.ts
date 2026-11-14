@@ -191,8 +191,15 @@ export const DRAFTS_YOU: Tier[] = ['Lottery'];
  * Round 86: the draft order, 30 picks a round: worst roster first, with a few seeded traded picks so some bottom-tier
  * teams pick in the middle of the round. The second round goes in the same order.
  */
+/** The order before any trades: worst roster first. */
+export const draftOrderBase = (): string[] => TEAMS.map((t) => ({ id: t.id, s: teamStrength(t.id) })).sort((a, b) => a.s - b.s || a.id.localeCompare(b.id)).map((t) => t.id);
+/** Round 88 (owner): the TV's draft board: who owns each pick (and whose pick it was, if it was traded). */
+export function draftBoard(c: Pick<CareerState, 'story'>): { pick: number; team: string; via: string | null }[] {
+  const base = draftOrderBase(), order = draftOrder(c);
+  return order.map((team, i) => ({ pick: i + 1, team, via: base[i % 30] !== team ? base[i % 30] : null }));
+}
 export function draftOrder(c: Pick<CareerState, 'story'>): string[] {
-  const rnd = storyRng(c.story, 0x0dde7), order = TEAMS.map((t) => ({ id: t.id, s: teamStrength(t.id) })).sort((a, b) => a.s - b.s || a.id.localeCompare(b.id)).map((t) => t.id);
+  const rnd = storyRng(c.story, 0x0dde7), order = draftOrderBase();
   for (let k = 0; k < 5; k++) { // traded picks: a lottery pick swapped with one further down
     const i = Math.floor(rnd() * 10), j = 10 + Math.floor(rnd() * 15);
     [order[i], order[j]] = [order[j], order[i]];

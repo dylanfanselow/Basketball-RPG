@@ -6,7 +6,7 @@ import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
-import { planWorkouts, callLines, todaysEvents, eventName, markMissed, runDraft, topTwoLine, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
+import { planWorkouts, callLines, todaysEvents, eventName, markMissed, runDraft, topTwoLine, draftBoard, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
 import { buildSeason, ROOKIE_SEASON_START } from '../career/schedule';
 import { goTo } from './draftRoad';
 import { momTexture, mateTexture } from './castSprites';
@@ -44,7 +44,7 @@ export class ApartmentScene extends RoomScene {
   init(data?: { at?: string; story?: 'agent' | 'draftNight' }) {
     super.init(data);
     this.story = data?.story ?? null; this.agent = null;
-    this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null;
+    this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null; this.board = null;
   }
 
   onCreate() {
@@ -236,7 +236,7 @@ export class ApartmentScene extends RoomScene {
       { label: 'Calendar', spot: SPOTS.calendar, run: () => this.openCalendar() },
       // round 85: the landline (Mom, Garcia) and the TV (film study, later)
       { label: 'Phone', spot: SPOTS.phone, run: () => this.landline() },
-      { label: 'Watch film', spot: SPOTS.tv, run: () => this.thinkLine('Film study: coming soon.') },
+      { label: 'Watch TV', spot: SPOTS.tv, run: () => this.tv() }, // round 88: film study (soon) or the draft board
     ];
     // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
     const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
@@ -273,6 +273,40 @@ export class ApartmentScene extends RoomScene {
     };
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'Who do I call?', options, pick: call } }], { phone: true });
   }
+
+  /** Round 88 (owner): the TV: film study (coming soon) or the draft board (who owns each pick). */
+  private tv() {
+    if (this.busy) return;
+    const st = app.career.story, board = !!st?.draft && !st.drafted;
+    const options = ['Film study', ...(board ? ['Draft board'] : []), 'Turn it off'];
+    const pick = (i: number) => {
+      this.agent = null; this.busy = false;
+      if (options[i] === 'Film study') this.thinkLine('Film study: coming soon.');
+      else if (options[i] === 'Draft board') this.openBoard();
+    };
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'What\'s on?', options, pick } }], { phone: true });
+  }
+  board: Phaser.GameObjects.GameObject[] | null = null; boardAt = 0;
+  /** The draft board over the room: picks 1-60 in four columns (two per round), traded picks marked, your workouts starred. */
+  private openBoard() {
+    if (this.busy) return;
+    this.busy = true; sfx.blip(true);
+    const c = app.career, rows = draftBoard(c), worked = new Set((c.story?.workouts ?? []).map((w) => w.team));
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    const T = (x: number, y: number, s: string, size = 13, col = '#e8eefc', bold = false) => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: bold ? 'bold' : 'normal' }).setDepth(9701); objs.push(t); return t; };
+    objs.push(this.add.rectangle(640, 380, 1180, 600, 0x0b1020, 0.96).setStrokeStyle(3, 0xffcc33).setDepth(9700));
+    T(640, 96, 'THE DRAFT BOARD', 24, '#ffe9a8', true).setOrigin(0.5, 0);
+    T(365, 132, 'ROUND 1', 15, '#9fb0e0', true).setOrigin(0.5, 0); T(955, 132, 'ROUND 2', 15, '#9fb0e0', true).setOrigin(0.5, 0);
+    rows.forEach((r, i) => {
+      const col = Math.floor(i / 15), row = i % 15, x = 70 + col * 295, y = 160 + row * 31;
+      const t = TEAMS.find((tm) => tm.id === r.team), via = r.via ? ` (via ${r.via})` : '';
+      T(x, y, `${String(r.pick).padStart(2, ' ')}. ${t ? `${t.city} ${t.name}` : r.team}`.slice(0, 30), 13, worked.has(r.team) ? '#7dff9a' : '#e8eefc', worked.has(r.team));
+      if (via) T(x + 30, y + 14, via, 10, '#ffb37a');
+    });
+    T(640, 650, 'Green = a team that called you in   ·   ✕ / L1 close', 12, '#9fb0e0').setOrigin(0.5, 0);
+    this.board = objs; this.boardAt = this.t;
+  }
+  private closeBoard() { for (const o of this.board ?? []) o.destroy(); this.board = null; this.busy = false; sfx.blip(false); }
 
   private go(e: GoEvent) { if (this.busy) return; this.busy = true; goTo(this, e); }
   /** Two workouts on one day: choose; the other one is missed. */
@@ -452,6 +486,7 @@ export class ApartmentScene extends RoomScene {
     if (ag) { if (!ag.update(dt)) { if (this.agent === ag) this.agent = null; } else this.busy = true; }
     if (this.agent && this.agent !== ag) this.busy = true;
     else if (this.cal) this.calendarInput();
+    else if (this.board && this.t > this.boardAt + 0.25 && (this.inp.cancel() || this.inp.pressed('a'))) this.closeBoard(); // (not on the ✕ that opened it)
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);
     const f = cat.hop ? 2 : cat.state === 'walk' ? 2 + (Math.floor(this.t / 0.16) % 2) : cat.state === 'loaf' ? 1 : 0;

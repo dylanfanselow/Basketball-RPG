@@ -13,7 +13,9 @@ import { TEAMS } from '../sim/data';
 import { BoxSpeaker } from '../render/storyBox';
 import { combinePlan, TIER_PITCH, classOf } from '../career/draft';
 import { fmtHeight } from '../career/career';
-import { CombineCrew, ScoutRow } from './combineCrew';
+import { CombineCrew, ScoutRow, COMBINE_SHIRT, COMBINE_SHORTS } from './combineCrew';
+import { casualKit } from './RoomScene';
+import { playerSheetKey } from '../render/playerBank';
 import { sfx } from '../audio/sfx';
 import { JUMP_SPOT } from '../world/arenaGym';
 import type { CombineTest } from '../career/career';
@@ -59,6 +61,10 @@ export class ArenaGymScene extends GarageScene {
   buildArt(tm: Phaser.Textures.TextureManager) { return buildArenaGymArt(tm, this.team?.colors[0] ?? '#1d2b5a'); }
 
   onCreate() {
+    // round 88 (owner): you wear the combine kit too (the grey tee and navy shorts every prospect has on)
+    const c0 = app.career, kitLook = { ...c0.appearance, shirt: COMBINE_SHIRT, pants: COMBINE_SHORTS, longPants: false };
+    this.kit = casualKit(kitLook, COMBINE_SHORTS);
+    this.sheetKey = playerSheetKey('HOME_COMBINE', c0.appearance, c0.height, this.kit);
     super.onCreate();
     const team = this.team, col = team?.colors[0] ?? '#1d2b5a';
     // the banner over the stands and the scouts on the bench (the right side), a couple standing with clipboards
@@ -182,7 +188,7 @@ export class ArenaGymScene extends GarageScene {
       me('Yo. What\'s going on? Who is that?'),
       him(`That's ${n2}. ${fmtHeight(two.p.heightIn)}, ${big}, and he moves like a guard. Athletic freak.`),
       him('Projected second overall. Every time he does that, the scouts lose their minds.'),
-      me('Second? So where do they have you?'),
+      me('Second? Then who\'s number one?'),
       him('You haven\'t heard about me?'),
       him(`${n1}. First overall.`),
       him(`Relax, ${you}. I'm messing with you. Kind of. Good luck at the scrimmage, man. Hope we're on the same team.`),

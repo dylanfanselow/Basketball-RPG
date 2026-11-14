@@ -10,6 +10,8 @@ import { Prospect, prospectLook } from '../career/draftClass';
 import type { CombineTest } from '../career/career';
 import { Station, V, syOf, sxOf } from '../world/apartment';
 
+/** Round 87 / 88: the combine kit everybody wears (the prospects and you): a grey tee and navy shorts. */
+export const COMBINE_SHIRT = '#8d939e', COMBINE_SHORTS = '#1d2b5a';
 /** Round 87: which station each combine test happens at. */
 export const TEST_STATION: Record<CombineTest, string> = { sprint: 'laps', squat: 'squat', bench: 'bench', jump: 'jump', shoot: 'shoot' };
 const station = (id: string): Station => ({ ...ARENA_GYM.stations!.find((s) => s.id === id)! });
@@ -36,11 +38,11 @@ export class CombineCrew {
     const free = tests.filter((t) => t !== userFirst);
     who.forEach((p, i) => {
       const look = prospectLook(p);
-      Object.assign(look, { shirt: '#8d939e', pants: '#1d2b5a', longPants: false });
-      const a = new RoomActor(scene, `prospect_${p.id}_${p.look}`, look, p.heightIn / 12, casualKit(look, '#1d2b5a'));
+      Object.assign(look, { shirt: COMBINE_SHIRT, pants: COMBINE_SHORTS, longPants: false });
+      const a = new RoomActor(scene, `prospect_${p.id}_${p.look}_v2`, look, p.heightIn / 12, casualKit(look, COMBINE_SHORTS));
       const test = free[i] ?? null, st = test ? station(TEST_STATION[test]) : null;
       const [first, ...rest] = p.name.split(' ');
-      const tag = scene.add.text(0, 0, `${first[0]}. ${rest.join(' ')}${p.proj <= 2 ? `  ·  #${p.proj} proj.` : ''}`, { fontFamily: FONT, fontSize: '10px', color: p.proj <= 2 ? '#ffe9a8' : '#d8e0ee', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(9000).setVisible(false);
+      const tag = scene.add.text(0, 0, `${first[0]}. ${rest.join(' ')}`, { fontFamily: FONT, fontSize: '10px', color: '#d8e0ee', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(9000).setVisible(false);
       const m: Mate = { p, a, test, to: null, pos: st ? { ...st.at } : { x: 24 + i, y: 18 }, mini: null, g: scene.add.graphics(), gb: scene.add.graphics(), ballG: scene.add.graphics(), tag,
         lapD: LAP_LEN * (0.2 + i * 0.2), botT: 0, next: 0, aim: 0.87, hold: false, rest: 0, face: null, pose: null };
       if (test) this.arrive(m, test);

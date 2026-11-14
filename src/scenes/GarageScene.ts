@@ -376,10 +376,10 @@ export class GarageScene extends RoomScene {
     const arc = (v0: number, v1: number, w: number, col: number, a = alpha) => { g.lineStyle(w, col, a).beginPath().arc(x, y, r, at(v0), at(v1), true).strokePath(); };
     arc(0, 1, 13, 0x0b0d14);                                   // outline
     arc(0, 1, 9, 0x2a2f3e);                                    // track
-    arc(ShootGame.GREEN[0], ShootGame.GREEN[1], 9, 0x2f7a3a);  // the green window
+    arc(m.green[0], m.green[1], 9, 0x2f7a3a);  // the green window (round 88: this game's, it narrows in a test)
     arc(ShootGame.PERFECT[0], ShootGame.PERFECT[1], 9, 0xd62a2a); // the tiny red slice: perfect
     const v = m.state === 'shot' ? m.releasedAt : m.meter;
-    const col = m.state === 'shot' ? (m.perfect ? 0xff6a2a : m.made ? 0x7dff9a : 0xe0403a) : v >= ShootGame.GREEN[0] && v <= ShootGame.GREEN[1] ? 0x9dffb0 : 0xffd23a;
+    const col = m.state === 'shot' ? (m.perfect ? 0xff6a2a : m.made ? 0x7dff9a : 0xe0403a) : v >= m.green[0] && v <= m.green[1] ? 0x9dffb0 : 0xffd23a;
     if (v > 0.01) arc(0, v, 7, col);
     for (const e of [0, 1]) { const a = at(e); g.fillStyle(0xffffff, alpha).fillCircle(x + Math.cos(a) * r, y + Math.sin(a) * r, 2.5); } // end caps
     const a = at(v); g.fillStyle(0xffffff, alpha).fillRect(x + Math.cos(a) * (r - 8) - 2, y + Math.sin(a) * (r - 8) - 2, 4, 4); // the tip
@@ -397,8 +397,8 @@ export class GarageScene extends RoomScene {
         g.fillStyle(0xffe45a, 0.9 * fade).fillTriangle(cx2 - 1.5, cy2, cx2 + 1.5, cy2, tip.x, tip.y + h * 0.6);
       }
       for (let k = 0; k < 8; k++) { const ph = (since * 1.6 + k / 8) % 1, aa = at(v * ((k * 37) % 16) / 16); g.fillStyle(0xffc04a, (1 - ph) * fade).fillRect(x + Math.cos(aa) * r + Math.sin(k * 3) * 6, y + Math.sin(aa) * r - ph * 34, 2, 2); }
-      this.greenText.setVisible(true).setAlpha(1).setColor('#ff9a3a').setText('PERFECT!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r);
-    } else if (m.state === 'shot' && m.made) { this.greenText.setVisible(true).setAlpha(alpha).setColor('#7dff9a').setText('GREEN!').setPosition(x + r + 8, y + Math.sin(at(ShootGame.GREEN[1])) * r); }
+      this.greenText.setVisible(true).setAlpha(1).setColor('#ff9a3a').setText('PERFECT!').setPosition(x + r + 8, y + Math.sin(at(m.green[1])) * r);
+    } else if (m.state === 'shot' && m.made) { this.greenText.setVisible(true).setAlpha(alpha).setColor('#7dff9a').setText('GREEN!').setPosition(x + r + 8, y + Math.sin(at(m.green[1])) * r); }
   }
 
   /** Sounds for whatever the mini-game did this frame, plus the timed ones (meter ticks, footfalls, the shot ball). */
