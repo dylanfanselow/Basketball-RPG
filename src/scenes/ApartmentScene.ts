@@ -314,12 +314,13 @@ export class ApartmentScene extends RoomScene {
   /** Round 88 (owner): the TV: film study (coming soon) or the draft board (who owns each pick). */
   private tv() {
     if (this.busy) return;
-    const st = app.career.story, board = !!st?.draft && !st.drafted;
-    const options = ['Film study', ...(board ? ['Draft board'] : []), 'Turn it off'];
+    const st = app.career.story, board = !!st?.draft && !st.drafted, report = !!st?.scoutReport && !st.drafted;
+    const options = ['Film study', ...(board ? ['Draft board'] : []), ...(report ? ['What they\'re saying'] : []), 'Turn it off'];
     const pick = (i: number) => {
       this.agent = null; this.busy = false;
       if (options[i] === 'Film study') this.thinkLine('Film study: coming soon.');
       else if (options[i] === 'Draft board') this.openBoard();
+      else if (options[i] === 'What they\'re saying') this.openReport(); // round 90
     };
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'What\'s on?', options, pick } }], { phone: true });
   }
@@ -341,6 +342,25 @@ export class ApartmentScene extends RoomScene {
       if (via) T(x + 30, y + 14, via, 10, '#ffb37a');
     });
     T(640, 650, 'Green = a team that called you in   ·   ✕ / L1 close', 12, '#9fb0e0').setOrigin(0.5, 0);
+    this.board = objs; this.boardAt = this.t;
+  }
+  /** Round 90 (owner): the draft show's breakdown of you: three strengths, three weaknesses (biggest first). */
+  private openReport() {
+    const c = app.career, r = c.story?.scoutReport;
+    if (this.busy || !r) return;
+    this.busy = true; sfx.blip(true);
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    const T = (x: number, y: number, s: string, size = 15, col = '#e8eefc', bold = false, wrap = 0) => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: bold ? 'bold' : 'normal', wordWrap: wrap ? { width: wrap } : undefined }).setDepth(9701); objs.push(t); return t; };
+    objs.push(this.add.rectangle(640, 380, 1040, 540, 0x0b1020, 0.96).setStrokeStyle(3, 0xffcc33).setDepth(9700));
+    objs.push(this.add.rectangle(640, 140, 1036, 56, 0x1d2b5a, 1).setDepth(9700));
+    T(640, 124, `THE DRAFT SHOW  ·  SCOUTING REPORT: ${c.name.toUpperCase()}`, 20, '#ffe9a8', true).setOrigin(0.5, 0);
+    T(170, 190, 'STRENGTHS', 18, '#7dff9a', true); T(670, 190, 'WEAKNESSES', 18, '#ff8a80', true);
+    const list = (x: number, items: typeof r.strengths, col: string) => items.forEach((it, i) => {
+      T(x, 232 + i * 110, `${i + 1}. ${it.title}`, 17, col, true, 430);
+      T(x + 26, 262 + i * 110, `(${it.why})`, 14, '#c8d2e8', false, 400);
+    });
+    list(170, r.strengths, '#e8fff0'); list(670, r.weaknesses, '#fff0ee');
+    T(640, 615, '✕ / L1 close', 12, '#9fb0e0').setOrigin(0.5, 0);
     this.board = objs; this.boardAt = this.t;
   }
   private closeBoard() { for (const o of this.board ?? []) o.destroy(); this.board = null; this.busy = false; sfx.blip(false); }

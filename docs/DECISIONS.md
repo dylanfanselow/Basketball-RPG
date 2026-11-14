@@ -188,6 +188,22 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 90 (owner): the scouting report on the TV.**
+  - After the scrimmage, Garcia tells you (his first team call, and on the phone) to turn on the TV: **"What they're
+    saying"** shows **3 strengths and 3 weaknesses**, strengths ordered by how far above average you are, weaknesses
+    by how far below.
+  - It's **mostly your ratings** against the prospects at your position in the draft class (65%) and **a little your
+    scrimmage** against the other nine on the floor (35%): points, assists, boards, blocks, steals, shots you
+    contested, points your man scored, contested shots you took, off-the-dribble makes, catch-and-shoot, post
+    scoring and its variety, fast-break points, ankles broken, free throws, dunks, kinds of shots made.
+  - Descriptors (good / bad): scorer, passer, rebounder, rim defender, hands (each "for a guard / forward / center"),
+    help defender / lazy defender (contests), lockdown / bad on-ball defender (allows points), smart shot selection /
+    tunnel vision (bad shots), volume scorer, great handles / loose handle, turnover prone, creator / needs to be set
+    up, big / small for his position, strong / weak, catch-and-shoot threat / bad shooter, low-post savant / no post
+    game, transition player / slow in transition, multi-dimensional / one-dimensional, explosive athlete / below the
+    rim, gets to the line / avoids contact, high / low motor.
+  - **No two that say nearly the same thing** (groups: big and strong; handles and turnovers; passer and volume
+    scorer; rebounder and motor): a group goes to whichever side it deviates most on.
 - **Round 89b (owner): Dragić's lines, the mystery call, the ringing landline.**
   - **All of Dragić's and Jagadeesh's lines (and the mystery call) live in `src/data/draftTalk.json`** for the owner
     to edit (placeholders `{you}`, `{n1}`, `{n2}`, `{height}`, `{big}`). "Somebody has to be first overall out here"

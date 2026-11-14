@@ -90,6 +90,8 @@ export interface StoryState {
   workouts?: Workout[];
   /** round 84: the workout you're at (an index into `workouts`) */
   going?: number;
+  /** round 90: what the scouts are saying about you after the scrimmage (the TV) */
+  scoutReport?: import('./scoutReport').ScoutReport;
   /** round 89b: the mystery call after a lost scrimmage has played */
   anonCall?: boolean;
   /** round 84: draft night: who picked you, and where */

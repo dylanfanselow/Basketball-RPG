@@ -2657,6 +2657,12 @@ export class GameSim {
       board: !st.made && ((st.ev.dist * 7.13 + this.time * 3.7) % 1) < 0.3, pts: st.pts, team,
     }, s.id);
     if (!st.made) this.quiet('miss', { type: st.ev.type }, s.id); // round 88: a miss (the scrimmage's talkers react)
+    // round 90: every shot for the scouting report (who contested it, who was guarding him, how it was created)
+    this.quiet('shotLog', {
+      type: st.ev.type, made: st.made, pts: st.pts, contest: st.ev.contest, def: this.defenderOf(s)?.id ?? null,
+      by: st.ev.contestBy.filter((b) => b.c >= 0.12 && b.pid).map((b) => b.pid), trans: this.inTransition(team),
+      how: ['catchShoot', 'pullUp', 'drive', 'post', 'afterFake', 'open'].filter((k) => st.ev.conds.has(k)),
+    }, s.id);
     if (st.made) {
       // the ball drops out of the bottom of the net with a little drift toward the baseline, then bounces and rolls
       const pe = st.plan?.end;

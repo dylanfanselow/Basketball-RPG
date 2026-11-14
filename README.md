@@ -33,6 +33,7 @@ Keyboard: WASD move, **K**=✕, **L**=○, **J**=□, **I**=△, Shift sprint, *
 (gamepad: Create+Options): edit your player's name, position, height, number, stats, perks (with search) and looks live.
 
 ## Things to know while testing
+- **Scouting report (round 90):** after the scrimmage, the TV has "What they're saying": three strengths and three weaknesses (mostly your ratings vs prospects at your position, a little how you played in the scrimmage).
 - **The phone rings (round 89b):** calls come in on the apartment's landline: it rings and shakes until you walk over and press ✕ Answer (Garcia's team calls, Mom, and one you won't expect if you lose the scrimmage). Dragić's and Jagadeesh's lines are all in `src/data/draftTalk.json`.
 - **Backcourt violations (round 89):** once the ball has been across half court (you and the ball a foot over), bringing it back (dribbling back over or catching a pass in the backcourt) is a turnover. Rebounds and balls the defense touched last start fresh. The AI never passes it back or steps back over.
 - **Open looks (round 89):** a CPU player who catches it with nobody in his cone and nobody within 6 ft shoots it (90%) if it's a shot he can make (threes at 36%+, mid-range at 42%+).

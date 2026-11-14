@@ -261,6 +261,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 90: `career/scoutReport.ts` (`gameLines` from the shot log, `DESCRIPTORS` with groups, `buildScoutReport`:
+  class z-scores + game z-scores, 65 / 35), quiet `shotLog` event (contest, contesters' ids, the defender, how it was
+  created, transition), `contestBy[].pid`, `StoryState.scoutReport` (saved in PostGame's scrimmage branch), Garcia's
+  TV lines, ApartmentScene TV option "What they're saying" / `openReport`.
   Round 89b: `src/data/draftTalk.json` + `career/draftTalk.ts` (`DRAFT_TALK`, `fillTalk`) read by StoryRun (scrimmage
   talk, `halfLinePending` → `halfDown`) and ArenaGym `beatTalk`; `draft.mysteryCallDue`, `StoryState.anonCall`;
   roomArt `buildLandline` (two frames, out of the island art); ApartmentScene `ring` / `answer` / `stepRing` /

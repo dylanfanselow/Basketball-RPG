@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { InputMapper } from '../input/input';
 import { FONT, COL, title, hiRes } from './ui';
 import { app } from '../state';
+import { buildScoutReport } from '../career/scoutReport';
 import { applyGameResult, xpToNext, isKeyGame, drainEnergy } from '../career/career';
 import { ULT_MILESTONES } from '../sim/ultimates';
 import type { GameSim } from '../sim/game';
@@ -124,6 +125,7 @@ function recordDraftGame(which: string, sim: GameSim): string[] {
   const out: string[] = [];
   if (which === 'scrimmage') {
     st.scrimmage = { pts: b.pts, reb: b.reb, ast: b.ast, sum: statSum(u), won };
+    st.scoutReport = buildScoutReport(app.career, sim); // round 90: what they're saying about you (the TV)
     out.push(`The scrimmage: ${b.pts} pts, ${b.reb} reb, ${b.ast} ast. The scouts wrote it all down.`);
   } else if (w) {
     const text = which === 'wk1v1' ? `${won ? 'Won' : 'Lost'} the 1-on-1, ${sim.teams[u.team].score}-${sim.teams[1 - u.team].score}`

@@ -85,6 +85,8 @@ export function callLines(c: CareerState, w: Workout, first: boolean): { who: 'a
   return [
     ...(first ? [{ who: 'agent' as const, text: `${you}. Garcia. Hope you've been staying sharp.` }] : []),
     ...(first && missed ? [{ who: 'agent' as const, text: 'You missed part of the combine. Scouts noticed. Don\'t miss anything else.' }] : []),
+    // round 90 (owner): the draft show has broken down your scrimmage
+    ...(first && c.story?.scoutReport ? [{ who: 'agent' as const, text: 'And turn on your TV. The draft show broke down your scrimmage. Go see what they\'re saying about you.' }] : []),
     { who: 'agent', text: intro[w.tier] },
     { who: 'agent', text: `They want you in for a workout. ${when}. ${WORKOUT_NAMES[w.kind]}.` },
     { who: 'me', text: `${when}. I'll be there.` },
@@ -336,5 +338,6 @@ export function garciaLines(c: CareerState): string[] {
   if (st?.scrimmage === 'missed') out.push('And skipping the scrimmage? Scouts talk.');
   else if (st?.scrimmage && st.scrimmage.sum >= 30) out.push('That scrimmage got people talking. Good talking.');
   if (!st?.scrimmage && cb?.day1) out.push('The scrimmage is where you can move up. Play your game.');
+  if (st?.scoutReport) out.push('They\'re talking about you on the draft show. Turn on the TV and see what they\'re saying.'); // round 90
   return out;
 }

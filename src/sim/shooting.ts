@@ -8,7 +8,7 @@ import { Vec, dist, sub, norm, dot, cross, clamp, clamp01, curve, len } from './
 export interface EqTerm { label: string; value: number; kind: 'base' | 'stat' | 'contest' | 'fatigue' | 'perk' | 'contact' | 'ult' | 'fade' }
 export interface ShotEval {
   type: string; dist: number; pts: number; pct: number; contest: number;
-  terms: EqTerm[]; conds: Set<string>; contestBy: { name: string; dist: number; c: number }[];
+  terms: EqTerm[]; conds: Set<string>; contestBy: { name: string; pid?: string; dist: number; c: number }[];
   /** dunk style id (dunks.ts) and whether it came off a Windmill Gather */
   dunk?: string; windmill?: boolean;
 }
@@ -174,7 +174,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
   const close = SHOT_TYPES[type].contact || type === 'floater' || type === 'hook' || type === 'push';
   const reachFt = contestReach(type);
   let keep = 1;
-  const by: { name: string; dist: number; c: number }[] = [];
+  const by: { name: string; pid?: string; dist: number; c: number }[] = [];
   const notes: string[] = [];
   for (const d of defenders) {
     if (d.state === 'fallen') continue;
@@ -201,7 +201,7 @@ export function computeContest(shooter: Player, defenders: Player[], side: Side,
     if (now < d.postLockUntil) { state = 0; notes.push(`${d.name} bumped`); }
     else if (now < d.postSealUntil || d.postedBy === shooter.id) { state = Math.min(state, POST_EVEN_CONTEST); notes.push(`${d.name} sealed`); }
     const c = 0.62 * closeness * angF * heightF * handUp * skill * state * d.mods.contestOutMult(type);
-    if (c > 0.01) { by.push({ name: d.name, dist: r, c }); keep *= 1 - clamp(c, 0, 0.95); }
+    if (c > 0.01) { by.push({ name: d.name, pid: d.id, dist: r, c }); keep *= 1 - clamp(c, 0, 0.95); }
   }
   by.sort((a, b) => b.c - a.c);
   return { raw: 1 - keep, by, notes };
