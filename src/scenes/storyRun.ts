@@ -6,6 +6,7 @@ import { TutorialDirector } from '../sim/tutorial';
 import { RIVAL_ID, LOCKED_IN, squadCaptain, statSum } from '../sim/story';
 import { TOP1_ID, TOP2_ID } from '../sim/draftGames';
 import { topTwo } from '../career/draftClass';
+import { DRAFT_TALK, fillTalk } from '../career/draftTalk';
 import { CORE_STATS, TEAMS } from '../sim/data';
 import { TIER_PITCH } from '../career/draft';
 import { setStage, storyScene, StoryGame } from './setup';
@@ -49,6 +50,8 @@ export class StoryRun {
   private talkT: Phaser.GameObjects.Text | null = null;
   private talkUntil = 0;
   private nextTalkAt = 0;
+  /** Round 89b: Dragić's line at the start of the second half (if you're down), waiting for the tip. */
+  private halfLinePending = false;
   /** Round 87: who the bubble is over (Kingston in the final; #1 or #2 in the draft scrimmage). */
   private talkWho = RIVAL_ID;
   private halfDone = false;
@@ -122,8 +125,8 @@ export class StoryRun {
       if (which === 'scrimmage') this.say([
         { who: 'narrator', text: 'The scrimmage. Every scout in the league is in the building.' },
         // round 87: #1 with you, #2 against you
-        { who: 'mate', name: f1, text: `Look at that. Same team, ${you}. Just get me the ball and we'll be fine.` },
-        { who: 'mate', name: f2, text: 'YOU! YEAH, YOU! I\'M COMING FOR YOU ALL GAME!' },
+        { who: 'mate', name: f1, text: fillTalk(DRAFT_TALK.scrimmageIntro.one, { you }) },
+        { who: 'mate', name: f2, text: fillTalk(DRAFT_TALK.scrimmageIntro.two, { you }) },
         scout('Two halves. Play your game. We\'re watching everything.', () => this.banner('THE SCRIMMAGE', 'EVERY SCOUT IN THE LEAGUE IS WATCHING')),
       ]);
       else if (which === 'wk1v1') this.say([
@@ -279,6 +282,7 @@ export class StoryRun {
     // round 88 (owner): #1 is nice all first half, whatever the score; only in the second half, while you're down, does
     // he turn snide (italics)
     const snide = sim.quarter >= 2 && ours < theirs;
+    if (e.kind === 'period' && e.text === 'End of H1') { this.halfLinePending = true; return; } // round 89b
     const two = e.pid === TOP2_ID, one = e.pid === TOP1_ID, mine = e.pid === me.id;
     if (e.kind === 'score' && two) this.talk(TOP2_TALK.scores, Math.random() < 0.5, TOP2_ID);
     else if (e.kind === 'block' && two) this.talk(TOP2_TALK.blocks, true, TOP2_ID);
@@ -324,6 +328,11 @@ export class StoryRun {
     const g = this.talkG, t = this.talkT; if (!g || !t) return;
     const sim = this.gs.sim;
     if (!this.wasLate && sim.lateWindow && !sim.over) { this.wasLate = true; this.talk(KINGSTON_TALK.clutch, true); }
+    // round 89b (owner): the second half's first live ball: down = "How are we losing? This is getting ridiculous."
+    if (this.halfLinePending && sim.live && sim.quarter === 2 && sim.user) {
+      this.halfLinePending = false;
+      if (sim.teams[sim.user.team].score < sim.teams[1 - sim.user.team].score) this.talk([TOP1_TALK.halfDown], true, TOP1_ID, true);
+    }
     const spr = this.gs.sprites.get(this.talkWho);
     const show = !!spr && spr.visible && !this.line && this.gs.time.now < this.talkUntil;
     g.setVisible(show); t.setVisible(show);
@@ -654,23 +663,10 @@ const KINGSTON_TALK = {
   // round 80g: an iso called for him
   iso: ['Let\'s dance.', 'Guard up.'],
 };
-/** Round 87 (owner): #2 in the draft scrimmage, a roid rager. */
-const TOP2_TALK = {
-  scores: ['AAARGH! TOO STRONG!', 'GET OFF ME! GET OFF ME!', 'This guy.', 'THAT\'S A GROWN MAN BUCKET!', 'WHO\'S NEXT?! WHO WANTS IT?!', 'I EAT RIMS FOR BREAKFAST!', 'FEEL THAT?! YOU FEEL THAT?!'],
-  blocks: ['NOT IN MY HOUSE! NOT EVER!', 'SEND IT BACK! SEND IT ALL BACK!', 'GET THAT WEAK STUFF OUTTA HERE!'],
-  steals: ['MINE! MINE!', 'TOO SLOW! TOO SOFT!'],
-  youScore: ['This guy.', 'DO THAT AGAIN. I DARE YOU.', 'LUCKY! THAT WAS LUCKY!', 'NOBODY SCORES ON ME! NOBODY!', 'I\'M GONNA REMEMBER THAT.'],
-};
-/** Round 87 (owner): #1 in the draft scrimmage: nice while you're level or ahead, two-sided (italics) once you're down. */
-const TOP1_TALK = {
-  niceYou: ['Nice one, man!', 'That\'s what I\'m talking about!', 'We\'re a problem together.', 'Keep cooking. I\'ll feed you.'],
-  niceHim: ['Good look.', 'Easy. Find me again.', 'Told you we\'d be on the same team.'],
-  snakeYou: ['Wow. Great shot... for a second-rounder.', 'See? You can hit one. Sometimes.', 'Keep shooting. Really. It\'s helping. Somebody.'],
-  snakeHim: ['Just carrying, don\'t mind me.', 'Somebody has to be first overall out here.', 'You\'re welcome, by the way.'],
-  snakeThem: ['It\'s cool. Somebody has to be the guy we lose with.', 'Don\'t worry. I\'ll make sure the scouts see you... trying.', 'We\'re fine. I\'m fine, at least.'],
-  // round 88 (owner): only right after you miss
-  snakeMiss: ['Maybe pass it to the first overall pick next time?'],
-};
+/** Round 87 / 89b (owner): #2 (a roid rager) and #1 (nice, then two-sided in italics) in the draft scrimmage: the
+ *  lines are in src/data/draftTalk.json. */
+const TOP2_TALK = DRAFT_TALK.two;
+const TOP1_TALK = DRAFT_TALK.one;
 /** Round 80c: "I NEED TO WIN THIS" at the half when you're down: on top of locked in. */
 const NEED_TO_WIN = 6;
 

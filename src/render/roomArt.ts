@@ -683,11 +683,8 @@ function drawIsland(c: C, p0: Piece) {
   for (const [ox, oy, w] of pads) { R(c, px + ox - 1, py + oy - 1, w * 2 + 2, 6, '#1f4a1a'); R(c, px + ox, py + oy, w * 2, 4, '#3f8a2f'); R(c, px + ox + 1, py + oy, w * 2 - 3, 1, '#6cbf4a'); }
   // round 85 (owner): an old beige landline by the bonsai: the base with its keypad, the handset on the cradle, the
   // coiled cord hanging off the far side (it sits on the counter facing the room, like the bonsai)
-  { const fx = b.x0 + 32, fy = Math.round(AY(p.y + 5.1) - H);
-    R(c, fx - 1, fy - 1, 18, 9, '#5a4a32'); R(c, fx, fy, 16, 7, '#d8c9a8'); R(c, fx, fy, 16, 1, '#efe4c8'); R(c, fx, fy + 6, 16, 1, '#b4a482');
-    for (let k = 0; k < 3; k++) for (let j = 0; j < 3; j++) P(c, fx + 9 + j * 2, fy + 2 + k * 2 - (k === 2 ? 1 : 0), '#7a6a4e');
-    R(c, fx - 1, fy - 4, 12, 3, '#5a4a32'); R(c, fx, fy - 4, 10, 2, '#cbbb98'); R(c, fx - 1, fy - 5, 3, 2, '#b4a482'); R(c, fx + 8, fy - 5, 3, 2, '#b4a482');
-    for (let k = 0; k < 6; k++) P(c, fx - 2 - (k % 2), fy + 1 + k, '#8a7a5a'); }
+  // round 89b: drawn as its own sprite now (`buildLandline`) so it can shake when it rings
+  void b;
   // fume hood over the cooktop, a duct up to the ceiling and one along the top to the end, then the pole down
   const hoodX0 = b.x0 + 2, hoodX1 = b.x1 - 2, cen = Math.round((b.x0 + b.x1) / 2);
   const hTop = Math.round(AY(p.y + 1.6) - 8.4 * HF), hBot = Math.round(AY(p.y + 1.6) - 6.4 * HF);
@@ -1149,6 +1146,20 @@ const DRAW: Record<string, (c: C, p: Piece, f: number) => void> = {
 const FRAMES: Record<string, number> = { tank: 2, couch: 2 };
 
 /** Background + one cropped texture per furniture piece (+ the fan). Textures persist across scene visits. */
+/** Round 85 / 89b: the landline on the island (art px): frame 0 at rest, frame 1 the handset jumping in its cradle. */
+function drawLandline(c: C, fx: number, fy: number, f: number) {
+  R(c, fx - 1, fy - 1, 18, 9, '#5a4a32'); R(c, fx, fy, 16, 7, '#d8c9a8'); R(c, fx, fy, 16, 1, '#efe4c8'); R(c, fx, fy + 6, 16, 1, '#b4a482');
+  for (let k = 0; k < 3; k++) for (let j = 0; j < 3; j++) P(c, fx + 9 + j * 2, fy + 2 + k * 2 - (k === 2 ? 1 : 0), '#7a6a4e');
+  const hy = fy - 4 - (f === 1 ? 2 : 0), tilt = f === 1 ? 1 : 0;
+  R(c, fx - 1, hy, 12, 3, '#5a4a32'); R(c, fx, hy, 10, 2, '#cbbb98'); R(c, fx - 1, hy - 1 - tilt, 3, 2, '#b4a482'); R(c, fx + 8, hy - 1 + tilt, 3, 2, '#b4a482');
+  for (let k = 0; k < 6; k++) P(c, fx - 2 - (k % 2), fy + 1 + k, '#8a7a5a');
+}
+/** Round 89b: the landline as a sprite on the island (two frames); the scene shakes it while a call rings. */
+export function buildLandline(tm: Phaser.Textures.TextureManager, island: Piece): Omit<ArtPiece, 'depthFt'> {
+  const x0 = Math.round(AX(island.x + 0.55)), H = Math.round(3.1 * HF);
+  const fx = x0 + 32, fy = Math.round(AY(island.y + 5.1) - H);
+  return CACHE.get('room_landline_v1') ?? bake(tm, 'room_landline_v1', 2, (c, f) => drawLandline(c, fx, fy, f));
+}
 export function buildRoomArt(tm: Phaser.Textures.TextureManager): { bg: string; pieces: ArtPiece[] } {
   const bg = 'room_bg';
   if (!tm.exists(bg)) tm.addCanvas(bg, drawBackground());

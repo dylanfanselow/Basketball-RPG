@@ -5,7 +5,8 @@ import { ARENA_GYM, lapPoint, LAP_LEN, LAPS } from '../world/arenaGym';
 import { buildArenaGymArt } from '../render/arenaGymArt';
 import { TreadmillGame, JumpGame, ShootGame, GauntletGame, makeMiniGame } from '../world/minigames';
 import { drainEnergy } from '../career/career';
-import { AgentTalk } from './agentTalk';
+import { AgentTalk, AgentStep } from './agentTalk';
+import { DRAFT_TALK, fillTalk } from '../career/draftTalk';
 import { storyScene } from './setup';
 import { app } from '../state';
 import { FONT } from './ui';
@@ -179,23 +180,21 @@ export class ArenaGymScene extends GarageScene {
     const me = (text: string) => ({ say: { who: 'me' as BoxSpeaker, name: you, text } });
     const him = (text: string) => ({ say: { who: 'mate' as BoxSpeaker, name: first1, text } });
     const big = two.p.pos === 'C' ? 'a center' : 'a four';
-    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
-      this.scout('Did... somebody check the vanes? He cleared the top one.'),
-      { run: () => { two.pose = { clip: 'idle', u: 0, jumpFt: 0, yaw: 0, flip: true }; } },
-      { say: { who: 'you' as BoxSpeaker, text: 'What was THAT?' } },
-      { youTo: { x: one.pos.x + (one.pos.x > 24 ? -1.6 : 1.6), y: one.pos.y + 0.4 } },
-      { run: () => { one.face = { ...this.pos }; } },
-      me('Yo. What\'s going on? Who is that?'),
-      him(`That's ${n2}. ${fmtHeight(two.p.heightIn)}, ${big}, and he moves like a guard. Athletic freak.`),
-      him('Projected second overall. Every time he does that, the scouts lose their minds.'),
-      me('Second? Then who\'s number one?'),
-      him('You haven\'t heard about me?'),
-      him(`${n1}. First overall.`),
-      him(`Relax, ${you}. I'm messing with you. Kind of. Good luck at the scrimmage, man. Hope we're on the same team.`),
-      { run: () => { this.scouts?.standUp(false); two.pose = null; one.face = null; } },
-      this.scout('All right, settle down. That\'s it for today. We\'ll be in touch.'),
-      { run: () => this.finish() },
-    ], { phone: true });
+    // round 89b (owner): the lines are in src/data/draftTalk.json ('walk' = you go over to him, 'settle' = everyone
+    // sits back down); after the first line #2 stops flexing
+    const vars = { you, n1, n2, height: fmtHeight(two.p.heightIn), big };
+    const steps: AgentStep[] = [];
+    DRAFT_TALK.combine.forEach((l, i) => {
+      const text = fillTalk(l.text ?? '', vars);
+      if (l.who === 'walk') steps.push({ youTo: { x: one.pos.x + (one.pos.x > 24 ? -1.6 : 1.6), y: one.pos.y + 0.4 } }, { run: () => { one.face = { ...this.pos }; } });
+      else if (l.who === 'settle') steps.push({ run: () => { this.scouts?.standUp(false); two.pose = null; one.face = null; } });
+      else if (l.who === 'scout') steps.push(this.scout(text));
+      else if (l.who === 'think') steps.push({ say: { who: 'you' as BoxSpeaker, text } });
+      else if (l.who === 'you') steps.push(me(text));
+      else steps.push(him(text));
+      if (i === 0) steps.push({ run: () => { two.pose = { clip: 'idle', u: 0, jumpFt: 0, yaw: 0, flip: true }; } });
+    });
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [...steps, { run: () => this.finish() }], { phone: true });
   }
 
   /** Per frame while a test is on: the laps, the timer, the end of the test. */

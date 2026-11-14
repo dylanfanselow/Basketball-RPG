@@ -1,19 +1,20 @@
 import Phaser from 'phaser';
-import { buildRoomArt, buildCatTexture, buildGlow, buildSleepBlanket, drawCalendarPage, CAT_W, LAMP_ART, CAL, calRowH, CalCell } from '../render/roomArt';
-import { RS, V, Piece, RoomDef, Station, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R, SPOTS } from '../world/apartment';
+import { buildLandline, buildRoomArt, buildCatTexture, buildGlow, buildSleepBlanket, drawCalendarPage, CAT_W, LAMP_ART, CAL, calRowH, CalCell } from '../render/roomArt';
+import { pieceDepthFt, RS, V, Piece, RoomDef, Station, APARTMENT, actorDepthFt, PLAYER_R, sxOf, syOf, Poly, FURNITURE, Cat, newCat, catStep, CAT_R, SPOTS } from '../world/apartment';
 import { RoomScene, ART, circlePoly } from './RoomScene';
 import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
-import { planWorkouts, callLines, todaysEvents, eventName, markMissed, runDraft, topTwoLine, draftBoard, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
+import { planWorkouts, callLines, mysteryCallDue, todaysEvents, eventName, markMissed, runDraft, topTwoLine, draftBoard, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
 import { buildSeason, ROOKIE_SEASON_START } from '../career/schedule';
 import { goTo } from './draftRoad';
 import { momTexture, mateTexture } from './castSprites';
 import { lincolnSquad, academySquad, squadCaptain } from '../sim/story';
 import { SPRITE_SCALE } from '../render/sprites';
 import { BoxSpeaker } from '../render/storyBox';
-import { AgentTalk } from './agentTalk';
+import { AgentTalk, AgentStep } from './agentTalk';
+import { DRAFT_TALK } from '../career/draftTalk';
 import { AGENT_PATHS } from '../world/agentPaths';
 import { setStage, storyScene } from './setup';
 import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, SEASONS, WEEKDAYS } from '../career/calendar';
@@ -59,9 +60,51 @@ export class ApartmentScene extends RoomScene {
     this.glow = this.add.image(LAMP_ART.x * ART, LAMP_ART.y * ART, buildGlow(this.textures)).setScale(ART * 2).setBlendMode(Phaser.BlendModes.ADD).setDepth(5000).setAlpha(0.8);
     this.cat = newCat();
     this.catSprite = this.add.sprite(0, 0, buildCatTexture(this.textures), 0).setOrigin(0.5, 1).setScale(ART);
+    // round 89b: the landline is its own sprite on the island (it shakes when a call rings)
+    const island = APARTMENT.furniture.find((f) => f.id === 'island')!, ll = buildLandline(this.textures, island);
+    this.phone = this.add.sprite(ll.x * ART, ll.y * ART, ll.key, 0).setOrigin(0, 0).setScale(ART).setDepth(syOf(pieceDepthFt(island)) + 0.01);
+    this.phoneX = ll.x * ART; this.ringing = null;
     if (this.story === 'agent') this.startAgent();
     else if (this.story === 'draftNight') this.startDraftNight();
-    else this.maybeCall(); // a morning the agent hasn't called yet (Load Save, back from the garage)
+    else this.checkCalls(); // a call that's due (the mystery call, Mom's first night, a morning the agent hasn't called yet)
+  }
+
+  // ------------------------------------------------------------ round 89b: incoming calls on the landline
+  phone!: Phaser.GameObjects.Sprite; phoneX = 0;
+  /** A call ringing on the landline: who it shows as, its lines, what answering it settles. */
+  ringing: { from: string; steps: AgentStep[]; onAnswer?: () => void; at: number; nextRing: number } | null = null;
+  private ring(from: string, steps: AgentStep[], onAnswer?: () => void) {
+    if (this.ringing) return;
+    this.ringing = { from, steps, onAnswer, at: this.t, nextRing: this.t + 0.4 };
+  }
+  /** Walk over and pick it up. */
+  private answer() {
+    const r = this.ringing; if (!r || this.busy) return;
+    this.ringing = null; this.phone.setFrame(0).setX(this.phoneX);
+    r.onAnswer?.(); app.changed();
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ say: { who: 'narrator' as const, text: `You pick up.  (${r.from})` } }, ...r.steps], { phone: true });
+  }
+  /** The phone rings in bursts (the sound and a shake, the handset hopping); quiet once it's answered. */
+  private stepRing() {
+    const r = this.ringing;
+    if (!r) return;
+    if (this.t >= r.nextRing) { r.nextRing = this.t + 1.6; sfx.phoneRing(); }
+    const inBurst = (this.t - (r.nextRing - 1.6)) < 0.85;
+    const hop = inBurst && Math.floor(this.t / 0.06) % 2 === 0;
+    this.phone.setFrame(hop ? 1 : 0).setX(this.phoneX + (inBurst ? (Math.floor(this.t / 0.045) % 2 ? 1.4 : -1.4) : 0));
+  }
+  /** Whatever call is due now (one at a time): the mystery call, then Mom's first night, then Garcia's morning call. */
+  checkCalls() {
+    if (this.ringing || this.agent) return;
+    const c = app.career, st = c.story;
+    if (!st || st.stage !== 'draftWeek' || !st.draft) return;
+    if (mysteryCallDue(c)) {
+      const you = c.firstName || c.name.split(' ')[0];
+      this.ring('UNKNOWN NUMBER', DRAFT_TALK.mysteryCall.map((l) => ({ say: l.who === 'voice' ? { who: 'phone' as const, name: '???', text: l.text ?? '' } : l.who === 'you' ? { who: 'me' as const, name: you, text: l.text ?? '' } : { who: 'narrator' as const, text: l.text ?? '' } })), () => { st.anonCall = true; });
+      return;
+    }
+    if (!st.momCall2) { this.momCall(); return; }
+    this.maybeCall();
   }
 
   /** Round 82: a big date card (the DAY banner's style), up and gone. */
@@ -77,31 +120,24 @@ export class ApartmentScene extends RoomScene {
    */
   private maybeCall() {
     const c = app.career, st = c.story;
-    if (!st || st.stage !== 'draftWeek' || !st.draft || !st.montage || this.agent) return;
+    if (!st || st.stage !== 'draftWeek' || !st.draft || !st.montage || this.agent || this.ringing) return;
     const day = c.life.day, have = st.workouts ?? [];
     const next = planWorkouts(c).find((w) => w.callDay <= day && !have.some((x) => x.team === w.team));
     if (!next || st.callDay === day || day >= st.draft.draft) return;
     const first = have.length === 0;
-    st.workouts = [...have, next]; st.callDay = day; app.changed();
     const you = c.firstName || c.name.split(' ')[0];
-    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
-      { wait: 0.5 },
-      { run: () => sfx.phoneRing() },
-      { say: { who: 'narrator' as const, text: 'Your phone buzzes. DONOVAN GARCIA.' } },
-      ...callLines(c, next, first).map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'DONOVAN GARCIA (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
-    ], { phone: true });
+    // round 89b: it rings on the landline; answering it puts the workout on the calendar
+    this.ring('DONOVAN GARCIA', callLines(c, next, first).map((l) => ({ say: l.who === 'agent' ? { who: 'agent' as const, name: 'DONOVAN GARCIA (PHONE)', text: l.text } : { who: 'me' as const, name: you, text: l.text } })),
+      () => { st.workouts = [...(st.workouts ?? []), next]; st.callDay = day; });
   }
 
   /** Round 84 (owner): the first night here you call Mom: the agent, this place, the combine. Spring's here. */
-  private momCall(then: () => void) {
+  private momCall() {
     const c = app.career, you = c.firstName || c.name.split(' ')[0], st = c.story!;
-    st.momCall2 = true; app.changed();
     const me = (text: string) => ({ say: { who: 'me' as const, name: you, text } });
     const mom = (text: string) => ({ say: { who: 'phone' as const, text } });
-    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
-      { wait: 0.3 },
-      { say: { who: 'narrator' as const, text: 'You call Mom.' } },
-      { run: () => sfx.phoneRing() },
+    // round 89b: she calls you (it rings on the landline)
+    this.ring('MOM', [
       mom('Baby? You okay? Where are you?'),
       me('I\'m okay, Ma. Better than okay. That letter was from an agent. Donovan Garcia.'),
       me('He\'s putting me up in an apartment. Rent free. There\'s a whole gym in the garage.'),
@@ -110,8 +146,7 @@ export class ApartmentScene extends RoomScene {
       mom('Don\'t you worry about me. We can hold out for a bit now. Spring\'s here. The snow\'ll start to melt.'),
       mom('You go do what you were born to do. I love you, baby.'),
       me('Love you too, Ma.'),
-      { run: then },
-    ], { phone: true });
+    ], () => { st.momCall2 = true; });
   }
 
   /**
@@ -235,13 +270,15 @@ export class ApartmentScene extends RoomScene {
       { label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() },
       { label: 'Calendar', spot: SPOTS.calendar, run: () => this.openCalendar() },
       // round 85: the landline (Mom, Garcia) and the TV (film study, later)
-      { label: 'Phone', spot: SPOTS.phone, run: () => this.landline() },
+      // round 89b: a ringing call is answered here (the rest of the time you call out)
+      this.ringing ? { label: 'Answer the phone', spot: SPOTS.phone, run: () => this.answer() } : { label: 'Phone', spot: SPOTS.phone, run: () => this.landline() },
       { label: 'Watch TV', spot: SPOTS.tv, run: () => this.tv() }, // round 88: film study (soon) or the draft board
     ];
     // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
     const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
-    if (evs.length === 1) out.push({ label: `Go to ${eventName(c, evs[0])}`, spot: front, reach: 1.6, run: () => this.go(evs[0]) });
-    else if (evs.length > 1) out.push({ label: 'Go to a workout', spot: front, reach: 1.6, run: () => this.pickWorkout(evs) });
+    const busyPhone = () => this.thinkLine('I should get that.'); // round 89b: not with the phone ringing
+    if (evs.length === 1) out.push({ label: `Go to ${eventName(c, evs[0])}`, spot: front, reach: 1.6, run: () => (this.ringing ? busyPhone() : this.go(evs[0])) });
+    else if (evs.length > 1) out.push({ label: 'Go to a workout', spot: front, reach: 1.6, run: () => (this.ringing ? busyPhone() : this.pickWorkout(evs)) });
     // round 84: draft night, on the couch in front of the TV
     if (st?.stage === 'draftWeek' && st.draft && c.life.day >= st.draft.draft && !st.drafted) out.unshift({ label: 'Watch the draft', spot: SPOTS.couch, run: () => this.scene.restart({ story: 'draftNight' }) });
     return out;
@@ -336,7 +373,7 @@ export class ApartmentScene extends RoomScene {
     if (this.busy) return;
     const c = app.career, st = c.story;
     // round 84: the first night here you call Mom first; on draft day the TV's on
-    if (st?.stage === 'draftWeek' && !st.momCall2 && st.draft) { this.momCall(() => { this.agent = null; this.busy = false; this.sleep(); }); return; }
+    if (this.ringing) { this.thinkLine('I should get that.'); return; } // round 89b: the phone's ringing
     if (st?.stage === 'draftWeek' && st.draft && c.life.day >= st.draft.draft && !st.drafted) { this.thinkLine('Not tonight. The draft\'s on.'); return; }
     this.busy = true;
     const night = this.add.rectangle(0, 0, 1280, 720, 0x0c1640, 1).setOrigin(0, 0).setDepth(8900).setAlpha(0);
@@ -376,7 +413,7 @@ export class ApartmentScene extends RoomScene {
       this.pos = { ...SPOTS.couch }; this.face = { x: 0, y: 1 }; this.view = undefined; this.vel = { x: 0, y: 0 };
       this.busy = false;
       this.sendEnergyOrbs(sleepPlan(c), ENERGY_ORB, { x: sxOf(SPOTS.couch.x), y: syOf(SPOTS.couch.y) - 110 });
-      this.time.delayedCall(900, () => this.maybeCall()); // round 82: Hale's morning call (the days before the draft)
+      this.time.delayedCall(900, () => this.checkCalls()); // round 82 / 89b: a morning call rings on the landline
     });
   }
 
@@ -481,6 +518,7 @@ export class ApartmentScene extends RoomScene {
   extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
 
   onUpdate(dt: number) {
+    this.stepRing(); // round 89b
     // round 81; round 85: a script can start the next one as it ends (the phone menu → the call): keep the new one
     const ag = this.agent;
     if (ag) { if (!ag.update(dt)) { if (this.agent === ag) this.agent = null; } else this.busy = true; }

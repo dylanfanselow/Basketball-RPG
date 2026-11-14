@@ -1,0 +1,135 @@
+{
+  "_about": "Round 89b (owner): every line the projected #1 (Drako Dragic) and #2 (Chinmaya Jagadeesh) say, plus the mystery call. Edit freely. Placeholders: {you} your first name, {n1} #1's name, {n2} #2's name, {height} #2's height, {big} 'a center' / 'a four'. No em dashes.",
+  "combine": [
+    {
+      "who": "scout",
+      "text": "Did... somebody check the vanes? He cleared the top one."
+    },
+    {
+      "who": "think",
+      "text": "What was THAT?"
+    },
+    {
+      "who": "walk"
+    },
+    {
+      "who": "you",
+      "text": "Yo. What's going on? Who is that?"
+    },
+    {
+      "who": "one",
+      "text": "That's {n2}. {height}, {big}, and he moves like a guard. Athletic freak."
+    },
+    {
+      "who": "one",
+      "text": "Projected second overall. Every time he does that, the scouts lose their minds."
+    },
+    {
+      "who": "you",
+      "text": "Second? Then who's number one?"
+    },
+    {
+      "who": "one",
+      "text": "You haven't heard about me?"
+    },
+    {
+      "who": "one",
+      "text": "{n1}. First overall."
+    },
+    {
+      "who": "one",
+      "text": "Relax, {you}. I'm messing with you. Kind of. Good luck at the scrimmage, man. Hope we're on the same team."
+    },
+    {
+      "who": "settle"
+    },
+    {
+      "who": "scout",
+      "text": "All right, settle down. That's it for today. We'll be in touch."
+    }
+  ],
+  "scrimmageIntro": {
+    "one": "Look at that. Same team, {you}. Just get me the ball and we'll be fine.",
+    "two": "YOU! YEAH, YOU! I'M COMING FOR YOU ALL GAME!"
+  },
+  "one": {
+    "niceYou": [
+      "Nice one, man!",
+      "That's what I'm talking about!",
+      "We're a problem together.",
+      "Keep cooking. I'll feed you."
+    ],
+    "niceHim": [
+      "Good look.",
+      "Easy. Find me again.",
+      "Told you we'd be on the same team."
+    ],
+    "halfDown": "How are we losing? This is getting ridiculous.",
+    "snakeYou": [
+      "Wow. Great shot... for a second-rounder.",
+      "See? You can hit one. Sometimes.",
+      "Keep shooting. Really. It's helping. Somebody."
+    ],
+    "snakeHim": [
+      "Just carrying, don't mind me.",
+      "You're welcome, by the way."
+    ],
+    "snakeThem": [
+      "It's cool. Somebody has to be the guy we lose with.",
+      "Don't worry. I'll make sure the scouts see you... trying.",
+      "We're fine. I'm fine, at least."
+    ],
+    "snakeMiss": [
+      "Maybe pass it to the first overall pick next time?"
+    ]
+  },
+  "two": {
+    "scores": [
+      "AAARGH! TOO STRONG!",
+      "GET OFF ME! GET OFF ME!",
+      "This guy.",
+      "THAT'S A GROWN MAN BUCKET!",
+      "WHO'S NEXT?! WHO WANTS IT?!",
+      "I EAT RIMS FOR BREAKFAST!",
+      "FEEL THAT?! YOU FEEL THAT?!"
+    ],
+    "blocks": [
+      "NOT IN MY HOUSE! NOT EVER!",
+      "SEND IT BACK! SEND IT ALL BACK!",
+      "GET THAT WEAK STUFF OUTTA HERE!"
+    ],
+    "steals": [
+      "MINE! MINE!",
+      "TOO SLOW! TOO SOFT!"
+    ],
+    "youScore": [
+      "This guy.",
+      "DO THAT AGAIN. I DARE YOU.",
+      "LUCKY! THAT WAS LUCKY!",
+      "NOBODY SCORES ON ME! NOBODY!",
+      "I'M GONNA REMEMBER THAT."
+    ]
+  },
+  "mysteryCall": [
+    {
+      "who": "narrator",
+      "text": "UNKNOWN NUMBER."
+    },
+    {
+      "who": "you",
+      "text": "Hello?"
+    },
+    {
+      "who": "voice",
+      "text": "Give up on basketball. It's not for you."
+    },
+    {
+      "who": "narrator",
+      "text": "Click."
+    },
+    {
+      "who": "you",
+      "text": "...Hello?"
+    }
+  ]
+}

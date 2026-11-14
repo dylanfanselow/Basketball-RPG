@@ -309,6 +309,15 @@ export function nextEvent(c: CareerState, nextKey: { opponent: string; daysAway:
 /** "Combine in 7 days" / "Combine today". */
 export const eventLine = (e: { what: string; days: number } | null) => (!e ? '' : e.days <= 0 ? `${e.what} today` : `${e.what} in ${e.days} day${e.days === 1 ? '' : 's'}`);
 
+/**
+ * Round 89b (owner): lose the scrimmage and, back home that day, the landline rings: an unknown number telling you to
+ * give up on basketball (it's Dragić; nobody knows that yet). Once per story.
+ */
+export function mysteryCallDue(c: CareerState): boolean {
+  const st = c.story, s = st?.scrimmage;
+  return !!st?.draft && !st.anonCall && !!s && s !== 'missed' && !s.won && c.life.day === st.draft.scrimmage;
+}
+
 /** A random one of these. */
 export const pickOne = <T>(a: T[], rnd: () => number = Math.random): T => a[Math.floor(rnd() * a.length) % a.length];
 /** Round 85 (owner): what Mom says when you call (it keeps you going), by where you are on the road to the draft. */

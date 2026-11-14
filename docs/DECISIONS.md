@@ -188,6 +188,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 89b (owner): Dragić's lines, the mystery call, the ringing landline.**
+  - **All of Dragić's and Jagadeesh's lines (and the mystery call) live in `src/data/draftTalk.json`** for the owner
+    to edit (placeholders `{you}`, `{n1}`, `{n2}`, `{height}`, `{big}`). "Somebody has to be first overall out here"
+    is gone. **Start of the second half, if you're down: "How are we losing? This is getting ridiculous."**
+  - **Lose the scrimmage → back home that day the landline rings: UNKNOWN NUMBER. "Give up on basketball. It's not
+    for you." Click.** (It's Dragić; nobody knows yet.) Once per story.
+  - **Every incoming call rings on the landline**: the ring repeats and the phone shakes (the handset hops) until you
+    walk over and **✕ Answer**; sleeping or heading out first: "I should get that." Garcia's morning team calls, Mom
+    on the first night (she calls you now) and the mystery call. Outgoing calls (the landline menu) as before.
 - **Round 89 (owner): open looks get shot; backcourt violations.**
   - **An AI that catches it with nobody near his cone shoots it**: on the catch (before a dribble), nobody in the
     cone and nobody within 6 ft, a jumper he can make (three 36%+, mid 42%+): 90%. It reads before the pump-fake /

@@ -261,6 +261,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 89b: `src/data/draftTalk.json` + `career/draftTalk.ts` (`DRAFT_TALK`, `fillTalk`) read by StoryRun (scrimmage
+  talk, `halfLinePending` → `halfDown`) and ArenaGym `beatTalk`; `draft.mysteryCallDue`, `StoryState.anonCall`;
+  roomArt `buildLandline` (two frames, out of the island art); ApartmentScene `ring` / `answer` / `stepRing` /
+  `checkCalls` (Garcia's calls, Mom's first night and the mystery call ring; Answer on the phone; sleep / leaving
+  blocked while ringing).
   Round 89: offense `OPEN_LOOK` / `openLook` (before `catchRead`, and before the open-court drive at 16 ft+), play
   ball routing waits 0.2 s after a catch; `Player.openLookFor`; game `BACKCOURT_MARGIN`, `CROSS_IN`, `acrossNow`,
   `inBackcourt`, `backcourtRisk`, the violation in `backcourtRule`, fresh status on rebounds / defense-touched balls
