@@ -47,6 +47,7 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Garcia\'s calls', action: () => this.draftRoad('calls'), hint: 'Round 84: Spring 18: three calls (one team per tier), each a workout on the calendar.' },
       { label: 'Story: A workout (next kind)', action: () => this.draftRoad('workout'), hint: 'Round 85: each press tries the next kind (in that team\'s arena): shooting, pressure drill, 1-on-1, team scrimmage.' },
       { label: 'Story: Draft night', action: () => this.draftRoad('draft'), hint: 'Round 84: Spring 28 at the apartment with Mom and your old teammates.' },
+      { label: 'City Map', action: () => this.scene.start('City'), hint: 'Round 92: the town (front door of the apartment). Stick hops between places, ✕ goes, L1 home.' },
       { label: 'Film Study (apartment TV)', action: () => this.scene.start('Apartment', { film: true }), hint: 'Round 91: the course list on the TV. Locked courses open with their skill (dev panel → Film study).' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },

@@ -17,6 +17,7 @@ import { prepareStory } from './preload';
 import { drawBustPage, drawLetter, PAPER_W, PAPER_H, LETTER_W, LETTER_H } from '../render/paperArt';
 import { kingstonLook } from '../sim/story';
 import { skipTo, dateLabel } from '../career/calendar';
+import { momLine, pickOne } from '../career/draft';
 import { banner, montageGo } from './MontageScene';
 
 /**
@@ -66,8 +67,10 @@ export class TrailerScene extends RoomScene {
   private mom: Phaser.GameObjects.Sprite | null = null;
   /** Round 71: a thought from looking at something in the yard is up (✕ closes it). */
   private thinking = false;
-  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' | 'generator' }) {
-    super.init(data); this.night = !!data?.night; this.story = data?.story ?? null;
+  /** Round 92: a visit from the city map (no story; Mom at the door; the path end goes back to the map). */
+  visit = false;
+  init(data?: { at?: string; night?: boolean; story?: 'night' | 'after' | 'snow' | 'homecoming' | 'letter' | 'generator'; visit?: boolean }) {
+    super.init(data); this.night = !!data?.night; this.story = data?.story ?? null; this.visit = !!data?.visit && !this.story;
     const st = app.career.story;
     if ((this.story === 'homecoming' || this.story === 'letter') && st && !st.trailerWrecked) { st.trailerWrecked = true; app.changed(); }
     // round 84: spring: the snow's gone and the trailer's been patched up; the new generator arrives
@@ -151,6 +154,15 @@ export class TrailerScene extends RoomScene {
           : { label: 'Leave', spot: PATH_END, reach: 1.8, run: () => this.think('The mailbox flag is up.') },
       ];
     }
+    if (this.visit) {
+      const c = app.career, you = c.firstName || c.name.split(' ')[0];
+      return [
+        { label: 'See Mom', spot: DOOR_SPOT, reach: 1.3, run: () => this.visitMom(momLine(c), you) },
+        { label: 'Generator', spot: GENERATOR_SPOT, reach: 1.6, run: () => this.think(this.genDead ? 'Still won\'t start.' : 'The new one barely makes a sound. Ma sleeps through the night now.') },
+        { label: 'Mailbox', spot: MAILBOX_SPOT, reach: 1.3, run: () => { sfx.blip(true); this.think('No mail.'); } },
+        { label: 'Back to town', spot: PATH_END, reach: 1.8, run: () => { if (this.busy) return; this.busy = true; sfx.footstep('grass', 0); this.cameras.main.fadeOut(350, 0, 0, 0); this.time.delayedCall(380, () => this.scene.start('City', { at: 'trailer' })); } },
+      ];
+    }
     return [
       // round 71: after Mom's talk following the big game, the door waits until you've checked on Kingston
       { label: 'Go inside', spot: DOOR_SPOT, reach: 1.3, run: () => (morning ? this.think('I gotta catch the bus.') : st?.checkKingston ? this.think('I should check on Kingston.') : this.goInside()) },
@@ -201,6 +213,13 @@ export class TrailerScene extends RoomScene {
       const k = (this.t - p.t) / 1.2;
       g.fillStyle(0xf4f7fb, 0.55 * (1 - k)).fillCircle(p.x + k * 8, p.y - k * 16, 4 + k * 9);
     }
+  }
+
+  /** Round 92: Mom comes to the door when you visit from town. */
+  private visitMom(line: string, you: string) {
+    if (!this.box) this.box = new StoryBox(this, { y: 590 });
+    this.lines = [{ who: 'mom', text: line }, { who: 'me', name: you, text: pickOne(['Love you, Ma.', 'I hear you, Ma.', 'I won\'t let you down.']) }];
+    this.thinking = true; this.busy = true;
   }
 
   /** Round 71: your thought in the story box (YOU, thinking); you stand still until ✕ closes it. */

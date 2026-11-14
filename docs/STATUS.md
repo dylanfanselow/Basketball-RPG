@@ -261,6 +261,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 92: the city map. `world/city.ts` (`PLACES` with art anchors, `travelCost` 4 / 6 / 8, `canTravel`,
+  `placeToward` for stick hops), `render/cityArt.ts` (iso grid `iso` / `world` at 2:1, `BLOCK` 36 / `ROAD` 4,
+  the river / pool / reservoir / dam by `waterDist`, the ridge by `PEAKS` + `footY`, zones down / shop / res / park /
+  forest / field, `isoBox` / `gableRoof` / `tree` / `pine` / `fillPoly`, `buildCityArt` (background + one sprite per
+  place + the falls, 3 frames), `drawCityCanvas` for previews), `scenes/CityScene.ts` (`init({ at, select })`, card,
+  ring, pedestal figure from the room sheet, travel hop, event choice), `scenes/roomHud.ts` (`drawTopHud`, `SKILL_COL`,
+  used by RoomScene and the map). ApartmentScene front action → `toCity`; TrailerScene `init({ visit })`;
+  `APARTMENT` front door → City; dev menu → City Map; `tests/city.test.ts`.
   Round 91: film study. `sim/lessons.ts` (`LessonDirector`: the tutorial's phases / steps / demos, generic cast
   `me` / `mate` / `demo` / `other`, hooks `onTryStart` / `onLessonEnd` / `tryTick` / `thinkTry`, `demoBall` /
   `demoDrive` / `script`, new demos floater / hook / push / combo / comboShot / postKick / drive / help / dreamer /

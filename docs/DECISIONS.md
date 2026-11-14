@@ -188,6 +188,26 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 92 (owner): the city map.** From the owner's reference (a one-screen isometric pixel city, the stat bar
+  across the top), in our style and with our own landmarks.
+  - **Mountain + river valley** (owner's pick): a snow-capped ridge across the top left (it names **Ridgemont
+    Academy**, on its lower slope), a **waterfall** off it, the **river** down through the middle (a wooded island, a
+    road bridge downtown and a rail bridge), a **reservoir behind a dam** at the bottom right. Downtown towers and the
+    **arena** (a dome) on the east bank, shops around downtown, houses everywhere else, the **rail yard** and
+    **Pine Flats** (Mom's trailer) by the tracks on the west bank, **Lincoln High** with its outdoor court, Burger Barn,
+    **Crestview Prep** among the farm fields at the far bottom left, Riverside Park, the Ridge Trailhead.
+  - **The apartment's front door opens the map** (owner). It replaces "Leave" to the title screen and the event-day
+    "Go to ..." action: on an event day the door says "Leave (the combine today)" and the map opens on the arena.
+  - **One screen** (owner), the rooms' stat bar and to-do list on top. The stick (a flick) or the d-pad hops to the
+    nearest place that way; ✕ goes; L1 / ○ go home. The picked place lifts, rings and gets a card (name, a line, what
+    it costs or why not); the card moves up under the stat bar for places low on the map. You stand on a little
+    pedestal where you are and hop to where you're going.
+  - **Trips cost a little energy** (owner): 4 / 6 / 8 by distance; going home is free; the arena on an event day is
+    free (they send a car); "Too tired to go that far" when you can't.
+  - **Works now:** Home; **Mom's trailer** (a visit: Mom comes to the door with one of her lines, the path end goes back
+    to the map); **Lincoln High court** (a shootaround: the practice mode on the school court, L1 back to the map);
+    **the arena** (today's event, a choice when two workouts land on one day; otherwise "Doors are locked today" and
+    what's next). Ridgemont, Crestview, Burger Barn, Riverside Park and the trailhead say "Coming later".
 - **Round 91 (owner): film study on the TV, the practice court, the to-do list.**
   - **Watch TV → Film study** opens a **list of courses**. Each course is a short tutorial on the tutorial's engine:
     **watch the tape** (a real player who has the move does it on an empty arena court, with a VHS look and

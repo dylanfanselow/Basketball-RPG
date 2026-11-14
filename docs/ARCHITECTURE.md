@@ -39,6 +39,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 footprints (optional `poly`, `alongLeftWall` / `alongRightWall`), `DOORS`, `solids`, circle-vs-polygon `resolve` / `moveWithCollision` (sub-steps, never
 ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pieceDepthFt` / `actorDepthFt`, `SPOTS` / `CALENDAR`, grid BFS `findPath`, cat (`newCat`, `catStep`: couch perch `CAT_PERCH` / `CAT_HOP`, hops, `CAT_SPOTS`).
 
+`city.ts` (round 92, pure): the city map's places, trip costs, stick hops.
 `minigames.ts`: the garage workout mini-games (pure, unit-tested in `tests/minigames.test.ts`).
 `garage.ts`: `GARAGE` (`RoomDef`: furniture / doors / spawn / `GARAGE_STATIONS` workouts). Rooms share the cutaway frame; `solids(extra, room)`,
 `doorNear(p, reach, room)`; `Door` has `side` (L / R / B), `span`, `to` (scene + door you arrive at).
@@ -68,6 +69,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `render/crowd.ts` | Animated crowd: blob stands rows + `FanRow` (plain sprite fans behind the sideline), shared `reaction()` ripple, home-colored shirts (`bigGame` = mostly home colors). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
+| `scenes/CityScene.ts`, `render/cityArt.ts`, `scenes/roomHud.ts` | Round 92: the city map (front door): the town painted in code on the room art grid, a sprite per place, card / ring / pedestal, trips; the rooms' stat bar as a shared function. |
 | `scenes/filmRun.ts` | Round 91: `FilmRun` drives a film course inside GameScene (the box, ✓, the VHS tape look, the end menu); `filmInit`, `PRACTICE_COURT`. |
 | `scenes/storyRun.ts`, `render/storyBox.ts` | Round 60: `StoryRun` drives a prologue game inside GameScene (lines hold the sim, transitions by `setStage` / `storyScene`, coach + scout in the big game); `StoryBox` is the bottom text box (also used by TrailerScene). |
 | `scenes/PaperScene.ts`, `render/paperArt.ts` | Round 80: "three months later", the newspaper on a table (pixel front page, dithered photo of you, camera stops), then Mom wakes you. |

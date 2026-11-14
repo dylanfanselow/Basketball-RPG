@@ -285,8 +285,9 @@ export class ApartmentScene extends RoomScene {
     // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
     const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
     const busyPhone = () => this.thinkLine('I should get that.'); // round 89b: not with the phone ringing
-    if (evs.length === 1) out.push({ label: `Go to ${eventName(c, evs[0])}`, spot: front, reach: 1.6, run: () => (this.ringing ? busyPhone() : this.go(evs[0])) });
-    else if (evs.length > 1) out.push({ label: 'Go to a workout', spot: front, reach: 1.6, run: () => (this.ringing ? busyPhone() : this.pickWorkout(evs)) });
+    // round 92: the front door opens the city map (on an event day the arena is picked and the trip is free)
+    const label = evs.length === 1 ? `Leave (${eventName(c, evs[0]).replace(/^the /, '')} today)` : evs.length > 1 ? 'Leave (a workout today)' : 'Leave';
+    out.push({ label, spot: front, reach: 1.6, run: () => (this.ringing ? busyPhone() : this.toCity(evs.length > 0)) });
     // round 84: draft night, on the couch in front of the TV
     if (st?.stage === 'draftWeek' && st.draft && c.life.day >= st.draft.draft && !st.drafted) out.unshift({ label: 'Watch the draft', spot: SPOTS.couch, run: () => this.scene.restart({ story: 'draftNight' }) });
     return out;
@@ -437,6 +438,13 @@ export class ApartmentScene extends RoomScene {
     this.time.delayedCall(430, () => this.scene.start('Game', init));
   }
 
+  /** Round 92: out the front door to the city map. */
+  private toCity(event: boolean) {
+    if (this.busy) return;
+    this.busy = true; sfx.doorOpen();
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.time.delayedCall(380, () => this.scene.start('City', { at: 'home', select: event ? 'arena' : undefined }));
+  }
   private go(e: GoEvent) { if (this.busy) return; this.busy = true; goTo(this, e); }
   /** Two workouts on one day: choose; the other one is missed. */
   private pickWorkout(evs: GoEvent[]) {

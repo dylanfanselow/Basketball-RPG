@@ -100,6 +100,10 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 92 follow-ups:** the "coming later" places on the map (Ridgemont, Crestview, Burger Barn, Riverside Park
+  pickup games, a trailhead run); the Lincoln shootaround is the practice mode (an NBA defender, not a school one);
+  after the draft the arena should be your team's (key games from the map); ask the owner about the trip costs and
+  whether the map should be bigger later; the generated town is fixed (same every save).
 - **Round 91 follow-ups:** ask the owner how the courses feel (wording, tape players, whether a step should need a
   make); more locked courses (Shammgod / Snatch-Back chains, Magic, Lob City, Gimme That!, Gravity, Charge Magnet...);
   more to-do tasks (the list holds any number); the practice court from the TV is the dev practice mode (the full
