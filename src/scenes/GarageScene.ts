@@ -2,12 +2,12 @@ import Phaser from 'phaser';
 import { buildGarageArt, garageRim } from '../render/garageArt';
 import { AS } from '../render/roomArt';
 import { sheetFor } from '../render/playerBank';
-import { SPRITE_SCALE } from '../render/sprites';
-import { CLIP, frameAt } from '../render/anim';
+import { SPRITE_SCALE, Sheet } from '../render/sprites';
+import { CLIP, frameAt, Pose, J } from '../render/anim';
 import { app } from '../state';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS, autoSet } from '../world/minigames';
+import { MiniGame, SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS, autoSet } from '../world/minigames';
 import { scoutTexture } from './castSprites';
 import { storyScene } from './setup';
 import { TIER_PITCH, readyFor } from '../career/draft';
@@ -17,7 +17,7 @@ import { ART } from './RoomScene';
 import { POST_L } from '../render/roomArt';
 import { banner, montageGo } from './MontageScene';
 import { dateLabel } from '../career/calendar';
-import { RoomDef, Station, RS, syOf, sxOf } from '../world/apartment';
+import { RoomDef, Station, RS, syOf, sxOf, V } from '../world/apartment';
 import { GARAGE } from '../world/garage';
 import { RoomScene } from './RoomScene';
 import { AgentTalk } from './agentTalk';
@@ -30,6 +30,9 @@ import { setStage } from './setup';
  * Round 38: workouts, ✕ at the squat rack, bench, push-up mat, jump rope or treadmill plays its animation; the bar
  * comes off the hooks / uprights and moves with you, the rope turns around you.
  */
+/** Round 87: whoever is at a station, as drawn this frame (you, or a prospect at the combine). */
+export interface GearBody { x: number; y: number; depth: number; flip: boolean; pose: Pose; sheet: Sheet; joint: (j: J) => V }
+
 export class GarageScene extends RoomScene {
   gear!: Phaser.GameObjects.Graphics;      // bar / rope in front of you
   gearBack!: Phaser.GameObjects.Graphics;  // the far plate of the bench bar (behind you)
@@ -186,9 +189,21 @@ export class GarageScene extends RoomScene {
 
   /** The workout's gear for this frame (the bar, the plates, the shot, the dribbled ball). */
   private drawGear(st: Station | null, fr: ReturnType<GarageScene['activityFrame']>) {
-    const g = this.gear, gb = this.gearBack;
     if (!st || !fr || !this.player.visible) return;
-    const d = this.player.depth;
+    const c = app.career, sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
+    if (!sheet) return;
+    const flip = this.view?.flip ?? false;
+    const body: GearBody = { x: this.player.x, y: this.player.y, depth: this.player.depth, flip, pose: fr.pose, sheet, joint: (j) => this.jointToScreen(j) };
+    this.drawGearFor(body, st, this.mini, this.gear, this.gearBack, this.ballG, true);
+  }
+
+  /**
+   * Round 87: a workout's gear for anybody at a station (you, or a prospect at the combine): the squat bar, the bench
+   * bar (tilting with the bench game), the shot (ball, rim, net), the dribbled ball (you only).
+   */
+  drawGearFor(b: GearBody, st: Station, mini: MiniGame | null, g: Phaser.GameObjects.Graphics, gb: Phaser.GameObjects.Graphics, ballG: Phaser.GameObjects.Graphics, user: boolean) {
+    const fr = { pose: b.pose };
+    const d = b.depth;
     g.setDepth(d + 0.2); gb.setDepth(d - 0.2);
     const plateEdge = (x: number, y: number, h: number, col: number) => { g.fillStyle(0x141618, 1).fillRect(x - 3, y - h / 2 - 1, 6, h + 2); g.fillStyle(col, 1).fillRect(x - 2, y - h / 2, 4, h); };
     const plateFace = (gg: Phaser.GameObjects.Graphics, x: number, y: number, r: number) => {
@@ -198,22 +213,22 @@ export class GarageScene extends RoomScene {
     };
     if (st.id === 'squat') {
       // facing us: the bar lies across the shoulders, plates edge-on at both ends
-      const hd = this.jointToScreen([(fr.pose.hF[0] + fr.pose.hB[0]) / 2, (fr.pose.hF[1] + fr.pose.hB[1]) / 2]);
-      const y = hd.y, x = this.player.x, half = 3.1 * RS; // the bar runs through the hands
+      const hd = b.joint([(fr.pose.hF[0] + fr.pose.hB[0]) / 2, (fr.pose.hF[1] + fr.pose.hB[1]) / 2]);
+      const y = hd.y, x = b.x, half = 3.1 * RS; // the bar runs through the hands
       g.fillStyle(0x6e767a, 1).fillRect(x - half, y - 2, half * 2, 4); g.fillStyle(0xc9cfd4, 1).fillRect(x - half, y - 2, half * 2, 1);
       for (const s of [-1, 1]) { plateEdge(x + s * (half - 14), y, 34, 0x2a2d31); plateEdge(x + s * (half - 7), y, 26, 0x3a6fb5); }
     } else if (st.id === 'bench') {
       // side view: the bar runs into the room through the hands; far plate behind you, near plate in front
-      const h = this.jointToScreen([(fr.pose.hF[0] + fr.pose.hB[0]) / 2, (fr.pose.hF[1] + fr.pose.hB[1]) / 2]);
+      const h = b.joint([(fr.pose.hF[0] + fr.pose.hB[0]) / 2, (fr.pose.hF[1] + fr.pose.hB[1]) / 2]);
       const off = 1.5 * 14; // the bar reaches 1.5 ft either side in depth (scene px)
-      const tilt = this.mini instanceof BenchGame ? this.mini.tilt * 9 : 0; // the bar tips: one end up, the other down
+      const tilt = mini instanceof BenchGame ? mini.tilt * 9 : 0; // the bar tips: one end up, the other down
       plateFace(gb, h.x, h.y - off - tilt, 12);
       g.lineStyle(4, 0x8e969a, 1).lineBetween(h.x, h.y - off - tilt, h.x, h.y + off + tilt);
       g.lineStyle(1, 0xc9cfd4, 1).lineBetween(h.x - 1, h.y - off - tilt, h.x - 1, h.y + off + tilt);
       plateFace(g, h.x, h.y + off + tilt, 12);
-    } else if (st.id === 'shoot') {
-      this.drawShot(st);
-    } else if (st.id === 'dribble') {
+    } else if (st.id === 'shoot' && mini instanceof ShootGame) {
+      this.drawShotFor(b, st, mini, ballG, user);
+    } else if (st.id === 'dribble' && user) {
       this.drawDribble(st);
     }
   }
@@ -294,18 +309,16 @@ export class GarageScene extends RoomScene {
    * meter, then arcs at the rim, a make drops through the net and bounces back out to you, a miss clanks off the front
    * of the rim, kicks out and rolls back.
    */
-  drawShot(st: Station) {
-    const c = app.career, sheet = sheetFor(this, this.sheetKey, c.height, c.appearance, this.kit);
-    const game = this.mini instanceof ShootGame ? this.mini : null;
-    if (!sheet || !game) return;
+  drawShotFor(bd: GearBody, st: Station, game: ShootGame, ballG: Phaser.GameObjects.Graphics, user: boolean) {
+    const sheet = bd.sheet;
     const cl = CLIP[st.clip], rel = cl.release ?? 0.6;
-    const flip = this.view?.flip ?? false;
+    const flip = bd.flip;
     const ballAt = (u: number) => {
       const fi = frameAt(cl, Math.min(1, u)), bo = sheet.ball[sheet.index[st.clip].start + fi] ?? [8, 60];
-      return { x: this.player.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: this.player.y - bo[1] * SPRITE_SCALE };
+      return { x: bd.x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, y: bd.y - bo[1] * SPRITE_SCALE };
     };
     const rim = garageRim(), Rl = ballAt(rel), H0 = ballAt(0), floor = rim.floorY - 8;
-    const hoopDepth = syOf(rim.depthFt) - 0.3, front = this.player.depth + 0.3;
+    const hoopDepth = syOf(rim.depthFt) - 0.3, front = bd.depth + 0.3;
     const arc = (a: { x: number; y: number }, b: { x: number; y: number }, s2: number, h: number) => ({ x: a.x + (b.x - a.x) * s2, y: a.y + (b.y - a.y) * s2 - 4 * h * s2 * (1 - s2) });
     const depth = front;
     // time since the release, on the mini-game's own clock (shotAt is a mini-game time, not the room's)
@@ -328,7 +341,7 @@ export class GarageScene extends RoomScene {
     };
     const pos = game.state !== 'shot' ? ballAt(game.animU(rel)) : flight(T);
     void hoopDepth;
-    const b = this.ballG.setDepth(depth), r = 7, { x, y } = pos;
+    const b = ballG.setDepth(depth), r = 7, { x, y } = pos;
     // floor shadow under the ball (on the line between you and the hoop)
     b.fillStyle(0x000000, 0.22).fillEllipse(x, syOf(st.at.y) + 1, 14, 5);
     // a short motion trail while it's in the air
@@ -343,8 +356,8 @@ export class GarageScene extends RoomScene {
       const swish = game.made && T > 0.85 ? Math.max(0, 1 - (T - 0.95) / 0.6) : 0;
       this.netShot = { depth: depth + 0.1, stretch: 9 * swish * Math.min(1, (T - 0.85) / 0.12), sway: 3 * swish * Math.sin(T * 26) };
     }
-    // call it when it gets there
-    this.shotText.setVisible(game.state === 'shot' && T > 0.85 && T < 1.9).setText(game.made ? 'BUCKET!' : 'MISS').setColor(game.made ? '#7dff9a' : '#ff7d7d').setPosition(rim.x + 10, rim.y - 26);
+    // call it when it gets there (yours only)
+    if (user) this.shotText.setVisible(game.state === 'shot' && T > 0.85 && T < 1.9).setText(game.made ? 'BUCKET!' : 'MISS').setColor(game.made ? '#7dff9a' : '#ff7d7d').setPosition(rim.x + 10, rim.y - 26);
     void RS;
   }
 

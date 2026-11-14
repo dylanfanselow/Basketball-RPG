@@ -223,6 +223,9 @@ export function shotConditions(p: Player, side: Side, type: string, now: number,
   return c;
 }
 
+/** Round 87 (owner): open layups are more accurate (×1.2 when the cone is open: ~70% → ~84% for an average finisher). */
+export const OPEN_LAYUP = 1.2;
+export const OPEN_LAYUP_TYPES = new Set(['layup', 'euro', 'stepThrough', 'alleyOopLayup']);
 /** The full shot equation. Every term is returned so the HUD can print it. */
 export function evaluateShot(shooter: Player, defenders: Player[], side: Side, type: string, ctx: ShotContext): ShotEval {
   const def = SHOT_TYPES[type];
@@ -261,6 +264,9 @@ export function evaluateShot(shooter: Player, defenders: Player[], side: Side, t
   const cinLabel = cin.length ? ` (${cin.map((t) => t.label).join(', ')})` : '';
   const noteLabel = con.notes.length ? ` (${con.notes.join(', ')})` : '';
   terms.push({ label: top ? `contest ${(contest * 100).toFixed(0)}%: ${top.name} ${top.dist.toFixed(1)}ft${cinLabel}${noteLabel}` : con.notes.length ? `contest 0%: ${con.notes.join(', ')}` : 'open', value: 1 - contest, kind: 'contest' });
+
+  // round 87 (owner): open layups should go in: nobody near you at the rim is a bonus on top of the open cone
+  if (OPEN_LAYUP_TYPES.has(type) && con.raw < 0.1) terms.push({ label: 'open layup', value: OPEN_LAYUP, kind: 'contest' });
 
   // round 48: finishing through a crowd, every real contester past the first makes it harder (and a dunk over a
   // crowd is a poster attempt, harder still). On screen like every other term.

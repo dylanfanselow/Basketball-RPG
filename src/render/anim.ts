@@ -490,6 +490,11 @@ export const CLIPS: Clip[] = [
     { t: 0, pose: P({ hF: [6, 112], eF: [5, 96], hB: [-4, 110], eB: [-3, 95] }) },
     { t: 0.5, pose: P({ hF: [10, 108], eF: [6, 95], hB: [-8, 107], eB: [-4, 94], hip: [0, 53], head: [1, 93], neck: [0, 84], sF: [2, 81], sB: [-2, 81], kF: [3, 29], kB: [-2, 29] }) },
     { t: 1, pose: P({ hF: [6, 112], eF: [5, 96], hB: [-4, 110], eB: [-3, 95] }) }] },
+  // round 87: a double-biceps flex (elbows out at the shoulders, fists up by the head; the spread shows when turned)
+  { name: 'flex', frames: 4, loop: true, keys: [
+    { t: 0, pose: P({ eF: [3, 79], eB: [-2, 79], hF: [4, 95], hB: [-2, 95], head: [1, 92], lat: { eF: 24, hF: 17, eB: -24, hB: -17 } }) },
+    { t: 0.5, pose: P({ eF: [3, 80], eB: [-2, 80], hF: [3, 92], hB: [-1, 92], head: [1, 91], hip: [0, 50], lat: { eF: 26, hF: 15, eB: -26, hB: -15 } }) },
+    { t: 1, pose: P({ eF: [3, 79], eB: [-2, 79], hF: [4, 95], hB: [-2, 95], head: [1, 92], lat: { eF: 24, hF: 17, eB: -24, hB: -17 } }) }] },
   { name: 'point', frames: 4, keys: [
     { t: 0, pose: BASE },
     { t: 0.5, pose: P({ hF: [20, 78], eF: [12, 76], head: [3, 91] }) },

@@ -110,18 +110,10 @@ function drawVertec(c: C) {
   }
 }
 
-/** The scouts' bench along the right side of the court (the scouts sit on it as sprites). */
-function drawScoutBench(c: C) {
-  for (let fy = 9; fy <= 21; fy += 0.05) {
-    const x = Math.round(AX(wallR(fy) - 1.8)), y = Math.round(AY(fy));
-    R(c, x - 2, y - 14, 18, 3, '#1d2b5a'); R(c, x - 2, y - 11, 18, 9, '#141c3a'); R(c, x, y - 2, 2, 2, '#0c0f16'); R(c, x + 12, y - 2, 2, 2, '#0c0f16');
-  }
-}
-
 export function drawArenaGymBackground(col: string): HTMLCanvasElement {
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
-  drawCeiling(c, col); drawStandsAndWalls(c, col); drawFloor(c, col); drawVertec(c); drawScoutBench(c);
+  drawCeiling(c, col); drawStandsAndWalls(c, col); drawFloor(c, col); drawVertec(c); // round 87: the scouts bring their own chairs (ScoutRow)
   // dark edges where the room's posts would be
   R(c, POST_L[0] - 4, WALL_TOP, POST_L[1] - POST_L[0] + 4, ART_H - WALL_TOP, '#0b0e18');
   return cv;

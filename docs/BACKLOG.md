@@ -100,6 +100,10 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 87 follow-ups:** the in-game scrimmage scouts (GameScene benches) are still the front-view celeb drawing;
+  #2's jump uses the jumper's release pose in the air (no dedicated leap); prospects walk between stations side-on;
+  the snake reveal for #1 is only in his scrimmage lines so far (owner: "he's really a snake", more story later);
+  check that the open-layup bonus doesn't make drives too easy in 5v5.
 - **Round 86 follow-ups:** ask how the harder tests feel (the narrowing green, 2.5 s jump, ramping squat / bench) and
   whether the `COMBINE_RANGE` grades fit; draft value weights (combine 50, scrimmage 25, nationals 17, big game 8,
   stats ±8) are first guesses; prospects in the room are side-view loops (no angled frames, no walking between

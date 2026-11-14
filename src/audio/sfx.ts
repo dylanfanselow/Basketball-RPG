@@ -445,6 +445,13 @@ class Sfx {
     // bright "yeah" layer
     this.noiseHit({ type: 'bandpass', f: 1800, q: 0.8, peak: 0.25 * intensity, a: 0.2, d: 1.0 + intensity, dest: this.crowdBus });
   }
+  /** Round 87: a room full of people catching their breath at once (the scouts at #2's jump), then an "ohh". */
+  gasp() {
+    if (!this.ok()) return;
+    this.noiseHit({ type: 'bandpass', f: 700, f2: 1700, q: 1.4, peak: 0.32, a: 0.06, d: 0.45 });
+    this.noiseHit({ type: 'bandpass', f: 520, f2: 380, q: 2.2, peak: 0.22, a: 0.18, d: 1.0, at: 0.4 });
+    this.tone({ type: 'triangle', f: 330, f2: 250, peak: 0.05, a: 0.15, d: 0.9, at: 0.42 });
+  }
   groan() {
     if (!this.ok() || this.crowdSize < 0.5) return;
     this.noiseHit({ type: 'bandpass', f: 520, f2: 260, q: 1.5, peak: 0.25, a: 0.25, d: 1.0, dest: this.crowdBus });

@@ -32,14 +32,20 @@ describe('round 86: the draft class', () => {
       expect(draftClass(career(seed).story, 'SG')).toEqual(k);
     }
   });
-  it('the projected top two play the positions you don\'t', () => {
-    for (let seed = 1; seed < 20; seed++) {
-      const g = draftClass(career(seed).story, 'PG').slice(0, 2).map((p) => p.pos);
-      expect(g.some(F) && g.includes('C')).toBe(true);
-      const f = draftClass(career(seed).story, 'SF').slice(0, 2).map((p) => p.pos);
-      expect(f.some(G) && f.includes('C')).toBe(true);
-      const c = draftClass(career(seed).story, 'C').slice(0, 2).map((p) => p.pos);
-      expect(c.some(G) && c.some(F)).toBe(true);
+  it('the projected top two play the positions you don\'t: #1 the smaller (SG / SF), #2 the biggest (C, PF for a center), tall', () => {
+    const pair = (pos: Position) => draftClass(career(3).story, pos).filter((p) => p.proj <= 2).sort((a, b) => a.proj - b.proj);
+    expect(pair('PG').map((p) => p.pos)).toEqual(['SF', 'C']);
+    expect(pair('SG').map((p) => p.pos)).toEqual(['SF', 'C']);
+    expect(pair('SF').map((p) => p.pos)).toEqual(['SG', 'C']);
+    expect(pair('PF').map((p) => p.pos)).toEqual(['SG', 'C']);
+    expect(pair('C').map((p) => p.pos)).toEqual(['SG', 'PF']);
+    expect(pair('PG')[1].heightIn).toBe(87);
+  });
+  it('round 87: #1\'s boost is in shooting, finishing, playmaking; #2\'s in mobility and strength', () => {
+    for (let seed = 1; seed < 15; seed++) {
+      const [a, b] = draftClass(career(seed).story, 'PG').filter((p) => p.proj <= 2).sort((x, y) => x.proj - y.proj);
+      expect(Math.max(b.core.mobility, b.core.strength)).toBeGreaterThan(Math.max(b.core.shooting, b.core.playmaking));
+      expect(Math.max(a.core.shooting, a.core.playmaking)).toBeGreaterThan(a.core.strength);
     }
   });
   it('your slot comes mostly from how you played: the combine, the scrimmage, nationals (won, MVP), the big game', () => {

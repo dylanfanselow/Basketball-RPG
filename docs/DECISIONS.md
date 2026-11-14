@@ -188,6 +188,24 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 87 (owner): the top two get a story; the combine room comes alive.**
+  - **Scouts fully side-on**, in folding chairs facing the court (left), drawn like players (their own sheets, the sit
+    clip); one more stands on the left with a clipboard facing right. No three-quarter heads.
+  - **The other prospects do the tests you aren't doing**, for real: each runs that station's mini-game with a bot (the
+    squat rack, the bench, the jump pole, the shooting mark, laps), bar and ball drawn like yours. When you start a
+    test, whoever is on it walks to the station you left.
+  - **The top two (positions refined):** #1 is the smaller one, **a SG or a SF**; #2 the **biggest position allowed**
+    (a C; a PF when you're the center) and **tall** (his position's top height). You a guard: SF + C; a forward: SG + C;
+    a center: SG + PF. **#1's boost is in shooting, finishing, playmaking; #2's in mobility and strength** (each also
+    leans his spread that way). #1 and #2 always project first and second.
+  - **Combine day 1, after your tests** (owner's pick): #2 goes up at the jump pole higher than anyone (about six feet
+    off the floor), lands and **flexes**; a **gasp**, and **the scouts stand up**. You walk over to #1: "Who is that?"
+    He names #2 (an athletic freak, projected second), and when you ask about him: "You haven't heard about me?
+    ... First overall." He seems nice. He's a snake.
+  - **The scrimmage: #1 on your team, #2 on the other** (their real class stats, heights and faces). **#2 talks like a
+    roid rager** (caps, on his buckets, blocks, steals, and when you score on him). **#1 is nice while you're level or
+    ahead; once you're down his lines turn two-sided, in italics.**
+  - **Open layups are more accurate** (x1.2 when the cone is open: an average finisher goes from about 70% to 84%).
 - **Round 86 (owner): the draft class, harder tests, event days.**
   - **One net** at the hoop (the garage and the arena gym): a second net used to appear on every shot.
   - **The draft class**: 60 prospects; the average drafted player has **281** points over the five core stats, spread

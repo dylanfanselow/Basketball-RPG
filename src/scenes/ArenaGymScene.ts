@@ -1,27 +1,21 @@
 import Phaser from 'phaser';
 import { GarageScene } from './GarageScene';
-import { RoomDef, Station, sxOf, syOf } from '../world/apartment';
+import { RoomDef, Station } from '../world/apartment';
 import { ARENA_GYM, lapPoint, LAP_LEN, LAPS } from '../world/arenaGym';
 import { buildArenaGymArt } from '../render/arenaGymArt';
 import { TreadmillGame, JumpGame, ShootGame, GauntletGame, makeMiniGame } from '../world/minigames';
 import { drainEnergy } from '../career/career';
 import { AgentTalk } from './agentTalk';
-import { scoutTexture } from './castSprites';
 import { storyScene } from './setup';
 import { app } from '../state';
 import { FONT } from './ui';
 import { TEAMS } from '../sim/data';
 import { BoxSpeaker } from '../render/storyBox';
-import { SPRITE_SCALE } from '../render/sprites';
 import { combinePlan, TIER_PITCH, classOf } from '../career/draft';
-import { randomAppearance, Appearance } from '../render/appearance';
-import { casualKit } from './RoomScene';
-import { sheetFor, playerSheetKey } from '../render/playerBank';
-import { Kit, CX, FOOT_Y, FRAME_W, FRAME_H } from '../render/sprites';
-import { CLIP, frameAt } from '../render/anim';
-import type { V } from '../world/apartment';
-/** Round 86: how far the scouts' heads turn toward the court (three-quarter). */
-const SCOUT_TURN = 0.7;
+import { fmtHeight } from '../career/career';
+import { CombineCrew, ScoutRow } from './combineCrew';
+import { sfx } from '../audio/sfx';
+import { JUMP_SPOT } from '../world/arenaGym';
 import type { CombineTest } from '../career/career';
 import { MusicTrack } from '../audio/sfx';
 
@@ -55,7 +49,7 @@ export class ArenaGymScene extends GarageScene {
 
   init(data?: { at?: string; story?: 'agent' | 'montage'; test?: 'combine' | 'gauntlet' | 'shooting'; day?: 1 | 2 }) {
     super.init({});
-    this.kind = data?.test ?? 'combine'; this.day = data?.day ?? 1; this.run = null;
+    this.kind = data?.test ?? 'combine'; this.day = data?.day ?? 1; this.run = null; this.beat = null; this.gasped = false; this.crew = null; this.scouts = null;
   }
   room(): RoomDef { return ARENA_GYM; }
   music(): MusicTrack | null { return null; }
@@ -71,15 +65,9 @@ export class ArenaGymScene extends GarageScene {
     const g = this.add.graphics().setDepth(40);
     g.fillStyle(Phaser.Display.Color.HexStringToColor(col).color, 0.95).fillRect(360, 112, 560, 46).lineStyle(3, 0xffffff, 0.9).strokeRect(360, 112, 560, 46);
     this.add.text(640, 135, team ? `${team.city.toUpperCase()} ${team.name.toUpperCase()}  ·  TRYOUT` : `PRO PROSPECT COMBINE  ·  DAY ${this.day}`, { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(41);
-    const scoutCol = team ? col : '#3a3f52';
-    // round 86 (owner): the scouts watch the court, not the camera: the bench on the right looks left (flipped), the one
-    // standing on the left looks right
-    for (let i = 0; i < 6; i++) {
-      const fy = 10 + i * 2.1, fx = 34.2 + 0.39 * fy + 0.6; // on the bench along the right side
-      this.add.sprite(sxOf(fx), syOf(fy), scoutTexture(this, i, scoutCol, true, SCOUT_TURN), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.9).setDepth(syOf(fy)).setFlipX(true);
-    }
-    this.add.sprite(sxOf(12.5), syOf(1.6), scoutTexture(this, 7, scoutCol, false, SCOUT_TURN), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setDepth(syOf(1.6));
-    this.addProspects();
+    // round 87 (owner): the scouts side-on in chairs facing the court, drawn like players (they stand up for #2's jump)
+    this.scouts = new ScoutRow(this, team ? col : '#3a3f52');
+    this.crew = null;
     this.startRun();
   }
 
@@ -91,6 +79,8 @@ export class ArenaGymScene extends GarageScene {
     const tests: GymTest[] = this.kind === 'combine' ? (this.day === 1 ? plan.day1 : plan.day2) : this.kind === 'gauntlet' ? ['gauntlet'] : ['shoot'];
     const timer = this.add.text(640, 190, '', { fontFamily: FONT, fontSize: '24px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9400);
     this.run = { tests, i: 0, endsAt: 0, on: false, scores: [], lapD: 0, timer };
+    // round 87 (owner): the other prospects (the projected top two and two more) on the tests you aren't doing
+    if (this.kind === 'combine') { const k = classOf(c); this.crew = new CombineCrew(this, [k[0], k[1], k[7], k[15]], ['sprint', 'squat', 'bench', 'jump', 'shoot'], tests[0] as CombineTest); }
     const intro = this.kind === 'combine'
       ? [this.scout(this.day === 1 ? `Welcome to the combine. Height ${Math.floor(c.height)}'${Math.round((c.height % 1) * 12)}". Wingspan checks out.` : 'Day two. Same deal: give us everything.'),
          this.scout(`Today: ${tests.map((t) => LABEL[t].toLowerCase()).join(', ')}.`)]
@@ -107,6 +97,7 @@ export class ArenaGymScene extends GarageScene {
   }
   private beginTest(test: GymTest) {
     const r = this.run!;
+    if (test !== 'gauntlet') this.crew?.userOn(test, r.i > 0 ? r.tests[r.i - 1] as CombineTest : null);
     this.agent = null; this.busy = false;
     const station = (id: string) => ({ ...ARENA_GYM.stations!.find((s) => s.id === id)! });
     if (test === 'sprint') {
@@ -123,57 +114,82 @@ export class ArenaGymScene extends GarageScene {
     r.on = true;
   }
 
+  scouts: ScoutRow | null = null;
+  crew: CombineCrew | null = null;
   onUpdate(dt = 1 / 60) {
     super.onUpdate(dt);
     this.stepRun(dt);
-    this.stepProspects();
+    this.scouts?.update(this.t);
+    if (this.crew) {
+      this.crew.update(dt, this.t);
+      // the rack and the bench show their bar off the hooks while anyone's on them; a prospect's shot moves the net too
+      (this.piece('squatRack') as Phaser.GameObjects.Sprite | undefined)?.setFrame(this.activity?.id === 'squat' || this.crew.using('squat') ? 1 : 0);
+      (this.piece('bench') as Phaser.GameObjects.Sprite | undefined)?.setFrame(this.activity?.id === 'bench' || this.crew.using('bench') ? 1 : 0);
+      this.drawNet();
+    }
+    this.stepBeat(dt);
   }
 
   /**
-   * Round 86 (owner): other prospects in the room at the combine, working on their own stuff while you test: the
-   * projected top two and two more from the class. Real player sheets (drawn in the workers, hidden until ready), side
-   * view loops: laps, a pound dribble on the mat, bodyweight squats, waiting by the vertical-jump pole. Cosmetic only.
+   * Round 87 (owner): the end of combine day 1, after your tests: #2 (the athletic freak) goes up at the jump pole
+   * higher than anybody's ever seen, lands and flexes; the scouts gasp and stand up. You walk over to #1 and ask what's
+   * going on; he tells you who that is (projected second), and who he is (first overall).
    */
-  private crew: { spr: Phaser.GameObjects.Sprite; tag: Phaser.GameObjects.Text; key: string; look: Appearance; heightFt: number; kit: Kit; clip: string; period: number; at: V | null; lap: number; flip: boolean }[] = [];
-  private crewBall: Phaser.GameObjects.Graphics | null = null;
-  private addProspects() {
-    this.crew = [];
-    if (this.kind !== 'combine') return;
-    const cls = classOf(app.career), who = [cls[0], cls[1], cls[7], cls[15]];
-    const jobs: { clip: string; period: number; at: V | null; lap: number; flip: boolean }[] = [
-      { clip: 'jog', period: 0.62, at: null, lap: LAP_LEN * 0.55, flip: false },
-      { clip: 'dribble', period: 0.5, at: { x: 14.6, y: 10.0 }, lap: 0, flip: false },
-      { clip: 'squat', period: 2.2, at: { x: 26.2, y: 10.8 }, lap: 0, flip: true },
-      { clip: 'idle', period: 2.4, at: { x: 32.4, y: 15.2 }, lap: 0, flip: true },
-    ];
-    this.crewBall = this.add.graphics();
-    who.forEach((p, i) => {
-      let seed = p.look || 1;
-      const look = randomAppearance(() => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; });
-      Object.assign(look, { shirt: '#8d939e', pants: '#1d2b5a', longPants: false });
-      const kit = casualKit(look, '#1d2b5a'), heightFt = p.heightIn / 12, key = playerSheetKey(`prospect_${p.id}_${p.look}`, look, heightFt, kit);
-      const spr = this.add.sprite(0, 0, '__DEFAULT').setOrigin(CX / FRAME_W, FOOT_Y / FRAME_H).setScale(SPRITE_SCALE).setTint(0xfff0dc).setVisible(false);
-      const [first, ...rest] = p.name.split(' ');
-      const tag = this.add.text(0, 0, `${first[0]}. ${rest.join(' ')}${p.proj <= 2 ? `  ·  #${p.proj} proj.` : ''}`, { fontFamily: FONT, fontSize: '10px', color: p.proj <= 2 ? '#ffe9a8' : '#d8e0ee', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setVisible(false);
-      this.crew.push({ spr, tag, key, look, heightFt, kit, ...jobs[i] });
-    });
+  private beat: { phase: 'walk' | 'load' | 'air' | 'flex' | 'talk'; t: number } | null = null;
+  private startBeat() {
+    const crew = this.crew!, two = crew.mateOf('P2')!, one = crew.mateOf('P1')!;
+    this.busy = true;
+    // whoever's at the jump pole moves off; #2 walks over to it; #1 stops what he's doing
+    const atJump = crew.mates.find((m) => m !== two && (m.test === 'jump' || m.to === 'jump'));
+    if (atJump) crew.sendTo(atJump, two.test ?? two.to);
+    if (two.test !== 'jump') crew.sendTo(two, 'jump');
+    crew.sendTo(one, null); one.face = { ...JUMP_SPOT };
+    this.beat = { phase: 'walk', t: 0 };
   }
-  private stepProspects() {
-    const b = this.crewBall?.clear();
-    for (const m of this.crew) {
-      const sheet = sheetFor(this, m.key, m.heightFt, m.look, m.kit);
-      if (!sheet || !sheet.index[m.clip]) { m.spr.setVisible(false); m.tag.setVisible(false); continue; }
-      let at = m.at, flip = m.flip;
-      if (!at) { const { p, dir } = lapPoint(m.lap + this.t * 4.6); at = p; flip = Math.abs(dir.x) > 0.5 ? dir.x < 0 : flip; if (Math.abs(dir.x) > 0.5) m.flip = flip; }
-      const cl = CLIP[m.clip], u = (this.t / m.period) % 1, fi = sheet.index[m.clip].start + frameAt(cl, u);
-      const x = sxOf(at.x), y = syOf(at.y);
-      if (m.spr.texture.key !== m.key) m.spr.setTexture(m.key, fi); else m.spr.setFrame(fi);
-      m.spr.setPosition(x, y).setFlipX(flip).setDepth(y).setVisible(true);
-      m.tag.setPosition(x, y + 4).setDepth(9000).setVisible(true); // readable over the floor's mats
-      // the dribbler's ball (where the sheet says it is this frame)
-      const bo = m.clip === 'dribble' ? sheet.ball[fi] : null;
-      if (b && bo) { const bx = x + (flip ? -bo[0] : bo[0]) * SPRITE_SCALE, by = Math.min(y - 6, y - bo[1] * SPRITE_SCALE); b.setDepth(y + 0.2); b.fillStyle(0x5a2410, 1).fillCircle(bx, by, 7); b.fillStyle(0xe0702e, 1).fillCircle(bx, by, 6); }
+  private stepBeat(dt: number) {
+    const b = this.beat; if (!b) return;
+    const crew = this.crew!, two = crew.mateOf('P2')!, one = crew.mateOf('P1')!;
+    b.t += dt;
+    const go = (phase: typeof b.phase) => { b.phase = phase; b.t = 0; };
+    if (b.phase === 'walk') { if (two.test === 'jump' || b.t > 6) { crew.sendTo(two, null); two.pos = { ...JUMP_SPOT }; go('load'); } return; }
+    if (b.phase === 'load') { two.pose = { clip: 'squat', u: 0.25 + 0.2 * Math.min(1, b.t / 1.1), jumpFt: 0, yaw: 90, flip: false }; if (b.t >= 1.2) { sfx.effort(); go('air'); } return; }
+    if (b.phase === 'air') {
+      const AIR = 1.5, H = 6.2; // way past anybody's vertical
+      const k = Math.min(1, b.t / AIR);
+      two.pose = { clip: 'shot_jumper', u: 0.62, jumpFt: H * Math.sin(Math.PI * k), yaw: 90, flip: false };
+      if (k > 0.45 && !this.gasped) { this.gasped = true; sfx.gasp(); this.scouts?.standUp(true); }
+      if (k >= 1) { sfx.bounce(14); go('flex'); }
+      return;
     }
+    if (b.phase === 'flex') {
+      two.pose = { clip: 'flex', u: (b.t * 0.8) % 1, jumpFt: 0, yaw: 90, flip: false };
+      if (b.t >= 1.6) { go('talk'); this.beatTalk(one, two); }
+    }
+  }
+  private gasped = false;
+  private beatTalk(one: NonNullable<ReturnType<CombineCrew['mateOf']>>, two: NonNullable<ReturnType<CombineCrew['mateOf']>>) {
+    const c = app.career, you = c.firstName || c.name.split(' ')[0];
+    const n1 = one.p.name, n2 = two.p.name, first1 = n1.split(' ')[0];
+    const me = (text: string) => ({ say: { who: 'me' as BoxSpeaker, name: you, text } });
+    const him = (text: string) => ({ say: { who: 'mate' as BoxSpeaker, name: first1, text } });
+    const big = two.p.pos === 'C' ? 'a center' : 'a four';
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
+      this.scout('Did... somebody check the vanes? He cleared the top one.'),
+      { run: () => { two.pose = { clip: 'idle', u: 0, jumpFt: 0, yaw: 0, flip: true }; } },
+      { say: { who: 'you' as BoxSpeaker, text: 'What was THAT?' } },
+      { youTo: { x: one.pos.x + (one.pos.x > 24 ? -1.6 : 1.6), y: one.pos.y + 0.4 } },
+      { run: () => { one.face = { ...this.pos }; } },
+      me('Yo. What\'s going on? Who is that?'),
+      him(`That's ${n2}. ${fmtHeight(two.p.heightIn)}, ${big}, and he moves like a guard. Athletic freak.`),
+      him('Projected second overall. Every time he does that, the scouts lose their minds.'),
+      me('Second? So where do they have you?'),
+      him('You haven\'t heard about me?'),
+      him(`${n1}. First overall.`),
+      him(`Relax, ${you}. I'm messing with you. Kind of. Good luck at the scrimmage, man. Hope we're on the same team.`),
+      { run: () => { this.scouts?.standUp(false); two.pose = null; one.face = null; } },
+      this.scout('All right, settle down. That\'s it for today. We\'ll be in touch.'),
+      { run: () => this.finish() },
+    ], { phone: true });
   }
 
   /** Per frame while a test is on: the laps, the timer, the end of the test. */
@@ -197,15 +213,18 @@ export class ArenaGymScene extends GarageScene {
     if (!done) return;
     r.on = false; r.scores.push(score);
     this.stopActivity();
+    this.drawPlayer(0); // round 87: off the machine and standing (the room doesn't redraw you while a scout talks)
     const perf = m instanceof ShootGame ? m.perfects : 0;
     if (test === 'sprint') this.pos = { ...LAPS[0] };
     r.timer.setText('');
     r.i++;
     const more = r.i < r.tests.length;
     this.busy = true;
+    this.crew?.userOn(null, test as CombineTest); // a prospect can take the station you just left
+    const beat = !more && this.kind === 'combine' && this.day === 1 && !!this.crew; // round 87: #2's jump
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
-      this.scout(`${LABEL[test]}: ${score} ${UNIT[test]}${test === 'shoot' ? ` (${perf} perfect${perf === 1 ? '' : 's'})` : ''}. ${more ? 'Next.' : 'That\'s it for today. We\'ll be in touch.'}`),
-      { run: () => (more ? this.nextTest() : this.finish()) },
+      this.scout(`${LABEL[test]}: ${score} ${UNIT[test]}${test === 'shoot' ? ` (${perf} perfect${perf === 1 ? '' : 's'})` : ''}. ${more ? 'Next.' : beat ? 'Good work today.' : 'That\'s it for today. We\'ll be in touch.'}`),
+      { run: () => (more ? this.nextTest() : beat ? this.startBeat() : this.finish()) },
     ], { phone: true });
   }
   /** The score so far: laps to a tenth, reps, inches (best jump), makes. */

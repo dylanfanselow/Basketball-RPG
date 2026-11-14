@@ -261,6 +261,12 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 87: `scenes/roomActor.ts` (`RoomActor`: any player-sheet figure in a room, angled frames), `scenes/combineCrew.ts`
+  (`CombineCrew`: prospects on the stations with mini-game bots, walking between them; `ScoutRow`: seated side-on scouts
+  with chairs, `standUp`), GarageScene `GearBody` / `drawGearFor` / `drawShotFor` (gear for anybody), ArenaGym beat
+  (`startBeat` / `stepBeat` / `beatTalk`), `draftClass` `topTwoPositions(you)`, `TOP_SIGNATURE` / `signature`, `topTwo`,
+  `prospectLook`; `draftGames` `prospectPlayer`, `TOP1_ID` / `TOP2_ID`; StoryRun `scrimmageTalk`, `TOP1_TALK` /
+  `TOP2_TALK`, `talk(lines, force, who, italic)`; anim `flex`; `sfx.gasp`; `shooting.OPEN_LAYUP`.
   Round 86: `career/draftClass.ts` (`draftClass`, `storyRng` moved here, `topTwoPositions`, `spreadStats`, 281 mean,
   binomial totals, `TOP_BOOST`), `career/names.ts` (shared with the builder); `draft.ts` `perfParts` / `performance` /
   `statNudge` / `yourDraftValue` / `projectedPick` (Garcia's estimate), `topTwoLine`, `tryoutGrade`, `draftOrder`,

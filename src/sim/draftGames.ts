@@ -12,20 +12,34 @@ import { Rng } from './math';
 import { generateRoster } from '../career/roster';
 import { CareerState, careerPlayer } from '../career/career';
 import { extraPlayer } from './story';
+import { AI_PERKS } from '../career/roster';
+import { topTwo, prospectLook, Prospect } from '../career/draftClass';
 
 /** The combine's colors (navy + silver) and the scrimmage's two sides. */
 export const COMBINE: TeamDef = { id: 'CMB', city: 'Draft', name: 'Prospects', colors: ['#1d2b5a', '#c0c6cf'], seed: 8401 };
 export const PROSPECTS_W: TeamDef = { id: 'PRW', city: 'Team', name: 'White', colors: ['#2a2f3a', '#ffffff'], seed: 8402 };
 export const PROSPECTS_B: TeamDef = { id: 'PRB', city: 'Team', name: 'Blue', colors: ['#1f4fa0', '#e8eefc'], seed: 8403 };
 
-/** The draft scrimmage: you + four prospects vs five prospects (~56), two 4-minute halves, the scouts watching. */
+/** Round 87: the projected top two in the scrimmage (#1 with you, #2 against you). */
+export const TOP1_ID = 'TOP1', TOP2_ID = 'TOP2';
+/** A prospect from the class as a player (his stats, height and face). */
+export function prospectPlayer(p: Prospect, id: string, team: 0 | 1, number: number): Player {
+  return new Player({ id, name: p.name, team, pos: p.pos, core: { ...p.core }, nodes: AI_PERKS[p.pos], number, skin: prospectLook(p).skin, height: p.heightIn / 12, appearance: prospectLook(p) });
+}
+
+/**
+ * The draft scrimmage: you + four prospects vs five prospects (~56), two 4-minute halves, the scouts watching. Round
+ * 87 (owner): the projected #1 plays with you and #2 against you (their real stats from the class).
+ */
 export function buildDraftScrimmage(c: CareerState, seed: number): GameSim {
   const rng = new Rng(seed ^ 0x5c41);
   const me = careerPlayer(c, 0);
   me.star = true;
+  const { first, second } = topTwo(c.story, c.pos);
+  const one = prospectPlayer(first, TOP1_ID, 0, 1), two = prospectPlayer(second, TOP2_ID, 1, 0);
   const order: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const mine = [me, ...order.filter((p) => p !== c.pos).map((pos, i) => extraPlayer(`PRW-${i}`, 0, pos, rng, 56))];
-  const theirs = order.map((pos, i) => extraPlayer(`PRB-${i}`, 1, pos, rng, 56));
+  const mine = [me, one, ...order.filter((p) => p !== c.pos && p !== first.pos).map((pos, i) => extraPlayer(`PRW-${i}`, 0, pos, rng, 56))];
+  const theirs = [...order.filter((p) => p !== second.pos).map((pos, i) => extraPlayer(`PRB-${i}`, 1, pos, rng, 56)), two];
   return new GameSim({
     mode: 'game', quarterLen: 240, periods: 2, seed,
     teams: [PROSPECTS_W, PROSPECTS_B], rosters: [mine, theirs], userId: me.id,
