@@ -100,6 +100,9 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 89 follow-ups:** scoring went up with the open-look rule (scoring report team PPG 150-155 vs 130-138; the
+  owner's round 47 band is 114-123): ask whether to pull it back (`OPEN_LOOK.chance` / `room` / the pct floors) or
+  tighten defense. Over-and-back on a tipped inbound / jump ball isn't modelled beyond "defense touched it last".
 - **Round 88 follow-ups:** tune Dragić's hog rate (60% of touches) and both iso rates with the owner; the loading
   screen only covers games (rooms load fast); film study still "coming soon"; the draft board shows teams, not a mock
   draft.

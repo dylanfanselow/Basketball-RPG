@@ -188,6 +188,18 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 89 (owner): open looks get shot; backcourt violations.**
+  - **An AI that catches it with nobody near his cone shoots it**: on the catch (before a dribble), nobody in the
+    cone and nobody within 6 ft, a jumper he can make (three 36%+, mid 42%+): 90%. It reads before the pump-fake /
+    attack read and before the play's "the ball goes somewhere else" pass (which now waits 0.2 s). Wide-open 42%+ looks
+    went from shot about a third of the time to about 65-80%. Side effect (measured): same FG% (44%), more shots and
+    points (the scoring report's team PPG 130-138 → 150-155, above the 114-123 band from round 47): to tune with the
+    owner.
+  - **Backcourt violation** (full-court games): once the ball has frontcourt status (the ball and its holder a foot
+    over), the offense can't bring it back: dribbling back over (wholly past the line by 0.4 ft) or catching a pass in
+    the backcourt is a turnover. A shot / rebound or a ball the defense touched last gives it a fresh status (grab it
+    in the backcourt, bring it back across). **The AI never passes it back** (no backcourt targets, passes refused) and
+    **never steps back over** with the ball; you can, and it's called.
 - **Round 88 (owner): Dragić and Jagadeesh.**
   - **#1 is Drako Dragić, #2 is Chinmaya Jagadeesh.** Looks: Dragić skin color 1, a black headband, one black arm
     sleeve, one black leg sleeve, high black socks; Jagadeesh skin color 4, an afro, goggles, no sleeves, purple

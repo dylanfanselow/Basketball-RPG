@@ -2,7 +2,7 @@ import { assignGuards, threatWeight, scorerRep, Heat, newHeat, afterShot, tierCa
 import { TeamDef, SHOT_TYPES, MOVES, PLAYS } from './data';
 import { Player } from './player';
 import { rmap } from './attributes';
-import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W } from './court';
+import { Side, rimPos, hc, spot, clampToCourt, inFrontcourt, isThree, RESTRICTED_R, COURT_W, MID_X } from './court';
 import { Vec, v, add, sub, scale, norm, len, dist, dot, lerpV, clamp, clamp01, Rng, cross, perp } from './math';
 import { GREEN_CONTEST, SHOOT_TUNE, coneHalf, contestReach, ShotEval, evaluateShot, selectShotType, formatEquation, bitOnFake, isStepThrough, stepStride, fakeClipFor, FAKE_NAMES, computeContest, windmillGather, WINDMILL_BLOCK, JELLY_HANG, crowdAt, windupFor } from './shooting';
 import { pickDunk, pickOopDunk, canOopDunk, DUNK } from './dunks';
@@ -49,6 +49,10 @@ export const FADE_DRIFT = 4;
 export const OOP_CATCH_Z = 10.2, OOP_ARC = 5, OOP_RANGE = 35, OOP_RANGE_LOBCITY = 50, OOP_SPOT_R = 4;
 /** With the ball the sprint burst gives this share of its gain. */
 export const BALL_BURST = 0.5;
+/** Round 89: how far past the half-court line counts as the backcourt (ft). */
+export const BACKCOURT_MARGIN = 0.4;
+/** Round 89: how far into the frontcourt counts as across (ft). */
+export const CROSS_IN = 1.0;
 /** 8-second rule (full-court games): time to get the ball past half court. */
 export const BACKCOURT_S = 8;
 export const DIVE_S = 0.9, DIVE_LAUNCH_S = 0.3, DIVE_SPEED = 17, DIVE_BALL_Z = 3;
@@ -675,6 +679,7 @@ export class GameSim {
     const side = this.side(team);
     const pg = this.byRole(team, '1') ?? this.teams[team].onCourt[0];
     pg.p = hc(side, 80, 4);
+    this.crossed = !this.inBackcourt(team, pg.p, -CROSS_IN); this.backcourtT = 0; // round 89: a fresh possession
     this.giveBall(pg);
     this.live = true;
     this.pendingInbound = null;
@@ -852,7 +857,12 @@ export class GameSim {
   /** Inbounders (and players just stepping back in) may stand out of bounds. */
   clampFor(p: Player, pos: Vec): Vec {
     if (this.inb?.inbounder === p || this.time < p.allowOobUntil) return v(clamp(pos.x, -8, 102), clamp(pos.y, -5, 55));
-    return clampToCourt(pos);
+    const q = clampToCourt(pos);
+    // round 89: an AI with the ball never steps back over half court once it's been across (a backcourt violation)
+    if (this.live && !this.inb && !p.isUser && this.fullCourt && this.crossed && p.team === this.possession && this.holder() === p) {
+      q.x = this.side(p.team) === 1 ? Math.max(q.x, MID_X + 1) : Math.min(q.x, MID_X - 1);
+    }
+    return q;
   }
 
   inTransition(team: 0 | 1) { return this.possession === team && this.time < this.transitionUntil && !this.runner.playId; }
@@ -873,7 +883,7 @@ export class GameSim {
     if (!this.fullCourt) return;
     const off = this.possession, def = (1 - off) as 0 | 1;
     this.backcourtT = 0;
-    this.crossed = inFrontcourt(this.side(off), this.ball.p);
+    this.crossed = this.acrossNow(off);
     this.pressEndsAt = -1;
     this.pressing = [false, false];
     if (this.crossed) return;
@@ -928,7 +938,9 @@ export class GameSim {
     const off = this.possession, st = this.ball.st;
     const controlled = (st.kind === 'held' && st.holder.team === off) || (st.kind === 'pass' && st.from.team === off);
     if (!this.crossed && controlled) {
-      if (inFrontcourt(this.side(off), this.ball.p)) { this.crossed = true; this.pressEndsAt = this.time + 2; }
+      // round 89: across = the ball and, with it held, the holder himself a foot over the line (the dribble rides ahead of
+      // him, so the ball alone poking over isn't enough)
+      if (this.acrossNow(off)) { this.crossed = true; this.pressEndsAt = this.time + 2; }
       else {
         this.backcourtT += dt;
         if (this.backcourtT > BACKCOURT_S && st.kind === 'held') {
@@ -942,9 +954,25 @@ export class GameSim {
         }
       }
     }
+    // round 89 (owner): backcourt violation: once the ball has been across, the offense can't bring it back (dribble it
+    // back over half court or catch a pass in the backcourt). Rebounds and balls the defense touched last reset it.
+    if (this.crossed && st.kind === 'held' && st.holder.team === off && st.holder.state !== 'shoot' && this.inBackcourt(off, st.holder.p)) {
+      const h = st.holder; h.box.tov++;
+      this.emit({ kind: 'violation', text: 'Backcourt violation', team: off, pid: h.id });
+      if (h === this.user) applyTrust(this.trust, 'turnover');
+      this.rhythmLoss(h, 'turnover');
+      this.deadBall((1 - off) as 0 | 1);
+      return true;
+    }
     if (this.pressEndsAt > 0 && this.time > this.pressEndsAt) { this.pressing = [false, false]; this.pressEndsAt = -1; }
     return false;
   }
+  /** Round 89: is the ball (and whoever holds it) a foot into the frontcourt right now? */
+  acrossNow(off: 0 | 1) { const st = this.ball.st, over = (q: Vec) => !this.inBackcourt(off, q, -CROSS_IN); return over(this.ball.p) && (st.kind !== 'held' || over(st.holder.p)); }
+  /** Round 89: wholly in the backcourt (a little past the line, so a foot on it doesn't count). */
+  inBackcourt(team: 0 | 1, q: Vec, margin = BACKCOURT_MARGIN) { return this.side(team) === 1 ? q.x < MID_X - margin : q.x > MID_X + margin; }
+  /** Round 89: would the offense be bringing it back? (the ball has been across, and this spot is in the backcourt) */
+  backcourtRisk(team: 0 | 1, q: Vec) { return this.fullCourt && this.crossed && this.possession === team && this.inBackcourt(team, q, -1.5); }
 
   changePossessionLive(newTeam: 0 | 1) {
     this.possession = newTeam;
@@ -1799,6 +1827,8 @@ export class GameSim {
     if (this.holder() !== from || (from.busy && !force)) return; // force: an ult kick-out (mid-air)
     const ps = this.passSafety(from, to);
     const { lead, d, safe, overhead } = ps;
+    // round 89 (owner): the AI never throws it back into the backcourt (you can, and it's a violation)
+    if (!from.isUser && !force && (this.backcourtRisk(from.team, lead) || this.backcourtRisk(from.team, to.p))) return;
     const driving = len(from.vel) > 9 || from.state === 'dribbleMove';
     const speed = from.passSpeed * (driving ? from.mods.pMult('drivePass') : 1);
     const lob = from.mods.pAdd('lob') > 0 && dist(lead, this.rim(from.team)) < 10 && len(to.vel) > 4;
@@ -2591,6 +2621,10 @@ export class GameSim {
     }
     const wasShot = this.wasShotRebound;
     this.wasShotRebound = false;
+    // round 89: a rebound (or a ball the other team touched last) gives the ball a fresh status: grabbing it in the
+    // backcourt is legal (it has to come back across, with a fresh count)
+    const lastTeam = st.kind === 'loose' ? st.lastTeam : null;
+    if (wasShot || lastTeam !== cands[0].p.team) { this.crossed = !this.inBackcourt(cands[0].p.team, cands[0].p.p, -CROSS_IN); if (!this.crossed) this.backcourtT = 0; }
     if (wasShot) {
       g.box.reb++; if (g.team === this.possession) g.box.oreb++;
       this.rhythmGain(g, g.team === this.possession ? 'oreb' : 'dreb'); // round 63: boards build rhythm

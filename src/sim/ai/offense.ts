@@ -16,7 +16,8 @@ const FREELANCE: Record<string, string[]> = { '1': ['top', 'ls', 'rs'], '2': ['l
  * Round 61b: can he catch a pass right now? Not on the floor, not rocked (stunned), not in the middle of his own shot
  * or a jump. The AI only throws to someone who can (a screener can: the pass takes him off the screen).
  */
-export const canCatch = (sim: GameSim, m: Player) => m.state !== 'fallen' && m.state !== 'shoot' && m.state !== 'dive' && sim.time >= m.stunnedUntil && m.z < 0.5;
+/** Round 89: never a target back in the backcourt once the ball has been across (a backcourt violation). */
+export const canCatch = (sim: GameSim, m: Player) => m.state !== 'fallen' && m.state !== 'shoot' && m.state !== 'dive' && sim.time >= m.stunnedUntil && m.z < 0.5 && !sim.backcourtRisk(m.team, m.p);
 const catchers = (sim: GameSim, p: Player) => sim.mates(p).filter((m) => canCatch(sim, m));
 
 /** A teammate is "ahead" when he's closer to the rim than every defender (a leak-out / beat-everyone runner). */
@@ -171,6 +172,29 @@ function catchRead(sim: GameSim, p: Player, sinceCatch: number): boolean {
   return false;
 }
 
+/**
+ * Round 89 (owner: AIs caught it with nobody near their cone and didn't shoot): an open look is a shot. Nobody in the
+ * cone (contest under `contest`), a jumper he can make (at least `three` / `mid`), in the frontcourt: let it fly (one
+ * roll per catch, `chance`). Headless before: wide-open threes at 42%+ were shot 33% of the time.
+ */
+export const OPEN_LOOK = { contest: 0.1, three: 0.36, mid: 0.42, chance: 0.9, maxD: 26, minSince: 0.05, maxSince: 1.2, room: 6 };
+function openLook(sim: GameSim, p: Player, sinceCatch: number): boolean {
+  // on the catch (before he puts it on the floor): the pass found him open
+  if (p.openLookFor === p.receivedAt || sinceCatch < OPEN_LOOK.minSince || sinceCatch > OPEN_LOOK.maxSince || p.dribbledSinceCatch || p.deadDribble) return false;
+  const side = sim.side(p.team), rim = sim.rim(p.team);
+  if (dist(p.p, rim) > OPEN_LOOK.maxD || !inFrontcourt(side, p.p)) return false;
+  const type = selectShotType(p, side, v(), sim.time);
+  if (!['mid', 'three', 'deep3'].includes(type)) return false;
+  const ev = evaluateShot(p, sim.opp(p.team), side, type, { now: sim.time, clutch: sim.clutch });
+  // nobody in his cone (the raw contest, not the shot-type weighted one) and nobody close enough to close out on it
+  if (!ev.conds.has('open') || sim.nearestDefender(p).dist < OPEN_LOOK.room) return false;
+  p.openLookFor = p.receivedAt;
+  if (ev.pct < (ev.pts === 3 ? OPEN_LOOK.three : OPEN_LOOK.mid) || !sim.rng.chance(OPEN_LOOK.chance)) return false;
+  p.aiNote = 'open look: shoot'; p.aiNoteAt = sim.time;
+  sim.startShot(p, type);
+  return true;
+}
+
 function catchEV(sim: GameSim, m: Player): number {
   const side = sim.side(m.team);
   const type = selectShotType(m, side, v(), sim.time);
@@ -225,6 +249,8 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   }
   // round 48: open floor on the run (transition / coming up the floor, moving toward the rim), nobody in front of him
   // or alongside his path to the rim: keep going and finish (no pass back to the point guard). Re-checked every tick: the moment a defender gets in the way, the normal reads take over.
+  // round 89: in the half court an open jumper beats carrying on with a drive mode left over from the cut
+  if (!sim.inTransition(p.team) && d >= 16 && !isoFor(sim, p) && !sim.clockPlan(p.team) && openLook(sim, p, sim.time - p.receivedAt)) return;
   const running = dot(p.vel, norm(sub(rim, p.p))) > 4 && (sim.inTransition(p.team) || d > 30);
   if (OPEN_COURT.on && !p.deadDribble && d > 7.5 && d < 70 && (running || p.aiMode === 'drive') && clearPath(sim, p)) {
     if (p.aiMode !== 'drive') { OPEN_COURT.runs++; OPEN_COURT.startD.push(Math.round(d)); if (inFrontcourt(side, p.p) && !sim.inTransition(p.team)) OPEN_COURT.half++; }
@@ -293,6 +319,7 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
     sim.steer(p, spot(side, 'top'), false, 0.55);
     return;
   }
+  if (!iso && (!plan || plan === 'twoForOne') && openLook(sim, p, sinceCatch)) return; // round 89: before the fake / attack reads
   if (!iso && plan !== 'milk' && catchRead(sim, p, sinceCatch)) return; // milking: no quick catch-and-shoot
   if (sim.time < p.aiNextThink) return;
   p.aiNextThink = sim.time + 0.18 + sim.rng.next() * 0.14;
@@ -344,7 +371,8 @@ function handlerAI(sim: GameSim, p: Player, dt: number) {
   }
 
   // the play wants the ball somewhere else this phase
-  if (!iso && phase?.ball && phase.ball !== sim.playRole(p) && sim.runner.ballCalledAt !== sim.runner.phase) {
+  // (round 89: not on the catch itself: an open look gets its read first, see openLook)
+  if (!iso && phase?.ball && phase.ball !== sim.playRole(p) && sim.runner.ballCalledAt !== sim.runner.phase && sinceCatch > 0.2) {
     sim.runner.ballCalledAt = sim.runner.phase;
     const tgt = sim.byPlayRole(p.team, phase.ball);
     if (tgt && canCatch(sim, tgt) && laneRisk(sim, p, tgt) < 0.5) {

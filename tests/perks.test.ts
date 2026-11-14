@@ -62,6 +62,7 @@ describe('round 64: Magic', () => {
     const h = g.holder()!, m = g.mates(h)[0];
     withNode(h, 'pa_magic', magic);
     h.state = 'idle'; h.vel = v(); h.face = v(1, 0);
+    const r = g.rim(h.team); h.p = v(r.x - g.side(h.team) * 25, 25); // deep in the frontcourt (round 89: never a pass back over half court)
     m.p = add(h.p, v(-14, 0)); // right behind him
     for (const d of g.opp(h.team)) d.p = add(h.p, v(30, 20));
     g.pass(h, m);

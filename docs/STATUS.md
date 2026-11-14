@@ -261,6 +261,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 89: offense `OPEN_LOOK` / `openLook` (before `catchRead`, and before the open-court drive at 16 ft+), play
+  ball routing waits 0.2 s after a catch; `Player.openLookFor`; game `BACKCOURT_MARGIN`, `CROSS_IN`, `acrossNow`,
+  `inBackcourt`, `backcourtRisk`, the violation in `backcourtRule`, fresh status on rebounds / defense-touched balls
+  (`tryGrab`) and instant inbounds; `canCatch` excludes backcourt targets, `pass` refuses AI backcourt passes,
+  `clampFor` keeps an AI holder over the line; `scripts/openCatch.test.ts` (open-catch report).
   Round 88: `draftClass` `TOP_NAMES`, `TOP_LOOKS`, `TOP_PERKS`, `withPrereqs`; `GameConfig.isoStars`, `Player.ballHog`
   (`hogFor` / `hogOn`, offense `hogTouch`), `draftGames` `TOP_ISO` / `TOP1_HOG`; quiet `miss` event; StoryRun snide only
   in H2 while down, `snakeMiss`; `drawShotMeter` uses `m.green`; combine kit (`COMBINE_SHIRT` / `COMBINE_SHORTS`, your

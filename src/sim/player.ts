@@ -42,6 +42,8 @@ export class Player {
   lastMove: { id: string; endAt: number; dir: Vec } | null = null;
   /** Round 88: a ball hog (0..1): the chance he plays any touch as his own iso (the draft scrimmage's #1). */
   ballHog = 0; hogFor = -99; hogOn = false;
+  /** Round 89: the catch his open-look read was made for. */
+  openLookFor = -99;
   receivedAt = -99; dribbledSinceCatch = false; catchReadFor = -99; lastScreenAt = -99; screenCdUntil = 0;
   /** round 64: Roller / Popper speed window after a screen ends */
   slipUntil = -99;
