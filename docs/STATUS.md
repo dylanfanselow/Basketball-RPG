@@ -261,6 +261,20 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 91: film study. `sim/lessons.ts` (`LessonDirector`: the tutorial's phases / steps / demos, generic cast
+  `me` / `mate` / `demo` / `other`, hooks `onTryStart` / `onLessonEnd` / `tryTick` / `thinkTry`, `demoBall` /
+  `demoDrive` / `script`, new demos floater / hook / push / combo / comboShot / postKick / drive / help / dreamer /
+  pointGod / euro / fade / jelly / uncleDrew; a demo ends when its shot comes down); `TutorialDirector` is a subclass
+  (same lessons). `sim/film.ts`: `FILM_COURSES` (5 open, 6 locked by `perk`), `FilmDirector` (your player is the CPU
+  and the shots fall while the tape plays; combo / cancel counters; the post double always comes), `buildFilm` (2v2
+  half court, empty arena, the tape player from `REAL_ROSTERS`), `filmUnlocked` / `markFilmDone` / `lockText`.
+  `scenes/filmRun.ts` (`FilmRun`: box, ✓, VHS overlay, end menu; `filmInit`, `PRACTICE_COURT`); `Mode` 'film',
+  `GameInit.film` / `empty` (no crowd, celebs, scouts) / `returnTo` (pause → quit goes there). ApartmentScene: TV menu
+  Film study / Practice court, the course list (`openFilms`, `filmInput`), `init({ film | tv })` puts you at the TV.
+  `career/tasks.ts` (`TASKS`, `openTasks`, `claimTasks`; `CareerState.film` / `tasks`); RoomScene TO DO panel
+  (`todoRows`, `payTasks` 0.7 s after a room opens). `GameSim.dribbleMove` tags an Uncle Drew cancel
+  (`data.cancel`). Dev: panel → Film study (open the list, unlock every course, mark the starters watched, reset);
+  dev menu → Film Study. `tests/film.test.ts` (a bot plays every course).
   Round 90: `career/scoutReport.ts` (`gameLines` from the shot log, `DESCRIPTORS` with groups, `buildScoutReport`:
   class z-scores + game z-scores, 65 / 35), quiet `shotLog` event (contest, contesters' ids, the defender, how it was
   created, transition), `contestBy[].pid`, `StoryState.scoutReport` (saved in PostGame's scrimmage branch), Garcia's

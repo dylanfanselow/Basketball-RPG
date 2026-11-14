@@ -20,6 +20,9 @@ import { setStage, storyScene } from './setup';
 import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, SEASONS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
+import { FILM, FILM_COURSES, OPEN_COURSES, filmDone, filmUnlocked, lockText } from '../sim/film';
+import { filmInit, PRACTICE_COURT } from './filmRun';
+import type { GameInit } from './setup';
 
 /**
  * The starter apartment (round 36): your base of operations. The left door leads to the garage gym, the front door
@@ -42,10 +45,14 @@ export class ApartmentScene extends RoomScene {
   /** Round 81: the agent's first meeting here; round 84: draft night. */
   story: 'agent' | 'draftNight' | null = null;
   agent: AgentTalk | null = null;
-  init(data?: { at?: string; story?: 'agent' | 'draftNight' }) {
+  /** Round 91: back from film study / the practice court: you're at the TV (`film`: the course list is open). */
+  backAtTv: 'film' | 'tv' | null = null;
+  init(data?: { at?: string; story?: 'agent' | 'draftNight'; film?: boolean; tv?: boolean }) {
     super.init(data);
     this.story = data?.story ?? null; this.agent = null;
-    this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null; this.board = null;
+    this.tank = null; this.fan = null; this.couch = null; this.catPolyKey = ''; this.cal = null; this.board = null; this.films = null;
+    this.backAtTv = data?.film ? 'film' : data?.tv ? 'tv' : null;
+    if (this.backAtTv) { this.pos = { ...SPOTS.tv }; this.face = { x: 0, y: -1 }; }
   }
 
   onCreate() {
@@ -66,6 +73,7 @@ export class ApartmentScene extends RoomScene {
     this.phoneX = ll.x * ART; this.ringing = null;
     if (this.story === 'agent') this.startAgent();
     else if (this.story === 'draftNight') this.startDraftNight();
+    else if (this.backAtTv === 'film') this.openFilms(); // round 91: back from a course, the list is still up
     else this.checkCalls(); // a call that's due (the mystery call, Mom's first night, a morning the agent hasn't called yet)
   }
 
@@ -272,7 +280,7 @@ export class ApartmentScene extends RoomScene {
       // round 85: the landline (Mom, Garcia) and the TV (film study, later)
       // round 89b: a ringing call is answered here (the rest of the time you call out)
       this.ringing ? { label: 'Answer the phone', spot: SPOTS.phone, run: () => this.answer() } : { label: 'Phone', spot: SPOTS.phone, run: () => this.landline() },
-      { label: 'Watch TV', spot: SPOTS.tv, run: () => this.tv() }, // round 88: film study (soon) or the draft board
+      { label: 'Watch TV', spot: SPOTS.tv, run: () => this.tv() }, // round 88: the draft board; round 91: film study, the practice court
     ];
     // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
     const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
@@ -311,14 +319,15 @@ export class ApartmentScene extends RoomScene {
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'Who do I call?', options, pick: call } }], { phone: true });
   }
 
-  /** Round 88 (owner): the TV: film study (coming soon) or the draft board (who owns each pick). */
+  /** Round 88 (owner): the TV: film study (round 91: the courses), the practice court, the draft board (who owns each pick). */
   private tv() {
     if (this.busy) return;
     const st = app.career.story, board = !!st?.draft && !st.drafted, report = !!st?.scoutReport && !st.drafted;
-    const options = ['Film study', ...(board ? ['Draft board'] : []), ...(report ? ['What they\'re saying'] : []), 'Turn it off'];
+    const options = ['Film study', 'Practice court', ...(board ? ['Draft board'] : []), ...(report ? ['What they\'re saying'] : []), 'Turn it off'];
     const pick = (i: number) => {
       this.agent = null; this.busy = false;
-      if (options[i] === 'Film study') this.thinkLine('Film study: coming soon.');
+      if (options[i] === 'Film study') this.openFilms();
+      else if (options[i] === 'Practice court') this.leaveFor(PRACTICE_COURT);
       else if (options[i] === 'Draft board') this.openBoard();
       else if (options[i] === 'What they\'re saying') this.openReport(); // round 90
     };
@@ -364,6 +373,69 @@ export class ApartmentScene extends RoomScene {
     this.board = objs; this.boardAt = this.t;
   }
   private closeBoard() { for (const o of this.board ?? []) o.destroy(); this.board = null; this.busy = false; sfx.blip(false); }
+
+  // ------------------------------------------------------------ round 91: film study
+  /** The course list over the room (the highlighted row, its objects). */
+  films: { idx: number; objs: Phaser.GameObjects.GameObject[]; at: number } | null = null;
+  /** Open courses first, then the locked ones (a locked course you've unlocked moves up with the open ones). */
+  private filmOrder(): string[] {
+    const c = app.career;
+    return [...FILM_COURSES.filter((f) => filmUnlocked(c, f.id)), ...FILM_COURSES.filter((f) => !filmUnlocked(c, f.id))].map((f) => f.id);
+  }
+  private openFilms(idx = 0) {
+    this.busy = true;
+    if (!this.films) sfx.blip(true);
+    for (const o of this.films?.objs ?? []) o.destroy();
+    const c = app.career, order = this.filmOrder(), done = filmDone(c);
+    idx = Math.max(0, Math.min(order.length - 1, idx));
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    const T = (x: number, y: number, s: string, size = 15, col = '#e8eefc', bold = false, wrap = 0) => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: bold ? 'bold' : 'normal', wordWrap: wrap ? { width: wrap } : undefined }).setDepth(9701); objs.push(t); return t; };
+    objs.push(this.add.rectangle(640, 380, 1060, 580, 0x0b1020, 0.96).setStrokeStyle(3, 0xffcc33).setDepth(9700));
+    objs.push(this.add.rectangle(640, 122, 1056, 56, 0x1d2b5a, 1).setDepth(9700));
+    T(640, 106, 'FILM STUDY', 24, '#ffe9a8', true).setOrigin(0.5, 0);
+    const open = OPEN_COURSES.filter((id) => done.includes(id)).length;
+    T(640, 160, `Watch the tape, then run it yourself.   Starter courses: ${open}/${OPEN_COURSES.length}`, 14, '#9fb0e0').setOrigin(0.5, 0);
+    let y = 196, lockedHead = false;
+    order.forEach((id, i) => {
+      const f = FILM[id], unlocked = filmUnlocked(c, id);
+      if (!unlocked && !lockedHead) { lockedHead = true; y += 8; T(150, y, 'LOCKED: UNLOCK THE SKILL', 12, '#ff9a7a', true); y += 22; }
+      const sel = i === idx, col = !unlocked ? '#6c7590' : sel ? '#ffe680' : '#e8eefc';
+      if (sel) objs.push(this.add.rectangle(330, y + 10, 400, 30, 0x2a3a6e, 1).setDepth(9700));
+      T(150, y, `${sel ? '▶' : ' '} ${f.title}`, 16, col, sel);
+      if (done.includes(id)) T(508, y, '✓', 18, '#7dff9a', true);
+      y += 34;
+    });
+    // the highlighted course
+    const f = FILM[order[idx]], unlocked = filmUnlocked(c, f.id), x = 590;
+    T(x, 200, f.title, 22, unlocked ? '#ffe9a8' : '#9aa3bb', true);
+    T(x, 236, f.blurb, 16, '#e8eefc', false, 470);
+    T(x, 300, `On the tape: ${f.tape}`, 15, '#9fb0e0');
+    T(x, 326, `${f.lessons().length} lesson${f.lessons().length > 1 ? 's' : ''}`, 15, '#9fb0e0');
+    if (!unlocked) T(x, 370, lockText(f.id), 16, '#ff9a7a', true, 470);
+    else if (done.includes(f.id)) T(x, 370, '✓ Watched. Run it again any time.', 16, '#7dff9a', true);
+    else if (!f.perk) T(x, 370, 'A starter course: watch all five for the to-do list.', 15, '#c8d2e8', false, 470);
+    T(640, 630, `↑↓ choose   ·   ✕ ${unlocked ? 'watch' : 'locked'}   ·   L1 close`, 13, '#9fb0e0').setOrigin(0.5, 0);
+    this.films = { idx, objs, at: this.films?.at ?? this.t };
+  }
+  private closeFilms() { for (const o of this.films?.objs ?? []) o.destroy(); this.films = null; this.busy = false; sfx.blip(false); }
+  private filmInput() {
+    const fl = this.films!, inp = this.inp, order = this.filmOrder();
+    if (this.t < fl.at + 0.25) return; // not on the ✕ that opened it
+    if (inp.cancel()) { this.closeFilms(); return; }
+    const d = inp.pressed('down') ? 1 : inp.pressed('up') ? -1 : 0;
+    if (d) { this.openFilms((fl.idx + d + order.length) % order.length); sfx.blip(true); return; }
+    if (inp.pressed('a')) {
+      const id = order[fl.idx];
+      if (!filmUnlocked(app.career, id)) { sfx.blip(false); return; }
+      this.leaveFor(filmInit(id));
+    }
+  }
+  /** Off to the court (a course, the practice court): fade out, start the game. */
+  private leaveFor(init: GameInit) {
+    this.busy = true; sfx.blip(true);
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.time.delayedCall(430, () => this.scene.start('Game', init));
+  }
 
   private go(e: GoEvent) { if (this.busy) return; this.busy = true; goTo(this, e); }
   /** Two workouts on one day: choose; the other one is missed. */
@@ -544,6 +616,7 @@ export class ApartmentScene extends RoomScene {
     if (ag) { if (!ag.update(dt)) { if (this.agent === ag) this.agent = null; } else this.busy = true; }
     if (this.agent && this.agent !== ag) this.busy = true;
     else if (this.cal) this.calendarInput();
+    else if (this.films) this.filmInput(); // round 91
     else if (this.board && this.t > this.boardAt + 0.25 && (this.inp.cancel() || this.inp.pressed('a'))) this.closeBoard(); // (not on the ✕ that opened it)
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);

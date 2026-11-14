@@ -30,6 +30,7 @@ Phaser (`src/scenes`, `src/render`) only renders and reads input.
 | `dunks.ts` | Dunk package: `DUNKS` (unlock by Dunk rating, power / flash, make ×, ult bonus, clip), `unlockedDunks`, `nextDunk`, `pickDunk` (contested → power, open → flashy). |
 | `threes.ts` | Quick 3v3: `ThreeSetup`, slots `SLOTS`/`SLOT_POS` (Guard PG/SG, Wing SG/SF/PF, Big PF/C), `defaultLineup`, `slotChoices`, `slotForPos`, `buildThrees` (no bench; `halfCourt` option). On court a three-man team is roles 1/3/5 (`refreshOnCourt`); `callPlay` uses only plays tagged `3v3` when three a side (iso for the best player ~35%). |
 | `story.ts`, `tutorial.ts` | Round 60 prologue: story games (`buildTutorial` 2v2 / `buildOnes` / `buildBigGame`, Kingston `rivalPlayer`, `avgSpread`, `complementPos`) and the `TutorialDirector` (a `GameSim.director`: lessons, scripted demos, step checks, the box's `view()`). `GameConfig.story` flags force makes / no blocks / soft D. |
+| `lessons.ts`, `film.ts` | Round 91: the lesson engine (`LessonDirector`, shared by the tutorial) and film study (`FILM_COURSES`, `FilmDirector`, `buildFilm`, `filmUnlocked`). |
 | `oneOnOne.ts` | `OneOnOneSetup` (incl. `cpuLevel`), `DEFAULT_1V1`, `buildOneOnOne(o, seed, p1Human, p1Level?)` (pure 1v1 game builder; same-team P2 ids get `-p2`; P1 can be a CPU at its own level for headless tests). |
 | `court.ts`, `math.ts`, `data.ts` | Geometry/spots, vector math + seeded RNG, JSON imports and types. |
 
@@ -45,6 +46,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 ## Career (`src/career`)
 `draftClass.ts` (round 86: the 60-man draft class, `storyRng`), `names.ts` (name lists), `draft.ts` (the road to the draft: workouts, combine plan / grades, draft value / projection, `runDraft`, `readyFor`), `career.ts` (state, XP, save/migration v3 with the `life` block, `nextKeyGame` / `isKeyGame` / `RIVALS`), `calendar.ts` (round 46: career day ↔ real date, Monday-first month grids, key games by day), `skilltree.ts` (unlock rules), `roster.ts` (real rosters from
 `rosters.json`, procedural fallback), `story.ts` (future: events/story effects, `unlockUltimate`).
+`tasks.ts` (round 91): the to-do list (`TASKS`, `openTasks`, `claimTasks`; the film task pays `FILM_TASK_LEVELS` in every skill).
 
 ## Render & scenes
 | File | Role |
@@ -66,6 +68,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `render/crowd.ts` | Animated crowd: blob stands rows + `FanRow` (plain sprite fans behind the sideline), shared `reaction()` ripple, home-colored shirts (`bigGame` = mostly home colors). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
+| `scenes/filmRun.ts` | Round 91: `FilmRun` drives a film course inside GameScene (the box, ✓, the VHS tape look, the end menu); `filmInit`, `PRACTICE_COURT`. |
 | `scenes/storyRun.ts`, `render/storyBox.ts` | Round 60: `StoryRun` drives a prologue game inside GameScene (lines hold the sim, transitions by `setStage` / `storyScene`, coach + scout in the big game); `StoryBox` is the bottom text box (also used by TrailerScene). |
 | `scenes/PaperScene.ts`, `render/paperArt.ts` | Round 80: "three months later", the newspaper on a table (pixel front page, dithered photo of you, camera stops), then Mom wakes you. |
 | `scenes/BusScene.ts`, `render/busArt.ts` | Round 80: the bus ride to the national final (parallax snowy road, bus front to the right), the team's talk, Mom's call + a dialogue choice. |

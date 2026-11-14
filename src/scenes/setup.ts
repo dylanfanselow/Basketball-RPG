@@ -9,12 +9,15 @@ import { ThreeSetup, buildThrees } from '../sim/threes';
 import { buildTutorial, buildOnes, buildBigGame, buildVisit, buildFinal, newStory } from '../sim/story';
 import { buildDraftScrimmage, buildStarterOnes, buildTeamScrimmage } from '../sim/draftGames';
 import { TutorialDirector } from '../sim/tutorial';
+import { buildFilm } from '../sim/film';
 import type { StoryStage, CareerState } from '../career/career';
 export type { ThreeSetup } from '../sim/threes';
 export type { OneOnOneSetup } from '../sim/oneOnOne';
 export { DEFAULT_1V1 } from '../sim/oneOnOne';
 
-export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne' | 'story';
+export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne' | 'story'
+  /** round 91: a film study course (the apartment TV) */
+  | 'film';
 /** Round 60: the prologue's games. */
 export type StoryGame = 'tutorial' | 'ones' | 'bigGame' | 'kingston' | 'final'
   /** round 84: the draft scrimmage and the teams' game workouts (round 85: shooting is in the arena gym) */
@@ -24,10 +27,17 @@ export type StoryGame = 'tutorial' | 'ones' | 'bigGame' | 'kingston' | 'final'
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
 
 /** Data the Game scene starts with (kept so Restart/Rematch can rebuild the same game). */
-export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue; /** round 60: a prologue game */ story?: StoryGame; /** round 80i: reopen a finished game (the final's after-scene) */ reuse?: GameSim }
+export interface GameInit { mode: Mode; setup?: MatchSetup; oneOnOne?: OneOnOneSetup; three?: ThreeSetup; /** round 56: where it's played (story events); else the dev setting */ venue?: import('../sim/game').Venue; /** round 60: a prologue game */ story?: StoryGame; /** round 80i: reopen a finished game (the final's after-scene) */ reuse?: GameSim;
+  /** round 91: the film course to run (mode 'film') */
+  film?: string;
+  /** round 91: an empty arena (no crowd, broadcast, celebrities or scouts): film study, the practice court */
+  empty?: boolean;
+  /** round 91: where leaving goes (the pause menu's quit), instead of the mode's menu */
+  returnTo?: { scene: string; data?: object } }
 
-export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup, story?: StoryGame): GameSim {
+export function createSim(mode: Mode, setupOpts?: MatchSetup, oneOnOne?: OneOnOneSetup, three?: ThreeSetup, story?: StoryGame, film?: string): GameSim {
   if (mode === 'story') return createStorySim(story ?? 'tutorial');
+  if (mode === 'film') return buildFilm(app.career, film ?? 'finishing', Math.floor(Math.random() * 1e9)); // round 91
   if (mode === 'oneOnOne') return buildOneOnOne(oneOnOne ?? DEFAULT_1V1, Math.floor(Math.random() * 1e9));
   const c = app.career;
   if (mode === 'quick3' && three) {

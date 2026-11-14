@@ -35,6 +35,8 @@ import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from 
 import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
 import { StoryRun, storyBenchSeats } from './storyRun';
+import { FilmRun } from './filmRun';
+import { FilmDirector } from '../sim/film';
 import { scoutTexture } from './castSprites';
 import { playerKit, takeStory } from './preload';
 
@@ -163,6 +165,8 @@ export class GameScene extends Phaser.Scene {
   pauseIdx = 0;
   /** Round 60: the prologue running in this game, if any. */
   story: StoryRun | null = null;
+  /** Round 91: a film study course running in this game, if any. */
+  film: FilmRun | null = null;
   /** Round 80f: a story game in the arena (the national final) is a neutral site: half the crowd per school. */
   get splitCrowd() { return this.mode === 'story' && !this.school; }
   ended = false;
@@ -186,7 +190,8 @@ export class GameScene extends Phaser.Scene {
   create() {
     hiRes(this);
     // round 60c: a story game built (and its sheets drawn) ahead of time skips most of "Lacing up…"
-    this.sim = this.initData?.reuse ?? (this.mode === 'story' ? takeStory(this.initData?.story ?? 'tutorial') : null) ?? createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story);
+    this.sim = this.initData?.reuse ?? (this.mode === 'story' ? takeStory(this.initData?.story ?? 'tutorial') : null) ?? createSim(this.mode, this.matchSetup, this.oneOnOne, this.three, this.initData?.story, this.initData?.film);
+    if (this.initData?.empty) this.sim.cfg.scoutsOnly = true; // round 91: an empty arena (the scouts stay home too, see buildSideline)
     app.sim = this.sim;
     const twoHumans = !!this.sim.user2;
     this.input2 = new InputMapper(this, twoHumans ? 1 : undefined);
@@ -220,6 +225,7 @@ export class GameScene extends Phaser.Scene {
     this.makeHud();
     // round 60: a prologue game (the tutorial box, the 1s, the big game's coach + scout)
     this.story = this.mode === 'story' ? new StoryRun(this, this.initData.story ?? 'tutorial') : null;
+    this.film = this.mode === 'film' && this.sim.director instanceof FilmDirector ? new FilmRun(this, this.sim.director.course) : null; // round 91
     this.events.on('shutdown', () => { app.sim = null; sfx.hush(false); sfx.setArena(false); sfx.duck(false); sfx.rain(false); sfx.crowdSize = 1; sfx.music(null); });
     sfx.music(this.story?.cutscene ? null : 'game'); // round 60c: the retro arcade loop in every basketball game (round 80: not in a cutscene)
     sfx.setArena(!this.school); // crowd murmur only while an arena game is on
@@ -414,6 +420,7 @@ export class GameScene extends Phaser.Scene {
     if (sim.over) sim.settle(Math.min(0.05, deltaMs / 1000)); // round 60e: land and stand after the final whistle
     // round 60: story lines hold the game (✕ reads on); the tutorial box follows the director
     if (this.story?.update()) { for (const e of sim.drainEvents()) this.onEvent(e); this.render(); if (sim.over) this.story.onOver(); return; }
+    if (this.film?.update()) { for (const e of sim.drainEvents()) this.onEvent(e); this.render(); return; } // round 91
     // round 55: an ult's cinematic slows the whole game (clock included)
     const speed = app.settings.timeScale * (sim.userOnCourt || sim.cfg.mode === 'practice' ? 1 : app.settings.benchSpeed) * UltFx.speed(sim, CINE_SPEED);
     const step = 1 / 60;
@@ -440,8 +447,8 @@ export class GameScene extends Phaser.Scene {
 
   openPause(idx: number) { this.paused = true; this.pauseIdx = idx; this.drawPause(); }
 
-  pauseOptions() { return [...this.basePause(), ...(this.story?.pauseOptions() ?? [])]; }
-  basePause() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : this.mode === 'quick3' ? 'Quit to 3v3 Select' : this.mode === 'story' ? 'Quit to Title' : 'Quit to Menu']; }
+  pauseOptions() { return [...this.basePause(), ...(this.story?.pauseOptions() ?? []), ...(this.film?.pauseOptions() ?? [])]; }
+  basePause() { return ['Resume', this.mode === 'oneOnOne' ? 'Restart (0-0)' : 'Restart', 'Fullscreen (F)', this.mode === 'career' ? 'Forfeit to Hub' : this.mode === 'oneOnOne' ? 'Quit to 1v1 Select' : this.mode === 'quick3' ? 'Quit to 3v3 Select' : this.initData?.returnTo ? 'Back to the apartment' : this.mode === 'story' ? 'Quit to Title' : 'Quit to Menu']; }
 
   drawPause() {
     const opts = this.pauseOptions();
@@ -450,6 +457,8 @@ export class GameScene extends Phaser.Scene {
 
   leaveGame() {
     this.paused = false; this.pauseText.setVisible(false);
+    const back = this.initData?.returnTo;
+    if (back) { this.scene.start(back.scene, back.data); return; } // round 91: film study, the practice court
     if (this.mode === 'story') { this.scene.start('Title'); return; } // round 60: the prologue saves its stage; Load Save resumes it
     this.scene.start(this.mode === 'career' ? 'Hub' : this.mode === 'oneOnOne' ? 'OneOnOneSetup' : this.mode === 'quick3' ? 'ThreeSetup' : 'Menu');
   }
@@ -467,6 +476,7 @@ export class GameScene extends Phaser.Scene {
         else if (this.pauseIdx === 1) this.scene.restart(this.initData);
         else if (this.pauseIdx === 2) { (window as any).__toggleFullscreen?.(); this.pauseText.setVisible(true); }
         else if (this.pauseIdx >= 4 && this.story) { this.paused = false; this.story.pauseAction(this.pauseIdx - 4); }
+        else if (this.pauseIdx >= 4 && this.film) { this.paused = false; this.film.pauseAction(this.pauseIdx - 4); }
         else this.leaveGame();
         return;
       }
@@ -947,7 +957,7 @@ export class GameScene extends Phaser.Scene {
     // featured celebs always get a seat, a few seats in from the table
     for (const f of FEATURED_CELEBS) { order.splice(order.indexOf(f), 1); order.splice(Math.min(order.length, 3 + (crng.next() * 6 | 0)), 0, f); }
     let seat = 0;
-    if (this.mode !== 'story') for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
+    if (this.mode !== 'story' && !this.initData?.empty) for (const [a, b] of CELEB_X) for (let x = a; x <= b + 0.01; x += 1.65) {
       const ci = order[seat++ % order.length];
       const key = celebTexKey(ci);
       if (!this.textures.exists(key)) {
@@ -959,7 +969,7 @@ export class GameScene extends Phaser.Scene {
       this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), cane: CANE_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
     // round 85: the scouts, seated along both benches, in the home team's color
-    if (scouts) {
+    if (scouts && !this.initData?.empty) {
       const col = sim.cfg.courtColors?.[0] ?? t0.def.colors[0];
       BENCH_X.forEach(([a, b], team) => { let i = team * 7; for (let x = a + 1; x <= b - 1; x += 2.4) this.add.sprite(sx(x), sy(-3.9), scoutTexture(this, i++ % 9, col, true), 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9)); });
     }

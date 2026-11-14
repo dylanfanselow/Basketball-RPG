@@ -6,6 +6,8 @@ import { Player } from '../sim/player';
 import { Appearance, HAIR_STYLES, FACIAL, NOSES, MOUTHS, SOCKS, ARM_SLEEVE, LEG_SLEEVE, SKIN_TONES, randomAppearance } from '../render/appearance';
 import { sfx } from '../audio/sfx';
 import { REAL_ROSTERS } from '../career/roster';
+import { FILM_COURSES, OPEN_COURSES, markFilmDone } from '../sim/film';
+import { withPrereqs } from '../career/draftClass';
 import { withDefaults } from '../render/appearance';
 import { openPixelEditor } from './pixelEditor';
 import { partVariants, PartType } from '../render/faceParts';
@@ -274,8 +276,8 @@ export function initDevPanel() {
       // round 60: the prologue tutorial
       const tut = s.director as any;
       if (tut?.skipLesson) gc.append(el('div', { class: 'row' },
-        btn('Story: next lesson', () => tut.skipLesson()),
-        btn('Story: finish tutorial', () => tut.skipAll()),
+        btn('Lesson: next (tutorial / film)', () => tut.skipLesson()),
+        btn('Lesson: finish all', () => tut.skipAll()),
       ));
       gc.append(el('div', { class: 'row' },
         btn('Give me the ball', () => { if (s.user && s.userOnCourt) { s.giveBall(s.user); s.possession = s.user.team; s.live = true; s.assignMatchups(); } }),
@@ -413,6 +415,19 @@ export function initDevPanel() {
     pz.append(el('div', { class: 'row' }, btn('Dev menu (every mode)', () => { const g = (window as any).__phaser as Phaser.Game; const cur = g.scene.getScenes(true)[0]; cur?.scene.start('Menu'); })));
     pz.append(el('div', { class: 'row' }, btn('RESET CAREER SAVE', () => { if (confirm('Reset career save?')) { app.career = newCareer('Rookie', 'SG'); syncLive(); } })));
     root.append(section('Presets / save', pz));
+
+    // round 91: film study (the apartment TV) and the to-do list
+    const fs = el('div');
+    fs.append(el('div', { class: 'row' },
+      btn('Open the course list', () => { const g = (window as any).__phaser as Phaser.Game; g.scene.getScenes(true)[0]?.scene.start('Apartment', { film: true }); }),
+      btn('Unlock every course', () => { c.nodes = withPrereqs([...c.nodes, ...FILM_COURSES.flatMap((f) => (f.perk ? [f.perk] : []))]); syncLive(); }),
+    ));
+    fs.append(el('div', { class: 'row' },
+      btn('Mark the starters watched', () => { for (const id of OPEN_COURSES) markFilmDone(c, id); syncLive(); }),
+      btn('Reset film + to-do', () => { c.film = { done: [] }; c.tasks = { claimed: [] }; syncLive(); }),
+    ));
+    fs.append(el('div', { class: 'note' }, 'The to-do task pays out the next time you are in a room (a level in every skill).'));
+    root.append(section('Film study', fs));
   }
 
   function postTest(gap: number) {

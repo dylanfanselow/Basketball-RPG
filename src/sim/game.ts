@@ -1900,8 +1900,9 @@ export class GameSim {
       return;
     }
     // round 72: Uncle Drew cancels the move on the spot and goes straight into the next one
+    let cancelled = false; // round 91: film study tells an Uncle Drew cancel apart from a chain
     if (p.state === 'dribbleMove' && p.move && p.stateT >= UNCLE_DREW_MIN && p.mods.pAdd('uncleDrew') > 0) {
-      p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.state = 'idle'; p.bufferedMove = null;
+      p.lastMove = { id: p.move.id, endAt: this.time, dir: p.move.dir }; p.move = null; p.state = 'idle'; p.bufferedMove = null; cancelled = true;
     }
     // input buffer: pressing during a move queues the next one (makes chains feel responsive)
     if (p.state === 'dribbleMove') { p.bufferedMove = { stick: { ...stick }, at: this.time }; return; }
@@ -1926,7 +1927,7 @@ export class GameSim {
     if (m.pumpFake) { p.pumpFakeAt = this.time; p.deadDribble = true; p.deadDribbleAt = this.time; p.deadWarned = false; }
     if (id === 'lateral') { p.flickDir = sideOf(toRim, dir) || 0; p.flickUntil = this.time + p.stateDur + 0.3; } else p.flickDir = 0;
     if (m.openShot) { p.openShotUntil = this.time + 1.0; p.openShotMult = 1 - m.openShot * 0.6; }
-    this.emit({ kind: 'move', text: m.name, pid: p.id });
+    this.emit({ kind: 'move', text: m.name, pid: p.id, data: cancelled ? { cancel: true } : undefined });
 
     // round 49: the defense learns a human's moves, the same move again and again works less, and they shade his side
     const human = !this.isAI(p) && !this.attentionOff;

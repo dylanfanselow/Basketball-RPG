@@ -46,6 +46,10 @@ export interface CareerState {
   story?: StoryState;
   /** round 85: personal records (the most perfect jump shots in a row) */
   records?: { perfectStreak: number };
+  /** round 91: film study on the apartment TV: the courses you've finished (`sim/film.ts`) */
+  film?: { done: string[] };
+  /** round 91: the to-do list (`career/tasks.ts`): tasks whose reward you've collected */
+  tasks?: { claimed: string[] };
 }
 /** Round 80: after `after` (Mom's talk) the yard is yours (`done` + `checkKingston`); the path end then leads on:
  *  Kingston at the court → three months later (the paper) → the snowy morning → the bus → the national final. */

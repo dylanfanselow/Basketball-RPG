@@ -100,14 +100,18 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 91 follow-ups:** ask the owner how the courses feel (wording, tape players, whether a step should need a
+  make); more locked courses (Shammgod / Snatch-Back chains, Magic, Lob City, Gimme That!, Gravity, Charge Magnet...);
+  more to-do tasks (the list holds any number); the practice court from the TV is the dev practice mode (the full
+  rosters' benches sit on one side); the help defense course has no "recover to your man" step yet; Euro Steps need
+  the stick flicked sideways at the last moment while flying in (holding it sideways early slows the drive into a hook).
 - **Round 90 follow-ups:** check the scouting report wording and weights with the owner (`RATING_W` / `STAT_W`, the
   descriptor list in `scoutReport.ts`); the report doesn't change the draft (it only describes you).
 - **Round 89 follow-ups:** scoring went up with the open-look rule (scoring report team PPG 150-155 vs 130-138; the
   owner's round 47 band is 114-123): ask whether to pull it back (`OPEN_LOOK.chance` / `room` / the pct floors) or
   tighten defense. Over-and-back on a tipped inbound / jump ball isn't modelled beyond "defense touched it last".
 - **Round 88 follow-ups:** tune Dragić's hog rate (60% of touches) and both iso rates with the owner; the loading
-  screen only covers games (rooms load fast); film study still "coming soon"; the draft board shows teams, not a mock
-  draft.
+  screen only covers games (rooms load fast); the draft board shows teams, not a mock draft.
 - **Round 87 follow-ups:** the in-game scrimmage scouts (GameScene benches) are still the front-view celeb drawing;
   #2's jump uses the jumper's release pose in the air (no dedicated leap); prospects walk between stations side-on;
   the snake reveal for #1 is only in his scrimmage lines so far (owner: "he's really a snake", more story later);
@@ -117,7 +121,7 @@
   stats ±8) are first guesses; prospects in the room are side-view loops (no angled frames, no walking between
   stations) and only at the combine (not the tryouts); later any tier can draft you (`DRAFTS_YOU`); the drafted
   class isn't on team rosters yet. Old saves' shooting scores were makes of 15 (now points), so they grade a bit low.
-- **Round 85 follow-ups:** film study on the TV (learn advanced moves); the arena gym reuses the garage's frame (a
+- **Round 85 follow-ups:** the arena gym reuses the garage's frame (a
   dedicated arena room later); scouts are the celeb drawing (a seated-on-bench pose would read better); the draft
   range doesn't yet change which teams call.
 - **Round 84 follow-ups:** the combine and scrimmage results should set the draft range (`draftRange` is fixed 'late'),

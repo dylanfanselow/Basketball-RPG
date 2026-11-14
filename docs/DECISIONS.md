@@ -188,6 +188,26 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 91 (owner): film study on the TV, the practice court, the to-do list.**
+  - **Watch TV → Film study** opens a **list of courses**. Each course is a short tutorial on the tutorial's engine:
+    **watch the tape** (a real player who has the move does it on an empty arena court, with a VHS look and
+    "▶ PLAY <name>"; your player is the CPU while it plays and the tape's shots fall), then **your try** with a prompt
+    in the box until ✓. Your tries use the **real odds** (a step counts the attempt, e.g. "shoot a floater", not the
+    make). No fouls, the CPU defenders don't reach.
+  - **Open from the start (5):** Finishing package (floater, push shot, hook; Brunson), Dribble combos (2 then 3 moves
+    in a row; Kyrie), Combos into shots (a move into a jumper, a move into a finish; Mitchell), Passing out of the post
+    (the double team always comes; Jokić), Help defense (you're off the ball, stop the drive that beat your teammate;
+    Mobley).
+  - **Locked until you own the skill (hand-picked, owner):** Dreamer (Şengün), Point God (the "pass out of a shot"
+    course; Haliburton), Euro Step (Amen Thompson), Fade Away (Tatum), Jelly Fake (Giannis), Uncle Drew (Kyrie). More
+    later.
+  - The Finishing package leaves out your Fade Away and Euro Step (they replace the floater / hook on the stick).
+  - The end of a course: **Run it again / Practice court / Back to the TV** (the list reopens with ✓ on what you've
+    watched). Film costs no time or energy.
+  - **Practice court** is also on the TV menu: the practice mode in an empty arena; L1 → back to the apartment.
+  - **The to-do list** (top right of the room HUD, once the apartment is home). First task: **watch the 5 starter
+    courses → +1 level in every skill** (owner: "skill points in every skill"; `FILM_TASK_LEVELS`), paid once, the
+    next time you're in a room. No per-course reward.
 - **Round 90 (owner): the scouting report on the TV.**
   - After the scrimmage, Garcia tells you (his first team call, and on the phone) to turn on the TV: **"What they're
     saying"** shows **3 strengths and 3 weaknesses**, strengths ordered by how far above average you are, weaknesses
@@ -241,7 +261,7 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - **The green window visibly shrinks** on the meter in the tests. **Name tags only** (no "#1 proj.").
   - **Uniforms:** at the combine **you wear the same grey tee and navy shorts** as every prospect; in the scrimmage
     everybody is in their team's uniform.
-  - **The TV:** Film study (coming soon) or **the draft board** (who owns each pick, traded picks marked, the teams
+  - **The TV:** Film study (round 91: the courses) or **the draft board** (who owns each pick, traded picks marked, the teams
     that called you in green).
   - **Loading screens with a tip at the bottom** replace "Lacing up".
 - **Round 87 (owner): the top two get a story; the combine room comes alive.**
@@ -308,8 +328,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
     **Donovan Garcia** (once you've met him): where he thinks you'll go in the draft, from the combine (each test
     against the class; a missed day counts as nothing) and the scrimmage (your weighted night; missing it hurts).
     **The draft follows his estimate** (give or take two picks, owner's pick); a bottom-tier team still always takes you.
-  - Garcia's tour adds the TV (watch film to learn advanced moves) and the landline lines. **Film study is a line only
-    for now** (owner): the TV says "Film study: coming soon".
+  - Garcia's tour adds the TV (watch film to learn advanced moves) and the landline lines. Film study was a line only
+    until round 91 (the courses).
 - **Round 84 (owner): Donovan Garcia and the road to the draft.**
   - The agent is **Donovan Garcia** (was Victor Hale; old saves are renamed). He leaves the garage through the **side
     door into the backyard**; you: "Wait, that's not an exit. Doesn't that lead to the backyard?" and you see him

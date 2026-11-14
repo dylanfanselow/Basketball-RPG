@@ -6,6 +6,7 @@ import { TEAMS, CORE_STATS, CoreStat } from '../sim/data';
 import { nextEvent, eventLine } from '../career/draft';
 import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP, addEnergy } from '../career/career';
 import { dateLabel } from '../career/calendar';
+import { openTasks, claimTasks, TASKS } from '../career/tasks';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
@@ -157,8 +158,10 @@ export abstract class RoomScene extends Phaser.Scene {
     buildIcons(tm);
     const track = this.music();
     if (track) { sfx.music(track); this.events.once('shutdown', () => sfx.music(null)); } // the next room picks it back up
+    this.paidTasks = [];
     this.onCreate();
     this.makeHud();
+    this.time.delayedCall(700, () => this.payTasks()); // round 91: a to-do task finished while you were out
     if (this.enteredByDoor) this.time.delayedCall(260, () => sfx.doorClose()); // the door swings shut behind you
   }
 
@@ -166,7 +169,7 @@ export abstract class RoomScene extends Phaser.Scene {
   /** Everything the HUD shows, so it rebuilds only when something changes. */
   private hudSig(): string {
     const c = app.career;
-    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo, c.story?.stage, eventLine(nextEvent(c, nextKeyGame(c)))]);
+    return JSON.stringify([c.level, c.xp, c.skills, c.life, c.season.gameNo, c.story?.stage, eventLine(nextEvent(c, nextKeyGame(c))), this.todoRows().map((r) => [r.task.id, r.n, r.paid])]);
   }
 
   makeHud() {
@@ -244,6 +247,22 @@ export abstract class RoomScene extends Phaser.Scene {
     // money (round 84: money only; the salary goes under it later)
     panel(872, 22, 150, 66, 0x6b4c34, 0x9b7a55);
     icon(882, 48, 'coin', 2); T(902, 38, L.money < 0 ? `-$${(-L.money).toLocaleString('en-US')}` : `$${L.money.toLocaleString('en-US')}`, 18, L.money < 0 ? '#ff8a7a' : '#bfe86a'); // round 81: debt shows red
+    // round 91 (owner): the to-do list, top right (a task you just finished stays up a moment with its ✓)
+    const rows = this.todoRows();
+    if (rows.length) {
+      const tx = 1044, th = 28 + rows.length * 34; // (left of the fullscreen button)
+      g.fillStyle(0x000000, 0.22).fillRoundedRect(tx + 4, 18, 188, th, 9);
+      panel(tx, 12, 188, th, 0x7a5a3e, 0xb08a5c);
+      T(tx + 12, 16, 'TO DO', 13, '#ffe9a8', 3);
+      rows.forEach((r, i) => {
+        const y = 40 + i * 34, done = r.paid || r.n >= r.task.goal;
+        g.fillStyle(0x1e1410, 1).fillRoundedRect(tx + 10, y + 1, 16, 16, 3);
+        g.fillStyle(done ? 0x6fd24a : 0xe8d6b0, 1).fillRoundedRect(tx + 12, y + 3, 12, 12, 2);
+        if (done) T(tx + 13, y - 3, '✓', 15, '#ffffff', 3);
+        T(tx + 34, y - 1, `${r.task.text}  ${Math.min(r.n, r.task.goal)}/${r.task.goal}`, 14, r.paid ? '#bfe86a' : '#ffffff', 3);
+        T(tx + 34, y + 16, r.task.reward, 10, '#ffe9a8', 2);
+      });
+    }
     this.hud = { g, objs, sig: this.hudSig() };
     // a skill that went up since it was last shown flashes and pops a "+n"
     for (const st of CORE_STATS) {
@@ -337,6 +356,25 @@ export abstract class RoomScene extends Phaser.Scene {
     for (const o of this.orbs) { if (o.to === 'energy') addEnergy(app.career, o.amount); else addSkillXp(app.career, o.to, o.amount); }
     if (this.orbs.length) app.changed();
     this.orbs = []; this.pops = []; this.orbG = null; this.hudFx = null; this.tiredText = null; this.flashes = [];
+  }
+
+  // ------------------------------------------------------------ round 91: the to-do list
+  /** Tasks paid out in this room just now (they stay on the list with a ✓ until `until`). */
+  paidTasks: { id: string; until: number }[] = [];
+  todoRows() {
+    const c = app.career, now = this.t;
+    const paid = this.paidTasks.filter((p) => now < p.until).map((p) => TASKS.find((t) => t.id === p.id)!).filter(Boolean);
+    return [...paid.map((task) => ({ task, n: task.goal, paid: true })), ...openTasks(c).map((task) => ({ task, n: task.progress(c), paid: false }))];
+  }
+  /** A finished task pays out (once): every skill card pops its "+n", the row ticks, a line under the list. */
+  payTasks() {
+    const paid = claimTasks(app.career);
+    if (!paid.length) return;
+    app.changed();
+    sfx.greenChime();
+    for (const t of paid) this.paidTasks.push({ id: t.id, until: this.t + 4 });
+    const text = this.add.text(1138, 106, paid.map((t) => `${t.text.toUpperCase()}: DONE\n${t.reward}`).join('\n'), { fontFamily: FONT, fontSize: '15px', color: '#bfe86a', fontStyle: 'bold', stroke: '#2a1a10', strokeThickness: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(9003);
+    this.tweens.add({ targets: text, y: 122, alpha: 0, delay: 2600, duration: 900, onComplete: () => text.destroy() });
   }
 
   /** Rebuild the HUD when career values change (dev tools, rewards), and play the skill level-up flashes. */
