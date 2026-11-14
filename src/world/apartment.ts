@@ -77,6 +77,8 @@ export const SPOTS = {
   calendar: { x: 7.9, y: 4.4 },   // on the left wall (the garage-door wall), next to the fridge
   fridge: { x: 10.7, y: 3.5 },
   couch: { x: 23.2, y: 4.3 },     // sleep here to end the day
+  phone: { x: 19.8, y: 7.4 },     // round 85: the landline on the island, by the bonsai
+  tv: { x: 26.8, y: 8.4 },        // round 85: in front of the TV (film study, later)
 };
 /** The calendar on the left wall: depth range + height (ft). */
 export const CALENDAR = { y0: 2.9, y1: 5.9, h0: 4.2, h1: 7.0 };

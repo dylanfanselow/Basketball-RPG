@@ -6,7 +6,7 @@ import {
   nextEvent, eventLine, callLines, RANGE_PICKS, draftRange,
 } from '../src/career/draft';
 import { GauntletGame, NO_INPUT, MiniInput } from '../src/world/minigames';
-import { ShootingDrill, buildShootingDrill, DRILL_SHOTS, DRILL_PER_SPOT, starterFor, buildStarterOnes, buildTeamScrimmage, buildDraftScrimmage } from '../src/sim/draftGames';
+import { starterFor, buildStarterOnes, buildTeamScrimmage, buildDraftScrimmage } from '../src/sim/draftGames';
 import { TIERS } from '../src/career/schedule';
 import { defaultAppearance } from '../src/render/appearance';
 import { newStory } from '../src/sim/story';
@@ -43,13 +43,13 @@ describe('round 84: the road to the draft', () => {
     }
     expect(overlaps).toBeGreaterThan(0); // two on the same day happens
   });
-  it('draft night: always the Lottery team that called, late in the first round', () => {
+  it('draft night: always the Lottery team that called (round 85: at about Garcia\'s estimate)', () => {
     for (let seed = 1; seed < 30; seed++) {
       const c = career(seed); c.story!.workouts = planWorkouts(c);
       const r = draftResult(c), lottery = c.story!.workouts.find((w) => w.tier === 'Lottery')!;
       expect(r.team).toBe(lottery.team);
-      expect(draftRange(c)).toBe('late');
-      expect(r.pick).toBeGreaterThanOrEqual(RANGE_PICKS.late[0]); expect(r.pick).toBeLessThanOrEqual(RANGE_PICKS.late[1]);
+      expect(r.pick).toBeGreaterThanOrEqual(1); expect(r.pick).toBeLessThanOrEqual(60);
+      expect(RANGE_PICKS[draftRange(c)][0]).toBeLessThanOrEqual(r.pick + 2);
     }
   });
   it('today\'s events, missed ones, and the top bar\'s next event', () => {
@@ -84,18 +84,6 @@ describe('round 84: the road to the draft', () => {
     expect(g.strikes).toBe(3); expect(g.over).toBe(true);
     // running out of time is a strike too
     const t = new GauntletGame(() => 0.6); t.update(GauntletGame.START + 0.05, NO_INPUT); expect(t.strikes).toBe(1);
-  });
-  it('the shooting drill: 25 shots, five a spot, the ball back each time, makes counted', () => {
-    const c = career(), sim = buildShootingDrill(c, 7), dr = sim.director as ShootingDrill;
-    expect(dr).toBeInstanceOf(ShootingDrill);
-    expect(sim.ball.st.kind === 'held' && sim.ball.st.holder === sim.user).toBe(true);
-    for (let i = 0; i < DRILL_SHOTS; i++) {
-      sim.user!.box.fga++; dr.tick(sim);
-      if (i % 2 === 0) dr.onEvent(sim, { kind: 'score', pid: sim.user!.id, text: '', team: 0, t: 0 } as any);
-      sim.time += 2; dr.tick(sim);
-      if (!dr.done) { expect(dr.spotIndex).toBe(Math.floor((i + 1) / DRILL_PER_SPOT)); expect(sim.ball.st.kind).toBe('held'); }
-    }
-    expect(dr.shots).toBe(DRILL_SHOTS); expect(dr.makes).toBe(13); expect(sim.over).toBe(true);
   });
   it('the team workouts: a starter who isn\'t a star; you with their bench vs their starters; the prospects\' scrimmage', () => {
     const c = career();

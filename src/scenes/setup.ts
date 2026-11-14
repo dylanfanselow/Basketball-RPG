@@ -7,7 +7,7 @@ import { app } from '../state';
 import { OneOnOneSetup, DEFAULT_1V1, buildOneOnOne } from '../sim/oneOnOne';
 import { ThreeSetup, buildThrees } from '../sim/threes';
 import { buildTutorial, buildOnes, buildBigGame, buildVisit, buildFinal, newStory } from '../sim/story';
-import { buildShootingDrill, buildDraftScrimmage, buildStarterOnes, buildTeamScrimmage, COMBINE } from '../sim/draftGames';
+import { buildDraftScrimmage, buildStarterOnes, buildTeamScrimmage } from '../sim/draftGames';
 import { TutorialDirector } from '../sim/tutorial';
 import type { StoryStage, CareerState } from '../career/career';
 export type { ThreeSetup } from '../sim/threes';
@@ -17,8 +17,8 @@ export { DEFAULT_1V1 } from '../sim/oneOnOne';
 export type Mode = 'practice' | 'quick' | 'quick3' | 'career' | 'oneOnOne' | 'story';
 /** Round 60: the prologue's games. */
 export type StoryGame = 'tutorial' | 'ones' | 'bigGame' | 'kingston' | 'final'
-  /** round 84: the combine's shooting drill, the draft scrimmage, and the teams' workouts */
-  | 'combineShoot' | 'scrimmage' | 'wkShoot' | 'wk1v1' | 'wkTeam';
+  /** round 84: the draft scrimmage and the teams' game workouts (round 85: shooting is in the arena gym) */
+  | 'scrimmage' | 'wk1v1' | 'wkTeam';
 
 /** Quick-game choices from the setup screen. playAs: 0-4 = that starter, 'me' = your created player. */
 export interface MatchSetup { myTeam: string; oppTeam: string; playAs: number | 'me' }
@@ -94,9 +94,7 @@ export function createStorySim(which: StoryGame, c: CareerState = app.career): G
   if (which === 'final') return buildFinal(c, seed);
   // round 84: the road to the draft
   const w = c.story?.workouts?.[c.story.going ?? -1];
-  if (which === 'combineShoot') return buildShootingDrill(c, seed);
   if (which === 'scrimmage') return buildDraftScrimmage(c, seed);
-  if (which === 'wkShoot') return buildShootingDrill(c, seed, TEAMS.find((t) => t.id === w?.team) ?? COMBINE);
   if (which === 'wk1v1') return buildStarterOnes(c, w?.team ?? 'MEM', seed);
   if (which === 'wkTeam') return buildTeamScrimmage(c, w?.team ?? 'OKC', seed);
   const sim = buildTutorial(c, seed);

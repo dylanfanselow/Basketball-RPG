@@ -34,6 +34,7 @@ import { addSchoolCourt, FENCE_Y, BLEACHER, SCHOOL_COLORS, SchoolVariant } from 
 import { SchoolKids, CrowdLike } from '../render/crowd';
 import { CINE_SPEED } from '../sim/ultimates';
 import { StoryRun, storyBenchSeats } from './storyRun';
+import { scoutTexture } from './castSprites';
 import { playerKit, takeStory } from './preload';
 
 /** Sideline people are a little farther from the camera than the court: bench players slightly smaller than on-court
@@ -185,12 +186,12 @@ export class GameScene extends Phaser.Scene {
     this.school = venue === 'arena' ? null : venue === 'schoolRain' ? 'rain' : 'day';
     this.flag = null; this.rainG = null; this.splashG = null; this.flashRect = null; this.drops = []; this.splashes = [];
     if (this.school) this.flag = addSchoolCourt(this, this.school).flag;
-    else drawCourt(this, [t0.def.colors[0], t1.def.colors[0]]);
+    else drawCourt(this, this.sim.cfg.courtColors ?? [t0.def.colors[0], t1.def.colors[0]]); // round 85: a tryout is on the team's court
     const hoops = drawHoops(this, this.school ? 'school' : 'arena');
     this.nets = hoops.nets; this.netHits = [{ at: -9999, amp: 0 }, { at: -9999, amp: 0 }];
     this.shotClockTexts = hoops.shotClocks.map((c) => this.add.text(c.x, c.y, '24', { fontFamily: FONT, fontSize: '16px', color: '#ff3b2f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(sy(23.6)));
     if (!this.school) {
-      this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed, this.splitCrowd);
+      this.crowd = new Crowd(this, t0.def.colors, t1.def.colors, !!this.sim.cfg.bigGame, t0.def.seed, this.splitCrowd, !!this.sim.cfg.scoutsOnly);
       this.buildSideline();
     } else {
       // no stands, table, benches, coaches or celebs out here: a few kids by the fence (not on the rainy night)
@@ -901,7 +902,8 @@ export class GameScene extends Phaser.Scene {
     // broadcasters behind the table: suits and headsets, talking among themselves, not reacting to the game
     this.announcers = [];
     const arng = new Rng(sim.teams[0].def.seed * 53 + 11);
-    [42.9, 47, 51.1].forEach((ax, i) => {
+    const scouts = !!sim.cfg.scoutsOnly; // round 85: no broadcast, no coaches: scouts on both benches
+    (scouts ? [] : [42.9, 47, 51.1]).forEach((ax, i) => {
       const look = randomAppearance(() => arng.next());
       Object.assign(look, { headband: null, goggles: false, mask: false, armSleeve: 'both', sleeveColor: '#22242e', wristband: null, hair: arng.pick(['buzz', 'fade', 'waves', 'bald', 'curly']) });
       const suitCol = ['#22242e', '#2d3140', '#3a2f2a'][i];
@@ -940,14 +942,19 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.add.sprite(sx(x), sy(-3.9), key, 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9));
       this.celebs.push({ sprite, phase: crng.next() * 10, x, frame: 0, until: 0, glam: GLAM_CELEBS.includes(ci), cane: CANE_CELEBS.includes(ci), seq: null, nextSeqAt: this.time.now + 3000 + crng.next() * 9000 });
     }
+    // round 85: the scouts, seated along both benches, in the home team's color
+    if (scouts) {
+      const col = sim.cfg.courtColors?.[0] ?? t0.def.colors[0];
+      BENCH_X.forEach(([a, b], team) => { let i = team * 7; for (let x = a + 1; x <= b - 1; x += 2.4) this.add.sprite(sx(x), sy(-3.9), scoutTexture(this, i++ % 9, col, true), 0).setOrigin(0.5, 1).setScale(CELEB_SCALE).setDepth(sy(-3.9)); });
+    }
     // round 80e: in the story final the starters' seats stay empty on the bench (the reserves sit by the assistants)
-    if (this.mode === 'story') {
+    if (this.mode === 'story' && !scouts) {
       if (!this.textures.exists('empty_chair_v1')) this.textures.addCanvas('empty_chair_v1', buildEmptyChair());
       for (const t of [0, 1] as const) for (const x of storyBenchSeats(t).empty) this.add.image(sx(x), sy(-3.9), 'empty_chair_v1').setOrigin(0.5, 1).setScale(BENCH_SCALE).setDepth(sy(-3.9) - 0.5);
     }
     // assistant coaches: two in suits at the end of each bench (toward midcourt)
     this.assistants = [];
-    ([0, 1] as const).forEach((team) => {
+    (scouts ? [] : [0, 1] as const).forEach((team) => {
       const def = sim.teams[team].def, rng = new Rng(def.seed * 17 + 3);
       (team === 0 ? [25.4, 27.6] : [67.4, 69.6]).forEach((ax) => {
         const look = randomAppearance(() => rng.next());
@@ -961,7 +968,7 @@ export class GameScene extends Phaser.Scene {
     });
     // coaches in suits
     this.coaches = [];
-    ([0, 1] as const).forEach((team) => {
+    (scouts ? [] : [0, 1] as const).forEach((team) => {
       const def = sim.teams[team].def;
       const rng = new Rng(def.seed * 31 + 7);
       const look = randomAppearance(() => rng.next());

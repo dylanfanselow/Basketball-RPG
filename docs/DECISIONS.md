@@ -188,6 +188,27 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 85 (owner): the combine in the arena, doubled workouts, shooting streaks, the landline.**
+  - **Workouts send twice the orbs** (and so cost twice the energy: every orb costs the same).
+  - **Garage triangle:** a black rubber rebound wedge on the floor under the hoop, its slope toward the shooter; a make
+    drops through the net onto it and kicks straight back to you.
+  - **Perfect streaks:** the game remembers your most perfect jump shots in a row (`records.perfectStreak`) and pops
+    **NEW RECORD! n PERFECTS IN A ROW** when you beat it ("PERFECT x n" otherwise). A perfect's ball comes back
+    faster (1.55 s instead of 2.1).
+  - **The combine is in an arena** (the arena gym: the garage's layout on an arena floor, empty stands, scouts on the
+    bench along the right side, the machines brought out). Five tests, **shuffled per story, three on day 1 and two
+    on day 2**: **sprint** (laps around the court, the treadmill's ○ timing sets your speed, 30 s), **squat** and
+    **bench press** (30 s), the new **vertical jump** (mash ✕ for 4 s to load it, three tries, best counts, inches),
+    and **shooting** (the shooting mini-game, 15 shots). Every shooting workout uses the shooting mini-game (the court
+    drill is gone).
+  - **The scrimmage and every team tryout are in an arena** with the stands empty and **scouts on both benches** (no
+    coaches, no broadcast); a tryout is in **that team's arena colors** (the arena gym's paint, banner and scouts too).
+  - **Landline** on the kitchen island by the bonsai: call **Mom** (encouragement, depends on where you are) or
+    **Donovan Garcia** (once you've met him): where he thinks you'll go in the draft, from the combine (each test
+    against the class; a missed day counts as nothing) and the scrimmage (your weighted night; missing it hurts).
+    **The draft follows his estimate** (give or take two picks, owner's pick); a bottom-tier team still always takes you.
+  - Garcia's tour adds the TV (watch film to learn advanced moves) and the landline lines. **Film study is a line only
+    for now** (owner): the TV says "Film study: coming soon".
 - **Round 84 (owner): Donovan Garcia and the road to the draft.**
   - The agent is **Donovan Garcia** (was Victor Hale; old saves are renamed). He leaves the garage through the **side
     door into the backyard**; you: "Wait, that's not an exit. Doesn't that lead to the backyard?" and you see him

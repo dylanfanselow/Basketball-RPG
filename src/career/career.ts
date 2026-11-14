@@ -44,6 +44,8 @@ export interface CareerState {
    * the story brings him back); `home` = where Load Save drops you (older saves keep the apartment).
    */
   story?: StoryState;
+  /** round 85: personal records (the most perfect jump shots in a row) */
+  records?: { perfectStreak: number };
 }
 /** Round 80: after `after` (Mom's talk) the yard is yours (`done` + `checkKingston`); the path end then leads on:
  *  Kingston at the court → three months later (the paper) → the snowy morning → the bus → the national final. */
@@ -91,8 +93,13 @@ export interface StoryState {
   /** round 84: draft night: who picked you, and where */
   drafted?: { team: string; pick: number };
 }
+/** Round 85: the combine's five tests (shuffled over the two days, see `draft.combinePlan`). */
+export type CombineTest = 'sprint' | 'squat' | 'bench' | 'jump' | 'shoot';
 export interface CombineResult {
-  day1?: { sprint: number; squat: number; bench: number }; day2?: { makes: number; shots: number };
+  /** each test's score: laps, reps, reps, inches, makes (of 15) */
+  scores?: Partial<Record<CombineTest, number>>;
+  /** the days you went (round 85: flags; the scores are per test) */
+  day1?: boolean; day2?: boolean;
   missed1?: boolean; missed2?: boolean;
 }
 export interface ScrimmageResult { pts: number; reb: number; ast: number; sum: number; won: boolean }
@@ -329,6 +336,14 @@ export function migrateCareer(c: any): CareerState | null {
   if (!c.season?.key) c.season = buildSeason(c.teamId ?? 'LAL', c.story.stage === 'done' ? nextFall(c.life?.day ?? 1) : ROOKIE_SEASON_START, (c.name?.length ?? 5) * 7919 + 13);
   if (c.story.june !== undefined) delete c.story.june; // round 82's June jump is gone
   if (c.story.agent === 'Victor Hale') c.story.agent = 'Donovan Garcia'; // round 84: the agent's new name
+  // round 85: the combine keeps per-test scores (round 84 saved day objects)
+  const cb = c.story.combine;
+  if (cb && (typeof cb.day1 === 'object' || typeof cb.day2 === 'object')) {
+    const scores: Record<string, number> = {};
+    if (typeof cb.day1 === 'object') Object.assign(scores, { sprint: Math.round(cb.day1.sprint / 3), squat: cb.day1.squat, bench: cb.day1.bench });
+    if (typeof cb.day2 === 'object') scores.shoot = Math.round((cb.day2.makes / Math.max(1, cb.day2.shots)) * 15);
+    c.story.combine = { scores, day1: !!cb.day1, day2: !!cb.day2, missed1: cb.missed1, missed2: cb.missed2 };
+  }
   syncSkillsToCore(c as CareerState); // the cards show the real ratings
   return c as CareerState;
 }

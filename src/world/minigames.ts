@@ -18,12 +18,13 @@ import type { CoreStat } from '../sim/data';
  * cards on the HUD (each one costs energy). One full bar on the squat / bench / dribbling mat, every ORB_HITS hits on
  * the treadmill, every made shot at the hoop.
  */
+/** Round 85 (owner): twice the orbs (and so twice the energy: every orb costs ORB_ENERGY). */
 export const ORBS: Record<string, CoreStat[]> = {
-  treadmill: ['mobility', 'mobility'],
-  squat: ['strength', 'mobility'],
-  shoot: ['shooting', 'finishing'],
-  bench: ['strength', 'finishing'],
-  dribble: ['playmaking', 'shooting'],
+  treadmill: ['mobility', 'mobility', 'mobility', 'mobility'],
+  squat: ['strength', 'mobility', 'strength', 'mobility'],
+  shoot: ['shooting', 'finishing', 'shooting', 'finishing'],
+  bench: ['strength', 'finishing', 'strength', 'finishing'],
+  dribble: ['playmaking', 'shooting', 'playmaking', 'shooting'],
 };
 export const NO_INPUT: MiniInput = { stick: { x: 0, y: 0 }, a: false, b: false, x: false, y: false, l2: false, r2: false, aHeld: false };
 
@@ -155,6 +156,41 @@ export class DribbleGame extends RepBar {
   animU() { return this.clip().u; }
 }
 
+// ---------------------------------------------------------------- vertical jump (round 85)
+/**
+ * Round 85 (owner): the combine's vertical jump. Mash ✕ while the bar is open (you sink into a crouch as it fills),
+ * then you explode up: the more presses, the higher. Three tries; the best counts. Score = inches.
+ */
+export class JumpGame extends MiniGame {
+  id = 'jump';
+  controls = ['Mash ✕ to load your jump  (K)', 'Three tries · the best one counts'];
+  static LOAD = 4; static AIR = 0.9; static REST = 1.2; static TRIES = 3;
+  static PER_PRESS = 0.045;
+  phase: 'load' | 'air' | 'rest' | 'done' = 'load';
+  power = 0; tries = 0; best = 0; last = 0; phaseAt = 0;
+  /** Inches for a power (0..1): 18 at nothing, about 44 maxed. */
+  static inches(power: number) { return Math.round((18 + 26 * Math.min(1, power)) * 2) / 2; }
+  protected step(_dt: number, inp: MiniInput) {
+    const since = this.t - this.phaseAt;
+    if (this.phase === 'load') {
+      if (inp.a) { this.power = Math.min(1, this.power + JumpGame.PER_PRESS); this.emit('press'); }
+      if (since >= JumpGame.LOAD) { this.phase = 'air'; this.phaseAt = this.t; this.last = JumpGame.inches(this.power); this.best = Math.max(this.best, this.last); this.tries++; this.reps = Math.round(this.best); this.emit('release'); }
+    } else if (this.phase === 'air') {
+      if (since >= JumpGame.AIR) { this.phase = this.tries >= JumpGame.TRIES ? 'done' : 'rest'; this.phaseAt = this.t; this.emit('rep'); }
+    } else if (this.phase === 'rest' && since >= JumpGame.REST) { this.phase = 'load'; this.phaseAt = this.t; this.power = 0; }
+  }
+  get over() { return this.phase === 'done'; }
+  /** In the air: a hop shaped by the jump (feet). */
+  jumpFt() { if (this.phase !== 'air') return 0; const k = (this.t - this.phaseAt) / JumpGame.AIR; return (this.last / 12) * Math.sin(Math.PI * Math.min(1, k)); }
+  /** Crouch while loading (the squat's bottom, deeper as it fills), reach up in the air (the jumper's release). */
+  clip(): { clip: string; u: number } {
+    if (this.phase === 'air') return { clip: 'shot_jumper', u: 0.62 };
+    if (this.phase === 'load') return { clip: 'squat', u: 0.25 + 0.2 * this.power };
+    return { clip: 'squat', u: 0 };
+  }
+  animU() { return this.clip().u; }
+}
+
 // ---------------------------------------------------------------- pressure drill (round 84)
 /**
  * Round 84 (owner): the workouts' escalating drill. The dribbling mat's prompts, but each one has a time window that
@@ -193,12 +229,18 @@ export class ShootGame extends MiniGame {
   /** a tiny red slice in the middle of the green: perfect release */
   static PERFECT: [number, number] = [0.866, 0.886];
   perfect = false;
+  /** round 85: perfects in a row (any other shot resets it) */
+  streak = 0;
+  /** round 85: how long this shot's ball takes to come back (a perfect comes back faster) */
+  flight = ShootGame.FLIGHT;
+  static FLIGHT_PERFECT = 1.55;
+  /** round 85: shots so far (a test can cap them) */
   state: 'idle' | 'meter' | 'shot' = 'idle';
   meter = 0; rising = true; attempts = 0; made = false; shotAt = -9; releasedAt = 0;
   private armed = false; // the ✕ that started the game must be let go first
   protected step(dt: number, inp: MiniInput) {
     if (!inp.aHeld) this.armed = true;
-    if (this.state === 'shot') { if (this.t - this.shotAt > ShootGame.FLIGHT) this.state = 'idle'; return; }
+    if (this.state === 'shot') { if (this.t - this.shotAt > this.flight) this.state = 'idle'; return; }
     if (this.state === 'idle' && this.armed && inp.aHeld) { this.state = 'meter'; this.meter = 0; this.rising = true; this.emit('load'); }
     if (this.state === 'meter') {
       if (inp.aHeld) {
@@ -211,7 +253,9 @@ export class ShootGame extends MiniGame {
         this.attempts++; if (this.made) this.reps++;
         this.state = 'shot'; this.shotAt = this.t; this.jumpAtRelease = this.jumpFt0(this.meter);
         this.perfect = this.meter >= ShootGame.PERFECT[0] && this.meter <= ShootGame.PERFECT[1];
-        this.emit('release'); if (this.perfect) this.emit('perfect'); else if (this.made) this.emit('green');
+        this.streak = this.perfect ? this.streak + 1 : 0;
+        this.flight = this.perfect ? ShootGame.FLIGHT_PERFECT : ShootGame.FLIGHT;
+        this.emit('release'); if (this.perfect) { this.emit('perfect'); this.emit('streak'); } else if (this.made) this.emit('green');
         if (this.made) this.emit('orb');
       }
     }
@@ -266,6 +310,7 @@ export function makeMiniGame(stationId: string, rand: () => number = Math.random
     case 'dribble': return new DribbleGame(rand);
     case 'shoot': return new ShootGame(rand);
     case 'bench': return new BenchGame(rand);
+    case 'jump': return new JumpGame(rand);
     default: return null;
   }
 }

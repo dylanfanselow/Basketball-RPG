@@ -6,7 +6,7 @@ import { FONT } from './ui';
 import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { advanceDay, sleepPlan, ENERGY_ORB, draftWeek, storyEventsByDay } from '../career/career';
-import { planWorkouts, callLines, todaysEvents, eventName, markMissed, draftResult, GoEvent } from '../career/draft';
+import { planWorkouts, callLines, todaysEvents, eventName, markMissed, draftResult, GoEvent, momLine, garciaLines, pickOne } from '../career/draft';
 import { buildSeason, ROOKIE_SEASON_START } from '../career/schedule';
 import { goTo } from './draftRoad';
 import { momTexture, mateTexture } from './castSprites';
@@ -139,6 +139,9 @@ export class ApartmentScene extends RoomScene {
       ag('When you do, it\'ll run you about your whole first contract. Plus what that generator costs.'),
       ag('One condition.'),
       ag('You can\'t fail.'),
+      // round 85 (owner): the TV (film) and the landline (updates)
+      ag('That TV? Watch film on it. Study the greats and you\'ll pick up moves you don\'t have yet.'),
+      ag('And there\'s a phone on the counter. Call me any time. I\'ll tell you where you stand.'),
       ag('Come here. Let me show you something.'),
       // round 81b: around the kitchen island, not through it
       { agentTo: P.haleToCalendar },
@@ -176,7 +179,7 @@ export class ApartmentScene extends RoomScene {
     const tv = this.add.graphics().setDepth(8850);
     tv.fillStyle(0x0a0d18, 1).fillRoundedRect(tvX - 150, tvY - 70, 300, 140, 8).lineStyle(3, 0x2c3350, 1).strokeRoundedRect(tvX - 150, tvY - 70, 300, 140, 8);
     tv.fillStyle(0x1d2b5a, 1).fillRect(tvX - 140, tvY - 60, 280, 30);
-    this.add.text(tvX, tvY - 45, 'THE DRAFT  ·  ROUND 1', { fontFamily: FONT, fontSize: '15px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(8851);
+    this.add.text(tvX, tvY - 45, `THE DRAFT  ·  ROUND ${draftResult(c).pick > 30 ? 2 : 1}`, { fontFamily: FONT, fontSize: '15px', color: '#ffe9a8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(8851);
     const tvText = this.add.text(tvX, tvY + 18, 'Coming up next...', { fontFamily: FONT, fontSize: '14px', color: '#ffffff', align: 'center', wordWrap: { width: 270 } }).setOrigin(0.5).setDepth(8851);
     const res = draftResult(c), team = TEAMS.find((t) => t.id === res.team)!, teamName = `${team.city} ${team.name}`;
     const ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
@@ -225,6 +228,9 @@ export class ApartmentScene extends RoomScene {
     const c = app.career, st = c.story, out: { label: string; spot: V; reach?: number; run: () => void }[] = [
       { label: 'Sleep', spot: SPOTS.couch, run: () => this.sleep() },
       { label: 'Calendar', spot: SPOTS.calendar, run: () => this.openCalendar() },
+      // round 85: the landline (Mom, Garcia) and the TV (film study, later)
+      { label: 'Phone', spot: SPOTS.phone, run: () => this.landline() },
+      { label: 'Watch film', spot: SPOTS.tv, run: () => this.thinkLine('Film study: coming soon.') },
     ];
     // round 84: on an event day the front door goes there (two workouts the same day: you pick one)
     const evs = todaysEvents(c), front = APARTMENT.doors.find((d) => d.id === 'front')!.spot;
@@ -239,6 +245,29 @@ export class ApartmentScene extends RoomScene {
     if (this.busy) return;
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ say: { who: 'you' as const, text } }], { phone: true });
   }
+  /**
+   * Round 85 (owner): the landline. Call Mom (she keeps you going) or Donovan Garcia (where he thinks you'll go in the
+   * draft right now; it moves with the combine and the scrimmage).
+   */
+  private landline() {
+    if (this.busy) return;
+    const c = app.career, st = c.story, you = c.firstName || c.name.split(' ')[0];
+    const garcia = !!st?.agent && (st.stage === 'draftWeek' || st.stage === 'done');
+    const options = ['Call Mom', ...(garcia ? ['Call Donovan Garcia'] : []), 'Hang up'];
+    const mom = (text: string) => ({ say: { who: 'phone' as BoxSpeaker, text } });
+    const me = (text: string) => ({ say: { who: 'me' as BoxSpeaker, name: you, text } });
+    const ag = (text: string) => ({ say: { who: 'agent' as BoxSpeaker, name: 'DONOVAN GARCIA (PHONE)', text } });
+    const call = (i: number) => {
+      const pick = options[i];
+      if (pick === 'Hang up') { this.agent = null; this.busy = false; return; }
+      const steps = pick === 'Call Mom'
+        ? [{ run: () => sfx.phoneRing() }, mom(momLine(c)), me(pickOne(['Love you, Ma.', 'I hear you, Ma.', 'I won\'t let you down.']))]
+        : [{ run: () => sfx.phoneRing() }, ag(`${you}. Garcia.`), ...garciaLines(c).map(ag), me('Got it.')];
+      this.agent = new AgentTalk(this, { x: -20, y: 0 }, steps, { phone: true });
+    };
+    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'Who do I call?', options, pick: call } }], { phone: true });
+  }
+
   private go(e: GoEvent) { if (this.busy) return; this.busy = true; goTo(this, e); }
   /** Two workouts on one day: choose; the other one is missed. */
   private pickWorkout(evs: GoEvent[]) {
@@ -412,7 +441,10 @@ export class ApartmentScene extends RoomScene {
   extraObstacles(): Poly[] { return this.cat.perch || this.cat.hop ? [] : [circlePoly(this.cat.p, CAT_R)]; }
 
   onUpdate(dt: number) {
-    if (this.agent) { if (!this.agent.update(dt)) this.agent = null; else this.busy = true; } // round 81
+    // round 81; round 85: a script can start the next one as it ends (the phone menu → the call): keep the new one
+    const ag = this.agent;
+    if (ag) { if (!ag.update(dt)) { if (this.agent === ag) this.agent = null; } else this.busy = true; }
+    if (this.agent && this.agent !== ag) this.busy = true;
     else if (this.cal) this.calendarInput();
     const cat = this.cat;
     catStep(cat, this.t, dt, this.catPolys(), Math.random);

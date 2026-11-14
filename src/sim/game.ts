@@ -92,6 +92,9 @@ export interface GameConfig {
   bigGame?: boolean;
   /** round 56: where it's played (cosmetic): the arena, the school court, or the school court on a rainy night */
   venue?: Venue;
+  /** round 85: an empty arena with scouts on both benches (the draft scrimmage, the teams' tryouts); `courtColors` paints the court */
+  scoutsOnly?: boolean;
+  courtColors?: [string, string];
   /**
    * Round 60 story games (the prologue tutorial): every shot goes in (the real chance is still computed and shown),
    * no blocks / fouls, CPU defenders don't reach or help (softD).

@@ -172,9 +172,10 @@ describe('round 40: dribble moves', () => {
 
 describe('round 42: workout orbs', () => {
   it('each station sends the owner\'s orbs', () => {
+    // round 85: doubled
     expect(ORBS).toEqual({
-      treadmill: ['mobility', 'mobility'], squat: ['strength', 'mobility'], shoot: ['shooting', 'finishing'],
-      bench: ['strength', 'finishing'], dribble: ['playmaking', 'shooting'],
+      treadmill: ['mobility', 'mobility', 'mobility', 'mobility'], squat: ['strength', 'mobility', 'strength', 'mobility'], shoot: ['shooting', 'finishing', 'shooting', 'finishing'],
+      bench: ['strength', 'finishing', 'strength', 'finishing'], dribble: ['playmaking', 'shooting', 'playmaking', 'shooting'],
     });
   });
   it('a full bar sends an orb (squat), the treadmill every 5 hits', () => {

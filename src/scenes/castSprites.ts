@@ -28,8 +28,8 @@ export function mateTexture(scene: Phaser.Scene, id: string, appearance: Appeara
   return castTexture(scene, `story_mate_${id}_v1`, { a, outfit: 'hoodie', color, accent, hat: 'none', hatColor: '#000000', shades: null, chain: false, longHair: null, stand: true, side: 'neutral' });
 }
 /** A scout: a polo, a cap in the team's color (or grey), a clipboard look. */
-export function scoutTexture(scene: Phaser.Scene, i: number, color = '#3a3f52'): string {
+export function scoutTexture(scene: Phaser.Scene, i: number, color = '#3a3f52', seated = false): string {
   const a = randomAppearance(() => (0.13 + i * 0.29) % 1);
   Object.assign(a, plain, { facial: i % 2 ? 'stubble' : 'none' });
-  return castTexture(scene, `story_scout_${i}_${color}_v1`, { a, outfit: 'tracksuit', color, accent: '#e8e2d0', hat: i % 2 ? 'cap' : 'none', hatColor: color, shades: null, chain: false, longHair: null, stand: true, side: 'neutral' });
+  return castTexture(scene, `story_scout_${i}_${color}_${seated ? 's' : 'u'}_v1`, { a, outfit: 'tracksuit', color, accent: '#e8e2d0', hat: i % 2 ? 'cap' : 'none', hatColor: color, shades: null, chain: false, longHair: null, stand: !seated, side: 'neutral' });
 }

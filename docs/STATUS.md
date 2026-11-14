@@ -261,6 +261,14 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 85: `ORBS` doubled; `ShootGame` `streak` / `flight` (`FLIGHT_PERFECT`), `'streak'` event; `JumpGame`;
+  `CareerState.records`; GarageScene wedge (`hasWedge`, `wedgeAt`, `drawWedge`), `onPerfect` (NEW RECORD), test mode moved
+  out, `orbsOn()`, `constructor(key)`; `world/arenaGym.ts` (`ARENA_GYM`, `LAPS` / `lapPoint`, `JUMP_SPOT`, `VERTEC`),
+  `render/arenaGymArt.ts`, `scenes/ArenaGymScene.ts` (combine days / gauntlet / shooting tests, laps, scouts);
+  `draft.ts` `combinePlan`, `COMBINE_RANGE`, `draftEstimate`, `estimateLine`, `rangeOf`, draft follows the estimate,
+  `momLine`, `garciaLines`, `pickOne`; `CombineResult` per-test `scores` (migration from round 84);
+  `GameConfig.scoutsOnly` / `courtColors`, `Crowd` `empty`, scouts on benches; ApartmentScene landline + TV + new tour
+  lines; `SPOTS.phone` / `tv`; the GameSim shooting drill removed; script hand-off fix in Apartment / Garage `onUpdate`.
   Round 84: `career/draft.ts` (`WORKOUT_KINDS`, `TIER_PITCH`, `assignWorkouts`, `leagueTiers`, `storyRng`,
   `draftDays`, `planWorkouts`, `callLines`, `draftRange` ('late'), `RANGE_PICKS`, `draftResult`, `todaysEvents` /
   `eventName` / `markMissed`, `nextEvent` / `eventLine`); `StoryState` `momCall2` / `combine` / `scrimmage` / `montage` /

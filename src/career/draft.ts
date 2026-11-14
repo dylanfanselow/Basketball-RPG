@@ -5,7 +5,7 @@
  * different. On draft night the Lottery team that called always picks you, late in the first round (for now).
  * Phaser-free, no state.ts. Imports career.ts types only.
  */
-import type { CareerState, StoryState, Workout, WorkoutKind } from './career';
+import type { CareerState, StoryState, Workout, WorkoutKind, CombineTest } from './career';
 import { TEAMS } from '../sim/data';
 import { teamStrength, TIERS, Tier } from './schedule';
 import { storyDay, STORY_DATES, dayOf } from './calendar';
@@ -97,16 +97,51 @@ export function callLines(c: CareerState, w: Workout, first: boolean): { who: 'a
 const SEASON = ['Fall', 'Winter', 'Spring', 'Summer'];
 export function dayLabel(day: number) { const z = day - 1; return `${SEASON[Math.floor((z % 112) / 28)]} ${(z % 28) + 1}`; }
 
-/** The draft range (owner: always late first for now; later the combine and scrimmage decide it). */
+/** The draft ranges (round 85: from the projected pick). */
 export type DraftRange = 'lottery' | 'late' | 'second';
-export const draftRange = (_c: CareerState): DraftRange => 'late';
 export const RANGE_PICKS: Record<DraftRange, [number, number]> = { lottery: [1, 14], late: [15, 30], second: [31, 60] };
+export const RANGE_NAMES: Record<DraftRange, string> = { lottery: 'Lottery', late: 'Late first', second: 'Second round' };
+export const rangeOf = (pick: number): DraftRange => (pick <= 14 ? 'lottery' : pick <= 30 ? 'late' : 'second');
 
-/** Draft night: the Lottery team that called you, at a pick in your range. */
+/** Round 85 (owner): the combine's tests, shuffled per story: day 1 gets three, day 2 the other two. */
+export const COMBINE_TESTS: CombineTest[] = ['sprint', 'squat', 'bench', 'jump', 'shoot'];
+export function combinePlan(c: Pick<CareerState, 'story'>): { day1: CombineTest[]; day2: CombineTest[] } {
+  const rnd = storyRng(c.story, 0xc0b1e), t = [...COMBINE_TESTS];
+  for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; }
+  return { day1: t.slice(0, 3), day2: t.slice(3) };
+}
+/** What each test's score is worth, from nothing (0) to the best in the class (1). */
+export const COMBINE_RANGE: Record<CombineTest, [number, number]> = { sprint: [1.5, 6], squat: [1, 10], bench: [0, 7], jump: [22, 42], shoot: [2, 13] };
+export const combineGrade = (t: CombineTest, v: number) => { const [lo, hi] = COMBINE_RANGE[t]; return Math.max(0, Math.min(1, (v - lo) / (hi - lo))); };
+
+/**
+ * Round 85 (owner): where Garcia thinks you go in the draft, from the combine (each test against the class; a missed
+ * day counts its tests as nothing) and the scrimmage (your weighted night). Null until there's something to go on.
+ */
+export function draftEstimate(c: CareerState): number | null {
+  const st = c.story, cb = st?.combine, plan = combinePlan(c);
+  const tests = [...(cb?.day1 || cb?.missed1 ? plan.day1 : []), ...(cb?.day2 || cb?.missed2 ? plan.day2 : [])];
+  const hasScrim = !!st?.scrimmage;
+  if (!tests.length && !hasScrim) return null;
+  const comb = tests.length ? tests.reduce((s, t) => s + combineGrade(t, cb?.scores?.[t] ?? -1e9), 0) / tests.length : 0.5;
+  const scrim = st?.scrimmage && st.scrimmage !== 'missed' ? Math.max(0, Math.min(1, st.scrimmage.sum / 40)) : st?.scrimmage === 'missed' ? 0 : 0.5;
+  const w = hasScrim ? (tests.length ? 0.45 : 1) : 0, total = (1 - w) * comb + w * scrim;
+  return Math.max(1, Math.min(60, Math.round(60 - 59 * total)));
+}
+/** Garcia's line for the phone. */
+export function estimateLine(c: CareerState): string {
+  const e = draftEstimate(c);
+  if (e === null) return 'Too early to tell. Show me something at the combine.';
+  return `Right now? I've got you going around pick ${e}. ${RANGE_NAMES[rangeOf(e)]}.`;
+}
+/** The draft range (round 85: wherever the estimate is). */
+export const draftRange = (c: CareerState): DraftRange => rangeOf(draftEstimate(c) ?? 45);
+
+/** Draft night (round 85: the pick follows Garcia's estimate, give or take two): the Lottery team that called you. */
 export function draftResult(c: CareerState): { team: string; pick: number } {
   const st = c.story, w = st?.workouts?.find((x) => x.tier === 'Lottery') ?? planWorkouts(c).find((x) => x.tier === 'Lottery')!;
-  const [lo, hi] = RANGE_PICKS[draftRange(c)], rnd = storyRng(st, 0xd4af7);
-  return { team: w.team, pick: lo + Math.floor(rnd() * (hi - lo + 1)) };
+  const rnd = storyRng(st, 0xd4af7), est = draftEstimate(c) ?? 45;
+  return { team: w.team, pick: Math.max(1, Math.min(60, est + Math.floor(rnd() * 5) - 2)) };
 }
 
 /** A story event you go to (combine days, the scrimmage, a workout). */
@@ -161,3 +196,23 @@ export function nextEvent(c: CareerState, nextKey: { opponent: string; daysAway:
 }
 /** "Combine in 7 days" / "Combine today". */
 export const eventLine = (e: { what: string; days: number } | null) => (!e ? '' : e.days <= 0 ? `${e.what} today` : `${e.what} in ${e.days} day${e.days === 1 ? '' : 's'}`);
+
+/** A random one of these. */
+export const pickOne = <T>(a: T[], rnd: () => number = Math.random): T => a[Math.floor(rnd() * a.length) % a.length];
+/** Round 85 (owner): what Mom says when you call (it keeps you going), by where you are on the road to the draft. */
+export function momLine(c: CareerState, rnd: () => number = Math.random): string {
+  const st = c.story, d = st?.draft, day = c.life.day, est = draftEstimate(c);
+  if (d && day >= d.draft - 4) return pickOne(['Whatever happens on draft night, you\'re already my hero.', 'I bought a dress for draft night. Don\'t you dare laugh.', 'Breathe, baby. You did the work. Now let it come to you.'], rnd);
+  if (est !== null && est > 40) return pickOne(['One bad day doesn\'t write your story, baby. You write it.', 'They don\'t know you yet. They will.', 'Your daddy used to say pressure is a privilege. Act like it.'], rnd);
+  if (!st?.combine?.day1) return pickOne(['You\'ve been working for this since you were a little boy. Go show them.', 'Eat something green. And sleep. Champions sleep.', 'I put your name on the prayer list at church. The whole list.'], rnd);
+  return pickOne(['I\'m proud of you. Now go to bed early.', 'The generator\'s humming, the lights are on. Don\'t you worry about us.', 'Keep your head down and keep working. That\'s how we do it.'], rnd);
+}
+/** Round 85 (owner): Garcia on the phone: where he thinks you go right now, and what's moving it. */
+export function garciaLines(c: CareerState): string[] {
+  const st = c.story, cb = st?.combine, out = [estimateLine(c)];
+  if (cb?.missed1 || cb?.missed2) out.push('You missed part of the combine. That\'s costing you. Don\'t miss anything else.');
+  if (st?.scrimmage === 'missed') out.push('And skipping the scrimmage? Scouts talk.');
+  else if (st?.scrimmage && st.scrimmage.sum >= 30) out.push('That scrimmage got people talking. Good talking.');
+  if (!st?.scrimmage && cb?.day1) out.push('The scrimmage is where you can move up. Play your game.');
+  return out;
+}

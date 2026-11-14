@@ -8,7 +8,6 @@ import type { GameSim } from '../sim/game';
 import type { GameInit } from './setup';
 import { setStage, storyScene, ensureStory } from './setup';
 import { bigGameVerdict, statSum } from '../sim/story';
-import { ShootingDrill, DRILL_SHOTS } from '../sim/draftGames';
 
 export class PostGameScene extends Phaser.Scene {
   inp!: InputMapper; mode = 'quick'; sim: GameSim | null = null; replay?: GameInit;
@@ -113,26 +112,21 @@ export class PostGameScene extends Phaser.Scene {
 }
 
 /** Round 84: the story games on the road to the draft (PostGame records them, then home). */
-const DRAFT_GAMES: string[] = ['combineShoot', 'wkShoot', 'scrimmage', 'wk1v1', 'wkTeam'];
+const DRAFT_GAMES: string[] = ['scrimmage', 'wk1v1', 'wkTeam'];
 /** Round 84: save a draft event's result on the story; returns the summary lines. */
 function recordDraftGame(which: string, sim: GameSim): string[] {
   ensureStory();
   const st = app.career.story!, u = sim.user!, b = u.box;
   const won = sim.teams[u.team].score > sim.teams[1 - u.team].score;
-  const drill = sim.director instanceof ShootingDrill ? sim.director : null;
   const w = st.workouts?.[st.going ?? -1];
   const out: string[] = [];
-  if (which === 'combineShoot' && drill) {
-    (st.combine ??= {}).day2 = { makes: drill.makes, shots: Math.max(drill.shots, DRILL_SHOTS) };
-    out.push(`Combine shooting drill: ${drill.makes}/${DRILL_SHOTS}.`);
-  } else if (which === 'scrimmage') {
+  if (which === 'scrimmage') {
     st.scrimmage = { pts: b.pts, reb: b.reb, ast: b.ast, sum: statSum(u), won };
     out.push(`The scrimmage: ${b.pts} pts, ${b.reb} reb, ${b.ast} ast. The scouts wrote it all down.`);
   } else if (w) {
-    const text = which === 'wkShoot' && drill ? `${drill.makes}/${DRILL_SHOTS} in the shooting drill`
-      : which === 'wk1v1' ? `${won ? 'Won' : 'Lost'} the 1-on-1, ${sim.teams[u.team].score}-${sim.teams[1 - u.team].score}`
+    const text = which === 'wk1v1' ? `${won ? 'Won' : 'Lost'} the 1-on-1, ${sim.teams[u.team].score}-${sim.teams[1 - u.team].score}`
       : `${won ? 'Won' : 'Lost'} the scrimmage vs their starters (${b.pts} pts, ${b.reb} reb, ${b.ast} ast)`;
-    w.result = { score: which === 'wkShoot' && drill ? drill.makes : which === 'wk1v1' ? sim.teams[u.team].score : statSum(u), text };
+    w.result = { score: which === 'wk1v1' ? sim.teams[u.team].score : statSum(u), text };
     st.going = undefined;
     out.push(`Workout: ${text}.`);
   }

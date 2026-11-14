@@ -100,6 +100,9 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 85 follow-ups:** film study on the TV (learn advanced moves); the arena gym reuses the garage's frame (a
+  dedicated arena room later); scouts are the celeb drawing (a seated-on-bench pose would read better); the draft
+  range doesn't yet change which teams call.
 - **Round 84 follow-ups:** the combine and scrimmage results should set the draft range (`draftRange` is fixed 'late'),
   and the range should change who calls; the salary under the money panel after each game; the combine facility and
   the teams' practice facilities reuse the garage room (a real gym room later); Summer (the offseason) and the

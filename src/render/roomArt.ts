@@ -681,6 +681,13 @@ function drawIsland(c: C, p0: Piece) {
   for (const [tx, ty] of trunk) { P(c, px + tx, py + ty, '#6a4428'); P(c, px + tx + 1, py + ty, '#4a2f1c'); }
   const pads: [number, number, number][] = [[4, -12, 5], [13, -11, 5], [9, -15, 6], [16, -8, 3]];
   for (const [ox, oy, w] of pads) { R(c, px + ox - 1, py + oy - 1, w * 2 + 2, 6, '#1f4a1a'); R(c, px + ox, py + oy, w * 2, 4, '#3f8a2f'); R(c, px + ox + 1, py + oy, w * 2 - 3, 1, '#6cbf4a'); }
+  // round 85 (owner): an old beige landline by the bonsai: the base with its keypad, the handset on the cradle, the
+  // coiled cord hanging off the far side (it sits on the counter facing the room, like the bonsai)
+  { const fx = b.x0 + 32, fy = Math.round(AY(p.y + 5.1) - H);
+    R(c, fx - 1, fy - 1, 18, 9, '#5a4a32'); R(c, fx, fy, 16, 7, '#d8c9a8'); R(c, fx, fy, 16, 1, '#efe4c8'); R(c, fx, fy + 6, 16, 1, '#b4a482');
+    for (let k = 0; k < 3; k++) for (let j = 0; j < 3; j++) P(c, fx + 9 + j * 2, fy + 2 + k * 2 - (k === 2 ? 1 : 0), '#7a6a4e');
+    R(c, fx - 1, fy - 4, 12, 3, '#5a4a32'); R(c, fx, fy - 4, 10, 2, '#cbbb98'); R(c, fx - 1, fy - 5, 3, 2, '#b4a482'); R(c, fx + 8, fy - 5, 3, 2, '#b4a482');
+    for (let k = 0; k < 6; k++) P(c, fx - 2 - (k % 2), fy + 1 + k, '#8a7a5a'); }
   // fume hood over the cooktop, a duct up to the ceiling and one along the top to the end, then the pole down
   const hoodX0 = b.x0 + 2, hoodX1 = b.x1 - 2, cen = Math.round((b.x0 + b.x1) / 2);
   const hTop = Math.round(AY(p.y + 1.6) - 8.4 * HF), hBot = Math.round(AY(p.y + 1.6) - 6.4 * HF);

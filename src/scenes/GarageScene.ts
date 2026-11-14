@@ -5,9 +5,9 @@ import { sheetFor } from '../render/playerBank';
 import { SPRITE_SCALE } from '../render/sprites';
 import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
-import { sfx } from '../audio/sfx';
+import { sfx, MusicTrack } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, FaceBtn, ORBS } from '../world/minigames';
+import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS } from '../world/minigames';
 import { scoutTexture } from './castSprites';
 import { storyScene } from './setup';
 import { TIER_PITCH } from '../career/draft';
@@ -48,18 +48,17 @@ export class GarageScene extends RoomScene {
   private played = false; // the controls card goes away once you start playing
   private lastTick = 0; private lastStep = 0; private lastShotPhase = '';
 
-  constructor() { super('Garage'); }
+  constructor(key = 'Garage') { super(key); }
   /** Round 81: the agent walks you through his old equipment. */
   story: 'agent' | 'montage' | null = null;
   agent: AgentTalk | null = null;
-  /** Round 84: a timed test here, dressed as the facility: the combine's day 1, or a team's pressure drill. */
-  testKind: 'combine1' | 'gauntlet' | null = null;
-  private test: { steps: { station: string; label: string; secs: number }[]; i: number; endsAt: number; running: boolean; scores: number[]; timer: Phaser.GameObjects.Text } | null = null;
-  init(data?: { at?: string; story?: 'agent' | 'montage'; test?: 'combine1' | 'gauntlet' }) {
-    super.init(data); this.story = data?.story ?? null; this.agent = null; this.testKind = data?.test ?? null; this.test = null;
+  init(data?: { at?: string; story?: 'agent' | 'montage' }) {
+    super.init(data); this.story = data?.story ?? null; this.agent = null;
   }
+  /** Round 85: workouts here send orbs (the arena gym's tests don't). */
+  orbsOn() { return true; }
   room(): RoomDef { return GARAGE; }
-  music() { return 'home' as const; }
+  music(): MusicTrack | null { return 'home'; }
   buildArt(tm: Phaser.Textures.TextureManager) { return buildGarageArt(tm); }
 
   onCreate() {
@@ -76,7 +75,9 @@ export class GarageScene extends RoomScene {
     this.shotText = T(20).setOrigin(0.5, 1);
     this.greenText = T(16, '#7dff9a').setOrigin(0, 0.5);
     this.netFront = this.add.graphics();
-    if (this.testKind) this.startTest(); // round 84: the combine's day 1, a team's pressure drill
+    this.wedgeG = this.add.graphics().setDepth(syOf(15.0) - 1); // round 85: the rebound wedge (under the rim, behind the ball)
+    this.recordText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '22px', color: '#ffd34a', fontStyle: 'bold', stroke: '#2a1a08', strokeThickness: 6, align: 'center' }).setOrigin(0, 0.5).setDepth(9350).setVisible(false);
+    this.drawWedge();
     if (this.story === 'montage') this.nightWorkout(); // round 84: the week of work, the last beat
     if (this.story === 'agent') {
       const ag = (text: string) => ({ say: { who: 'agent' as const, text } }); // Donovan Garcia
@@ -123,73 +124,7 @@ export class GarageScene extends RoomScene {
     ], { phone: true });
   }
 
-  /**
-   * Round 84: the timed tests. The combine's day 1 (sprint on the treadmill, the squat, the bench press, 30 s each)
-   * or a team's pressure drill (the shrinking-window dribble prompts, 3 strikes). Scouts watch, the van's gone, a
-   * banner over the back wall; L1 ends a test early. Scores are saved, then home.
-   */
-  private startTest() {
-    const c = app.career, st = c.story!, kind = this.testKind!;
-    this.piece('car')?.setVisible(false);
-    const w = kind === 'gauntlet' ? st.workouts?.[st.going ?? -1] : undefined;
-    const team = w ? TEAMS.find((t) => t.id === w.team) : undefined;
-    const col = team?.colors[0] ?? '#1d428a', colN = Phaser.Display.Color.HexStringToColor(col).color;
-    // banner + scouts along the back
-    const g = this.add.graphics().setDepth(40);
-    g.fillStyle(colN, 0.95).fillRect(360, 118, 560, 46).lineStyle(3, 0xffffff, 0.9).strokeRect(360, 118, 560, 46);
-    this.add.text(640, 141, team ? `${team.city.toUpperCase()} ${team.name.toUpperCase()}  ·  PRACTICE FACILITY` : 'PRO PROSPECT COMBINE  ·  DAY 1', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(41);
-    [[11.5, 2.2], [16.0, 2.0], [26.0, 2.4], [33.5, 9.5]].forEach(([x, y], i) => this.add.sprite(sxOf(x), syOf(y), scoutTexture(this, i, team ? col : '#3a3f52'), 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE * 0.95).setDepth(syOf(y)));
-    const timer = this.add.text(640, 196, '', { fontFamily: FONT, fontSize: '24px', color: '#ffe9a8', fontStyle: 'bold', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setDepth(9400);
-    const steps = kind === 'combine1'
-      ? [{ station: 'treadmill', label: 'Sprint', secs: 30 }, { station: 'squat', label: 'Squat', secs: 30 }, { station: 'bench', label: 'Bench press', secs: 30 }]
-      : [{ station: 'dribble', label: 'Pressure drill', secs: 999 }];
-    this.test = { steps, i: 0, endsAt: 0, running: false, scores: [], timer };
-    const scout = (text: string) => ({ say: { who: 'coach' as BoxSpeaker, name: team ? `${team.city.toUpperCase()} SCOUT` : 'COMBINE SCOUT', text } });
-    const intro = kind === 'combine1'
-      ? [scout('Welcome to the combine. Measurements first.'), scout(`Height ${Math.floor(c.height)}'${Math.round((c.height % 1) * 12)}". Wingspan checks out.`), scout('Three tests today. Thirty seconds each. Sprint, squat, bench. Give us everything.')]
-      : [scout(TIER_PITCH[w!.tier]), scout('Pressure drill. Hit the button we call before the bar runs out. It speeds up every rep.'), scout('Three strikes and you\'re done. Go as long as you can.')];
-    this.busy = true;
-    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ wait: 0.8 }, ...intro, { run: () => this.nextTest() }], { phone: true });
-  }
-  private nextTest() {
-    const t = this.test!, step = t.steps[t.i];
-    const station = GARAGE.stations!.find((x) => x.id === step.station)!;
-    this.pos = { ...station.spot };
-    this.agent = null; this.busy = false;
-    this.startActivity(station);
-    if (this.testKind === 'gauntlet') this.mini = new GauntletGame();
-    t.endsAt = this.t + step.secs; t.running = true;
-  }
-  /** Per frame while a test is on: the timer, and the end of each test. */
-  private stepTest() {
-    const t = this.test; if (!t || !t.running) return;
-    const step = t.steps[t.i], left = Math.max(0, t.endsAt - this.t);
-    const m = this.mini;
-    t.timer.setText(this.testKind === 'gauntlet' && m instanceof GauntletGame ? `${step.label.toUpperCase()}  ·  ${m.reps} reps  ·  strikes ${m.strikes}/3` : `${step.label.toUpperCase()}  ·  0:${String(Math.ceil(left)).padStart(2, '0')}  ·  ${m?.reps ?? 0}`);
-    const done = !this.activity || left <= 0 || (m instanceof GauntletGame && m.over && !m.missing);
-    if (!done) return;
-    t.running = false; t.scores.push(m?.reps ?? 0);
-    this.stopActivity();
-    t.timer.setText('');
-    const scout = (text: string) => ({ say: { who: 'coach' as BoxSpeaker, name: 'SCOUT', text } });
-    t.i++;
-    const more = t.i < t.steps.length;
-    this.busy = true;
-    this.agent = new AgentTalk(this, { x: -20, y: 0 }, [
-      scout(`${step.label}: ${t.scores[t.scores.length - 1]}${this.testKind === 'gauntlet' ? ' reps' : ''}. ${more ? 'Next one.' : 'That\'s it. We\'ll be in touch.'}`),
-      { run: () => (more ? this.nextTest() : this.finishTest()) },
-    ], { phone: true });
-  }
-  private finishTest() {
-    const c = app.career, st = c.story!, t = this.test!;
-    if (this.testKind === 'combine1') (st.combine ??= {}).day1 = { sprint: t.scores[0] ?? 0, squat: t.scores[1] ?? 0, bench: t.scores[2] ?? 0 };
-    else if (st.going !== undefined && st.workouts?.[st.going]) { st.workouts[st.going].result = { score: t.scores[0] ?? 0, text: `${t.scores[0] ?? 0} reps in the pressure drill` }; st.going = undefined; }
-    app.changed();
-    this.cameras.main.fadeOut(700, 0, 0, 0);
-    this.time.delayedCall(750, () => { const [scene, data] = storyScene('draftWeek'); this.scene.start(scene, data); });
-  }
-
-  private piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
+  protected piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
 
   onActivity(st: Station | null) {
     // stopped while a made shot was still in the air: its orbs still go
@@ -204,8 +139,9 @@ export class GarageScene extends RoomScene {
   }
 
   onUpdate(dt = 1 / 60) {
-    if (this.agent && !this.agent.update(dt)) this.agent = null; // round 81
-    this.stepTest(); // round 84
+    const ag = this.agent; // round 81; round 85: keep a script started by the one that just ended
+    if (ag && !ag.update(dt) && this.agent === ag) this.agent = null;
+    if (this.agent && this.agent !== ag) this.busy = true;
     const g = this.gear.clear(), gb = this.gearBack.clear();
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
@@ -242,6 +178,41 @@ export class GarageScene extends RoomScene {
     }
   }
 
+  /** Round 85: the garage has the rebound wedge; the arena gym doesn't. */
+  get hasWedge() { return this.room() === GARAGE; }
+  /** Where the wedge sits: on the floor under the rim (screen px), its slope facing the shooter. */
+  wedgeAt(rim: { x: number; floorY: number }) { return { x: rim.x, y: rim.floorY - 8 - 20, floor: rim.floorY - 8 }; }
+  /** Round 85 (owner): the rebound triangle under the garage hoop: black rubber, a white edge, the slope toward you. */
+  drawWedge() {
+    const g = this.wedgeG; if (!g) return;
+    g.clear();
+    if (!this.hasWedge) return;
+    const rim = garageRim(), w = this.wedgeAt(rim), f = w.floor;
+    g.fillStyle(0x000000, 0.25).fillEllipse(w.x + 2, f + 3, 90, 12);
+    g.fillStyle(0x1c1d20, 1).fillTriangle(w.x - 34, f, w.x - 34, f - 34, w.x + 38, f);   // the slope runs down toward the shooter
+    g.fillStyle(0x34363b, 1).fillTriangle(w.x - 30, f - 4, w.x - 30, f - 27, w.x + 23, f - 4);
+    g.lineStyle(3, 0xe8e8e8, 1).lineBetween(w.x - 34, f - 34, w.x + 38, f);                // the white edge along the face
+    g.fillStyle(0x0e0f10, 1).fillRect(w.x - 37, f - 34, 4, 34);                              // the back (toward the wall)
+  }
+  wedgeG: Phaser.GameObjects.Graphics | null = null;
+  recordText: Phaser.GameObjects.Text | null = null;
+  /** Round 85: a perfect: count the streak; beat the record = NEW RECORD (saved), otherwise a streak counter. */
+  onPerfect(m: ShootGame) {
+    const c = app.career, rec = (c.records ??= { perfectStreak: 0 });
+    const rim = garageRim(), t = this.recordText!;
+    if (m.streak > rec.perfectStreak) {
+      rec.perfectStreak = m.streak; app.changed();
+      if (m.streak >= 2) {
+        t.setText(`NEW RECORD!\n${m.streak} PERFECTS IN A ROW`).setColor('#ffd34a');
+        sfx.greenChime();
+      } else t.setText('PERFECT!').setColor('#ff9a7a');
+    } else t.setText(m.streak >= 2 ? `PERFECT x${m.streak}` : 'PERFECT!').setColor('#ff9a7a');
+    t.setPosition(rim.x + 40, rim.y - 70).setAlpha(1).setVisible(true).setScale(0.8);
+    this.tweens.killTweensOf(t);
+    this.tweens.add({ targets: t, scale: 1, y: t.y - 18, duration: 300, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1500, duration: 500 });
+  }
+
   /** The dribbled ball: in the hand / on the floor as the frame says, in front of you or behind (between the legs, behind the back). */
   drawDribble(st: Station) {
     const b = this.playerBall; if (!b) return;
@@ -274,17 +245,21 @@ export class GarageScene extends RoomScene {
     const depth = front;
     // time since the release, on the mini-game's own clock (shotAt is a mini-game time, not the room's)
     const T = game.t - game.shotAt;
+    // round 85: the garage has a rebound wedge under the rim: a make drops onto it and kicks straight back to you
+    const wedge = this.hasWedge ? this.wedgeAt(rim) : null;
+    const land = wedge ? { x: rim.x + 2, y: wedge.y + 3 } : { x: rim.x + 6, y: floor };
+    const fl = game.flight; // round 85: a perfect comes back faster
     const flight = (T: number): { x: number; y: number } => {
       if (game.made) {
         if (T < 0.85) return arc(Rl, { x: rim.x, y: rim.y - 8 }, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
         if (T < 1.13) { const s2 = (T - 0.85) / 0.28; return { x: rim.x, y: rim.y - 8 + 44 * s2 * s2 }; }   // down through the rim and the net
-        if (T < 1.35) { const s2 = (T - 1.13) / 0.22; return { x: rim.x + 6 * s2, y: rim.y + 33 + (floor - rim.y - 33) * s2 * s2 }; }
-        return arc({ x: rim.x + 6, y: floor }, H0, Math.min(1, (T - 1.35) / (ShootGame.FLIGHT - 1.35)), 60);
+        if (T < 1.3) { const s2 = (T - 1.13) / 0.17; return { x: rim.x + (land.x - rim.x) * s2, y: rim.y + 33 + (land.y - rim.y - 33) * s2 * s2 }; }
+        return arc(land, H0, Math.min(1, (T - 1.3) / Math.max(0.2, fl - 1.3)), wedge ? 34 : 60);
       }
       const front2 = { x: rim.x + 13, y: rim.y - 2 }; // the front of the rim (toward the shooter)
       if (T < 0.85) return arc(Rl, front2, T / 0.85, Math.max(0, Rl.y - rim.y) * 0.5 + 60);
       if (T < 1.45) return arc(front2, { x: rim.x + 110, y: floor }, (T - 0.85) / 0.6, 40);   // clank, kicks out
-      return arc({ x: rim.x + 110, y: floor }, H0, Math.min(1, (T - 1.45) / (ShootGame.FLIGHT - 1.45)), 25);
+      return arc({ x: rim.x + 110, y: floor }, H0, Math.min(1, (T - 1.45) / (fl - 1.45)), 25);
     };
     const pos = game.state !== 'shot' ? ballAt(game.animU(rel)) : flight(T);
     void hoopDepth;
@@ -376,7 +351,8 @@ export class GarageScene extends RoomScene {
       else if (e === 'release') sfx.release();
       else if (e === 'green') sfx.greenChime();
       else if (e === 'perfect') sfx.perfect();
-      else if (e === 'orb' && this.test) continue; // round 84: no training XP from a test
+      else if (e === 'streak' && m instanceof ShootGame) this.onPerfect(m); // round 85
+      else if (e === 'orb' && !this.orbsOn()) continue; // round 84: no training XP from a test
       else if (e === 'orb') {
         // a made shot sends its orbs once the ball is through the net (out of the rim); the rest from your chest
         if (m instanceof ShootGame) this.shotOrbPending = true;
@@ -406,7 +382,7 @@ export class GarageScene extends RoomScene {
           if (m.made) sfx.swish(0, true); else sfx.clank(0);
           if (this.shotOrbPending && this.activity) { this.shotOrbPending = false; const rim = garageRim(); this.sendOrbs(ORBS[this.activity.id] ?? [], { x: rim.x, y: rim.y + 20 }); }
         }
-        else if (phase === 'floor') sfx.bounce(9);
+        else if (phase === 'floor') sfx.bounce(this.hasWedge && m.made ? 12 : 9); // round 85: off the wedge
         else if (phase === 'back') sfx.bounce(5);
         this.lastShotPhase = phase;
       }
@@ -472,6 +448,10 @@ export class GarageScene extends RoomScene {
       g.lineStyle(2, 0xffcc33, 1).strokeRect(cx - half, ly - half, half * 2, half * 2);
       g.fillStyle(0xff7d7d, 1).fillCircle(cx + (lw / 2) * m.dot, ly, 5);
       this.hudBig.setVisible(true).setFontSize(13).setPosition(cx, ly + 32).setText(`speed ${(m.speed / TreadmillGame.BASE).toFixed(1)}×`).setColor('#cfe8ff');
+    } else if (m instanceof JumpGame) {
+      // round 85: the vertical jump: the power bar, the last and best jumps
+      vbar(px + 22, y0, 86, m.power, m.phase === 'load' ? 0xffcc33 : 0x6fd24a);
+      this.hudBig.setVisible(true).setFontSize(13).setPosition(cx + 22, y0 + 43).setText(`try ${Math.min(JumpGame.TRIES, m.tries + (m.phase === 'load' ? 1 : 0))}/${JumpGame.TRIES}\nlast ${m.last || '-'}"\nbest ${m.best || '-'}"`).setColor('#cfe8ff');
     } else if (m instanceof ShootGame) {
       this.hudBig.setVisible(true).setFontSize(12).setPosition(cx, y0 + 44).setText('hold ✕\nrelease at the\ntop of the jump').setColor('#cfe8ff');
       this.drawShotMeter(m);

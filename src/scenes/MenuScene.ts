@@ -41,11 +41,11 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Story: Home (lost final)', action: () => this.home(false), hint: 'Round 81: the same, after a loss (the next morning brings the Kingston paper too).' },
       { label: 'Story: The letter', action: () => this.story('letter'), hint: 'Round 81: the morning after: the mail carrier, the letter from the agent.' },
       { label: 'Story: The agent', action: () => this.story('agent'), hint: 'Round 81: Donovan Garcia at the apartment (1 April), the calendar, then the garage.' },
-      { label: 'Story: Combine (day 1)', action: () => this.draftRoad('combine'), hint: 'Round 84: Spring 8 in the facility: sprint, squat, bench (30 s each). Sleep for day 2 (the shooting drill).' },
+      { label: 'Story: Combine (day 1)', action: () => this.draftRoad('combine'), hint: 'Round 85: Spring 8 in the arena: three of sprint laps, squat, bench, vertical jump, shooting (random order). Sleep for day 2.' },
       { label: 'Story: Scrimmage', action: () => this.draftRoad('scrimmage'), hint: 'Round 84: Spring 11, you + four prospects vs five, every scout watching.' },
       { label: 'Story: The week of work', action: () => this.draftRoad('montage'), hint: 'Round 84: after the scrimmage: the new generator, the Burger Barn register, workouts.' },
       { label: 'Story: Garcia\'s calls', action: () => this.draftRoad('calls'), hint: 'Round 84: Spring 18: three calls (one team per tier), each a workout on the calendar.' },
-      { label: 'Story: A workout (next kind)', action: () => this.draftRoad('workout'), hint: 'Round 84: each press tries the next kind: shooting, pressure drill, 1-on-1, team scrimmage.' },
+      { label: 'Story: A workout (next kind)', action: () => this.draftRoad('workout'), hint: 'Round 85: each press tries the next kind (in that team\'s arena): shooting, pressure drill, 1-on-1, team scrimmage.' },
       { label: 'Story: Draft night', action: () => this.draftRoad('draft'), hint: 'Round 84: Spring 28 at the apartment with Mom and your old teammates.' },
       { label: 'Practice Court', action: () => this.scene.start('Game', { mode: 'practice' }), hint: 'Half court. Configure defenders/teammates in the dev panel (F1).' },
       { label: 'Quick 5v5 Game', action: () => this.scene.start('MatchSetup') },
@@ -89,7 +89,7 @@ export class MenuScene extends Phaser.Scene {
     st.agent ??= 'Donovan Garcia';
     if (!st.debt) takeOnDebt(c);
     const after = to !== 'combine' && to !== 'scrimmage';
-    st.combine = after || to === 'scrimmage' ? { day1: { sprint: 12, squat: 6, bench: 4 }, day2: { makes: 14, shots: 25 } } : undefined;
+    st.combine = after || to === 'scrimmage' ? { scores: { sprint: 3.4, squat: 6, bench: 3, jump: 31, shoot: 8 }, day1: true, day2: true } : undefined;
     st.scrimmage = after ? { pts: 14, reb: 5, ast: 4, sum: 26, won: true } : undefined;
     st.montage = to === 'calls' || to === 'workout' || to === 'draft' ? true : undefined;
     st.workouts = to === 'workout' || to === 'draft' ? planWorkouts(c) : [];

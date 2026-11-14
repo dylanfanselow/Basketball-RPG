@@ -34,7 +34,8 @@ export class Crowd implements CrowdLike {
   /** homeColors / awayColors: team colors (primary first); bigGame (playoffs): nearly every home fan wears them. */
   /** split (round 80f, a neutral-site final): the left half of the arena is the home school's, the right half the
    *  visitors'; each half wears its school's colors and cheers (or boos) for its own team. */
-  constructor(private scene: Phaser.Scene, homeColors: string[], awayColors: string[], bigGame = false, seed = 1, private split = false) {
+  /** empty (round 85): the stands with nobody in them (the scouts' events). */
+  constructor(private scene: Phaser.Scene, homeColors: string[], awayColors: string[], bigGame = false, seed = 1, private split = false, empty = false) {
     this.g = scene.add.graphics().setDepth(-990);
     const rng = new Phaser.Math.RandomDataGenerator(['fans']);
     const homeAll = homeColors.map((c) => Phaser.Display.Color.HexStringToColor(c).color);
@@ -54,7 +55,7 @@ export class Crowd implements CrowdLike {
       return { base: rng.pick(neutral), isAway: false };
     };
     const neutral = [0x3b4a6b, 0x6b3b3b, 0x5a4a3a, 0x8a7a5a, 0x5a5a8a, 0x2f2f3f, 0xb07040, 0xdddddd, 0x222222];
-    for (let row = 0; row < CROWD_ROWS; row++) {
+    for (let row = 0; row < (empty ? 0 : CROWD_ROWS); row++) {
       // back rows sit in the shadow under the upper deck; front rows catch the court lights
       const lit = 0.5 + 0.5 * (row / (CROWD_ROWS - 1));
       for (let x = -150 + (row % 2) * 6; x < WORLD_W + 150; x += 12) {
@@ -68,7 +69,7 @@ export class Crowd implements CrowdLike {
         });
       }
     }
-    this.row = new FanRow(scene, this, homeColors, awayColors[0], bigGame, seed, split ? awayColors : null);
+    this.row = new FanRow(scene, this, homeColors, awayColors[0], bigGame, seed, split ? awayColors : null, empty);
   }
 
   /** How a fan at world x (rooting for the visitors if away) is reacting to recent events right now. */
@@ -144,7 +145,8 @@ class FanRow {
   fans: { sprite: Phaser.GameObjects.Sprite; x: number; away: boolean; phase: number; frame: number; baseY?: number }[] = [];
 
   /** splitAway (round 80f): the right half of the row (and the seats behind the right basket) are the visitors'. */
-  constructor(private scene: Phaser.Scene, private crowd: Crowd, home: string[], away: string, bigGame: boolean, seed: number, splitAway: string[] | null = null) {
+  constructor(private scene: Phaser.Scene, private crowd: Crowd, home: string[], away: string, bigGame: boolean, seed: number, splitAway: string[] | null = null, empty = false) {
+    if (empty) return; // round 85: nobody here
     const rng = new Phaser.Math.RandomDataGenerator([`fanrow${seed}${bigGame ? 'big' : ''}`]);
     const lookSet = (cols: string[], other: string, tag: string) => {
       const out: { key: string; look: CelebLook }[] = [];
