@@ -188,6 +188,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 85b (owner, dev): R1 (Q) on a garage workout finishes a set instantly**: a rep plus the station's orbs, each
+  paying its energy as usual (out of energy = too tired); hold it to repeat every 0.35 s. Garage only (the arena gym's
+  tests send no orbs).
 - **Round 85 (owner): the combine in the arena, doubled workouts, shooting streaks, the landline.**
   - **Workouts send twice the orbs** (and so cost twice the energy: every orb costs the same).
   - **Garage triangle:** a black rubber rebound wedge on the floor under the hoop, its slope toward the shooter; a make

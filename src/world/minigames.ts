@@ -303,6 +303,16 @@ export class BenchGame extends RepBar {
   }
 }
 
+/**
+ * Round 85b (owner, dev): finish one set of a workout instantly: a rep (a shot counts as a make) and the station's
+ * orbs (the caller sends them, each one paying its energy as usual).
+ */
+export function autoSet(m: MiniGame): CoreStat[] {
+  m.reps++;
+  if (m instanceof ShootGame) m.attempts++;
+  return ORBS[m.id] ?? [];
+}
+
 export function makeMiniGame(stationId: string, rand: () => number = Math.random): MiniGame | null {
   switch (stationId) {
     case 'squat': return new SquatGame(rand);

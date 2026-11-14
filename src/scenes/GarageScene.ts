@@ -7,7 +7,7 @@ import { CLIP, frameAt } from '../render/anim';
 import { app } from '../state';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { FONT } from './ui';
-import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS } from '../world/minigames';
+import { SquatGame, TreadmillGame, DribbleGame, ShootGame, BenchGame, GauntletGame, JumpGame, FaceBtn, ORBS, autoSet } from '../world/minigames';
 import { scoutTexture } from './castSprites';
 import { storyScene } from './setup';
 import { TIER_PITCH } from '../career/draft';
@@ -124,6 +124,24 @@ export class GarageScene extends RoomScene {
     ], { phone: true });
   }
 
+  /**
+   * Round 85b (owner, dev): R1 (Q) on a garage workout finishes a set instantly: a rep and the station's orbs, each
+   * paying its energy as usual (out of energy = "too tired"). Hold it to keep going, a set every 0.35 s. Not in the
+   * arena gym (tests there send no orbs).
+   */
+  private autoAt = 0;
+  private devAuto() {
+    const m = this.mini, st = this.activity;
+    if (!m || !st || !this.orbsOn() || this.busy) return;
+    const press = this.inp.pressed('icon'), hold = this.inp.held('icon') && this.t >= this.autoAt;
+    if (!press && !hold) return;
+    this.autoAt = this.t + (press ? 0.5 : 0.35);
+    this.sendOrbs(autoSet(m), { x: this.player.x, y: this.player.y - 100 });
+    sfx.ding();
+    const t = this.add.text(this.player.x, this.player.y - 200, '+1 SET (dev)', { fontFamily: FONT, fontSize: '16px', color: '#9fe8ff', fontStyle: 'bold', stroke: '#0a1a2a', strokeThickness: 5 }).setOrigin(0.5).setDepth(9360);
+    this.tweens.add({ targets: t, y: t.y - 30, alpha: 0, duration: 900, onComplete: () => t.destroy() });
+  }
+
   protected piece(id: string) { return this.pieces.find((p) => p.art.piece?.id === id)?.img; }
 
   onActivity(st: Station | null) {
@@ -142,6 +160,7 @@ export class GarageScene extends RoomScene {
     const ag = this.agent; // round 81; round 85: keep a script started by the one that just ended
     if (ag && !ag.update(dt) && this.agent === ag) this.agent = null;
     if (this.agent && this.agent !== ag) this.busy = true;
+    this.devAuto();
     const g = this.gear.clear(), gb = this.gearBack.clear();
     this.ballG.clear();
     const st = this.activity, fr = this.activityFrame();
@@ -418,7 +437,7 @@ export class GarageScene extends RoomScene {
     this.hudTitle.setVisible(true).setPosition(cx, py + 6).setText(isShoot ? `${st.label.toUpperCase()}  ${m.reps}/${(m as ShootGame).attempts}` : m instanceof GauntletGame ? `PRESSURE  ×${m.reps}` : `${st.label.toUpperCase()}  ×${m.reps}`);
     // the hint hangs under the panel on the side away from you (centred it ran across the player)
     const right = px > this.player.x;
-    this.hudHint.setVisible(true).setOrigin(right ? 0 : 1, 0).setPosition(right ? px : px + W, py + H + 4).setText(`${m.controls[0].replace(/\s+\(.*\)$/, '')}   ·   L1 stop`);
+    this.hudHint.setVisible(true).setOrigin(right ? 0 : 1, 0).setPosition(right ? px : px + W, py + H + 4).setText(`${m.controls[0].replace(/\s+\(.*\)$/, '')}   ·   L1 stop${this.orbsOn() ? '   ·   R1 auto (dev)' : ''}`);
     const vbar = (x: number, y: number, h: number, v: number, col: number) => {
       g.fillStyle(0x000000, 1).fillRect(x - 1, y - 1, 16, h + 2); g.fillStyle(0x2a2f3e, 1).fillRect(x, y, 14, h);
       g.fillStyle(col, 1).fillRect(x, y + h * (1 - v), 14, h * v); g.fillStyle(0xffffff, 0.25).fillRect(x, y + h * (1 - v), 4, h * v);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ORBS, ShootGame, JumpGame, NO_INPUT, MiniInput } from '../src/world/minigames';
+import { ORBS, ShootGame, JumpGame, NO_INPUT, MiniInput, autoSet, makeMiniGame } from '../src/world/minigames';
 import { createCareer, draftWeek } from '../src/career/career';
 import { storyDay } from '../src/career/calendar';
 import { combinePlan, COMBINE_TESTS, draftEstimate, draftResult, estimateLine, garciaLines, momLine, planWorkouts, rangeOf } from '../src/career/draft';
@@ -19,6 +19,13 @@ const held: MiniInput = { ...NO_INPUT, aHeld: true };
 describe('round 85: workouts, shooting streaks, the combine in the arena, the landline', () => {
   it('every workout sends twice the orbs (each orb costs the same energy, so twice the energy)', () => {
     for (const k of Object.keys(ORBS)) expect(ORBS[k].length).toBe(4);
+  });
+  it('round 85b: the dev auto-set adds a rep and gives the station\'s orbs (a shot is a make)', () => {
+    for (const id of Object.keys(ORBS)) {
+      const m = makeMiniGame(id)!;
+      expect(autoSet(m)).toEqual(ORBS[id]); expect(m.reps).toBe(1);
+      if (m instanceof ShootGame) expect(m.attempts).toBe(1);
+    }
   });
   it('perfects in a row build a streak (anything else resets it) and come back faster', () => {
     const g = new ShootGame(() => 0.5);
