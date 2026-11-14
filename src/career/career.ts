@@ -34,7 +34,7 @@ export interface CareerState {
   season: SeasonState;
   forceStarter: boolean;
   /** Off-court life (round 36): day counter, cash, and the energy / food bars (0-100). Static for now. */
-  life: { day: number; money: number; energy: number; food: number };
+  life: { day: number; money: number; energy: number; food: number; /** round 93: the day you bought a gym day pass */ gymPass?: number };
   /** Skyrim-style skill levels (round 41): each core skill levels on its own XP. Shown on the room HUD's skill cards.
    *  Since round 42 a skill's level IS its `core` rating (kept equal by addSkillXp / setStat / spendStatPoint). */
   skills: Record<CoreStat, { level: number; xp: number }>;

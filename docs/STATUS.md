@@ -261,6 +261,13 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 93: the town reworked. `cityArt.ts` zones `rich` (2x2 lots, pools `poolAt`, hedges, `mansion` on ~45% of
+  blocks) and `trailer` (`trailerAt` rows, cars, sheds), `HWY` + `paintHighway` (elevated deck, pillars, shadow,
+  markings) with `underHighway` keep-clear, the falls (cleft blended in `paintMountain`, winding creek, lip, wider
+  falls + mist in `drawFalls`, `poolRocks`, foam trail in `groundColor`), `drawTrailhead` scenery, textures `_v2`.
+  `world/city.ts`: 10 places (gym, gas, cabin, highway new; ridgemont / crestview / trailhead gone), `GYM_DAY_PASS`,
+  `GYM_XP_MULT`, `gymPass` / `buyGymPass` (`life.gymPass` = the day). `world/cityGym.ts` (`CITY_GYM`),
+  `render/cityGymArt.ts`, `scenes/CityGymScene.ts` (extends GarageScene). `RoomScene.orbXp()` / `leaveTo()` hooks.
   Round 92: the city map. `world/city.ts` (`PLACES` with art anchors, `travelCost` 4 / 6 / 8, `canTravel`,
   `placeToward` for stick hops), `render/cityArt.ts` (iso grid `iso` / `world` at 2:1, `BLOCK` 36 / `ROAD` 4,
   the river / pool / reservoir / dam by `waterDist`, the ridge by `PEAKS` + `footY`, zones down / shop / res / park /

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ART_W, ART_H, C, R, P, hn, mix, bake, canvas } from './roomArt';
+import { ART_W, ART_H, C, R, P, hn, mix, bake, canvas, text3 } from './roomArt';
 import { shade, tint } from './sprites';
 import { PLACES, PlaceId } from '../world/city';
 
@@ -41,12 +41,12 @@ function rng(seed: number) { let s = ((((seed * 9301 + 49297) % 233280) + 233280
 // ---------------------------------------------------------------- landmarks
 /** The river: points (art px) with its half width; it starts at the waterfall's pool and ends in the reservoir. */
 const RIVER: [number, number, number][] = [
-  [214, 207, 5], [250, 226, 6], [296, 244, 7], [340, 257, 8], [384, 273, 9], [428, 292, 10], [470, 310, 10],
+  [214, 214, 10], [248, 229, 7], [296, 244, 7], [340, 257, 8], [384, 273, 9], [428, 292, 10], [470, 310, 10],
   [512, 326, 11], [556, 344, 12], [600, 362, 12], [644, 381, 13], [690, 402, 15], [736, 424, 16], [780, 442, 18], [830, 458, 20],
 ];
 /** Below the dam the river runs on off the bottom of the map. */
 const OUTFLOW: [number, number, number][] = [[722, 516, 5], [714, 532, 6], [706, 548, 6]];
-const POOL = { x: 214, y: 208, r: 11 };
+const POOL = { x: 214, y: 212, r: 15 };
 const RES = { x: 842, y: 464, rx: 150, ry: 66 };
 const ISLAND = { x: 682, y: 402, rx: 13, ry: 5 };
 /** Where the road and the rail cross the river. */
@@ -115,14 +115,19 @@ function peakAt(x: number, y: number): number {
 const onMountain = (x: number, y: number) => peakAt(x, y) >= 0;
 
 /** The places' ground: nothing else is built here (art px radius). */
-const KEEP_CLEAR: Record<PlaceId, number> = { home: 30, arena: 62, trailer: 40, lincoln: 40, ridgemont: 40, crestview: 40, burger: 30, park: 40, trailhead: 26 };
+const KEEP_CLEAR: Record<PlaceId, number> = { home: 30, arena: 62, gym: 36, trailer: 18, lincoln: 40, burger: 26, park: 40, gas: 30, cabin: 24, highway: 0 };
+/** Scenery with its own drawing (the trailhead at the mountain foot). */
+const TRAILHEAD = { x: 150, y: 262 };
+/** Round 93: the interstate east: an elevated deck along u (world), ramping up out of the downtown grid. */
+const HWY = { v0: 72, v1: 86, u0: 212, u1: 350, ramp: 20, h: 12 };
+const underHighway = (u: number, v: number) => u > HWY.u0 - 6 && v > HWY.v0 - 4 && v < HWY.v1 + 4;
 function nearPlace(x: number, y: number, pad = 0): boolean {
   for (const p of PLACES) if (Math.hypot(x - p.at.x, (y - p.at.y) * 1.6) < KEEP_CLEAR[p.id] + pad) return true;
-  return false;
+  return Math.hypot(x - TRAILHEAD.x, (y - TRAILHEAD.y) * 1.6) < 24 + pad;
 }
 
 // ---------------------------------------------------------------- zones
-type Zone = 'down' | 'shop' | 'res' | 'park' | 'forest' | 'field';
+type Zone = 'down' | 'shop' | 'rich' | 'trailer' | 'res' | 'park' | 'forest' | 'field';
 function zoneAt(x: number, y: number): Zone {
   const f = footY(x);
   if ((f >= 0 && y < f + 26 + vnoise(x, y, 18, 5) * 26) || (x < 110 && y < 410) || (x > 860 && y < 120 && vnoise(x, y, 30, 6) > 0.4)) return 'forest';
@@ -131,6 +136,9 @@ function zoneAt(x: number, y: number): Zone {
   if (waterDist(x, y) < 18) return 'park';
   if (Math.hypot((x - 650) / 168, (y - 258) / 80) < 1 && y < 360) return 'down';
   if (Math.hypot((x - 650) / 168, (y - 258) / 80) < 1.45 && hn(Math.floor(x / 40), Math.floor(y / 30), 8) < 0.55) return 'shop';
+  // round 93 (owner): the south is the trailer park; the hills north of the arena are the nice houses
+  if (x > 244 && x < 720 && y > 394) return 'trailer';
+  if ((y < 238 && x > 500) || (x > 800 && y < 300)) return 'rich';
   return 'res';
 }
 /** The zone of the block a world point is in (decided at the block's centre, so a block is all one thing). */
@@ -156,6 +164,7 @@ const COL = {
   grass: ['#6c9a4a', '#73a24e', '#649244', '#7aa952'], park: ['#78ad50', '#82b656', '#6fa249'],
   forest: ['#3e6a34', '#456f37', '#38602f'], field: [['#a8b452', '#9aa648'], ['#7f9c42', '#88a646'], ['#c7a95c', '#bb9d52']],
   rockL: ['#a39886', '#988c7a', '#8d8270'], rockD: ['#6e665c', '#655d54', '#5b544c'], rockOL: '#3d3832',
+  lush: ['#5c9a44', '#64a24a', '#56923f', '#6aa94e'], dirt: ['#a8956a', '#9f8c62', '#b19e72', '#968459'],
   snowL: ['#f1f5f7', '#e6edf1'], snowD: ['#b9c7d4', '#a9b8c6'], slope: ['#55803c', '#4c7536', '#5a8740'],
 };
 
@@ -268,6 +277,8 @@ function groundColor(x: number, y: number): string {
   const { u, v } = world(x + 0.5, y + 0.5);
   const roadHere = isRoad(u, v);
   if (wd < 0) {
+    const dp = Math.hypot(x - POOL.x, y - POOL.y);
+    if (dp < 74 && hn(x, y, 61) < (1 - dp / 74) * 0.5) return dp < 24 && hn(x, y, 62) < 0.5 ? '#ffffff' : '#cfe8ec'; // the falls' foam, fading downriver
     const deep = wd < -6;
     const g = vnoise(x * 2, y * 4, 6, 9);
     if (g > 0.78 && hn(x, y, 1) > 0.55) return COL.glint;
@@ -295,6 +306,8 @@ function groundColor(x: number, y: number): string {
   const mu = mod(u, BLOCK) - ROAD, mv = mod(v, BLOCK) - ROAD, inner = BLOCK - ROAD;
   const edge = Math.min(mu, mv, inner - mu, inner - mv);
   if (bz === 'down' || bz === 'shop') return edge < 2 ? COL.walk : COL.concrete[Math.floor(n * 3)];
+  if (bz === 'rich') return edge < 1.2 ? COL.walk : COL.lush[Math.floor(n * 4)];
+  if (bz === 'trailer') return edge < 0.8 ? '#8a7a56' : hn(x, y, 63) < 0.06 ? COL.grass[1] : COL.dirt[Math.floor(n * 4)];
   if (bz === 'park') return (Math.abs(mu - mv) < 1 || Math.abs(mu + mv - inner) < 1) && edge > 2 ? '#c9bf98' : COL.park[Math.floor(n * 3)];
   if (bz === 'field') { const f = COL.field[Math.floor(hn(Math.floor(u / BLOCK), Math.floor(v / BLOCK), 4) * 3)]; return f[mod(u + v, 4) < 2 ? 0 : 1]; }
   if (bz === 'forest') return COL.forest[Math.floor(n * 3)];
@@ -333,28 +346,65 @@ function paintMountain(c: C) {
     d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
   }
   c.putImageData(img, 0, 0);
-  // the creek off the snow down to the falls
-  const creek: Pt[] = [{ x: 168, y: 96 }, { x: 186, y: 118 }, { x: 200, y: 136 }, { x: 210, y: 152 }];
-  for (let i = 0; i + 1 < creek.length; i++) {
-    const a = creek[i], b = creek[i + 1], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
-    for (let t = 0; t <= n; t++) { const x = Math.round(a.x + ((b.x - a.x) * t) / n), y = Math.round(a.y + ((b.y - a.y) * t) / n); R(c, x - 1, y, 3, 1, COL.water[1]); P(c, x, y, COL.glint); }
+  // the creek off the snow: it winds down the flank in little cascades and spills over the lip of the falls
+  for (let y = 98; y < 128; y++) {
+    const t = (y - 98) / 30, cx = 178 + t * 36 + Math.sin(y / 3.2) * 3 * (1 - t), w = 1 + t * 2.2;
+    c.globalAlpha = 0.5; R(c, Math.round(cx - w - 2), y, Math.round(w * 2 + 5), 1, '#3e3a36'); c.globalAlpha = 1;
+    for (let x = Math.round(cx - w); x <= Math.round(cx + w); x++) P(c, x, y, y % 6 === 0 || hn(x, y, 73) < 0.2 ? '#d8eef0' : hn(x, y, 74) < 0.4 ? COL.glint : COL.water[1]);
   }
-  // the cliff the falls drop over: a dark wet notch in the rock, ragged at the sides, mossy at the foot
-  for (let y = 146; y < 204; y++) {
-    const k = (y - 146) / 58, half = 10 + k * 6 + (vnoise(0, y, 4, 70) - 0.5) * 5, cx = 214;
-    for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) {
-      const edge = Math.abs(x - cx) > half - 2, n = hn(x, y, 71);
-      P(c, x, y, y < 148 ? COL.rockOL : edge ? COL.rockOL : y > 194 && n < 0.5 ? '#3f6a3a' : n < 0.3 ? '#3e3a36' : n < 0.7 ? COL.rockD[2] : COL.rockD[1]);
-    }
+  // round 93 (owner): the falls run down a cleft in the slope instead of a notch: the rock darkens and gets wet toward
+  // the water (blended over the flank, so there are no hard edges), moss and ferns low down, boulders at the pool
+  for (let y = 108; y < 218; y++) for (let x = 170; x < 258; x++) {
+    const t = (y - 108) / 108, half = 6 + t * 14 + (vnoise(x, y, 5, 70) - 0.5) * 5, dx = Math.abs(x - 214) - half;
+    if (dx > 16 || (!onMountain(x, y) && y < 196)) continue;
+    const n = hn(x, y, 71), k = (dx < 0 ? 0.85 : 0.85 * (1 - dx / 16)) * Math.min(1, (y - 108) / 26) * (1 - 0.35 * Math.max(0, dx) / 16);
+    c.globalAlpha = Math.max(0, k * (0.7 + n * 0.3));
+    P(c, x, y, y > 186 && n < 0.45 ? (n < 0.2 ? '#4f8a3a' : '#3f6a3a') : n < 0.35 ? '#2f2c29' : n < 0.75 ? '#3e3a36' : '#55504a');
   }
+  c.globalAlpha = 1;
 }
 
 // ---------------------------------------------------------------- buildings + trees
+const TRAILERS = ['#e8e2d0', '#c9d6d2', '#d8cbb0', '#bfd0c4', '#e0d0c8', '#d0d4dc', '#cbbf98'];
+const CARS = ['#8a3a2a', '#3a5a7a', '#6a6a5a', '#9a7a3a', '#2a2a2e', '#b0b4b8'];
+/** A single-wide trailer: a long low box, a stripe along its side, skirting, a little porch step. */
+function trailerAt(c: C, pu: number, pv: number, wall: string, rusty: boolean, seed: number) {
+  const b = isoBox(c, pu, pv, pu + 13, pv + 3.6, 5, { wall, roof: '#a4aab0', windows: 'house', lit: 0.25, seed });
+  const stripe = ['#3a6a8a', '#8a3a3a', '#5a7a4a', '#7a6a3a'][seed % 4];
+  for (let x = Math.round(b.D.x) + 1; x < Math.round(b.C.x); x++) P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - 2, stripe);
+  for (let x = Math.round(b.D.x); x < Math.round(b.C.x); x++) P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - 1, '#6a6a62');
+  if (rusty) for (let k = 0; k < 5; k++) { const x = Math.round(b.D.x + 2 + hn(seed, k, 81) * (b.C.x - b.D.x - 4)); P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - 3 - Math.floor(hn(seed, k, 82) * 2), '#9a5a2a'); }
+  const st = iso(pu + 3, pv + 3.6); R(c, Math.round(st.x) - 1, Math.round(st.y), 3, 1, '#7a6a4e');
+}
+/** A backyard pool: a pale rim and blue water with a glint. */
+function poolAt(c: C, u0: number, v0: number, u1: number, v1: number) {
+  fillPoly(c, [iso(u0, v0), iso(u1, v0), iso(u1, v1), iso(u0, v1)], '#e8e4d8');
+  fillPoly(c, [iso(u0 + 0.6, v0 + 0.6), iso(u1 - 0.6, v0 + 0.6), iso(u1 - 0.6, v1 - 0.6), iso(u0 + 0.6, v1 - 0.6)], '#3aa6c8');
+  const g = iso(u0 + 1.4, v0 + 1.2); R(c, Math.round(g.x), Math.round(g.y), 2, 1, '#bfeaf6');
+}
+/** A trimmed hedge along a lot edge. */
+function hedge(c: C, u0: number, v0: number, u1: number, v1: number) {
+  const du = u1 - u0, dv = v1 - v0, n = Math.ceil(Math.max(Math.abs(du), Math.abs(dv)) * 2);
+  for (let k = 0; k <= n; k++) { const p = iso(u0 + (du * k) / n, v0 + (dv * k) / n); R(c, Math.round(p.x) - 1, Math.round(p.y) - 2, 2, 2, k % 3 ? '#3f6e30' : '#4f8a3a'); P(c, Math.round(p.x) - 1, Math.round(p.y) - 3, '#5f9a44'); }
+}
+/** A mansion: a long main wing and a side wing (an L), a pool, a fountain on the round drive, palms. */
+function mansion(c: C, pu: number, pv: number, seed: number) {
+  const wall = ['#f2ead8', '#e8e2d6', '#efe2cc'][Math.abs(seed) % 3], roof = ['#5a4a44', '#3e4a5a', '#6a3a2e'][Math.abs(seed) % 3];
+  fillPoly(c, [iso(pu, pv + 16), iso(pu + 12, pv + 16), iso(pu + 12, pv + 26), iso(pu, pv + 26)], '#cfc6ae');   // the drive
+  const f = iso(pu + 6, pv + 21); fillEllipse(c, f.x, f.y, 5, 2.5, '#8a8478'); fillEllipse(c, f.x, f.y, 4, 2, '#5ab8d8'); R(c, Math.round(f.x), Math.round(f.y) - 4, 1, 4, '#e8f6ff');
+  poolAt(c, pu + 14, pv + 14, pu + 25, pv + 20);
+  hedge(c, pu, pv + 26, pu + 26, pv + 26); hedge(c, pu + 26, pv, pu + 26, pv + 26);
+  isoBox(c, pu, pv, pu + 24, pv + 9, 12, { wall, roof, windows: 'house', lit: 0.6, seed });
+  gableRoof(c, pu, pv, pu + 24, pv + 9, 12, 6, roof);
+  isoBox(c, pu, pv + 9, pu + 8, pv + 15, 10, { wall, roof, windows: 'house', lit: 0.5, seed: seed + 1 });
+  gableRoof(c, pu, pv + 9, pu + 8, pv + 15, 10, 4, roof);
+  for (const [du, dv] of [[25, 24], [13, 25]]) { const t = iso(pu + du, pv + dv); tree(c, Math.round(t.x), Math.round(t.y), 1.2, seed + du); }
+}
 type Obj = { y: number; draw: (c: C) => void };
 
 function cityObjects(): Obj[] {
   const out: Obj[] = [];
-  const land = (x: number, y: number) => x > 2 && x < ART_W - 2 && y > 2 && y < ART_H - 2 && waterDist(x, y) > 4 && !onMountain(x, y) && !nearPlace(x, y);
+  const land = (x: number, y: number) => { const w = world(x, y); return x > 2 && x < ART_W - 2 && y > 2 && y < ART_H - 2 && waterDist(x, y) > 4 && !onMountain(x, y) && !nearPlace(x, y) && !underHighway(w.u, w.v); };
   const free = (u0: number, v0: number, u1: number, v1: number) => [iso(u0, v0), iso(u1, v0), iso(u1, v1), iso(u0, v1)].every((p) => land(p.x, p.y))
     && ![[u0, v0], [u1, v1], [u0, v1], [u1, v0]].some(([u, v]) => isRail(u, v));
   // blocks covering the screen
@@ -388,6 +438,43 @@ function cityObjects(): Obj[] {
         out.push({ y: iso(pu + su, pv + sv).y, draw: (c) => {
           const bx = isoBox(c, pu, pv, pu + su, pv + sv, h, { wall, roof, windows: 'tower', lit: 0.35, seed });
           for (let x = Math.round(bx.D.x) + 1; x < Math.round(bx.C.x) - 1; x++) P(c, x, Math.round(bx.D.y + (x - bx.D.x) / 2) - 3, awning);
+        } });
+      }
+    } else if (z === 'rich') {
+      // round 93 (owner): the hills: big houses on 2x2 lots with pools and hedges, a mansion on some blocks
+      if (hn(iu, iv, 77) < 0.45) {
+        const pu = u0 + 3, pv = v0 + 3, seed = iu * 5 + iv * 3;
+        if (free(pu, pv, pu + 26, pv + 26)) out.push({ y: iso(pu + 26, pv + 26).y, draw: (c) => mansion(c, pu, pv, seed) });
+        continue;
+      }
+      for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+        const pu = u0 + 1.5 + a * (inner / 2), pv = v0 + 1.5 + b * (inner / 2), s = inner / 2 - 3;
+        if (!free(pu, pv, pu + s, pv + s)) continue;
+        const wall = ['#efe6d2', '#e2e6e8', '#ead8bc', '#d8e0d0', '#f2ead8'][Math.floor(r() * 5)];
+        const roof = ['#5a4a44', '#3e4a5a', '#6a3a2e', '#4a4a4a'][Math.floor(r() * 4)];
+        const h = 7 + Math.round(r() * 2), pool = r() < 0.7, seed = iu * 13 + iv * 7 + a * 3 + b;
+        out.push({ y: iso(pu + s, pv + s).y, draw: (c) => {
+          if (pool) poolAt(c, pu + 9.5, pv + 1.5, pu + s - 0.5, pv + 5.5);
+          hedge(c, pu, pv + s, pu + s, pv + s); hedge(c, pu + s, pv, pu + s, pv + s);
+          isoBox(c, pu + 0.5, pv + 0.5, pu + 9, pv + s - 1.5, h, { wall, roof, windows: 'house', lit: 0.45, seed });
+          gableRoof(c, pu + 0.5, pv + 0.5, pu + 9, pv + s - 1.5, h, 5, roof);
+          const t = iso(pu + s - 2, pv + s - 3); tree(c, Math.round(t.x), Math.round(t.y), 0.9, seed);
+        } });
+      }
+    } else if (z === 'trailer') {
+      // round 93 (owner): the trailer park: rows of single-wides on dirt lots, a car or a shed here and there
+      for (let row = 0; row < 4; row++) for (let col = 0; col < 2; col++) {
+        const pu = u0 + 2 + col * 16, pv = v0 + 2 + row * 8;
+        if (r() < 0.1 || !free(pu, pv, pu + 13, pv + 3.6)) {
+          const t = iso(pu + 6, pv + 2);
+          if (land(t.x, t.y) && r() < 0.35) out.push({ y: t.y, draw: (c) => tree(c, Math.round(t.x), Math.round(t.y), 0.5, row + col) });
+          continue;
+        }
+        const k = Math.floor(r() * TRAILERS.length), rusty = r() < 0.3, car = r() < 0.35, shed = !car && r() < 0.3, seed = iu * 17 + iv * 11 + row * 2 + col;
+        out.push({ y: iso(pu + 13, pv + 5.6).y, draw: (c) => {
+          trailerAt(c, pu, pv, TRAILERS[k], rusty, seed);
+          if (car) isoBox(c, pu + 2, pv + 4.4, pu + 5.2, pv + 6, 2, { wall: CARS[seed % CARS.length], roof: shade(CARS[seed % CARS.length], 0.85) });
+          if (shed) { isoBox(c, pu + 10, pv + 4.3, pu + 12.5, pv + 6.3, 3, { wall: '#8a7a5a', roof: '#6a6a66' }); }
         } });
       }
     } else if (z === 'res') {
@@ -547,25 +634,21 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     R(c, s.x + 5, s.y - 4, 1, 8, '#3a3a3a'); R(c, s.x - 1, s.y - 13, 14, 10, '#141c2c'); R(c, s.x, s.y - 12, 12, 8, '#e0b33a'); R(c, s.x + 2, s.y - 10, 8, 4, '#25365a');
   },
   // Pine Flats: a row of trailers by the tracks, Mom's at the end with its generator
+  // Mom's place: one single-wide like the others in Pine Flats, her generator beside it, a porch step, a flower pot
   trailer: (c) => {
     const { u, v } = placeWorld('trailer');
-    lot(c, u - 16, v - 14, u + 14, v + 12, '#9a8a62', '#7a6a48');
-    const T = ['#e8e2d0', '#c9d6d2', '#d8cbb0', '#bfd0c4'];
-    for (let k = 0; k < 4; k++) {
-      const pv = v - 12 + k * 6, mom = k === 3;
-      isoBox(c, u - 12, pv, u + 6, pv + 3.6, 5, { wall: T[k], roof: '#9aa0a6', windows: 'house', lit: mom ? 1 : 0.2, seed: k });
-      if (mom) { isoBox(c, u + 8, pv, u + 10, pv + 2, 3, { wall: '#5a7a4a', roof: '#6f8a5a' }); }
-    }
-    for (let k = 0; k < 6; k++) { const f = iso(u + 13, v - 13 + k * 4.6); R(c, Math.round(f.x), Math.round(f.y) - 3, 1, 3, '#8a7a5a'); }
-    pine(c, Math.round(iso(u - 15, v + 8).x), Math.round(iso(u - 15, v + 8).y), 10, 1);
+    lot(c, u - 8, v - 4, u + 8, v + 5, '#9d8a60');
+    trailerAt(c, u - 7, v - 2, '#e8e2d0', false, 3);
+    isoBox(c, u + 6.5, v - 1.5, u + 8.5, v + 0.5, 3, { wall: '#5a7a4a', roof: '#6f8a5a' });
+    const pot = iso(u - 2, v + 2.2); R(c, Math.round(pot.x), Math.round(pot.y) - 2, 2, 2, '#9a5a3a'); P(c, Math.round(pot.x), Math.round(pot.y) - 3, '#e05a8a'); P(c, Math.round(pot.x) + 1, Math.round(pot.y) - 3, '#5aa83a');
   },
-  // Lincoln High: the brick school, the fenced outdoor court with two hoops
+  // Lincoln High: the brick school, the fenced outdoor court (grey asphalt, white lines) with two hoops
   lincoln: (c) => {
     const { u, v } = placeWorld('lincoln');
     isoBox(c, u - 18, v - 18, u + 6, v - 8, 10, { wall: '#9a4a36', roof: '#7a1f2b', windows: 'house', lit: 0.4, seed: 9 });
-    lot(c, u - 14, v - 6, u + 10, v + 8, '#5a6a72', '#3a464c');
-    lot(c, u - 12, v - 4, u + 8, v + 6, '#7a1f2b');
-    const mid = [iso(u - 2, v - 4), iso(u - 2, v + 6)]; line(c, mid[0], mid[1], '#e0b33a');
+    lot(c, u - 14, v - 6, u + 10, v + 8, '#6a6e72', '#4a4e52');
+    lot(c, u - 12, v - 4, u + 8, v + 6, '#82868a');
+    for (const [a, b] of [[iso(u - 12, v - 4), iso(u + 8, v - 4)], [iso(u + 8, v - 4), iso(u + 8, v + 6)], [iso(u + 8, v + 6), iso(u - 12, v + 6)], [iso(u - 12, v + 6), iso(u - 12, v - 4)], [iso(u - 2, v - 4), iso(u - 2, v + 6)]]) line(c, a, b, '#e8eaec');
     for (const [hu, sgn] of [[u - 11, 1], [u + 7, -1]] as const) {
       const b = iso(hu, v + 1);
       R(c, Math.round(b.x), Math.round(b.y) - 9, 1, 9, '#3a3a3a');
@@ -574,29 +657,20 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     for (let k = 0; k <= 24; k += 2) { const p = iso(u - 14 + k, v + 8); R(c, Math.round(p.x), Math.round(p.y) - 4, 1, 4, '#9aa0a6'); }
     for (let k = 0; k <= 14; k += 2) { const p = iso(u + 10, v - 6 + k); R(c, Math.round(p.x), Math.round(p.y) - 4, 1, 4, '#9aa0a6'); }
   },
-  // Ridgemont Academy on its terrace: cream stone, forest-green roofs, a bell tower
-  ridgemont: (c) => {
-    const { u, v } = placeWorld('ridgemont');
-    lot(c, u - 18, v - 14, u + 12, v + 10, '#9a9480', '#6e6a5a');
-    isoBox(c, u - 14, v - 10, u + 8, v - 2, 10, { wall: '#e8e2d0', roof: '#1f5a3a', windows: 'house', lit: 0.5, seed: 11 });
-    gableRoof(c, u - 14, v - 10, u + 8, v - 2, 10, 5, '#1f5a3a');
-    isoBox(c, u - 14, v - 2, u - 6, v + 7, 8, { wall: '#ded6c0', roof: '#1f5a3a', windows: 'house', seed: 12 });
-    gableRoof(c, u - 14, v - 2, u - 6, v + 7, 8, 4, '#1f5a3a');
-    isoBox(c, u + 2, v - 1, u + 6, v + 3, 22, { wall: '#e8e2d0', roof: '#1f5a3a', windows: 'none' });
-    const t = up(iso(u + 4, v + 1), 22); fillPoly(c, [{ x: t.x, y: t.y - 10 }, { x: t.x - 9, y: t.y }, { x: t.x + 9, y: t.y }], '#173f2a');
-    fillPoly(c, [{ x: t.x, y: t.y - 10 }, { x: t.x - 8, y: t.y - 0.5 }, { x: t.x, y: t.y - 0.5 }], '#2a7048');
-    P(c, Math.round(t.x), Math.round(t.y) - 5, '#e0b33a');
-  },
-  // Crestview Prep: silver halls with navy roofs, a clock tower
-  crestview: (c) => {
-    const { u, v } = placeWorld('crestview');
-    lot(c, u - 16, v - 14, u + 14, v + 10, '#8a9a6a', '#5a6a46');
-    isoBox(c, u - 12, v - 10, u + 10, v - 3, 9, { wall: '#c0c6cf', roof: '#1c2b4a', windows: 'house', lit: 0.3, seed: 21 });
-    gableRoof(c, u - 12, v - 10, u + 10, v - 3, 9, 5, '#1c2b4a');
-    isoBox(c, u + 3, v - 3, u + 10, v + 6, 7, { wall: '#b4bac4', roof: '#1c2b4a', windows: 'house', seed: 22 });
-    gableRoof(c, u + 3, v - 3, u + 10, v + 6, 7, 4, '#1c2b4a');
-    isoBox(c, u - 6, v - 2, u - 2, v + 2, 18, { wall: '#c0c6cf', roof: '#1c2b4a' });
-    const t = up(iso(u - 4, v), 18); fillEllipse(c, t.x - 2, t.y - 7, 2.5, 2.5, '#f2f2ea'); P(c, Math.round(t.x - 2), Math.round(t.y) - 8, '#1c2b4a');
+  // Iron Works: the big gym downtown, a wide dark box with a glass front, a red sign with a dumbbell on the roof
+  gym: (c) => {
+    const { u, v } = placeWorld('gym');
+    lot(c, u - 15, v - 12, u + 11, v + 8, '#7a7e82', '#5a5e62');
+    const b = isoBox(c, u - 13, v - 10, u + 9, v + 3, 16, { wall: '#3e434b', roof: '#565b63', windows: 'tower', lit: 0.5, seed: 41 });
+    // the glass front: bright panes on the left face's lower half
+    for (let x = Math.round(b.D.x) + 2; x < Math.round(b.C.x) - 1; x++) { const yb = Math.round(b.D.y + (x - b.D.x) / 2); for (let k = 2; k < 7; k++) P(c, x, yb - k, x % 5 === 0 ? '#2a2e34' : k === 6 ? '#d8eef8' : '#8ec8e8'); }
+    isoBox(c, u - 9, v - 7, u - 5, v - 3, 3, { wall: '#7a7f86', roof: '#9aa0a6' });
+    // the sign on the roof's front edge
+    const s = up(iso(u - 2, v + 3), 16);
+    R(c, Math.round(s.x) - 15, Math.round(s.y) - 11, 30, 10, '#5a1410'); R(c, Math.round(s.x) - 14, Math.round(s.y) - 10, 28, 8, '#c0392b');
+    R(c, Math.round(s.x) - 12, Math.round(s.y) - 7, 6, 2, '#f2f2f2'); R(c, Math.round(s.x) - 13, Math.round(s.y) - 8, 2, 4, '#f2f2f2'); R(c, Math.round(s.x) - 7, Math.round(s.y) - 8, 2, 4, '#f2f2f2');
+    text3(c, Math.round(s.x) - 2, Math.round(s.y) - 9, 'GYM', '#ffffff');
+    for (const dx of [-12, 12]) R(c, Math.round(s.x) + dx, Math.round(s.y) - 1, 1, 3, '#3a3a3a');
   },
   // Burger Barn: a red barn with a big burger on a pole
   burger: (c) => {
@@ -616,66 +690,154 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     for (const hu of [u - 7, u + 7]) { const b = iso(hu, v); R(c, Math.round(b.x), Math.round(b.y) - 7, 1, 7, '#3a3a3a'); R(c, Math.round(b.x) - 2, Math.round(b.y) - 9, 5, 3, '#e8e8e8'); }
     for (const [du, dv] of [[-12, -10], [10, -9], [-11, 9], [11, 10]]) { const t = iso(u + du, v + dv); tree(c, Math.round(t.x), Math.round(t.y), 1, du); }
   },
-  // the trailhead: a little log cabin, a sign, the trail heading up
-  trailhead: (c) => {
-    const { u, v } = placeWorld('trailhead');
-    lot(c, u - 6, v - 4, u + 6, v + 5, '#8a7a58');
-    isoBox(c, u - 5, v - 3, u + 1, v + 2, 5, { wall: '#8a5a34', roof: '#5a3a24' });
-    gableRoof(c, u - 5, v - 3, u + 1, v + 2, 5, 3, '#4a2e1c');
-    const s = iso(u + 4, v + 3); R(c, Math.round(s.x), Math.round(s.y) - 7, 1, 7, '#5a3a24'); R(c, Math.round(s.x) - 3, Math.round(s.y) - 9, 7, 3, '#b08a54');
-    for (let k = 0; k < 26; k++) P(c, Math.round(s.x - 4 - k * 0.9), Math.round(s.y - 10 - k * 1.6 + Math.sin(k / 2) * 2), '#c9b88a');
+  // Gas 'n Go: a canopy over two pumps, the little store, the price sign on its pole
+  gas: (c) => {
+    const { u, v } = placeWorld('gas');
+    lot(c, u - 12, v - 10, u + 12, v + 9, '#6e7276', '#4e5256');
+    isoBox(c, u + 2, v - 8, u + 10, v - 2, 6, { wall: '#e8e2d0', roof: '#c0392b', windows: 'house', lit: 1, seed: 51 });
+    for (const pu of [u - 6, u - 1]) isoBox(c, pu, v - 0.5, pu + 1, v + 0.5, 3, { wall: '#c0392b', roof: '#e8e8e8' });
+    const H = 10, A = up(iso(u - 9, v - 4), H), B = up(iso(u + 2, v - 4), H), C2 = up(iso(u + 2, v + 4), H), D = up(iso(u - 9, v + 4), H);
+    for (const [pu, pv] of [[u - 8, v - 3], [u + 1, v - 3], [u - 8, v + 3], [u + 1, v + 3]]) { const p = iso(pu, pv); R(c, Math.round(p.x), Math.round(p.y) - H, 1, H, '#c8cacc'); }
+    fillPoly(c, [add(A, 0, -1), add(B, 1, 0), add(C2, 0, 2), add(D, -1, 1)], '#5a1410');
+    fillPoly(c, [A, B, C2, D], '#f2f2f0');
+    fillPoly(c, [D, C2, add(C2, 0, 2), add(D, 0, 2)], '#c0392b');
+    const sp = iso(u + 11, v + 8); R(c, Math.round(sp.x), Math.round(sp.y) - 18, 1, 18, '#4a4a4a');
+    R(c, Math.round(sp.x) - 5, Math.round(sp.y) - 26, 11, 9, '#5a1410'); R(c, Math.round(sp.x) - 4, Math.round(sp.y) - 25, 9, 3, '#c0392b'); R(c, Math.round(sp.x) - 4, Math.round(sp.y) - 22, 9, 4, '#f2f2f2');
+    text3(c, Math.round(sp.x) - 3, Math.round(sp.y) - 22, '3', '#2a8a3a'); text3(c, Math.round(sp.x) + 1, Math.round(sp.y) - 22, '9', '#2a8a3a');
+  },
+  // the cabin up the mountain: a clearing in the pines, log walls, a stone chimney with smoke, a woodpile
+  cabin: (c) => {
+    const { u, v } = placeWorld('cabin'), cen = iso(u, v);
+    fillEllipse(c, cen.x, cen.y, 20, 9, '#4f7a38'); fillEllipse(c, cen.x - 2, cen.y - 1, 16, 7, '#5c8a42');
+    const b = isoBox(c, u - 5, v - 3, u + 3, v + 2, 6, { wall: '#7a4a2a', roof: '#3a2a20' });
+    for (let x = Math.round(b.D.x) + 1; x < Math.round(b.C.x); x++) for (let k = 2; k < 6; k += 2) P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - k, '#5a3420');
+    gableRoof(c, u - 5, v - 3, u + 3, v + 2, 6, 4, '#3a2a20');
+    isoBox(c, u + 1.4, v - 2.4, u + 2.4, v - 1.4, 9, { wall: '#7d7a72', roof: '#5a5852' });
+    const ch = up(iso(u + 1.9, v - 1.9), 10);
+    c.globalAlpha = 0.55; for (let k = 0; k < 4; k++) fillEllipse(c, ch.x + k * 2, ch.y - 3 - k * 4, 2 + k * 0.7, 1.6 + k * 0.5, '#e8eaec'); c.globalAlpha = 1;
+    const wp = iso(u + 5, v + 1); for (let k = 0; k < 3; k++) R(c, Math.round(wp.x) - 2, Math.round(wp.y) - 1 - k, 5 - k, 1, k % 2 ? '#8a5a34' : '#6a4224');
+    const d = iso(u - 1, v + 2); R(c, Math.round(d.x) - 1, Math.round(d.y) - 4, 2, 4, '#3a2014');
+  },
+  // the interstate's sign gantry over the deck: green board, EAST and an arrow
+  highway: (c) => {
+    const { u } = placeWorld('highway'), h = hwyH(u);
+    const p0 = iso(u, HWY.v0 - 1), p1 = iso(u, HWY.v1 + 1), H = h + 14;
+    R(c, Math.round(p0.x), Math.round(p0.y) - H, 1, H, '#9aa0a6'); R(c, Math.round(p1.x), Math.round(p1.y) - H, 1, H, '#9aa0a6');
+    line(c, add(p0, 0, -H), add(p1, 0, -H), '#9aa0a6');
+    const m = iso(u, (HWY.v0 + HWY.v1) / 2); const sx = Math.round(m.x) - 10, sy = Math.round(m.y) - H - 4;
+    R(c, sx - 1, sy - 1, 22, 10, '#e8eaec'); R(c, sx, sy, 20, 8, '#1f6a3a');
+    text3(c, sx + 2, sy + 2, 'EAST', '#ffffff'); P(c, sx + 18, sy + 3, '#ffffff'); P(c, sx + 18, sy + 4, '#ffffff'); P(c, sx + 19, sy + 4, '#ffffff'); P(c, sx + 18, sy + 5, '#ffffff');
   },
 };
 
+/** The trailhead at the mountain foot (scenery): a little log hut, a sign, the trail heading up. */
+function drawTrailhead(c: C) {
+  const { u, v } = world(TRAILHEAD.x, TRAILHEAD.y);
+  lot(c, u - 6, v - 4, u + 6, v + 5, '#8a7a58');
+  isoBox(c, u - 5, v - 3, u + 1, v + 2, 5, { wall: '#8a5a34', roof: '#5a3a24' });
+  gableRoof(c, u - 5, v - 3, u + 1, v + 2, 5, 3, '#4a2e1c');
+  const s = iso(u + 4, v + 3); R(c, Math.round(s.x), Math.round(s.y) - 7, 1, 7, '#5a3a24'); R(c, Math.round(s.x) - 3, Math.round(s.y) - 9, 7, 3, '#b08a54');
+  for (let k = 0; k < 26; k++) P(c, Math.round(s.x - 4 - k * 0.9), Math.round(s.y - 10 - k * 1.6 + Math.sin(k / 2) * 2), '#c9b88a');
+}
+
+// ---------------------------------------------------------------- the interstate (elevated, drawn over the town)
+function hwyH(u: number) { return Math.max(0, Math.min(1, (u - HWY.u0) / HWY.ramp)) * HWY.h; }
+function paintHighway(c: C) {
+  const { v0, v1 } = HWY;
+  // its shadow on the ground, down to the right
+  c.globalAlpha = 0.24;
+  for (let u = HWY.u0; u < HWY.u1; u++) { const s = hwyH(u) * 0.6; fillPoly(c, [iso(u, v0), iso(u + 1.2, v0), iso(u + 1.2, v1), iso(u, v1)].map((p) => add(p, s, s * 0.5)), '#1c1a14'); }
+  c.globalAlpha = 1;
+  // pillars (a pair under each bent)
+  for (let u = HWY.u0 + 24; u < HWY.u1; u += 14) for (const v of [v0 + 3, v1 - 3]) {
+    const p = iso(u, v), h = Math.round(hwyH(u));
+    R(c, Math.round(p.x) - 2, Math.round(p.y) - h, 4, h, '#7e8082'); R(c, Math.round(p.x) - 2, Math.round(p.y) - h, 1, h, '#a8aaac'); R(c, Math.round(p.x) + 1, Math.round(p.y) - h, 1, h, '#5e6062');
+  }
+  // the deck, back to front: the road surface, its edge face, then the markings
+  for (let u = HWY.u0; u < HWY.u1; u++) {
+    const h0 = hwyH(u), h1 = hwyH(u + 1);
+    const A = up(iso(u, v0), h0), B = up(iso(u + 1.1, v0), h1), C2 = up(iso(u + 1.1, v1), h1), D = up(iso(u, v1), h0);
+    if (h0 > 0.5) fillPoly(c, [D, C2, add(C2, 0, 3), add(D, 0, 3)], '#8a8c8e');
+    fillPoly(c, [A, B, C2, D], '#55595e');
+  }
+  for (let u = HWY.u0; u < HWY.u1; u += 0.5) {
+    const h = hwyH(u), pr = (v: number) => { const p = up(iso(u, v), h); return { x: Math.round(p.x), y: Math.round(p.y) }; };
+    for (const v of [v0 + 3.5, v1 - 3.5]) if (mod(u, 6) < 3) { const p = pr(v); P(c, p.x, p.y, '#e8e4c8'); }
+    const m = pr((v0 + v1) / 2); P(c, m.x, m.y - 1, '#d8dadc'); P(c, m.x, m.y, '#8a8c8e');
+    for (const v of [v0 + 0.3, v1 - 0.3]) { const p = pr(v); P(c, p.x, p.y - 1, '#d0d2d4'); }
+  }
+}
+
 // ---------------------------------------------------------------- the waterfall (animated)
 function drawFalls(c: C, f: number) {
-  // the sheet of water: its edges wobble, streaks slide down frame by frame, spray where it lands
-  for (let y = 147; y < 201; y++) {
-    const w = 5 + ((y - 147) / 54) * 3 + (vnoise(f * 3, y, 3, 72) - 0.5) * 2, x0 = Math.round(214 - w), x1 = Math.round(214 + w);
+  // the sheet of water widens as it drops; streaks slide down frame by frame; spray off its edges
+  // the lip: the creek spills over in a bright curl
+  for (let x = 209; x <= 219; x++) { P(c, x, 125, '#7fc0cc'); P(c, x, 126, x % 2 ? '#ffffff' : '#d8eef0'); }
+  for (let y = 127; y < 206; y++) {
+    const t = (y - 127) / 79, w = 3 + t * 8 + (vnoise(f * 3, y, 3, 72) - 0.5) * 1.6, x0 = Math.round(214 - w), x1 = Math.round(214 + w);
     for (let x = x0; x <= x1; x++) {
       const k = hn(x, Math.floor((y - f * 5) / 3), 51), side = x === x0 || x === x1;
       P(c, x, y, side ? '#7fc0cc' : k > 0.72 ? '#f4fbfc' : k > 0.3 ? '#bfe3ea' : '#8ccbd6');
     }
+    if (hn(y, f, 56) < 0.25 * t) P(c, x0 - 1 - Math.floor(hn(y, f, 57) * 2), y, '#d8eef0');
+    if (hn(y, f, 58) < 0.25 * t) P(c, x1 + 1 + Math.floor(hn(y, f, 59) * 2), y, '#d8eef0');
   }
-  for (let k = 0; k < 40; k++) {
-    const x = 214 + Math.round((hn(k, f, 53) - 0.5) * 30), y = 196 + Math.round(hn(k, f, 54) * 10);
+  // foam where it lands, and a mist cloud drifting over the pool and the start of the river
+  for (let k = 0; k < 50; k++) {
+    const x = 214 + Math.round((hn(k, f, 53) - 0.5) * 34), y = 204 + Math.round(hn(k, f, 54) * 12);
     P(c, x, y, hn(k, f, 55) < 0.5 ? '#ffffff' : COL.foam);
+  }
+  for (let k = 0; k < 9; k++) {
+    c.globalAlpha = 0.16 + hn(k, f, 64) * 0.12;
+    fillEllipse(c, 210 + (hn(k, 0, 65) - 0.5) * 40 + f * 1.5, 200 + hn(k, 0, 66) * 16, 6 + hn(k, 0, 67) * 6, 3 + hn(k, 0, 68) * 3, '#ffffff');
+  }
+  c.globalAlpha = 1;
+}
+
+/** Mossy boulders around the plunge pool. */
+function poolRocks(c: C) {
+  for (let k = 0; k < 9; k++) {
+    const a = Math.PI * (0.05 + k * 0.23), x = POOL.x + Math.cos(a) * (POOL.r + 3), y = POOL.y - 3 + Math.sin(a) * (POOL.r / 1.6 + 2);
+    if (y > POOL.y + 2 && Math.abs(x - POOL.x) < 8) continue; // the outlet stays open
+    const r = 2 + hn(k, 0, 69) * 2;
+    fillEllipse(c, x, y, r + 1, r * 0.7 + 1, '#3a3632'); fillEllipse(c, x, y, r, r * 0.7, '#7a746a'); P(c, Math.round(x - r / 2), Math.round(y - r / 3), '#a8a296');
+    if (hn(k, 1, 69) < 0.5) P(c, Math.round(x + 1), Math.round(y - r * 0.6), '#4f8a3a');
   }
 }
 
 // ---------------------------------------------------------------- build
+function paintAll(c: C) {
+  paintGround(c); paintMountain(c); paintBridges(c); paintDam(c); poolRocks(c);
+  for (const o of cityObjects().sort((a, b) => a.y - b.y)) o.draw(c);
+  drawTrailhead(c);
+  paintHighway(c);
+}
 /** The whole map on one canvas (dev previews): the background with every place and the falls drawn in. */
 export function drawCityCanvas(): HTMLCanvasElement {
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
-  paintGround(c); paintMountain(c); paintBridges(c); paintDam(c);
-  for (const o of cityObjects().sort((a, b) => a.y - b.y)) o.draw(c);
+  paintAll(c);
   drawFalls(c, 0);
   for (const p of [...PLACES].sort((a, b) => a.at.y - b.at.y)) PLACE_ART[p.id](c);
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v1';
+export const CITY_BG = 'city_bg_v2';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
 export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Record<PlaceId, { key: string; x: number; y: number }>; falls: { key: string; x: number; y: number } } {
   if (!tm.exists(CITY_BG)) {
     const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
-    paintGround(c);
-    paintMountain(c);
-    paintBridges(c);
-    paintDam(c);
-    const objs = cityObjects().sort((a, b) => a.y - b.y);
-    for (const o of objs) o.draw(c);
+    paintAll(c);
     tm.addCanvas(CITY_BG, cv);
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v1`;
+    const key = `city_${p.id}_v2`;
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => PLACE_ART[p.id](c)); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v1';
+  const fk = 'city_falls_v2';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

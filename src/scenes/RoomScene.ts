@@ -187,6 +187,11 @@ export abstract class RoomScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ workout orbs (round 42)
   static ORB_FLIGHT = 0.75;
+  /** Round 93: XP an orb carries (the city gym's machines give more for the same energy). */
+  orbXp(): number { return ORB_XP; }
+  /** Round 93: where L1 goes from this room (the main menu; the city gym goes back to the map). */
+  leaveTo(): [string, object | undefined] { return ['Title', undefined]; }
+
   /**
    * Send one XP orb per stat from `from` (screen) to its skill card. Each orb costs energy when it's sent; out of
    * energy, nothing is sent and "TOO TIRED" pops over you.
@@ -195,7 +200,7 @@ export abstract class RoomScene extends Phaser.Scene {
     let sent = 0;
     for (const stat of stats) {
       if (!takeOrbEnergy(app.career)) { this.showTired(from); break; }
-      this.orbs.push({ to: stat, amount: ORB_XP, from: { ...from }, at: this.t + sent * 0.16, side: sent % 2 ? 1 : -1 });
+      this.orbs.push({ to: stat, amount: this.orbXp(), from: { ...from }, at: this.t + sent * 0.16, side: sent % 2 ? 1 : -1 });
       sent++;
     }
     if (sent) { app.changed(); sfx.orbSend(); }
@@ -322,7 +327,7 @@ export abstract class RoomScene extends Phaser.Scene {
         return;
       }
     }
-    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.scene.start('Title'); return; } // round 58: back to the main menu
+    if (this.inp.pressed('escape') || this.inp.pressed('back')) { const [k, d] = this.leaveTo(); this.scene.start(k, d); return; } // round 58: back to the main menu (round 93: or wherever the room says)
 
     // movement: stick = feet across / into the room, R2 or Shift hurries
     const m = this.inp.move, mag = Math.hypot(m.x, m.y);

@@ -100,6 +100,9 @@
   the lesson order / wording feels, whether Kingston's demos read clearly, and whether the 1s are too hard.
 - **Round 81b:** Hale's house deal (rent free until you make it, then your whole first contract plus the generator) is
   only a line so far; it should come due when you sign, and feed the reveal.
+- **Round 93 follow-ups:** the interstate after the draft (the trip to your team's city, the "nearby city"
+  coincidence in the story); Burger Barn / Gas 'n Go / the cabin / Riverside Park are still "coming later"; the gym's
+  pass price and 2x are first guesses; the highway has no on-ramp loop, it ramps straight out of a downtown street.
 - **Round 92 follow-ups:** the "coming later" places on the map (Ridgemont, Crestview, Burger Barn, Riverside Park
   pickup games, a trailhead run); the Lincoln shootaround is the practice mode (an NBA defender, not a school one);
   after the draft the arena should be your team's (key games from the map); ask the owner about the trip costs and

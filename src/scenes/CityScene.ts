@@ -5,7 +5,7 @@ import { app } from '../state';
 import { sfx } from '../audio/sfx';
 import { buildIcons } from '../render/roomArt';
 import { buildCityArt, CITY_BG } from '../render/cityArt';
-import { PLACES, PLACE, PlaceId, Place, placeToward, travelCost, canTravel } from '../world/city';
+import { PLACES, PLACE, PlaceId, Place, placeToward, travelCost, canTravel, gymPass, buyGymPass, GYM_DAY_PASS } from '../world/city';
 import { drawTopHud } from './roomHud';
 import { openTasks } from '../career/tasks';
 import { todaysEvents, eventName, nextEvent, eventLine, GoEvent } from '../career/draft';
@@ -96,6 +96,12 @@ export class CityScene extends Phaser.Scene {
     }
     const cost = travelCost(this.at, p.id);
     if (!canTravel(c, cost)) return { line: `Too tired to go that far (${cost} energy).`, ok: false, cost };
+    if (p.id === 'gym') {
+      // round 93 (owner): a day pass to get in
+      const pass = gymPass(c);
+      if (pass === 'broke') return { line: `Can't afford a day pass ($${GYM_DAY_PASS}).`, ok: false, cost };
+      return { line: pass === 'paid' ? `✕ Go in (day pass paid)  ·  -${cost} energy` : `✕ Day pass $${GYM_DAY_PASS}  ·  -${cost} energy`, ok: true, cost };
+    }
     return { line: `✕ Go  ·  -${cost} energy`, ok: true, cost };
   }
 
@@ -204,6 +210,12 @@ export class CityScene extends Phaser.Scene {
       const evs = todaysEvents(c);
       if (evs.length > 1) { this.choosing = { evs, i: 0 }; sfx.blip(true); this.drawCard(); return; }
       this.travel(p, 0, () => goTo(this, evs[0]));
+      return;
+    }
+    if (p.id === 'gym') {
+      if (!buyGymPass(c)) { sfx.blip(false); return; }
+      app.changed(); this.drawHud(); sfx.greenChime();
+      this.travel(p, s.cost, () => this.leave('CityGym'));
       return;
     }
     const next: [string, object | undefined] = p.id === 'trailer' ? ['Trailer', { visit: true }] : ['Game', LINCOLN_SHOOTAROUND];

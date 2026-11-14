@@ -188,6 +188,27 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 93 (owner): the town reworked.**
+  - **The south is a big trailer park** (Pine Flats: rows of single-wides on dirt lots, cars, sheds); **Mom's home is
+    just one of the trailers** (her generator beside it). **Lincoln High** and a **gas station (Gas 'n Go)** are down
+    there too. **Lincoln's court is grey** asphalt with white lines (not red).
+  - **North of the arena: the hills**, nice houses on big lots with pools and hedges, **a few mansions** (a long wing,
+    a side wing, a pool, a fountain on the drive). Home stays at the bottom of the hills.
+  - **The southwest stays normal suburbs.** **Ridgemont Academy and Crestview Prep are off the map.**
+  - **Burger Barn moved next to the downtown towers.**
+  - **The waterfall** runs down a cleft in the slope (the rock darkens and gets wet toward it, moss low down), the
+    creek winds down in little cascades and spills over a foamy lip, the falls widen as they drop into a rounder pool
+    with boulders, a mist cloud drifts over it and foam fades down the river.
+  - **A cabin up the mountain** (smoke from the chimney, a woodpile, a clearing in the pines). The trailhead hut at
+    the mountain foot is scenery now.
+  - **The interstate east** (owner's pick): an elevated highway ramping up out of downtown, past the north shore of the
+    reservoir and off the right edge, a green EAST gantry. It's the road to the city you'll play for (the team that
+    drafts you turns out to be a nearby city: story later). On the map as "coming later".
+  - **Iron Works Gym** downtown (owner): it **costs a day pass ($25, once per day)** and its machines give **2x the stat
+    XP per energy** (`GYM_DAY_PASS`, `GYM_XP_MULT`). Inside: the garage's machines on a rubber floor, a mirror wall with
+    the red IRON WORKS band, a dumbbell rack, towers outside. The door and L1 go back to the map.
+  - Places now: Home, The Arena, Iron Works Gym, Mom's Trailer, Lincoln High Court (open); Burger Barn, Riverside
+    Park, Gas 'n Go, The Cabin, Interstate East (coming later).
 - **Round 92 (owner): the city map.** From the owner's reference (a one-screen isometric pixel city, the stat bar
   across the top), in our style and with our own landmarks.
   - **Mountain + river valley** (owner's pick): a snow-capped ridge across the top left (it names **Ridgemont

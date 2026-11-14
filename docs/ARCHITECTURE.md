@@ -69,6 +69,7 @@ ends inside a gap narrower than the body), `isFree`, `doorNear`, draw order `pie
 | `render/crowd.ts` | Animated crowd: blob stands rows + `FanRow` (plain sprite fans behind the sideline), shared `reaction()` ripple, home-colored shirts (`bigGame` = mostly home colors). |
 | `scenes/ui.ts` | `hiRes(scene)` (1.5× camera, origin 0), `MenuList`, `title`. Every scene calls `hiRes` in `create`. |
 | `scenes/GameScene.ts` | Main renderer (async `sheetFor`/`evictSheets`, `ready` gate, reflections, celebs): sprite sheets cache, `clipFor` (anim selection; `defStance` for defender facing + shuffle phase), overlays (cones, gusts, markers), HUD, sideline (table, benches, coaches), audio event mapping, camera. |
+| `scenes/CityGymScene.ts`, `render/cityGymArt.ts`, `world/cityGym.ts` | Round 93: Iron Works, the big gym (a day pass, 2x XP per orb via `RoomScene.orbXp`, L1 to the map via `leaveTo`). |
 | `scenes/CityScene.ts`, `render/cityArt.ts`, `scenes/roomHud.ts` | Round 92: the city map (front door): the town painted in code on the room art grid, a sprite per place, card / ring / pedestal, trips; the rooms' stat bar as a shared function. |
 | `scenes/filmRun.ts` | Round 91: `FilmRun` drives a film course inside GameScene (the box, ✓, the VHS tape look, the end menu); `filmInit`, `PRACTICE_COURT`. |
 | `scenes/storyRun.ts`, `render/storyBox.ts` | Round 60: `StoryRun` drives a prologue game inside GameScene (lines hold the sim, transitions by `setStage` / `storyScene`, coach + scout in the big game); `StoryBox` is the bottom text box (also used by TrailerScene). |

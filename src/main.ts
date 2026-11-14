@@ -19,6 +19,7 @@ import { MontageScene } from './scenes/MontageScene';
 import { ArenaGymScene } from './scenes/ArenaGymScene';
 import { BusScene } from './scenes/BusScene';
 import { CityScene } from './scenes/CityScene';
+import { CityGymScene } from './scenes/CityGymScene';
 import { initDevPanel } from './dev/devPanel';
 import { openPixelEditor } from './dev/pixelEditor';
 import { loadFaceParts } from './render/facePartsArt';
@@ -50,7 +51,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   backgroundColor: '#0d0f1a',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [TitleScene, CreateScene, MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, ThreeSetupScene, OneOnOneSetupScene, ApartmentScene, GarageScene, TrailerScene, PaperScene, BusScene, MontageScene, ArenaGymScene, CityScene],
+  scene: [TitleScene, CreateScene, MenuScene, GameScene, HubScene, LevelUpScene, PerkTreeScene, UltimateScene, PostGameScene, MatchSetupScene, ThreeSetupScene, OneOnOneSetupScene, ApartmentScene, GarageScene, TrailerScene, PaperScene, BusScene, MontageScene, ArenaGymScene, CityScene, CityGymScene],
 });
 (window as any).__phaser = game;
 (window as any).__sfx = sfx; // dev / tests: audio state (round 60c)

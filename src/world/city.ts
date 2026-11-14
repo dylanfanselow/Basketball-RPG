@@ -6,7 +6,7 @@
  */
 import type { CareerState } from '../career/career';
 
-export type PlaceId = 'home' | 'trailer' | 'lincoln' | 'arena' | 'ridgemont' | 'crestview' | 'burger' | 'park' | 'trailhead';
+export type PlaceId = 'home' | 'arena' | 'gym' | 'trailer' | 'lincoln' | 'burger' | 'park' | 'gas' | 'cabin' | 'highway';
 
 export interface Place {
   id: PlaceId;
@@ -19,16 +19,22 @@ export interface Place {
   open: boolean;
 }
 
+/**
+ * Round 93 (owner): the hills north of the arena (nice houses, a few mansions), downtown with the arena, the big gym
+ * and Burger Barn, the trailer park across most of the south (Mom's is one of the trailers, Lincoln High and the gas
+ * station are down there too), the suburbs in the southwest, a cabin up the mountain, the interstate east.
+ */
 export const PLACES: Place[] = [
-  { id: 'home', name: 'Home', blurb: 'Your place on Cedar Street. The garage gym is out back.', at: { x: 812, y: 214 }, open: true },
+  { id: 'home', name: 'Home', blurb: 'Your place on Cedar Street, at the bottom of the hills. The garage gym is out back.', at: { x: 812, y: 214 }, open: true },
   { id: 'arena', name: 'The Arena', blurb: 'Downtown on the river. Combine days, the scrimmage and team workouts happen here.', at: { x: 612, y: 292 }, open: true },
-  { id: 'trailer', name: 'Mom\'s Trailer', blurb: 'Pine Flats, by the tracks. Where you grew up.', at: { x: 300, y: 432 }, open: true },
-  { id: 'lincoln', name: 'Lincoln High Court', blurb: 'The outdoor court behind your old school. Get some shots up.', at: { x: 448, y: 454 }, open: true },
-  { id: 'ridgemont', name: 'Ridgemont Academy', blurb: 'The prep school on the ridge that took a chance on you.', at: { x: 382, y: 170 }, open: false },
-  { id: 'crestview', name: 'Crestview Prep', blurb: 'Across the river and up the hill. Kingston\'s school now.', at: { x: 128, y: 452 }, open: false },
-  { id: 'burger', name: 'Burger Barn', blurb: 'Your old register. They still owe you a free meal.', at: { x: 600, y: 468 }, open: false },
+  { id: 'gym', name: 'Iron Works Gym', blurb: 'The big gym downtown. Better machines: twice the gains for the same sweat.', at: { x: 712, y: 238 }, open: true },
+  { id: 'trailer', name: 'Mom\'s Trailer', blurb: 'Pine Flats trailer park, lot 14. Where you grew up.', at: { x: 372, y: 478 }, open: true },
+  { id: 'lincoln', name: 'Lincoln High Court', blurb: 'The outdoor court behind your old school. Get some shots up.', at: { x: 476, y: 446 }, open: true },
+  { id: 'burger', name: 'Burger Barn', blurb: 'Your old register, a block off the towers. They still owe you a free meal.', at: { x: 744, y: 322 }, open: false },
   { id: 'park', name: 'Riverside Park', blurb: 'A court by the water. Pickup games on weekends.', at: { x: 470, y: 238 }, open: false },
-  { id: 'trailhead', name: 'Ridge Trailhead', blurb: 'The trail up the mountain to the falls. Good for a run.', at: { x: 150, y: 262 }, open: false },
+  { id: 'gas', name: 'Gas \'n Go', blurb: 'The gas station on the south road. Snacks, gas, lottery tickets.', at: { x: 588, y: 492 }, open: false },
+  { id: 'cabin', name: 'The Cabin', blurb: 'A cabin up the mountain, past the falls. Nobody\'s been up there in a while.', at: { x: 318, y: 150 }, open: false },
+  { id: 'highway', name: 'Interstate East', blurb: 'The highway out of town. After the draft, it\'s your road to work.', at: { x: 848, y: 340 }, open: false },
 ];
 export const PLACE: Record<PlaceId, Place> = Object.fromEntries(PLACES.map((p) => [p.id, p])) as Record<PlaceId, Place>;
 
@@ -41,6 +47,22 @@ export function travelCost(from: PlaceId, to: PlaceId): number {
 }
 /** Can you make the trip? (an event trip is free: they send a car) */
 export function canTravel(c: CareerState, cost: number): boolean { return c.life.energy >= cost; }
+
+/** Round 93 (owner): the big gym costs money to get in (a day pass), and its machines give more per energy. */
+export const GYM_DAY_PASS = 25, GYM_XP_MULT = 2;
+/** Paid today already, can pay, or can't afford it. */
+export function gymPass(c: CareerState): 'paid' | 'pay' | 'broke' {
+  if (c.life.gymPass === c.life.day) return 'paid';
+  return c.life.money >= GYM_DAY_PASS ? 'pay' : 'broke';
+}
+/** Buy today's pass (once a day). False if you can't afford it. */
+export function buyGymPass(c: CareerState): boolean {
+  const s = gymPass(c);
+  if (s === 'paid') return true;
+  if (s === 'broke') return false;
+  c.life.money -= GYM_DAY_PASS; c.life.gymPass = c.life.day;
+  return true;
+}
 
 /**
  * The stick: the place that best lies in that direction from `from` (within ±70°, nearer and straighter wins), or
