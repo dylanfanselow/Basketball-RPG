@@ -19,6 +19,8 @@ describe('round 89b: the lines file, the half line, the mystery call', () => {
     const all = JSON.stringify(DRAFT_TALK);
     expect(all.includes(EM)).toBe(false);
     expect(all).not.toContain('Somebody has to be first overall');
+    // round 89c (owner): three more out
+    for (const gone of ['Just carrying', 'the guy we lose with', 'see you... trying']) expect(all).not.toContain(gone);
     expect(DRAFT_TALK.one.halfDown).toBe('How are we losing? This is getting ridiculous.');
     for (const k of ['niceYou', 'niceHim', 'snakeYou', 'snakeHim', 'snakeThem', 'snakeMiss'] as const) expect(DRAFT_TALK.one[k].length).toBeGreaterThan(0);
     for (const k of ['scores', 'blocks', 'steals', 'youScore'] as const) expect(DRAFT_TALK.two[k].length).toBeGreaterThan(0);

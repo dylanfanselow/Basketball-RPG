@@ -191,7 +191,8 @@ Chronological. "Superseded" marks decisions later changed by the owner.
 - **Round 89b (owner): Dragić's lines, the mystery call, the ringing landline.**
   - **All of Dragić's and Jagadeesh's lines (and the mystery call) live in `src/data/draftTalk.json`** for the owner
     to edit (placeholders `{you}`, `{n1}`, `{n2}`, `{height}`, `{big}`). "Somebody has to be first overall out here"
-    is gone. **Start of the second half, if you're down: "How are we losing? This is getting ridiculous."**
+    is gone (round 89c: also "Just carrying, don't mind me.", "It's cool. Somebody has to be the guy we lose with.",
+    "Don't worry. I'll make sure the scouts see you... trying."). **Start of the second half, if you're down: "How are we losing? This is getting ridiculous."**
   - **Lose the scrimmage → back home that day the landline rings: UNKNOWN NUMBER. "Give up on basketball. It's not
     for you." Click.** (It's Dragić; nobody knows yet.) Once per story.
   - **Every incoming call rings on the landline**: the ring repeats and the phone shakes (the handset hops) until you
