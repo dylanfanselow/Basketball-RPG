@@ -261,6 +261,10 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 94: `scenes/optionsMenu.ts` (`OptionsMenu`: options list, ↑↓ / ✕ / L1) opened by Esc / L1 in `RoomScene`
+  (`openOptions`: Resume, Back to town when `leaveTo()` isn't the title, Save and exit) and `CityScene` (Resume, Go
+  home, Save and exit); `scoutReport.ts` split into `ratingsVsClass` + `rankReport` (shared by `buildScoutReport` and
+  the new ratings-only `buildRatingsReport`), TV "Look yourself up"; `GarageScene.drawNet` flat rim front.
   Round 93: the town reworked. `cityArt.ts` zones `rich` (2x2 lots, pools `poolAt`, hedges, `mansion` on ~45% of
   blocks) and `trailer` (`trailerAt` rows, cars, sheds), `HWY` + `paintHighway` (elevated deck, pillars, shadow,
   markings) with `underHighway` keep-clear, the falls (cleft blended in `paintMountain`, winding creek, lip, wider

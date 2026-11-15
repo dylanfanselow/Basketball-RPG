@@ -8,6 +8,7 @@ import { xpToNext, nextKeyGame, skillXpToNext, addSkillXp, takeOrbEnergy, ORB_XP
 import { dateLabel } from '../career/calendar';
 import { openTasks, claimTasks, TASKS } from '../career/tasks';
 import { drawTopHud } from './roomHud';
+import { OptionsMenu } from './optionsMenu';
 import { sfx, MusicTrack } from '../audio/sfx';
 import { Kit, FRAME_W, FRAME_H, CX, FOOT_Y, SPRITE_SCALE, shade, figureHeight } from '../render/sprites';
 import { CLIP, MAT_CLIPS, frameAt, frameTime, sampleClip, rigArms, Pose, J } from '../render/anim';
@@ -152,7 +153,7 @@ export abstract class RoomScene extends Phaser.Scene {
     buildIcons(tm);
     const track = this.music();
     if (track) { sfx.music(track); this.events.once('shutdown', () => sfx.music(null)); } // the next room picks it back up
-    this.paidTasks = [];
+    this.paidTasks = []; this.options = null;
     this.onCreate();
     this.makeHud();
     this.time.delayedCall(700, () => this.payTasks()); // round 91: a to-do task finished while you were out
@@ -187,6 +188,17 @@ export abstract class RoomScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ workout orbs (round 42)
   static ORB_FLIGHT = 0.75;
+  /** Round 94 (owner): the Esc / L1 menu (Resume, Back to town where L1 used to go somewhere else, Save and exit). */
+  options: OptionsMenu | null = null;
+  openOptions() {
+    const [key, data] = this.leaveTo();
+    this.options = new OptionsMenu(this, this.inp, [
+      { label: 'Resume', run: () => {} },
+      ...(key !== 'Title' ? [{ label: 'Back to town', run: () => this.scene.start(key, data) }] : []),
+      { label: 'Save and exit', run: () => { app.save(); this.scene.start('Title'); } },
+    ]);
+  }
+
   /** Round 93: XP an orb carries (the city gym's machines give more for the same energy). */
   orbXp(): number { return ORB_XP; }
   /** Round 93: where L1 goes from this room (the main menu; the city gym goes back to the map). */
@@ -314,6 +326,7 @@ export abstract class RoomScene extends Phaser.Scene {
     this.inp.poll();
     this.updateHud();
     this.updateOrbs();
+    if (this.options?.open) { this.options.update(); this.prompt.setVisible(false); return; } // round 94: the options menu holds the room
     if (this.inp.pressed('dev')) (window as any).__toggleDev?.();
     if (this.busy) { this.prompt.setVisible(false); if (this.activity) { this.actT += dt; this.drawPlayer(0); } this.onUpdate(dt); this.sortDepths(); this.drawDebug(); return; }
     if (this.activity) {
@@ -327,7 +340,7 @@ export abstract class RoomScene extends Phaser.Scene {
         return;
       }
     }
-    if (this.inp.pressed('escape') || this.inp.pressed('back')) { const [k, d] = this.leaveTo(); this.scene.start(k, d); return; } // round 58: back to the main menu (round 93: or wherever the room says)
+    if (this.inp.pressed('escape') || this.inp.pressed('back')) { this.openOptions(); return; } // round 94 (owner): the options menu (was: straight to the main menu)
 
     // movement: stick = feet across / into the room, R2 or Shift hurries
     const m = this.inp.move, mag = Math.hypot(m.x, m.y);

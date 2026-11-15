@@ -20,6 +20,7 @@ import { setStage, storyScene } from './setup';
 import { seasonGrid, keyGamesByDay, simGamesByDay, seasonPages, pageRange, pageOf, storyDay, dateLabel, SEASONS, WEEKDAYS } from '../career/calendar';
 import { figureHeight } from '../render/sprites';
 import { TEAMS } from '../sim/data';
+import { buildRatingsReport, ScoutReport } from '../career/scoutReport';
 import { FILM, FILM_COURSES, OPEN_COURSES, filmDone, filmUnlocked, lockText } from '../sim/film';
 import { filmInit, PRACTICE_COURT } from './filmRun';
 import type { GameInit } from './setup';
@@ -324,13 +325,14 @@ export class ApartmentScene extends RoomScene {
   private tv() {
     if (this.busy) return;
     const st = app.career.story, board = !!st?.draft && !st.drafted, report = !!st?.scoutReport && !st.drafted;
-    const options = ['Film study', 'Practice court', ...(board ? ['Draft board'] : []), ...(report ? ['What they\'re saying'] : []), 'Turn it off'];
+    const options = ['Film study', 'Practice court', 'Look yourself up', ...(board ? ['Draft board'] : []), ...(report ? ['What they\'re saying'] : []), 'Turn it off'];
     const pick = (i: number) => {
       this.agent = null; this.busy = false;
       if (options[i] === 'Film study') this.openFilms();
       else if (options[i] === 'Practice court') this.leaveFor(PRACTICE_COURT);
       else if (options[i] === 'Draft board') this.openBoard();
       else if (options[i] === 'What they\'re saying') this.openReport(); // round 90
+      else if (options[i] === 'Look yourself up') this.openReport(buildRatingsReport(app.career), 'LOOKING YOURSELF UP', 'From your ratings against the prospects at your position.'); // round 94
     };
     this.agent = new AgentTalk(this, { x: -20, y: 0 }, [{ choose: { who: 'you' as BoxSpeaker, text: 'What\'s on?', options, pick } }], { phone: true });
   }
@@ -355,15 +357,16 @@ export class ApartmentScene extends RoomScene {
     this.board = objs; this.boardAt = this.t;
   }
   /** Round 90 (owner): the draft show's breakdown of you: three strengths, three weaknesses (biggest first). */
-  private openReport() {
-    const c = app.career, r = c.story?.scoutReport;
+  private openReport(own?: ScoutReport, head = 'THE DRAFT SHOW  ·  SCOUTING REPORT', note?: string) {
+    const c = app.career, r = own ?? c.story?.scoutReport;
     if (this.busy || !r) return;
     this.busy = true; sfx.blip(true);
     const objs: Phaser.GameObjects.GameObject[] = [];
     const T = (x: number, y: number, s: string, size = 15, col = '#e8eefc', bold = false, wrap = 0) => { const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color: col, fontStyle: bold ? 'bold' : 'normal', wordWrap: wrap ? { width: wrap } : undefined }).setDepth(9701); objs.push(t); return t; };
     objs.push(this.add.rectangle(640, 380, 1040, 540, 0x0b1020, 0.96).setStrokeStyle(3, 0xffcc33).setDepth(9700));
     objs.push(this.add.rectangle(640, 140, 1036, 56, 0x1d2b5a, 1).setDepth(9700));
-    T(640, 124, `THE DRAFT SHOW  ·  SCOUTING REPORT: ${c.name.toUpperCase()}`, 20, '#ffe9a8', true).setOrigin(0.5, 0);
+    T(640, 124, `${head}: ${c.name.toUpperCase()}`, 20, '#ffe9a8', true).setOrigin(0.5, 0);
+    if (note) T(640, 582, note, 13, '#9fb0e0').setOrigin(0.5, 0);
     T(170, 190, 'STRENGTHS', 18, '#7dff9a', true); T(670, 190, 'WEAKNESSES', 18, '#ff8a80', true);
     const list = (x: number, items: typeof r.strengths, col: string) => items.forEach((it, i) => {
       T(x, 232 + i * 110, `${i + 1}. ${it.title}`, 17, col, true, 430);

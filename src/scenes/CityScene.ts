@@ -7,6 +7,7 @@ import { buildIcons } from '../render/roomArt';
 import { buildCityArt, CITY_BG } from '../render/cityArt';
 import { PLACES, PLACE, PlaceId, Place, placeToward, travelCost, canTravel, gymPass, buyGymPass, GYM_DAY_PASS } from '../world/city';
 import { drawTopHud } from './roomHud';
+import { OptionsMenu } from './optionsMenu';
 import { openTasks } from '../career/tasks';
 import { todaysEvents, eventName, nextEvent, eventLine, GoEvent } from '../career/draft';
 import { nextKeyGame, addEnergy } from '../career/career';
@@ -49,7 +50,7 @@ export class CityScene extends Phaser.Scene {
   init(data?: { at?: PlaceId; select?: PlaceId }) {
     this.at = data?.at && PLACE[data.at] ? data.at : 'home';
     this.sel = data?.select && PLACE[data.select] ? data.select : this.at;
-    this.sprites = new Map(); this.cardText = []; this.hud = []; this.t = 0; this.leaving = false; this.choosing = null; this.walk = null; this.stickWas = 0;
+    this.sprites = new Map(); this.cardText = []; this.hud = []; this.t = 0; this.leaving = false; this.choosing = null; this.walk = null; this.stickWas = 0; this.options = null;
   }
 
   create() {
@@ -125,7 +126,7 @@ export class CityScene extends Phaser.Scene {
       const c = app.career;
       T(x + 16, y + 70, this.choosing.evs.map((e, i) => `${i === this.choosing!.i ? '▶' : ' '} ${eventName(c, e)}`).join('    '), 14, '#ffe680', true);
     } else T(x + 16, y + 70, s.line, 14, s.ok ? '#bfe86a' : '#c8a890', true, w - 140);
-    T(x + w - 16, y + h - 22, 'L1 home', 12, '#9a8a72').setOrigin(1, 0);
+    T(x + w - 16, y + h - 22, '○ home  ·  L1 menu', 12, '#9a8a72').setOrigin(1, 0);
   }
 
   // ------------------------------------------------------------ frame
@@ -137,6 +138,7 @@ export class CityScene extends Phaser.Scene {
     this.drawSelection();
     this.drawYou(dt);
     if (this.leaving || this.walk) return;
+    if (this.options?.open) { this.options.update(); return; }
     if (this.choosing) { this.chooseInput(); return; }
     // the stick (a flick) or the d-pad hops to the next place that way
     const m = this.inp.move, mag = Math.hypot(m.x, m.y);
@@ -146,7 +148,8 @@ export class CityScene extends Phaser.Scene {
     if (this.inp.pressed('left')) dir = { x: -1, y: 0 }; else if (this.inp.pressed('right')) dir = { x: 1, y: 0 };
     else if (this.inp.pressed('up')) dir = { x: 0, y: -1 }; else if (this.inp.pressed('down')) dir = { x: 0, y: 1 };
     if (dir) { const next = placeToward(this.sel, dir); if (next) { this.sel = next; sfx.blip(true); this.drawCard(); } }
-    if (this.inp.pressed('escape') || this.inp.pressed('b')) { this.goHome(); return; }
+    if (this.inp.pressed('escape')) { this.openOptions(); return; } // round 94 (owner): the options menu
+    if (this.inp.pressed('b')) { this.goHome(); return; }
     if (this.inp.pressed('a')) this.go(PLACE[this.sel]);
   }
 
@@ -185,6 +188,16 @@ export class CityScene extends Phaser.Scene {
     g.fillStyle(0xd8f0ff, 0.8).fillEllipse(x - 4, y - 4, 12, 3);
     if (!sheet) return;
     this.figure.setTexture(key, sheet.index.idle.start + (Math.floor(this.t * 2) % Math.max(1, sheet.index.idle.count ?? 1))).setPosition(x, y - 2 - hop).setVisible(true);
+  }
+
+  /** Round 94: Resume, Go home, Save and exit. */
+  private options: OptionsMenu | null = null;
+  private openOptions() {
+    this.options = new OptionsMenu(this, this.inp, [
+      { label: 'Resume', run: () => {} },
+      { label: 'Go home', run: () => this.goHome() },
+      { label: 'Save and exit', run: () => { app.save(); this.leave('Title'); } },
+    ]);
   }
 
   private chooseInput() {

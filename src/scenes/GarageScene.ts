@@ -255,7 +255,14 @@ export class GarageScene extends RoomScene {
         if (Math.abs(dp) < 0.7 || Math.abs(dn) < 0.7 || x === x0 || x === x1) nf.fillRect(x * px + sway * t, top + y * px, px, px);
       }
     }
-    if (shot) nf.lineStyle(3, 0xe05a14, 1).beginPath().arc(rim.x, rim.y, rwA * px, 0, Math.PI, false).strokePath(); // front of the ring
+    // the front of the ring over the ball: the rim is seen nearly edge-on, so its front is a flat half ellipse
+    // (round 94, owner: it was a half circle of the rim's radius, which hung under the rim like a bent hoop)
+    if (shot) {
+      const rx = rwA * px, ry = 2 * px;
+      nf.lineStyle(3, 0xe05a14, 1).beginPath();
+      for (let k = 0; k <= 16; k++) { const a = (k / 16) * Math.PI, x = rim.x + Math.cos(a) * rx, y = rim.y + Math.sin(a) * ry; if (k) nf.lineTo(x, y); else nf.moveTo(x, y); }
+      nf.strokePath();
+    }
   }
 
   /** Round 85: the garage has the rebound wedge; the arena gym doesn't. */

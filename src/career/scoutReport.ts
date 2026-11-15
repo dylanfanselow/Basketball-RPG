@@ -117,8 +117,9 @@ const val = (p: Player, k: string) => (p.core as Record<string, number>)[k] ?? p
  * The report for you after the scrimmage `sim`. Ratings against the class at your position (mean and spread), the
  * night against the other nine players.
  */
-export function buildScoutReport(c: CareerState, sim: GameSim): ScoutReport {
-  const me = careerPlayer(c, 0), user = sim.user;
+/** Your ratings against the draft class at your position (the whole class if fewer than four play it). */
+function ratingsVsClass(c: CareerState) {
+  const me = careerPlayer(c, 0);
   const klass = draftClass(c.story, c.pos).map((p, i) => ({ p: prospectPlayer(p, `R${i}`, 1, 0), h: p.heightIn }));
   const peers = klass.filter((x) => x.p.pos === c.pos).length >= 4 ? klass.filter((x) => x.p.pos === c.pos) : klass;
   const z = (k: string) => {
@@ -126,16 +127,14 @@ export function buildScoutReport(c: CareerState, sim: GameSim): ScoutReport {
     return (val(me, k) - m) / sd;
   };
   const hs = peers.map((x) => x.h), hm = avg(...hs), hz = ((c.height * 12) - hm) / Math.max(1.5, Math.sqrt(avg(...hs.map((v) => (v - hm) ** 2))));
-  const lines = gameLines(sim), mine = user ? lines.get(user.id) : undefined;
-  const others = [...lines.entries()].filter(([id]) => id !== user?.id).map(([, l]) => l);
-  const zs = (f: (l: GameLine) => number, floor = 1) => {
-    if (!mine || !others.length) return 0;
-    const vs = others.map(f), m = avg(...vs), sd = Math.max(floor, Math.sqrt(avg(...vs.map((v) => (v - m) ** 2))));
-    return Math.max(-3, Math.min(3, (f(mine) - m) / sd));
-  };
+  return { z, me, hz };
+}
+
+/** Score every descriptor and pick three strengths and three weaknesses (one per group, biggest first). */
+function rankReport(c: CareerState, z: (k: string) => number, me: Player, hz: number, zs: ((f: (l: GameLine) => number, floor?: number) => number) | null): ScoutReport {
   const pos = POS_WORD[c.pos] ?? 'player';
-  const scored = DESCRIPTORS.map((d) => {
-    const r = d.r ? d.r(z, me, hz) : null, s = d.s ? d.s(zs) : null;
+  const scored = DESCRIPTORS.filter((d) => zs || d.r).map((d) => {
+    const r = d.r ? d.r(z, me, hz) : null, s = d.s && zs ? d.s(zs) : null;
     const value = r !== null && s !== null ? RATING_W * r + STAT_W * s : r !== null ? r : STAT_W * (s ?? 0) * 1.6;
     return { d, value };
   });
@@ -154,3 +153,27 @@ export function buildScoutReport(c: CareerState, sim: GameSim): ScoutReport {
   strengths.sort((a, b) => b.value - a.value); weaknesses.sort((a, b) => a.value - b.value);
   return { strengths, weaknesses };
 }
+
+/**
+ * Round 94 (owner): look yourself up on the TV, any time: the same descriptors from your ratings alone (no game in it)
+ * against the prospects at your position. Descriptors that only come from a game (shot selection, turnovers, volume)
+ * are left out.
+ */
+export function buildRatingsReport(c: CareerState): ScoutReport {
+  const { z, me, hz } = ratingsVsClass(c);
+  return rankReport(c, z, me, hz, null);
+}
+
+export function buildScoutReport(c: CareerState, sim: GameSim): ScoutReport {
+  const { z, me, hz } = ratingsVsClass(c);
+  const user = sim.user;
+  const lines = gameLines(sim), mine = user ? lines.get(user.id) : undefined;
+  const others = [...lines.entries()].filter(([id]) => id !== user?.id).map(([, l]) => l);
+  const zs = (f: (l: GameLine) => number, floor = 1) => {
+    if (!mine || !others.length) return 0;
+    const vs = others.map(f), m = avg(...vs), sd = Math.max(floor, Math.sqrt(avg(...vs.map((v) => (v - m) ** 2))));
+    return Math.max(-3, Math.min(3, (f(mine) - m) / sd));
+  };
+  return rankReport(c, z, me, hz, zs);
+}
+

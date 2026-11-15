@@ -188,6 +188,15 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 94 (owner):**
+  - **Esc / L1 in the rooms and on the city map opens an options menu** (owner's pick: everywhere; the front door
+    still opens the map): **Resume**, **Save and exit** (saves, then the title). Iron Works adds **Back to town**; the
+    map adds **Go home** (○ is still the go-home shortcut on the map). Inside a workout L1 still just stops the set.
+  - **The TV always has "Look yourself up"**: your 3 strengths and 3 weaknesses from your ratings alone against the
+    draft prospects at your position (the scrimmage report "What they're saying" stays as it was). Game-only
+    descriptors (shot selection, turnovers, volume) can't appear there.
+  - **The rim no longer bends down on a shot** (garage, combine, tryouts, Iron Works): the front of the ring drawn over
+    the ball is a flat half ellipse, not a half circle hanging under the rim.
 - **Round 93 (owner): the town reworked.**
   - **The south is a big trailer park** (Pine Flats: rows of single-wides on dirt lots, cars, sheds); **Mom's home is
     just one of the trailers** (her generator beside it). **Lincoln High** and a **gas station (Gas 'n Go)** are down
