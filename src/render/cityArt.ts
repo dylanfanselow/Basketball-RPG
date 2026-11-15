@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ART_W, ART_H, C, R, P, hn, mix, bake, canvas, text3 } from './roomArt';
 import { shade, tint } from './sprites';
-import { PLACES, PlaceId } from '../world/city';
+import { PLACES, PLACE, PlaceId } from '../world/city';
 
 /**
  * Round 92 (owner): the city map, drawn in code on the room art's pixel grid (960x540 art px). An isometric town
@@ -679,12 +679,19 @@ function line(c: C, p: Pt, q: Pt, col: string) {
   for (let t = 0; t <= n; t++) P(c, Math.round(p.x + ((q.x - p.x) * t) / Math.max(1, n)), Math.round(p.y + ((q.y - p.y) * t) / Math.max(1, n)), col);
 }
 
-const PLACE_ART: Record<PlaceId, (c: C) => void> = {
+/**
+ * Round 98 (owner: a parking lot drew over a house's roof): each place in two parts, drawn at different times: its
+ * flat `ground` (lots, parking stripes, court lines, ledges, shadows) goes down with the rest of the ground, its
+ * `raised` part (buildings, signs, poles, fences, trees) is sorted in depth with every other building.
+ */
+type Part = 'ground' | 'raised';
+const PLACE_ART: Record<PlaceId, (c: C, part: Part) => void> = {
   // your house on Cedar Street: two storeys, a gable roof, the garage (the gym) attached, a driveway
-  home: (c) => {
+  home: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('home');
-    lot(c, u - 12, v - 12, u + 8, v + 6, '#79a854', '#4f7a34');
-    lot(c, u + 1, v - 1, u + 8, v + 6, '#9a9a96');                       // the driveway
+    if (G) { lot(c, u - 12, v - 12, u + 8, v + 6, '#79a854', '#4f7a34'); lot(c, u + 1, v - 1, u + 8, v + 6, '#9a9a96'); return; } // the yard, the driveway
+    if (!Rz) return;
     isoBox(c, u - 9, v - 9, u + 1, v + 1, 12, { wall: '#d8c9a6', roof: '#8a3e2a', windows: 'house', lit: 1, seed: 4 });
     gableRoof(c, u - 9, v - 9, u + 1, v + 1, 12, 6, '#8a3e2a');
     isoBox(c, u + 1, v - 7, u + 7, v - 1, 7, { wall: '#c8b892', roof: '#6a4a3a' });
@@ -694,12 +701,17 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     tree(c, Math.round(iso(u - 11, v + 4).x), Math.round(iso(u - 11, v + 4).y), 1, 1);
   },
   // the arena: a big dome on a ring wall, gold band, parking around it
-  arena: (c) => {
+  arena: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('arena'), cen = iso(u, v);
-    lot(c, u - 28, v - 28, u + 28, v + 28, '#8a8e92', '#6a6e72');
-    for (let k = -24; k <= 24; k += 4) { line(c, iso(u - 26, v + k), iso(u - 20, v + k), '#e8e4d8'); line(c, iso(u + k, v + 20), iso(u + k, v + 26), '#e8e4d8'); }
     const rx = 44, ry = 22, wall = 11, dome = 18, cx = cen.x, cy = cen.y - 4;
-    c.globalAlpha = 0.3; fillEllipse(c, cx + 8, cy + 4, rx + 2, ry + 1, '#1c1a14'); c.globalAlpha = 1;
+    if (G) {
+      lot(c, u - 28, v - 28, u + 28, v + 28, '#8a8e92', '#6a6e72');
+      for (let k = -24; k <= 24; k += 4) { line(c, iso(u - 26, v + k), iso(u - 20, v + k), '#e8e4d8'); line(c, iso(u + k, v + 20), iso(u + k, v + 26), '#e8e4d8'); }
+      c.globalAlpha = 0.3; fillEllipse(c, cx + 8, cy + 4, rx + 2, ry + 1, '#1c1a14'); c.globalAlpha = 1;
+      return;
+    }
+    if (!Rz) return;
     // the ring wall (front half shows): navy with a gold band, darker to the right
     for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
       const t = (x - cx) / rx; if (Math.abs(t) > 1) continue;
@@ -726,20 +738,27 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
   },
   // Pine Flats: a row of trailers by the tracks, Mom's at the end with its generator
   // Mom's place: one single-wide like the others in Pine Flats, her generator beside it, a porch step, a flower pot
-  trailer: (c) => {
+  trailer: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('trailer');
-    lot(c, u - 8, v - 4, u + 8, v + 5, '#9d8a60');
+    if (G) { lot(c, u - 8, v - 4, u + 8, v + 5, '#9d8a60'); return; }
+    if (!Rz) return;
     trailerAt(c, u - 7, v - 2, '#e8e2d0', false, 3);
     isoBox(c, u + 6.5, v - 1.5, u + 8.5, v + 0.5, 3, { wall: '#5a7a4a', roof: '#6f8a5a' });
     const pot = iso(u - 2, v + 2.2); R(c, Math.round(pot.x), Math.round(pot.y) - 2, 2, 2, '#9a5a3a'); P(c, Math.round(pot.x), Math.round(pot.y) - 3, '#e05a8a'); P(c, Math.round(pot.x) + 1, Math.round(pot.y) - 3, '#5aa83a');
   },
   // Lincoln High: the brick school, the fenced outdoor court (grey asphalt, white lines) with two hoops
-  lincoln: (c) => {
+  lincoln: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('lincoln');
+    if (G) {
+      lot(c, u - 14, v - 6, u + 10, v + 8, '#6a6e72', '#4a4e52');
+      lot(c, u - 12, v - 4, u + 8, v + 6, '#82868a');
+      for (const [a, b] of [[iso(u - 12, v - 4), iso(u + 8, v - 4)], [iso(u + 8, v - 4), iso(u + 8, v + 6)], [iso(u + 8, v + 6), iso(u - 12, v + 6)], [iso(u - 12, v + 6), iso(u - 12, v - 4)], [iso(u - 2, v - 4), iso(u - 2, v + 6)]]) line(c, a, b, '#e8eaec');
+      return;
+    }
+    if (!Rz) return;
     isoBox(c, u - 18, v - 18, u + 6, v - 8, 10, { wall: '#9a4a36', roof: '#7a1f2b', windows: 'house', lit: 0.4, seed: 9 });
-    lot(c, u - 14, v - 6, u + 10, v + 8, '#6a6e72', '#4a4e52');
-    lot(c, u - 12, v - 4, u + 8, v + 6, '#82868a');
-    for (const [a, b] of [[iso(u - 12, v - 4), iso(u + 8, v - 4)], [iso(u + 8, v - 4), iso(u + 8, v + 6)], [iso(u + 8, v + 6), iso(u - 12, v + 6)], [iso(u - 12, v + 6), iso(u - 12, v - 4)], [iso(u - 2, v - 4), iso(u - 2, v + 6)]]) line(c, a, b, '#e8eaec');
     for (const [hu, sgn] of [[u - 11, 1], [u + 7, -1]] as const) {
       const b = iso(hu, v + 1);
       R(c, Math.round(b.x), Math.round(b.y) - 9, 1, 9, '#3a3a3a');
@@ -749,9 +768,11 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     for (let k = 0; k <= 14; k += 2) { const p = iso(u + 10, v - 6 + k); R(c, Math.round(p.x), Math.round(p.y) - 4, 1, 4, '#9aa0a6'); }
   },
   // Iron Works: the big gym downtown, a wide dark box with a glass front, a red sign with a dumbbell on the roof
-  gym: (c) => {
+  gym: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('gym');
-    lot(c, u - 15, v - 12, u + 11, v + 8, '#7a7e82', '#5a5e62');
+    if (G) { lot(c, u - 15, v - 12, u + 11, v + 8, '#7a7e82', '#5a5e62'); return; }
+    if (!Rz) return;
     const b = isoBox(c, u - 13, v - 10, u + 9, v + 3, 16, { wall: '#3e434b', roof: '#565b63', windows: 'tower', lit: 0.5, seed: 41 });
     // the glass front: bright panes on the left face's lower half
     for (let x = Math.round(b.D.x) + 2; x < Math.round(b.C.x) - 1; x++) { const yb = Math.round(b.D.y + (x - b.D.x) / 2); for (let k = 2; k < 7; k++) P(c, x, yb - k, x % 5 === 0 ? '#2a2e34' : k === 6 ? '#d8eef8' : '#8ec8e8'); }
@@ -764,9 +785,11 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     for (const dx of [-12, 12]) R(c, Math.round(s.x) + dx, Math.round(s.y) - 1, 1, 3, '#3a3a3a');
   },
   // Burger Barn: a red barn with a big burger on a pole
-  burger: (c) => {
+  burger: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('burger');
-    lot(c, u - 12, v - 10, u + 10, v + 8, '#7a7e82', '#5a5e62');
+    if (G) { lot(c, u - 12, v - 10, u + 10, v + 8, '#7a7e82', '#5a5e62'); return; }
+    if (!Rz) return;
     isoBox(c, u - 9, v - 7, u + 3, v + 1, 7, { wall: '#b03a2a', roof: '#5a3a2e', windows: 'house', lit: 1, seed: 31 });
     gableRoof(c, u - 9, v - 7, u + 3, v + 1, 7, 5, '#4a2e24');
     const p = iso(u + 7, v + 5); R(c, Math.round(p.x), Math.round(p.y) - 16, 1, 16, '#4a4a4a');
@@ -774,17 +797,20 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     fillEllipse(c, p.x, p.y - 16, 6, 2, '#c8862a');
   },
   // Riverside Park: a blue court, a path, trees
-  park: (c) => {
+  park: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('park');
-    lot(c, u - 8, v - 6, u + 8, v + 6, '#3a6a9a', '#24486a');
-    line(c, iso(u, v - 6), iso(u, v + 6), '#e8eef4');
+    if (G) { lot(c, u - 8, v - 6, u + 8, v + 6, '#3a6a9a', '#24486a'); line(c, iso(u, v - 6), iso(u, v + 6), '#e8eef4'); return; }
+    if (!Rz) return;
     for (const hu of [u - 7, u + 7]) { const b = iso(hu, v); R(c, Math.round(b.x), Math.round(b.y) - 7, 1, 7, '#3a3a3a'); R(c, Math.round(b.x) - 2, Math.round(b.y) - 9, 5, 3, '#e8e8e8'); }
     for (const [du, dv] of [[-12, -10], [10, -9], [-11, 9], [11, 10]]) { const t = iso(u + du, v + dv); tree(c, Math.round(t.x), Math.round(t.y), 1, du); }
   },
   // Gas 'n Go: a canopy over two pumps, the little store, the price sign on its pole
-  gas: (c) => {
+  gas: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('gas');
-    lot(c, u - 12, v - 10, u + 12, v + 9, '#6e7276', '#4e5256');
+    if (G) { lot(c, u - 12, v - 10, u + 12, v + 9, '#6e7276', '#4e5256'); return; }
+    if (!Rz) return;
     isoBox(c, u + 2, v - 8, u + 10, v - 2, 6, { wall: '#e8e2d0', roof: '#c0392b', windows: 'house', lit: 1, seed: 51 });
     for (const pu of [u - 6, u - 1]) isoBox(c, pu, v - 0.5, pu + 1, v + 0.5, 3, { wall: '#c0392b', roof: '#e8e8e8' });
     const H = 10, A = up(iso(u - 9, v - 4), H), B = up(iso(u + 2, v - 4), H), C2 = up(iso(u + 2, v + 4), H), D = up(iso(u - 9, v + 4), H);
@@ -797,10 +823,12 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     text3(c, Math.round(sp.x) - 3, Math.round(sp.y) - 22, '3', '#2a8a3a'); text3(c, Math.round(sp.x) + 1, Math.round(sp.y) - 22, '9', '#2a8a3a');
   },
   // the cabin up the mountain: a clearing in the pines, log walls, a stone chimney with smoke, a woodpile
-  cabin: (c) => {
+  cabin: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('cabin'), cen = iso(u, v);
     // round 95 (owner): high up the mountain on a rock ledge under the snow, a few hardy pines around it
-    fillEllipse(c, cen.x, cen.y + 1, 19, 8, '#5b544c'); fillEllipse(c, cen.x - 1, cen.y, 17, 7, '#6e7a5a'); fillEllipse(c, cen.x - 3, cen.y - 1, 11, 4, '#7d8a64');
+    if (G) { fillEllipse(c, cen.x, cen.y + 1, 19, 8, '#5b544c'); fillEllipse(c, cen.x - 1, cen.y, 17, 7, '#6e7a5a'); fillEllipse(c, cen.x - 3, cen.y - 1, 11, 4, '#7d8a64'); return; }
+    if (!Rz) return;
     for (const [dx, dy, h] of [[-17, -2, 9], [15, -4, 8], [18, 3, 10], [-14, 5, 8]]) pine(c, Math.round(cen.x + dx), Math.round(cen.y + dy), h, dx > 0 ? 1 : 2);
     const b = isoBox(c, u - 5, v - 3, u + 3, v + 2, 6, { wall: '#7a4a2a', roof: '#3a2a20' });
     for (let x = Math.round(b.D.x) + 1; x < Math.round(b.C.x); x++) for (let k = 2; k < 6; k += 2) P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - k, '#5a3420');
@@ -812,7 +840,9 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
     const d = iso(u - 1, v + 2); R(c, Math.round(d.x) - 1, Math.round(d.y) - 4, 2, 4, '#3a2014');
   },
   // the interstate's sign gantry over the deck: green board, EAST and an arrow
-  highway: (c) => {
+  highway: (c, part) => {
+    const G = part === 'ground', Rz = part === 'raised';
+    if (!Rz) return;
     const { u } = placeWorld('highway'), h = hwyH(u);
     const p0 = iso(u, HWY.v0 - 1), p1 = iso(u, HWY.v1 + 1), H = h + 14;
     R(c, Math.round(p0.x), Math.round(p0.y) - H, 1, H, '#9aa0a6'); R(c, Math.round(p1.x), Math.round(p1.y) - H, 1, H, '#9aa0a6');
@@ -927,22 +957,32 @@ function poolRocks(c: C) {
 }
 
 // ---------------------------------------------------------------- build
+/** Where a place's raised part sorts among the buildings: the front of its lot (the arena: the front of its dome). */
+function placeKey(id: PlaceId): number {
+  const p = PLACE[id], w = world(p.at.x, p.at.y), lot = PLACE_LOT[id];
+  if (id === 'arena') return p.at.y + 18;
+  return lot ? iso(w.u + lot[2], w.v + lot[3]).y : p.at.y;
+}
 function paintAll(c: C) {
   paintGround(c); paintMountain(c); paintBridges(c); paintDam(c); poolRocks(c); paintTrail(c);
-  for (const o of cityObjects().sort((a, b) => a.y - b.y)) o.draw(c);
+  // round 98: the places' flat ground goes down with the ground; their buildings sort in with everyone else's
+  for (const p of PLACES) PLACE_ART[p.id](c, 'ground');
+  const objs = cityObjects();
+  for (const p of PLACES) if (p.id !== 'highway') objs.push({ y: placeKey(p.id), draw: (cc) => PLACE_ART[p.id](cc, 'raised') });
+  for (const o of objs.sort((a, b) => a.y - b.y)) o.draw(c);
   drawTrailhead(c);
   paintHighway(c);
+  PLACE_ART.highway(c, 'raised'); // the sign gantry stands over the deck
 }
 /** The whole map on one canvas (dev previews): the background with every place and the falls drawn in. */
 export function drawCityCanvas(): HTMLCanvasElement {
   const cv = canvas(ART_W, ART_H), c = cv.getContext('2d')!;
   paintAll(c);
   drawFalls(c, 0);
-  for (const p of [...PLACES].sort((a, b) => a.at.y - b.at.y)) PLACE_ART[p.id](c);
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v5';
+export const CITY_BG = 'city_bg_v6';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -954,11 +994,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v5`;
-    if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => PLACE_ART[p.id](c)); OFFSETS.set(key, { x: b.x, y: b.y }); }
+    const key = `city_${p.id}_v6`;
+    // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
+    if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v5';
+  const fk = 'city_falls_v6';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

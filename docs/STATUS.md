@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 98: `cityArt.ts` places split into `ground` / `raised` (`PLACE_ART(c, part)`), grounds painted after the
+  ground pass, raised parts sorted with the buildings by `placeKey`; the scene's place images are invisible (tag bounds).
   Round 97: `cityArt.ts` `roadNet()` (segments `segU` / `segV` between crossings: town on either side via memoized
   `builtBlock`, crossings not in forest / mountain / water, the bridge street; dead ends pruned until none are left;
   the map's edge and the bridge count as connected) behind `roadKept(u, v)`, used by the ground, the sidewalks, the

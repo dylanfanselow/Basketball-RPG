@@ -188,6 +188,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 98 (owner): places layer like everything else.** A place's flat ground (lot, parking, court) goes down with
+  the rest of the ground, and its buildings are drawn in depth order with every other building, so a house in front
+  of the arena draws over its parking lot instead of under it. The places are part of the map's background now (the
+  picked one is marked by the ring and its name).
 - **Round 97 (owner): no roads to nowhere.** The streets are a network: a stretch between two crossings exists if
   there's town on either side of it (the edge streets the houses face stay: owner, 97b) and neither crossing is in the
   forest, on the mountain or in the water; then every dead end is trimmed back until each street connects at both ends

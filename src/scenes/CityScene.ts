@@ -64,7 +64,8 @@ export class CityScene extends Phaser.Scene {
     this.ring = this.add.graphics().setDepth(19); // over the places' lots, under you
     for (const p of PLACES) {
       const a = art.places[p.id];
-      const img = this.add.image(a.x * ART, a.y * ART, a.key).setOrigin(0, 0).setScale(ART).setDepth(10 + p.at.y / 1000);
+      // round 98: the places are drawn into the background in depth order; the image only marks where the tag goes
+      const img = this.add.image(a.x * ART, a.y * ART, a.key).setOrigin(0, 0).setScale(ART).setDepth(10 + p.at.y / 1000).setVisible(false);
       this.sprites.set(p.id, { img, y: a.y * ART });
     }
     this.pedestal = this.add.graphics().setDepth(20);
@@ -157,16 +158,24 @@ export class CityScene extends Phaser.Scene {
   private drawSelection() {
     const g = this.ring.clear();
     // round 95 (owner): the picked place stays put (no bob); the ring shows which one it is
-    const p = PLACE[this.sel], x = p.at.x * ART, y = p.at.y * ART, k = 0.5 + 0.5 * Math.sin(this.t * 5);
-    g.lineStyle(3, 0xffe27a, 0.55 + 0.35 * k).strokeEllipse(x, y + 2, 70 + k * 6, 30 + k * 3);
-    g.lineStyle(2, 0xffffff, 0.35 * k).strokeEllipse(x, y + 2, 84 + k * 8, 38 + k * 4);
+    const p = PLACE[this.sel], x = p.at.x * ART, k = 0.5 + 0.5 * Math.sin(this.t * 5);
+    // round 98: the places are in the background, so the ring goes around the whole lot (not across the building)
+    const r = this.ringFor(this.sel);
+    g.lineStyle(3, 0xffe27a, 0.55 + 0.35 * k).strokeEllipse(r.x, r.y, r.w + k * 6, r.h + k * 3);
+    g.lineStyle(2, 0xffffff, 0.35 * k).strokeEllipse(r.x, r.y, r.w + 14 + k * 8, r.h + 7 + k * 4);
     const top = this.sprites.get(this.sel)!.img;
     this.tag.setText(`▼ ${p.name}`).setPosition(x, top.y - 4);
     // the event place pulses even when it isn't picked
     if (todaysEvents(app.career).length && this.sel !== 'arena') {
       const a = PLACE.arena;
-      g.lineStyle(2, 0x9fe07a, 0.4 + 0.4 * k).strokeEllipse(a.at.x * ART, a.at.y * ART + 2, 76, 32);
+      const ra = this.ringFor('arena'); g.lineStyle(2, 0x9fe07a, 0.4 + 0.4 * k).strokeEllipse(ra.x, ra.y, ra.w, ra.h);
     }
+  }
+
+  /** The ring around a place's lot: from its picture's bounds (the lot is the bottom diamond, 2:1). */
+  private ringFor(id: PlaceId) {
+    const img = this.sprites.get(id)!.img, w = Math.max(60, img.displayWidth + 10), bottom = img.y + img.displayHeight;
+    return { x: img.x + img.displayWidth / 2, y: bottom - img.displayWidth / 4, w, h: w / 2 };
   }
 
   /** You on a little round pedestal at the place you're at (or hopping to the next). */
