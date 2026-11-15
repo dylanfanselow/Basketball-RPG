@@ -25,6 +25,13 @@ describe('round 88: Dragić and Jagadeesh, the ball hog, the board, the tips', (
     const a = prospectLook(first), b = prospectLook(second);
     expect(a.skin).toBe(0); expect(a.headband).toBe('#111111'); expect(a.armSleeve).toBe('shooting'); expect(a.legSleeve).toBe('one'); expect(a.socks).toBe('high'); expect(a.sockColor).toBe('#111111');
     expect(b.skin).toBe(3); expect(b.hair).toBe('afro'); expect(b.goggles).toBe(true); expect(b.armSleeve).toBe('none'); expect(b.wristband).toBe('#7a3fd0');
+    // round 96 (owner): their whole look is pinned: the same in every save (hair colour, face, shoes, clothes)
+    for (const pos of ['SG', 'C'] as const) {
+      const other = topTwo(career(pos).story, pos);
+      expect(prospectLook(other.first)).toEqual(a);
+      expect(prospectLook(other.second)).toEqual(b);
+    }
+    expect(b.hairColor).toBe('#d8c08a'); expect(b.facial).toBe('beard'); expect(a.hair).toBe('bald');
   });
   it('their starter perks come with every prerequisite; #1 is a ball hog; both get isos called', () => {
     const c = career('SG'), sim = buildDraftScrimmage(c, 5);

@@ -11,7 +11,7 @@ import type { Position } from '../sim/attributes';
 import { STARTER_CORE, HEIGHT_RANGE } from './career';
 import type { StoryState } from './career';
 import { FIRST_NAMES, LAST_NAMES, MORE_FIRST, MORE_LAST } from './names';
-import { randomAppearance, Appearance } from '../render/appearance';
+import { randomAppearance, defaultAppearance, HAIR_COLORS, Appearance } from '../render/appearance';
 
 /** The story's seeded random (stable for a given story). */
 export function storyRng(st: Pick<StoryState, 'squadSeed'> | undefined, salt: number): () => number {
@@ -128,19 +128,26 @@ export const classMean = (c: Prospect[]) => c.reduce((s, p) => s + p.total, 0) /
 /** Round 88 (owner): the projected #1 and #2's names. */
 export const TOP_NAMES = ['Drako Dragić', 'Chinmaya Jagadeesh'];
 /**
- * Round 88 (owner): their signature looks (skin numbers are the builder's, 1-based: color 1 = index 0). #1: black
- * headband, one black arm sleeve, one black leg sleeve, high black socks. #2: an afro, goggles, no sleeves, purple
- * wristbands.
+ * Round 88 (owner): their signature looks (skin numbers are the builder's, 1-based: color 1 = index 0). Round 96
+ * (owner: "everything you see here should always be how they look"): the whole look is pinned, nothing random from
+ * the save's seed. #1 Drako Dragic: pale, shaved head, black headband, a black sleeve on his shooting arm and on one
+ * leg, high black socks, black shoes with red, a red tee and red shorts off the court. #2 Chinmaya Jagadeesh: brown
+ * skin, a blond afro and a blond beard, light-blue goggles, purple wristbands, white shoes, a grey tee and denim shorts.
  */
-export const TOP_LOOKS: [Partial<Appearance>, Partial<Appearance>] = [
-  { skin: 0, headband: '#111111', armSleeve: 'shooting', sleeveColor: '#111111', legSleeve: 'one', legSleeveColor: '#111111', socks: 'high', sockColor: '#111111', goggles: false, mask: false, wristband: null, kneePad: false },
-  { skin: 3, hair: 'afro', goggles: true, mask: false, armSleeve: 'none', legSleeve: 'none', wristband: '#7a3fd0', headband: null, kneePad: false },
+export const TOP_LOOKS: [Appearance, Appearance] = [
+  { ...defaultAppearance(), skin: 0, hair: 'bald', hairColor: HAIR_COLORS[5], facial: 'none', eyeColor: '#1a1a1a', eyeY: 0, eyeGap: 0, brow: 1, nose: 'small', mouth: 'neutral', mouthY: 0, bigEars: false,
+    headband: '#111111', armSleeve: 'shooting', sleeveColor: '#111111', wristband: null, legSleeve: 'one', legSleeveColor: '#111111', kneePad: false,
+    socks: 'high', sockColor: '#111111', goggles: false, mask: false, shoe: '#111111', shoeAccent: '#e03a3e', shirt: '#e03a3e', pants: '#e03a3e', longPants: false },
+  { ...defaultAppearance(), skin: 3, hair: 'afro', hairColor: HAIR_COLORS[5], facial: 'beard', eyeColor: '#1a1a1a', eyeY: 0, eyeGap: 0, brow: 1, nose: 'wide', mouth: 'neutral', mouthY: 0, bigEars: false,
+    headband: null, armSleeve: 'none', sleeveColor: '#ffffff', wristband: '#7a3fd0', legSleeve: 'none', legSleeveColor: '#ffffff', kneePad: false,
+    socks: 'low', sockColor: '#ffffff', goggles: true, mask: false, shoe: '#f4f4f4', shoeAccent: '#dcdcdc', shirt: '#9aa4b0', pants: '#2f6fa8', longPants: false },
 ];
-/** Round 87: a prospect's face, hair and skin (the same in the combine room and in the scrimmage). */
+/** Round 87: a prospect's face, hair and skin (the same in the combine room and in the scrimmage). The top two are pinned. */
 export function prospectLook(p: Prospect): Appearance {
+  if (p.id === 'P1') return { ...TOP_LOOKS[0] };
+  if (p.id === 'P2') return { ...TOP_LOOKS[1] };
   let seed = (p.look % 2147483646) + 1;
-  const a = randomAppearance(() => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; });
-  return p.id === 'P1' ? { ...a, ...TOP_LOOKS[0] } : p.id === 'P2' ? { ...a, ...TOP_LOOKS[1] } : a;
+  return randomAppearance(() => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; });
 }
 
 /**

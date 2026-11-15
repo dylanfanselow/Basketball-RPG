@@ -188,6 +188,12 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 96 (owner): the top two always look the same.** Every detail of #1 Drako Dragić and #2 Chinmaya Jagadeesh is
+  pinned (no random face / hair colour per save), from the owner's two pictures. Dragić: pale, shaved head, black
+  headband, a black sleeve on his shooting arm and on one leg, high black socks, black shoes with red, a red tee and red
+  shorts as his everyday clothes. Jagadeesh: brown skin, a blond afro and blond beard, light-blue goggles, purple
+  wristbands, white shoes, a grey tee and denim shorts. The combine kit and team uniforms still go over the clothes
+  where those apply.
 - **Round 95 (owner): map fixes.** The cabin moved high up the mountain (a rock ledge under the snow, above the
   falls). No houses on forest ground (the generator checks the ground under every lot). The falls drop into a real
   plunge pool that flows into the river (the mountain and the gorge no longer paint over the water). Each place's lot
