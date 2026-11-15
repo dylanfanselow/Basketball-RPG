@@ -33,7 +33,7 @@ export const PLACES: Place[] = [
   { id: 'burger', name: 'Burger Barn', blurb: 'Your old register, a block off the towers. They still owe you a free meal.', at: { x: 744, y: 322 }, open: false },
   { id: 'park', name: 'Riverside Park', blurb: 'A court by the water. Pickup games on weekends.', at: { x: 470, y: 238 }, open: false },
   { id: 'gas', name: 'Gas \'n Go', blurb: 'The gas station on the south road. Snacks, gas, lottery tickets.', at: { x: 588, y: 492 }, open: false },
-  { id: 'cabin', name: 'The Cabin', blurb: 'A cabin up the mountain, past the falls. Nobody\'s been up there in a while.', at: { x: 318, y: 150 }, open: false },
+  { id: 'cabin', name: 'The Cabin', blurb: 'A cabin high up the mountain, above the falls. Nobody\'s been up there in a while.', at: { x: 298, y: 128 }, open: false },
   { id: 'highway', name: 'Interstate East', blurb: 'The highway out of town. After the draft, it\'s your road to work.', at: { x: 848, y: 340 }, open: false },
 ];
 export const PLACE: Record<PlaceId, Place> = Object.fromEntries(PLACES.map((p) => [p.id, p])) as Record<PlaceId, Place>;

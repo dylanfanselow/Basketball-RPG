@@ -15,6 +15,9 @@ describe('round 92 city map', () => {
     for (const id of ['gas', 'cabin', 'highway', 'gym', 'burger']) expect(ids).toContain(id);
     // the south is the trailer park: Mom's trailer, Lincoln and the gas station are all down there
     for (const id of ['trailer', 'lincoln', 'gas'] as PlaceId[]) expect(PLACE[id].at.y).toBeGreaterThan(400);
+    // round 95 (owner): the cabin is high up the mountain, above the waterfall's lip (y 126) and well above the town
+    expect(PLACE.cabin.at.y).toBeLessThan(140);
+    expect(PLACE.cabin.at.y).toBeLessThan(PLACE.home.at.y - 60);
     // the gym and Burger Barn sit by the downtown towers (around the arena)
     for (const id of ['gym', 'burger'] as PlaceId[]) expect(Math.hypot(PLACE[id].at.x - PLACE.arena.at.x, PLACE[id].at.y - PLACE.arena.at.y)).toBeLessThan(160);
   });

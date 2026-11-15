@@ -41,12 +41,12 @@ function rng(seed: number) { let s = ((((seed * 9301 + 49297) % 233280) + 233280
 // ---------------------------------------------------------------- landmarks
 /** The river: points (art px) with its half width; it starts at the waterfall's pool and ends in the reservoir. */
 const RIVER: [number, number, number][] = [
-  [214, 214, 10], [248, 229, 7], [296, 244, 7], [340, 257, 8], [384, 273, 9], [428, 292, 10], [470, 310, 10],
+  [214, 216, 11], [236, 226, 9], [262, 236, 8], [296, 246, 7], [340, 257, 8], [384, 273, 9], [428, 292, 10], [470, 310, 10],
   [512, 326, 11], [556, 344, 12], [600, 362, 12], [644, 381, 13], [690, 402, 15], [736, 424, 16], [780, 442, 18], [830, 458, 20],
 ];
 /** Below the dam the river runs on off the bottom of the map. */
 const OUTFLOW: [number, number, number][] = [[722, 516, 5], [714, 532, 6], [706, 548, 6]];
-const POOL = { x: 214, y: 212, r: 15 };
+const POOL = { x: 214, y: 214, r: 17 };
 const RES = { x: 842, y: 464, rx: 150, ry: 66 };
 const ISLAND = { x: 682, y: 402, rx: 13, ry: 5 };
 /** Where the road and the rail cross the river. */
@@ -115,14 +115,29 @@ function peakAt(x: number, y: number): number {
 const onMountain = (x: number, y: number) => peakAt(x, y) >= 0;
 
 /** The places' ground: nothing else is built here (art px radius). */
-const KEEP_CLEAR: Record<PlaceId, number> = { home: 30, arena: 62, gym: 36, trailer: 18, lincoln: 40, burger: 26, park: 40, gas: 30, cabin: 24, highway: 0 };
+const KEEP_CLEAR: Partial<Record<PlaceId, number>> = { cabin: 22 };
+/**
+ * Round 95 (owner: the arena, the gym and Burger Barn looked like they sat on top of buildings): each place's real
+ * footprint in world units around its anchor [du0, dv0, du1, dv1] (the extents its art draws its lot and buildings
+ * with); the generated town keeps out of it (plus a margin), so the lot sits flush with the streets around it.
+ */
+const PLACE_LOT: Partial<Record<PlaceId, [number, number, number, number]>> = {
+  home: [-12, -12, 8, 6], arena: [-28, -28, 28, 28], gym: [-15, -12, 11, 8], trailer: [-8, -4, 9, 5],
+  lincoln: [-18, -18, 10, 8], burger: [-12, -10, 10, 8], park: [-13, -11, 13, 11], gas: [-12, -10, 12, 9],
+};
+const LOT_ANCHORS = PLACES.map((p) => ({ id: p.id, w: world(p.at.x, p.at.y), at: p.at }));
 /** Scenery with its own drawing (the trailhead at the mountain foot). */
 const TRAILHEAD = { x: 150, y: 262 };
 /** Round 93: the interstate east: an elevated deck along u (world), ramping up out of the downtown grid. */
 const HWY = { v0: 72, v1: 86, u0: 212, u1: 350, ramp: 20, h: 12 };
 const underHighway = (u: number, v: number) => u > HWY.u0 - 6 && v > HWY.v0 - 4 && v < HWY.v1 + 4;
 function nearPlace(x: number, y: number, pad = 0): boolean {
-  for (const p of PLACES) if (Math.hypot(x - p.at.x, (y - p.at.y) * 1.6) < KEEP_CLEAR[p.id] + pad) return true;
+  const w = world(x, y), m = 2 + pad / 2;
+  for (const p of LOT_ANCHORS) {
+    const lot = PLACE_LOT[p.id], r = KEEP_CLEAR[p.id];
+    if (lot && w.u >= p.w.u + lot[0] - m && w.u <= p.w.u + lot[2] + m && w.v >= p.w.v + lot[1] - m && w.v <= p.w.v + lot[3] + m) return true;
+    if (r !== undefined && Math.hypot(x - p.at.x, (y - p.at.y) * 1.6) < r + pad) return true;
+  }
   return Math.hypot(x - TRAILHEAD.x, (y - TRAILHEAD.y) * 1.6) < 24 + pad;
 }
 
@@ -331,7 +346,7 @@ function paintMountain(c: C) {
   for (let y = 0; y < 300; y++) for (let x = 0; x < 660; x++) mask[y * ART_W + x] = peakAt(x, y);
   for (let y = 0; y < 300; y++) for (let x = 0; x < 660; x++) {
     const k = mask[y * ART_W + x];
-    if (k < 0) continue;
+    if (k < 0 || waterDist(x, y) < 0) continue; // round 95: the plunge pool stays water at the mountain's foot
     const p = PEAKS[k], n = hn(x, y, 13), f = footY(x);
     let col: string;
     const above = y > 0 ? mask[(y - 1) * ART_W + x] : -1;
@@ -356,7 +371,7 @@ function paintMountain(c: C) {
   // the water (blended over the flank, so there are no hard edges), moss and ferns low down, boulders at the pool
   for (let y = 108; y < 218; y++) for (let x = 170; x < 258; x++) {
     const t = (y - 108) / 108, half = 6 + t * 14 + (vnoise(x, y, 5, 70) - 0.5) * 5, dx = Math.abs(x - 214) - half;
-    if (dx > 16 || (!onMountain(x, y) && y < 196)) continue;
+    if (dx > 16 || !onMountain(x, y) || waterDist(x, y) < 2) continue; // round 95: the pool below stays water
     const n = hn(x, y, 71), k = (dx < 0 ? 0.85 : 0.85 * (1 - dx / 16)) * Math.min(1, (y - 108) / 26) * (1 - 0.35 * Math.max(0, dx) / 16);
     c.globalAlpha = Math.max(0, k * (0.7 + n * 0.3));
     P(c, x, y, y > 186 && n < 0.45 ? (n < 0.2 ? '#4f8a3a' : '#3f6a3a') : n < 0.35 ? '#2f2c29' : n < 0.75 ? '#3e3a36' : '#55504a');
@@ -404,7 +419,8 @@ type Obj = { y: number; draw: (c: C) => void };
 
 function cityObjects(): Obj[] {
   const out: Obj[] = [];
-  const land = (x: number, y: number) => { const w = world(x, y); return x > 2 && x < ART_W - 2 && y > 2 && y < ART_H - 2 && waterDist(x, y) > 4 && !onMountain(x, y) && !nearPlace(x, y) && !underHighway(w.u, w.v); };
+  // round 95 (owner: houses stood in the forest): never on forest ground (the ground's forest edge is per pixel)
+  const land = (x: number, y: number) => { const w = world(x, y); return x > 2 && x < ART_W - 2 && y > 2 && y < ART_H - 2 && waterDist(x, y) > 4 && !onMountain(x, y) && !nearPlace(x, y) && !underHighway(w.u, w.v) && zoneAt(x, y) !== 'forest'; };
   const free = (u0: number, v0: number, u1: number, v1: number) => [iso(u0, v0), iso(u1, v0), iso(u1, v1), iso(u0, v1)].every((p) => land(p.x, p.y))
     && ![[u0, v0], [u1, v1], [u0, v1], [u1, v0]].some(([u, v]) => isRail(u, v));
   // blocks covering the screen
@@ -708,7 +724,9 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
   // the cabin up the mountain: a clearing in the pines, log walls, a stone chimney with smoke, a woodpile
   cabin: (c) => {
     const { u, v } = placeWorld('cabin'), cen = iso(u, v);
-    fillEllipse(c, cen.x, cen.y, 20, 9, '#4f7a38'); fillEllipse(c, cen.x - 2, cen.y - 1, 16, 7, '#5c8a42');
+    // round 95 (owner): high up the mountain on a rock ledge under the snow, a few hardy pines around it
+    fillEllipse(c, cen.x, cen.y + 1, 19, 8, '#5b544c'); fillEllipse(c, cen.x - 1, cen.y, 17, 7, '#6e7a5a'); fillEllipse(c, cen.x - 3, cen.y - 1, 11, 4, '#7d8a64');
+    for (const [dx, dy, h] of [[-17, -2, 9], [15, -4, 8], [18, 3, 10], [-14, 5, 8]]) pine(c, Math.round(cen.x + dx), Math.round(cen.y + dy), h, dx > 0 ? 1 : 2);
     const b = isoBox(c, u - 5, v - 3, u + 3, v + 2, 6, { wall: '#7a4a2a', roof: '#3a2a20' });
     for (let x = Math.round(b.D.x) + 1; x < Math.round(b.C.x); x++) for (let k = 2; k < 6; k += 2) P(c, x, Math.round(b.D.y + (x - b.D.x) / 2) - k, '#5a3420');
     gableRoof(c, u - 5, v - 3, u + 3, v + 2, 6, 4, '#3a2a20');
@@ -788,8 +806,8 @@ function drawFalls(c: C, f: number) {
     P(c, x, y, hn(k, f, 55) < 0.5 ? '#ffffff' : COL.foam);
   }
   for (let k = 0; k < 9; k++) {
-    c.globalAlpha = 0.16 + hn(k, f, 64) * 0.12;
-    fillEllipse(c, 210 + (hn(k, 0, 65) - 0.5) * 40 + f * 1.5, 200 + hn(k, 0, 66) * 16, 6 + hn(k, 0, 67) * 6, 3 + hn(k, 0, 68) * 3, '#ffffff');
+    c.globalAlpha = 0.1 + hn(k, f, 64) * 0.08;
+    fillEllipse(c, 212 + (hn(k, 0, 65) - 0.5) * 26 + f, 199 + hn(k, 0, 66) * 8, 4 + hn(k, 0, 67) * 4, 2 + hn(k, 0, 68) * 2, '#ffffff');
   }
   c.globalAlpha = 1;
 }
@@ -821,7 +839,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v2';
+export const CITY_BG = 'city_bg_v3';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -833,11 +851,11 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v2`;
+    const key = `city_${p.id}_v3`;
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => PLACE_ART[p.id](c)); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v2';
+  const fk = 'city_falls_v3';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

@@ -188,6 +188,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 95 (owner): map fixes.** The cabin moved high up the mountain (a rock ledge under the snow, above the
+  falls). No houses on forest ground (the generator checks the ground under every lot). The falls drop into a real
+  plunge pool that flows into the river (the mountain and the gorge no longer paint over the water). Each place's lot
+  keeps the generated town out of its whole footprint, so the arena, the gym and Burger Barn sit flush with the
+  streets (no buildings peeking out from under them). The picked place no longer bobs; the ring marks it.
 - **Round 94 (owner):**
   - **Esc / L1 in the rooms and on the city map opens an options menu** (owner's pick: everywhere; the front door
     still opens the map): **Resume**, **Save and exit** (saves, then the title). Iron Works adds **Back to town**; the

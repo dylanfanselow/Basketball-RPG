@@ -156,12 +156,12 @@ export class CityScene extends Phaser.Scene {
   /** The picked place: a pulsing ring on the ground, the building lifted a touch, its name over it. */
   private drawSelection() {
     const g = this.ring.clear();
-    for (const [id, s] of this.sprites) s.img.setY(s.y - (id === this.sel ? 2 + Math.abs(Math.sin(this.t * 4)) * 3 : 0));
+    // round 95 (owner): the picked place stays put (no bob); the ring shows which one it is
     const p = PLACE[this.sel], x = p.at.x * ART, y = p.at.y * ART, k = 0.5 + 0.5 * Math.sin(this.t * 5);
     g.lineStyle(3, 0xffe27a, 0.55 + 0.35 * k).strokeEllipse(x, y + 2, 70 + k * 6, 30 + k * 3);
     g.lineStyle(2, 0xffffff, 0.35 * k).strokeEllipse(x, y + 2, 84 + k * 8, 38 + k * 4);
     const top = this.sprites.get(this.sel)!.img;
-    this.tag.setText(`▼ ${p.name}`).setPosition(x, top.y - 4 + Math.sin(this.t * 4) * 2);
+    this.tag.setText(`▼ ${p.name}`).setPosition(x, top.y - 4);
     // the event place pulses even when it isn't picked
     if (todaysEvents(app.career).length && this.sel !== 'arena') {
       const a = PLACE.arena;
