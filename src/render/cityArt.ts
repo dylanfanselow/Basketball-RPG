@@ -170,9 +170,7 @@ const builtBlock = (iu: number, iv: number) => {
   const k = iu * 1000 + iv;
   let b = BUILT_MEMO.get(k);
   if (b === undefined) {
-    // built, and no corner of it in the forest (so no street runs on into the trees)
-    b = BUILT.has(blockZone(iu * BLOCK + ROAD, iv * BLOCK + ROAD))
-      && [[0, 0], [1, 0], [0, 1], [1, 1]].every(([a, c]) => { const p = iso((iu + a) * BLOCK + ROAD * (1 - a), (iv + c) * BLOCK + ROAD * (1 - c)); return zoneAt(p.x, p.y) !== 'forest' && !onMountain(p.x, p.y); });
+    b = BUILT.has(blockZone(iu * BLOCK + ROAD, iv * BLOCK + ROAD));
     BUILT_MEMO.set(k, b);
   }
   return b;
@@ -180,18 +178,54 @@ const builtBlock = (iu: number, iv: number) => {
 /** The road line that leads onto the road bridge (kept through the riverside park). */
 const BRIDGE_U = Math.round(world(ROAD_BRIDGE.x, ROAD_BRIDGE.y).u / BLOCK) * BLOCK;
 /**
- * Round 97 (owner: "these roads go nowhere, just have them cut off"): a street is only drawn between two built-up
- * blocks (so nothing runs off into the forest, the park or the river, and the town has no outer ring road), plus the
- * street onto the road bridge. A crossing is drawn where at least two of its four streets meet.
+ * Round 97 (owner: "these roads go nowhere, just have them cut off"): is this road pixel part of the street network
+ * (`roadNet`)? A crossing is drawn where any street of the network reaches it.
  */
 function roadKept(u: number, v: number): boolean {
+  const net = roadNet();
   const mu = mod(u, BLOCK), mv = mod(v, BLOCK), iu = Math.floor(u / BLOCK), iv = Math.floor(v / BLOCK);
   const onU = mu < ROAD, onV = mv < ROAD;
-  if (onU && iu * BLOCK === BRIDGE_U && Math.hypot(iso(u, v).x - ROAD_BRIDGE.x, iso(u, v).y - ROAD_BRIDGE.y) < 90) return true;
-  const armU = (jv: number) => builtBlock(iu - 1, jv) && builtBlock(iu, jv);   // the street along u-line iu, in block row jv
-  const armV = (ju: number) => builtBlock(ju, iv - 1) && builtBlock(ju, iv);
-  if (onU && onV) return [armU(iv - 1), armU(iv), armV(iu - 1), armV(iu)].filter(Boolean).length >= 2; // a lone arm's end is cut, no nub
-  return onU ? armU(iv) : armV(iu);
+  if (onU && onV) return net.degree(iu, iv) >= 1;
+  return onU ? net.segU.has(`${iu},${iv}`) : net.segV.has(`${iu},${iv}`);
+}
+
+/**
+ * Round 97b (owner: "these roads go nowhere", then "the houses need their roads"): the streets as a network. A stretch
+ * between two crossings exists if there's town on either side of it (the edge streets the houses face stay) and
+ * neither of its crossings is in the forest, on the mountain or in the water; then every dead end is trimmed back,
+ * again and again, until each street connects at both ends (to another street, the bridge, or off the map's edge).
+ * `segU` "iu,iv": the street on u-line iu from crossing (iu, iv) to (iu, iv + 1); `segV` "iu,iv": on v-line iv from
+ * (iu, iv) to (iu + 1, iv).
+ */
+let NET: { segU: Set<string>; segV: Set<string>; degree: (iu: number, iv: number) => number } | null = null;
+function roadNet() {
+  if (NET) return NET;
+  const segU = new Set<string>(), segV = new Set<string>();
+  const at = (iu: number, iv: number) => iso(iu * BLOCK + ROAD / 2, iv * BLOCK + ROAD / 2);
+  const onScreen = (iu: number, iv: number) => { const p = at(iu, iv); return p.x > 4 && p.x < ART_W - 4 && p.y > 4 && p.y < ART_H - 4; };
+  const nearBridge = (iu: number, iv: number) => { const p = at(iu, iv); return Math.hypot(p.x - ROAD_BRIDGE.x, p.y - ROAD_BRIDGE.y) < 70; };
+  const blocked = (iu: number, iv: number) => {
+    if (!onScreen(iu, iv) || nearBridge(iu, iv)) return false;
+    const p = at(iu, iv);
+    return zoneAt(p.x, p.y) === 'forest' || onMountain(p.x, p.y) || waterDist(p.x, p.y) < 2;
+  };
+  const bridgeSeg = (iu: number, iv: number) => iu * BLOCK === BRIDGE_U && (nearBridge(iu, iv) || nearBridge(iu, iv + 1));
+  for (let iu = -6; iu < 20; iu++) for (let iv = -12; iv < 16; iv++) {
+    if (bridgeSeg(iu, iv) || ((builtBlock(iu - 1, iv) || builtBlock(iu, iv)) && !blocked(iu, iv) && !blocked(iu, iv + 1))) segU.add(`${iu},${iv}`);
+    if ((builtBlock(iu, iv - 1) || builtBlock(iu, iv)) && !blocked(iu, iv) && !blocked(iu + 1, iv)) segV.add(`${iu},${iv}`);
+  }
+  const degree = (iu: number, iv: number) => +segU.has(`${iu},${iv}`) + +segU.has(`${iu},${iv - 1}`) + +segV.has(`${iu},${iv}`) + +segV.has(`${iu - 1},${iv}`);
+  // trim dead ends (a crossing on the map with one street left), until none are left; the bridge and the map's edge count as connected
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let iu = -5; iu < 19; iu++) for (let iv = -11; iv < 15; iv++) {
+      if (!onScreen(iu, iv) || nearBridge(iu, iv) || degree(iu, iv) !== 1) continue;
+      for (const k of [`${iu},${iv}`, `${iu},${iv - 1}`]) if (segU.delete(k)) changed = true;
+      for (const k of [`${iu},${iv}`, `${iu - 1},${iv}`]) if (segV.delete(k)) changed = true;
+    }
+  }
+  NET = { segU, segV, degree };
+  return NET;
 }
 const isRail = (u: number, v: number) => {
   if (v < RAIL_END_V) return false;
@@ -908,7 +942,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v4';
+export const CITY_BG = 'city_bg_v5';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -920,11 +954,11 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v4`;
+    const key = `city_${p.id}_v5`;
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => PLACE_ART[p.id](c)); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v4';
+  const fk = 'city_falls_v5';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };
