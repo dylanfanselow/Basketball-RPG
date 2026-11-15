@@ -163,6 +163,36 @@ function blockZone(u: number, v: number): Zone {
 }
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 const isRoad = (u: number, v: number) => mod(u, BLOCK) < ROAD || mod(v, BLOCK) < ROAD;
+/** Blocks that are part of the town (a street between two of them is a real street). */
+const BUILT = new Set<Zone>(['down', 'shop', 'rich', 'trailer', 'res', 'field']);
+const BUILT_MEMO = new Map<number, boolean>();
+const builtBlock = (iu: number, iv: number) => {
+  const k = iu * 1000 + iv;
+  let b = BUILT_MEMO.get(k);
+  if (b === undefined) {
+    // built, and no corner of it in the forest (so no street runs on into the trees)
+    b = BUILT.has(blockZone(iu * BLOCK + ROAD, iv * BLOCK + ROAD))
+      && [[0, 0], [1, 0], [0, 1], [1, 1]].every(([a, c]) => { const p = iso((iu + a) * BLOCK + ROAD * (1 - a), (iv + c) * BLOCK + ROAD * (1 - c)); return zoneAt(p.x, p.y) !== 'forest' && !onMountain(p.x, p.y); });
+    BUILT_MEMO.set(k, b);
+  }
+  return b;
+};
+/** The road line that leads onto the road bridge (kept through the riverside park). */
+const BRIDGE_U = Math.round(world(ROAD_BRIDGE.x, ROAD_BRIDGE.y).u / BLOCK) * BLOCK;
+/**
+ * Round 97 (owner: "these roads go nowhere, just have them cut off"): a street is only drawn between two built-up
+ * blocks (so nothing runs off into the forest, the park or the river, and the town has no outer ring road), plus the
+ * street onto the road bridge. A crossing is drawn where at least two of its four streets meet.
+ */
+function roadKept(u: number, v: number): boolean {
+  const mu = mod(u, BLOCK), mv = mod(v, BLOCK), iu = Math.floor(u / BLOCK), iv = Math.floor(v / BLOCK);
+  const onU = mu < ROAD, onV = mv < ROAD;
+  if (onU && iu * BLOCK === BRIDGE_U && Math.hypot(iso(u, v).x - ROAD_BRIDGE.x, iso(u, v).y - ROAD_BRIDGE.y) < 90) return true;
+  const armU = (jv: number) => builtBlock(iu - 1, jv) && builtBlock(iu, jv);   // the street along u-line iu, in block row jv
+  const armV = (ju: number) => builtBlock(ju, iv - 1) && builtBlock(ju, iv);
+  if (onU && onV) return [armU(iv - 1), armU(iv), armV(iu - 1), armV(iu)].filter(Boolean).length >= 2; // a lone arm's end is cut, no nub
+  return onU ? armU(iv) : armV(iu);
+}
 const isRail = (u: number, v: number) => {
   if (v < RAIL_END_V) return false;
   const yard = v > 168 && v < 236;
@@ -290,7 +320,7 @@ function groundColor(x: number, y: number): string {
   const n = hn(x, y, 7);
   const wd = waterDist(x, y);
   const { u, v } = world(x + 0.5, y + 0.5);
-  const roadHere = isRoad(u, v);
+  const roadHere = isRoad(u, v) && roadKept(u, v);
   if (wd < 0) {
     const dp = Math.hypot(x - POOL.x, y - POOL.y);
     if (dp < 74 && hn(x, y, 61) < (1 - dp / 74) * 0.5) return dp < 24 && hn(x, y, 62) < 0.5 ? '#ffffff' : '#cfe8ec'; // the falls' foam, fading downriver
@@ -317,13 +347,24 @@ function groundColor(x: number, y: number): string {
     if (along >= 0 && Math.abs(along - ROAD / 2) < 0.35 && mod(pos, 6) < 2.5) return COL.dash;
     return n > 0.93 ? COL.roadLine : COL.road;
   }
+  // round 97: a street that was cut off is just ground, like what's around it (no grey strip left behind)
+  if (isRoad(u, v)) {
+    const zz = zoneAt(x, y);
+    return zz === 'park' ? COL.park[Math.floor(n * 3)] : zz === 'rich' ? COL.lush[Math.floor(n * 4)] : zz === 'trailer' ? COL.dirt[Math.floor(n * 4)] : COL.grass[Math.floor(n * 4)];
+  }
   const bz = blockZone(u, v);
   const mu = mod(u, BLOCK) - ROAD, mv = mod(v, BLOCK) - ROAD, inner = BLOCK - ROAD;
-  const edge = Math.min(mu, mv, inner - mu, inner - mv);
+  const edge0 = Math.min(mu, mv, inner - mu, inner - mv);
+  // round 97: a sidewalk only along a street that's there (no grey outlines running into the trees)
+  const iu = Math.floor(u / BLOCK), iv = Math.floor(v / BLOCK), far = 99;
+  const edge = Math.min(
+    roadKept(iu * BLOCK + 1, v) ? mu : far, roadKept((iu + 1) * BLOCK + 1, v) ? inner - mu : far,
+    roadKept(u, iv * BLOCK + 1) ? mv : far, roadKept(u, (iv + 1) * BLOCK + 1) ? inner - mv : far);
+  void edge0;
   if (bz === 'down' || bz === 'shop') return edge < 2 ? COL.walk : COL.concrete[Math.floor(n * 3)];
   if (bz === 'rich') return edge < 1.2 ? COL.walk : COL.lush[Math.floor(n * 4)];
   if (bz === 'trailer') return edge < 0.8 ? '#8a7a56' : hn(x, y, 63) < 0.06 ? COL.grass[1] : COL.dirt[Math.floor(n * 4)];
-  if (bz === 'park') return (Math.abs(mu - mv) < 1 || Math.abs(mu + mv - inner) < 1) && edge > 2 ? '#c9bf98' : COL.park[Math.floor(n * 3)];
+  if (bz === 'park') return COL.park[Math.floor(n * 3)]; // round 97: no footpaths running into the river
   if (bz === 'field') { const f = COL.field[Math.floor(hn(Math.floor(u / BLOCK), Math.floor(v / BLOCK), 4) * 3)]; return f[mod(u + v, 4) < 2 ? 0 : 1]; }
   if (bz === 'forest') return COL.forest[Math.floor(n * 3)];
   return edge < 1.2 ? COL.walk : COL.grass[Math.floor(n * 4)];
@@ -541,7 +582,7 @@ function cityObjects(): Obj[] {
     const jx = x + Math.floor(hn(x, y, 21) * 5), jy = y + Math.floor(hn(x, y, 22) * 4);
     if (waterDist(jx, jy) < 3 || nearPlace(jx, jy, 4)) continue;
     const f = footY(jx), onSlope = f >= 0 && jy < f && jy > f - 46 && onMountain(jx, jy);
-    const inForest = !onMountain(jx, jy) && zoneAt(jx, jy) === 'forest' && !isRoad(world(jx, jy).u, world(jx, jy).v);
+    const inForest = !onMountain(jx, jy) && zoneAt(jx, jy) === 'forest' && !(isRoad(world(jx, jy).u, world(jx, jy).v) && roadKept(world(jx, jy).u, world(jx, jy).v)) && trailDist(jx, jy) > 3;
     if ((onSlope && hn(jx, jy, 23) < 0.55) || (inForest && hn(jx, jy, 24) < 0.8)) {
       const h = 7 + Math.floor(hn(jx, jy, 25) * 5), s = Math.floor(hn(jx, jy, 26) * 3);
       out.push({ y: jy, draw: (c) => pine(c, jx, jy, h, s) });
@@ -749,6 +790,34 @@ const PLACE_ART: Record<PlaceId, (c: C) => void> = {
 };
 
 /** The trailhead at the mountain foot (scenery): a little log hut, a sign, the trail heading up. */
+/** Round 97 (owner): a dirt trail from the trailhead hut down to the nearest street (computed once). */
+let TRAIL: Pt[] | null = null;
+function trail(): Pt[] {
+  if (TRAIL) return TRAIL;
+  let best: Pt = { x: TRAILHEAD.x + 60, y: TRAILHEAD.y + 40 }, bd = Infinity;
+  for (let y = TRAILHEAD.y; y < TRAILHEAD.y + 140; y += 2) for (let x = TRAILHEAD.x; x < TRAILHEAD.x + 200; x += 2) {
+    const w = world(x, y);
+    if (!isRoad(w.u, w.v) || !roadKept(w.u, w.v) || waterDist(x, y) < 4) continue;
+    const d = Math.hypot(x - TRAILHEAD.x, y - TRAILHEAD.y);
+    if (d < bd) { bd = d; best = { x, y }; }
+  }
+  const a = { x: TRAILHEAD.x + 8, y: TRAILHEAD.y + 6 }, n = Math.max(2, Math.ceil(Math.hypot(best.x - a.x, best.y - a.y) / 3));
+  TRAIL = Array.from({ length: n + 1 }, (_, k) => { const t = k / n, wob = Math.sin(t * Math.PI * 3) * 5 * Math.sin(t * Math.PI); return { x: a.x + (best.x - a.x) * t + wob * 0.5, y: a.y + (best.y - a.y) * t - wob * 0.4 }; });
+  return TRAIL;
+}
+function trailDist(x: number, y: number) { let d = Infinity; for (const p of trail()) d = Math.min(d, Math.hypot(x - p.x, y - p.y)); return d; }
+function paintTrail(c: C) {
+  const pts = trail();
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 2);
+    for (let k = 0; k <= n; k++) { const x = a.x + ((b.x - a.x) * k) / n, y = a.y + ((b.y - a.y) * k) / n; R(c, Math.round(x) - 2, Math.round(y), 4, 1, '#8a7650'); }
+  }
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 2);
+    for (let k = 0; k <= n; k++) { const x = a.x + ((b.x - a.x) * k) / n, y = a.y + ((b.y - a.y) * k) / n; R(c, Math.round(x) - 1, Math.round(y), 2, 1, hn(Math.round(x), Math.round(y), 98) < 0.3 ? '#cdb98a' : '#bba578'); }
+  }
+}
+
 function drawTrailhead(c: C) {
   const { u, v } = world(TRAILHEAD.x, TRAILHEAD.y);
   lot(c, u - 6, v - 4, u + 6, v + 5, '#8a7a58');
@@ -825,7 +894,7 @@ function poolRocks(c: C) {
 
 // ---------------------------------------------------------------- build
 function paintAll(c: C) {
-  paintGround(c); paintMountain(c); paintBridges(c); paintDam(c); poolRocks(c);
+  paintGround(c); paintMountain(c); paintBridges(c); paintDam(c); poolRocks(c); paintTrail(c);
   for (const o of cityObjects().sort((a, b) => a.y - b.y)) o.draw(c);
   drawTrailhead(c);
   paintHighway(c);
@@ -839,7 +908,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v3';
+export const CITY_BG = 'city_bg_v4';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -851,11 +920,11 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v3`;
+    const key = `city_${p.id}_v4`;
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => PLACE_ART[p.id](c)); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v3';
+  const fk = 'city_falls_v4';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

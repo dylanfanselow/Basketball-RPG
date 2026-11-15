@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 97: `cityArt.ts` `roadKept(u, v)` (both blocks built via memoized `builtBlock`, the bridge street, crossings
+  with 2+ arms), used by the ground, the pines and the trail; `trail()` / `paintTrail` (trailhead → nearest street).
   Round 95: `cityArt.ts` `PLACE_LOT` (world footprints per place, used by `nearPlace` for the keep-clear), `land()`
   refuses forest ground, the mountain / gorge leave water alone, textures `_v3`; cabin at (298, 128); CityScene's
   picked sprite stays put.

@@ -188,6 +188,11 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 97 (owner): no roads to nowhere.** A street is drawn only between two built-up blocks (a block with a forest
+  corner doesn't count), plus the street onto the road bridge; a crossing needs two streets meeting. So no streets run
+  off into the forest, the riverside park or the river, and the town has no outer ring road; cut streets turn into the
+  grass / park / forest around them, and sidewalks only run along streets that are there. The riverside park's
+  footpaths are gone. A dirt trail runs from the trailhead hut down to the town's corner (owner's drawing).
 - **Round 96 (owner): the top two always look the same.** Every detail of #1 Drako Dragić and #2 Chinmaya Jagadeesh is
   pinned (no random face / hair colour per save), from the owner's two pictures. Dragić: pale, shaved head, black
   headband, a black sleeve on his shooting arm and on one leg, high black socks, black shoes with red, a red tee and red
