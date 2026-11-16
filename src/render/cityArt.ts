@@ -50,7 +50,17 @@ const LIP = { x: 214, y: 127, w: 3.2 };
  * flat shelf on the flank. The shelf's front rim runs along u (iso) through the lip; its top reaches back up the
  * slope; under the rim a sheer cliff hangs down to the plunge pool, tallest behind the falls, tapering into the flank.
  */
-const SHELF = { f0: { x: 190, y: 115 }, f1: { x: 238, y: 139 }, back: { x: 28, y: -14 } };
+const SHELF = { f0: { x: 190, y: 115 }, f1: { x: 238, y: 139 }, back: { x: 48, y: -24 } }; // round 103: deeper (was 28, -14)
+/** Round 103: the small snowy peak the shelf runs back to: its summit stays standing on the shelf. */
+let SHELF_PEAK = -1;
+/** Is this pixel the peak's summit (snowcap and the rock just under it), in front of the shelf? */
+function peakOnShelf(x: number, y: number): boolean {
+  if (SHELF_PEAK < 0) SHELF_PEAK = PEAKS.findIndex((q) => q.x === 262 && q.y === 86);
+  const p = PEAKS[SHELF_PEAK];
+  return peakAt(x, y) === SHELF_PEAK && y < p.y + p.snow + 6 + (vnoise(x, 0, 5, 89) - 0.5) * 4;
+}
+/** Where the creek starts on the shelf (fed by the trickle off the peak's snow above it). */
+const CREEK_SRC = { x: 248, y: 116 };
 /** The rim (the cliff's top edge) at x, art px. */
 const rimY = (x: number) => SHELF.f0.y + (x - SHELF.f0.x) / 2;
 /** How far the cliff hangs below the rim at x (full height behind the falls, a short step at its ends). */
@@ -73,9 +83,9 @@ function shelfBack(x: number, y: number): number {
 }
 /** The creek across the shelf: from the back (fed off the snow above) to the lip, in gentle iso bends. */
 function creekPath(): { x: number; y: number; w: number }[] {
-  const a = world(244, 114), b = world(LIP.x, LIP.y - 1), out: { x: number; y: number; w: number }[] = [];
+  const a = world(CREEK_SRC.x, CREEK_SRC.y), b = world(LIP.x, LIP.y - 1), out: { x: number; y: number; w: number }[] = [];
   for (let k = 0; k <= 80; k++) {
-    const s = k / 80, bend = Math.sin(s * Math.PI * 2.2) * 3.2 * Math.sin(s * Math.PI) ** 0.8;
+    const s = k / 80, bend = Math.sin(s * Math.PI * 2.2) * 2.8 * Math.sin(s * Math.PI) ** 0.8;
     const p = iso(a.u + (b.u - a.u) * s + bend, a.v + (b.v - a.v) * s);
     out.push({ x: p.x, y: p.y, w: 0.9 + s * (LIP.w - 0.9) });
   }
@@ -562,7 +572,8 @@ function paintShelf(c: C) {
   // the shelf's flat top: weathered pale rock and alpine grass, no gully streaks (it reads level)
   const xs = [f0.x, f1.x, f0.x + back.x, f1.x + back.x], ys = [f0.y, f1.y, f0.y + back.y, f1.y + back.y];
   for (let y = Math.min(...ys); y <= Math.max(...ys); y++) for (let x = Math.min(...xs); x <= Math.max(...xs); x++) {
-    if (!onShelf(x, y)) continue;
+    if (!onShelf(x, y) || peakOnShelf(x, y)) continue;
+    if (peakOnShelf(x, y - 1)) { P(c, x, y, '#4a443c'); continue; } // a dark seam where the peak meets the flat top
     const n = hn(x, y, 97), g = vnoise(x, y, 7, 98), bk = shelfBack(x, y);
     if (bk > 0.75 && hn(x, y, 90) < (bk - 0.75) * 4) continue; // the back rows dither into the slope
     P(c, x, y, g > 0.55 ? (n < 0.5 ? '#7d8f5a' : '#728552') : n < 0.15 ? '#8d8270' : n < 0.6 ? '#a8a08c' : '#b3ab96');
@@ -570,14 +581,15 @@ function paintShelf(c: C) {
   // its edges: a dark rim along the cliff top, side edges, a soft seam where the slope rises behind
   for (let x = f0.x; x <= f1.x; x++) P(c, x, Math.round(rimY(x)), COL.rockOL);
   // the side edges fade out going back: the shelf runs into the slope behind it (no lid outline)
-  for (let k = 0; k <= 28; k++) {
-    const t = k / 28, l = { x: f0.x + back.x * t, y: f0.y + back.y * t }, r = { x: f1.x + back.x * t, y: f1.y + back.y * t };
+  for (let k = 0; k <= 48; k++) {
+    const t = k / 48, l = { x: f0.x + back.x * t, y: f0.y + back.y * t }, r = { x: f1.x + back.x * t, y: f1.y + back.y * t };
     c.globalAlpha = Math.max(0, 1 - t * 1.4);
-    P(c, Math.round(l.x), Math.round(l.y), COL.rockOL); P(c, Math.round(r.x), Math.round(r.y), COL.rockOL);
+    if (!peakOnShelf(Math.round(l.x), Math.round(l.y))) P(c, Math.round(l.x), Math.round(l.y), COL.rockOL);
+    if (!peakOnShelf(Math.round(r.x), Math.round(r.y))) P(c, Math.round(r.x), Math.round(r.y), COL.rockOL);
   }
   c.globalAlpha = 1;
   // the melt off the snow above: a thin broken cascade down to the back of the shelf
-  for (let y = 100; y < 115; y++) { const x = 244 + Math.round(Math.sin(y / 2.4) * 0.8); P(c, x, y, y % 3 ? '#d8eef0' : COL.glint); }
+  for (let y = CREEK_SRC.y - 14; y < CREEK_SRC.y; y++) { const x = CREEK_SRC.x + Math.round(Math.sin(y / 2.4) * 0.8); P(c, x, y, y % 3 ? '#d8eef0' : COL.glint); }
   // the creek across the shelf: banks first, then the water, widening to the lip
   const path = creekPath();
   for (const p of path) fillEllipse(c, p.x, p.y + 0.5, p.w + 1.6, (p.w + 1.6) / 2 + 0.4, '#5f6a4a');
@@ -1145,7 +1157,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v9';
+export const CITY_BG = 'city_bg_v10';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -1157,12 +1169,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v9`;
+    const key = `city_${p.id}_v10`;
     // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v9';
+  const fk = 'city_falls_v10';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

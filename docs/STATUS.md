@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 103: `SHELF.back` (48, -24); `peakOnShelf` keeps the (262, 86) peak's summit over the shelf (seam under it);
+  `CREEK_SRC`; textures `_v10`.
   Round 102: `cityArt.ts` `SHELF` (`rimY`, `cliffH`, `inCliff`, `onShelf`, `shelfBack`, `creekPath`) and
   `paintShelf` (cliff face, flat top, rim, the creek across to `LIP`) replace the round-93 cleft and `creekX`; slope
   pines skip the cliff; textures `_v9`.
