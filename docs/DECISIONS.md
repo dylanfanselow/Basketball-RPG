@@ -188,6 +188,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 102 (owner): the falls drop off a plateau.** The mountains are angular, so the creek doesn't run as a line
+  down the rock: melt off the snow trickles onto a flat shelf on the flank, crosses it as a little winding stream and
+  goes over the shelf's rim; under the rim a sheer banded cliff (lit left, shaded right like the peaks, wet and dark
+  behind the water) drops to the plunge pool, its base running down the slope to the pool.
 - **Round 101 (owner): a menu holds the room.** While the TV menu, or anything it opens (film study, the draft board,
   Look yourself up), the phone or any other choice is up, you can't walk and only that menu's buttons work; the room
   is yours again when it closes. A choice list longer than the box (3 rows) scrolls with the highlight, with ▲ / ▼

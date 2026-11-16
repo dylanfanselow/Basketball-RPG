@@ -46,15 +46,40 @@ const POOL = { x: 214, y: 214, r: 17 };
 /** Where the creek tips over the falls (art px), and how wide it is there (half width). */
 const LIP = { x: 214, y: 127, w: 3.2 };
 /**
- * Round 100 (owner: the falls were a beam that didn't line up with the creek): the creek's centre line down the flank
- * (y 98 to the lip). It winds down from the snow, then straightens over its last rows so it arrives at the lip going
- * straight down, right where the falls start; the cleft and the falls use the same line.
+ * Round 102 (owner: "the mountains are angular, so that part should be a plateau with a cliff"): the falls drop off a
+ * flat shelf on the flank. The shelf's front rim runs along u (iso) through the lip; its top reaches back up the
+ * slope; under the rim a sheer cliff hangs down to the plunge pool, tallest behind the falls, tapering into the flank.
  */
-function creekX(y: number): number {
-  if (y >= LIP.y) return LIP.x;
-  // eased in: the sideways run fades out toward the lip (no slope left at the lip), the wiggle with it
-  const t = Math.min(1, Math.max(0, (y - 98) / (LIP.y - 4 - 98))), r = (1 - t) * (1 - t);
-  return LIP.x - 36 * r + Math.sin(y / 3.2) * 3 * r;
+const SHELF = { f0: { x: 190, y: 115 }, f1: { x: 238, y: 139 }, back: { x: 28, y: -14 } };
+/** The rim (the cliff's top edge) at x, art px. */
+const rimY = (x: number) => SHELF.f0.y + (x - SHELF.f0.x) / 2;
+/** How far the cliff hangs below the rim at x (full height behind the falls, a short step at its ends). */
+function cliffH(x: number): number {
+  const k = Math.min(1, Math.abs(x - LIP.x) / 25), full = POOL.y - POOL.r / 1.6 - LIP.y + 2;
+  return 5 + (full - 5) * Math.pow(1 - k, 0.85) + (vnoise(x, 0, 4, 91) - 0.5) * 4 * k; // the base runs down the slope to the pool
+}
+function inCliff(x: number, y: number): boolean { return x >= SHELF.f0.x && x <= SHELF.f1.x && y >= rimY(x) && y <= rimY(x) + cliffH(x) + 1; }
+/** On the shelf's flat top (the parallelogram behind the rim)? */
+function onShelf(x: number, y: number): boolean {
+  const { f0, back } = SHELF, dx = x - f0.x, dy = y - f0.y;
+  // in the shelf's own axes: a along the rim (2, 1), b back up the slope (back.x, back.y)
+  const det = 2 * back.y - back.x, a = (dx * back.y - dy * back.x) / det, b = (2 * dy - dx) / det;
+  return a >= 0 && a <= (SHELF.f1.x - f0.x) / 2 && b >= 0 && b <= 1;
+}
+/** 0 at the shelf's rim, 1 at its back edge. */
+function shelfBack(x: number, y: number): number {
+  const { f0, back } = SHELF, det = 2 * back.y - back.x;
+  return (2 * (y - f0.y) - (x - f0.x)) / det;
+}
+/** The creek across the shelf: from the back (fed off the snow above) to the lip, in gentle iso bends. */
+function creekPath(): { x: number; y: number; w: number }[] {
+  const a = world(244, 114), b = world(LIP.x, LIP.y - 1), out: { x: number; y: number; w: number }[] = [];
+  for (let k = 0; k <= 80; k++) {
+    const s = k / 80, bend = Math.sin(s * Math.PI * 2.2) * 3.2 * Math.sin(s * Math.PI) ** 0.8;
+    const p = iso(a.u + (b.u - a.u) * s + bend, a.v + (b.v - a.v) * s);
+    out.push({ x: p.x, y: p.y, w: 0.9 + s * (LIP.w - 0.9) });
+  }
+  return out;
 }
 const RES = { x: 842, y: 464, rx: 150, ry: 66 };
 const ISLAND = { x: 682, y: 402, rx: 13, ry: 5 };
@@ -510,29 +535,57 @@ function paintMountain(c: C) {
     d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
   }
   c.putImageData(img, 0, 0);
-  // the creek off the snow: it winds down the flank in little cascades and spills over the lip of the falls
-  for (let y = 98; y < LIP.y; y++) {
-    const t = (y - 98) / (LIP.y - 98), cx = creekX(y), w = 1 + t * (LIP.w - 1);
-    c.globalAlpha = 0.5; R(c, Math.round(cx - w - 2), y, Math.round(w * 2 + 5), 1, '#3e3a36'); c.globalAlpha = 1;
-    // round 100: the last rows are white water, the falls' own colours, so the creek and the falls are one stream
-    const rapids = Math.max(0, (y - (LIP.y - 8)) / 8);
-    for (let x = Math.round(cx - w); x <= Math.round(cx + w); x++) {
-      const k = hn(x, y, 74);
-      P(c, x, y, hn(x, y, 75) < rapids ? (k > 0.6 ? '#f4fbfc' : k > 0.25 ? '#bfe3ea' : '#8ccbd6')
-        : y % 6 === 0 || hn(x, y, 73) < 0.2 ? '#d8eef0' : k < 0.4 ? COL.glint : COL.water[1]);
+  paintShelf(c);
+}
+
+/** Round 102: the falls' shelf (flat top), the cliff under it, and the creek running across to the lip. */
+function paintShelf(c: C) {
+  const { f0, f1, back } = SHELF;
+  // the cliff: a sheer face of banded rock, lit on the left like the peaks, wet and dark behind the water, mossy low down
+  for (let x = f0.x; x <= f1.x; x++) {
+    const top = Math.round(rimY(x)), h = cliffH(x), bot = Math.round(top + h);
+    // the base line stays unbroken where it runs steeply down the slope (fill the step to the next column's base)
+    const nb = (xx: number) => Math.round(rimY(xx) + cliffH(xx)), step = Math.max(1, Math.abs(bot - nb(x + (x < LIP.x ? 1 : -1))));
+    for (let y = top; y <= bot; y++) {
+      if (waterDist(x, y) < 0) continue; // the pool stays water
+      const d = y - top, n = hn(x, y, 92), side = (x - LIP.x) / 24;
+      const band = Math.floor((d + vnoise(x, 0, 5, 93) * 3) / 7), bandLine = (d + vnoise(x, 0, 5, 93) * 3) % 7 < 1;
+      let col = side < -0.15 ? COL.rockL[band % 2] : side > 0.15 ? COL.rockD[band % 2] : COL.rockD[(band + 1) % 2];
+      if (bandLine || vnoise(x * 3, y * 0.3, 4, 94) > 0.8) col = side < 0 ? '#7a7062' : '#4a443c'; // strata and cracks
+      const wet = Math.max(0, 1 - Math.abs(x - LIP.x) / (6 + d * 0.12));
+      if (n < wet * 0.9) col = n < wet * 0.45 ? '#2f2c29' : '#3e3a36';
+      if (bot > 180 && bot - y < 10 && hn(x, y, 95) < (1 - (bot - y) / 10) * 0.7) col = hn(x, y, 96) < 0.5 ? '#4f8a3a' : '#3f6a3a';
+      if (bot - y < step) col = '#2f2c29'; // where the face meets the slope
+      P(c, x, y, col);
     }
   }
-  // round 93 (owner): the falls run down a cleft in the slope instead of a notch: the rock darkens and gets wet toward
-  // the water (blended over the flank, so there are no hard edges), moss and ferns low down, boulders at the pool
-  for (let y = 108; y < 218; y++) for (let x = 170; x < 258; x++) {
-    const t = (y - 108) / 108, half = 6 + t * 14 + (vnoise(x, y, 5, 70) - 0.5) * 5, dx = Math.abs(x - creekX(y)) - half; // round 100: the groove follows the creek
-    if (dx > 16 || !onMountain(x, y) || waterDist(x, y) < 2) continue; // round 95: the pool below stays water
-    if (y < LIP.y && y >= 98 && Math.abs(x - creekX(y)) < 1.5 + ((y - 98) / (LIP.y - 98)) * (LIP.w - 1)) continue; // round 100: the creek stays bright
-    const n = hn(x, y, 71), k = (dx < 0 ? 0.85 : 0.85 * (1 - dx / 16)) * Math.min(1, (y - 108) / 26) * (1 - 0.35 * Math.max(0, dx) / 16);
-    c.globalAlpha = Math.max(0, k * (0.7 + n * 0.3));
-    P(c, x, y, y > 186 && n < 0.45 ? (n < 0.2 ? '#4f8a3a' : '#3f6a3a') : n < 0.35 ? '#2f2c29' : n < 0.75 ? '#3e3a36' : '#55504a');
+  // the shelf's flat top: weathered pale rock and alpine grass, no gully streaks (it reads level)
+  const xs = [f0.x, f1.x, f0.x + back.x, f1.x + back.x], ys = [f0.y, f1.y, f0.y + back.y, f1.y + back.y];
+  for (let y = Math.min(...ys); y <= Math.max(...ys); y++) for (let x = Math.min(...xs); x <= Math.max(...xs); x++) {
+    if (!onShelf(x, y)) continue;
+    const n = hn(x, y, 97), g = vnoise(x, y, 7, 98), bk = shelfBack(x, y);
+    if (bk > 0.75 && hn(x, y, 90) < (bk - 0.75) * 4) continue; // the back rows dither into the slope
+    P(c, x, y, g > 0.55 ? (n < 0.5 ? '#7d8f5a' : '#728552') : n < 0.15 ? '#8d8270' : n < 0.6 ? '#a8a08c' : '#b3ab96');
+  }
+  // its edges: a dark rim along the cliff top, side edges, a soft seam where the slope rises behind
+  for (let x = f0.x; x <= f1.x; x++) P(c, x, Math.round(rimY(x)), COL.rockOL);
+  // the side edges fade out going back: the shelf runs into the slope behind it (no lid outline)
+  for (let k = 0; k <= 28; k++) {
+    const t = k / 28, l = { x: f0.x + back.x * t, y: f0.y + back.y * t }, r = { x: f1.x + back.x * t, y: f1.y + back.y * t };
+    c.globalAlpha = Math.max(0, 1 - t * 1.4);
+    P(c, Math.round(l.x), Math.round(l.y), COL.rockOL); P(c, Math.round(r.x), Math.round(r.y), COL.rockOL);
   }
   c.globalAlpha = 1;
+  // the melt off the snow above: a thin broken cascade down to the back of the shelf
+  for (let y = 100; y < 115; y++) { const x = 244 + Math.round(Math.sin(y / 2.4) * 0.8); P(c, x, y, y % 3 ? '#d8eef0' : COL.glint); }
+  // the creek across the shelf: banks first, then the water, widening to the lip
+  const path = creekPath();
+  for (const p of path) fillEllipse(c, p.x, p.y + 0.5, p.w + 1.6, (p.w + 1.6) / 2 + 0.4, '#5f6a4a');
+  for (const p of path) fillEllipse(c, p.x, p.y, p.w + 0.4, (p.w + 0.4) / 2 + 0.3, COL.water[1]);
+  path.forEach((p, k) => {
+    if (k % 7 === 0) P(c, Math.round(p.x - 0.5), Math.round(p.y), '#d8eef0');
+    if (k > 66) P(c, Math.round(p.x + (hn(k, 0, 99) - 0.5) * p.w * 1.6), Math.round(p.y), hn(k, 1, 99) < 0.5 ? '#f4fbfc' : '#bfe3ea'); // white water at the lip
+  });
 }
 
 // ---------------------------------------------------------------- buildings + trees
@@ -712,7 +765,7 @@ function cityObjects(): Obj[] {
   for (let y = 4; y < 540; y += 5) for (let x = 0; x < 960; x += 6) {
     const jx = x + Math.floor(hn(x, y, 21) * 5), jy = y + Math.floor(hn(x, y, 22) * 4);
     if (waterDist(jx, jy) < 3 || nearPlace(jx, jy, 4)) continue;
-    const f = footY(jx), onSlope = f >= 0 && jy < f && jy > f - 46 && onMountain(jx, jy);
+    const f = footY(jx), onSlope = f >= 0 && jy < f && jy > f - 46 && onMountain(jx, jy) && !inCliff(jx, jy) && !inCliff(jx, jy - 8);
     const woods = !onMountain(jx, jy) && (zoneAt(jx, jy) === 'forest' || orphanWoods(jx, jy)) && trailDist(jx, jy) > 3;
     // round 99: a pine that would cover a street is a small one beside it (or none), so the road shows through the trees
     const big = woods && !nearStreet(jx, jy), small = woods && !big && !nearStreet(jx, jy, 0.5), inForest = big || small;
@@ -1092,7 +1145,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v8';
+export const CITY_BG = 'city_bg_v9';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -1104,12 +1157,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v8`;
+    const key = `city_${p.id}_v9`;
     // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v8';
+  const fk = 'city_falls_v9';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };
