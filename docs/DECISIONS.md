@@ -188,6 +188,9 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 104 (owner): no snowy peak on the plateau.** The small peak behind the shelf is cut off flat along the
+  shelf's back edge (a mesa: its top is the plateau, a straight ridge line behind it), with no snow. The creek rises
+  from a little spring pool at the back of the shelf instead of snowmelt.
 - **Round 103 (owner): the plateau reaches further back** (about 1.7x deeper), back to the foot of the small snowy
   peak, which stands on it; the creek starts under that peak's snow and crosses the whole shelf to the same lip.
 - **Round 102 (owner): the falls drop off a plateau.** The mountains are angular, so the creek doesn't run as a line

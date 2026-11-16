@@ -51,16 +51,13 @@ const LIP = { x: 214, y: 127, w: 3.2 };
  * slope; under the rim a sheer cliff hangs down to the plunge pool, tallest behind the falls, tapering into the flank.
  */
 const SHELF = { f0: { x: 190, y: 115 }, f1: { x: 238, y: 139 }, back: { x: 48, y: -24 } }; // round 103: deeper (was 28, -14)
-/** Round 103: the small snowy peak the shelf runs back to: its summit stays standing on the shelf. */
-let SHELF_PEAK = -1;
-/** Is this pixel the peak's summit (snowcap and the rock just under it), in front of the shelf? */
-function peakOnShelf(x: number, y: number): boolean {
-  if (SHELF_PEAK < 0) SHELF_PEAK = PEAKS.findIndex((q) => q.x === 262 && q.y === 86);
-  const p = PEAKS[SHELF_PEAK];
-  return peakAt(x, y) === SHELF_PEAK && y < p.y + p.snow + 6 + (vnoise(x, 0, 5, 89) - 0.5) * 4;
-}
-/** Where the creek starts on the shelf (fed by the trickle off the peak's snow above it). */
-const CREEK_SRC = { x: 248, y: 116 };
+/**
+ * Round 104 (owner: "flatten the peak on the plateau, no snowy peak"): the small peak behind the shelf is cut off
+ * flat along the shelf's back edge (continued across its width): a mesa whose top is the plateau.
+ */
+const mesaY = (x: number) => SHELF.f0.y + SHELF.back.y + (x - SHELF.f0.x - SHELF.back.x) / 2;
+/** Where the creek starts: a little spring pool at the back of the shelf. */
+const CREEK_SRC = { x: 250, y: 110 };
 /** The rim (the cliff's top edge) at x, art px. */
 const rimY = (x: number) => SHELF.f0.y + (x - SHELF.f0.x) / 2;
 /** How far the cliff hangs below the rim at x (full height behind the falls, a short step at its ends). */
@@ -141,7 +138,7 @@ const PEAKS = [
   { x: 330, y: 22, s: 0.5, snow: 16 }, { x: 470, y: 30, s: 0.55, snow: 12 }, { x: 600, y: 8, s: 0.6, snow: 14 },
   { x: -24, y: 58, s: 0.55, snow: 18 },
   { x: 108, y: 18, s: 0.6, snow: 36 },
-  { x: 262, y: 86, s: 0.62, snow: 22 },
+  { x: 262, y: 86, s: 0.62, snow: 0, mesa: true }, // round 104: cut flat at the plateau (was snow 22)
   { x: 410, y: 110, s: 0.7, snow: 12 },
   { x: 520, y: 80, s: 0.95, snow: 0 },
 ];
@@ -152,7 +149,7 @@ function peakAt(x: number, y: number): number {
   let best = -1, by = -Infinity;
   for (let i = 0; i < PEAKS.length; i++) {
     const p = PEAKS[i], jag = (vnoise(x, y, 5, 20 + i) - 0.5) * 7;
-    if (y >= p.y + Math.abs(x - p.x) * p.s + jag && p.y > by) { best = i; by = p.y; }
+    if (y >= p.y + Math.abs(x - p.x) * p.s + jag && p.y > by && !('mesa' in p && y < mesaY(x))) { best = i; by = p.y; }
   }
   return best;
 }
@@ -572,8 +569,7 @@ function paintShelf(c: C) {
   // the shelf's flat top: weathered pale rock and alpine grass, no gully streaks (it reads level)
   const xs = [f0.x, f1.x, f0.x + back.x, f1.x + back.x], ys = [f0.y, f1.y, f0.y + back.y, f1.y + back.y];
   for (let y = Math.min(...ys); y <= Math.max(...ys); y++) for (let x = Math.min(...xs); x <= Math.max(...xs); x++) {
-    if (!onShelf(x, y) || peakOnShelf(x, y)) continue;
-    if (peakOnShelf(x, y - 1)) { P(c, x, y, '#4a443c'); continue; } // a dark seam where the peak meets the flat top
+    if (!onShelf(x, y)) continue;
     const n = hn(x, y, 97), g = vnoise(x, y, 7, 98), bk = shelfBack(x, y);
     if (bk > 0.75 && hn(x, y, 90) < (bk - 0.75) * 4) continue; // the back rows dither into the slope
     P(c, x, y, g > 0.55 ? (n < 0.5 ? '#7d8f5a' : '#728552') : n < 0.15 ? '#8d8270' : n < 0.6 ? '#a8a08c' : '#b3ab96');
@@ -584,20 +580,27 @@ function paintShelf(c: C) {
   for (let k = 0; k <= 48; k++) {
     const t = k / 48, l = { x: f0.x + back.x * t, y: f0.y + back.y * t }, r = { x: f1.x + back.x * t, y: f1.y + back.y * t };
     c.globalAlpha = Math.max(0, 1 - t * 1.4);
-    if (!peakOnShelf(Math.round(l.x), Math.round(l.y))) P(c, Math.round(l.x), Math.round(l.y), COL.rockOL);
-    if (!peakOnShelf(Math.round(r.x), Math.round(r.y))) P(c, Math.round(r.x), Math.round(r.y), COL.rockOL);
+    P(c, Math.round(l.x), Math.round(l.y), COL.rockOL); P(c, Math.round(r.x), Math.round(r.y), COL.rockOL);
   }
   c.globalAlpha = 1;
   // the melt off the snow above: a thin broken cascade down to the back of the shelf
-  for (let y = CREEK_SRC.y - 14; y < CREEK_SRC.y; y++) { const x = CREEK_SRC.x + Math.round(Math.sin(y / 2.4) * 0.8); P(c, x, y, y % 3 ? '#d8eef0' : COL.glint); }
   // the creek across the shelf: banks first, then the water, widening to the lip
-  const path = creekPath();
+  const path = creekPath(), sp = CREEK_SRC;
+  fillEllipse(c, sp.x, sp.y + 0.5, 9, 4.8, '#5f6a4a'); // the spring's bank (its water goes on after the creek)
   for (const p of path) fillEllipse(c, p.x, p.y + 0.5, p.w + 1.6, (p.w + 1.6) / 2 + 0.4, '#5f6a4a');
   for (const p of path) fillEllipse(c, p.x, p.y, p.w + 0.4, (p.w + 0.4) / 2 + 0.3, COL.water[1]);
   path.forEach((p, k) => {
     if (k % 7 === 0) P(c, Math.round(p.x - 0.5), Math.round(p.y), '#d8eef0');
     if (k > 66) P(c, Math.round(p.x + (hn(k, 0, 99) - 0.5) * p.w * 1.6), Math.round(p.y), hn(k, 1, 99) < 0.5 ? '#f4fbfc' : '#bfe3ea'); // white water at the lip
   });
+  // round 104: the spring the creek rises from: a little pool with a ring of stones and a ripple
+  fillEllipse(c, sp.x, sp.y, 7.5, 3.8, COL.water[0]); fillEllipse(c, sp.x - 1, sp.y - 0.5, 5, 2.2, COL.water[1]);
+  P(c, sp.x - 2, sp.y - 1, '#d8eef0'); P(c, sp.x - 1, sp.y - 1, '#d8eef0'); P(c, sp.x + 2, sp.y + 1, COL.glint);
+  for (let k = 0; k < 7; k++) {
+    if (k === 4) continue; // the outlet
+    const a = Math.PI * (0.15 + k * 0.27), x = Math.round(sp.x + Math.cos(a) * 9), y = Math.round(sp.y - 0.5 - Math.sin(a) * 4.6);
+    P(c, x, y, '#8d8270'); P(c, x + 1, y, '#6e665c');
+  }
 }
 
 // ---------------------------------------------------------------- buildings + trees
@@ -1157,7 +1160,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v10';
+export const CITY_BG = 'city_bg_v11';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -1169,12 +1172,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v10`;
+    const key = `city_${p.id}_v11`;
     // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v10';
+  const fk = 'city_falls_v11';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };
