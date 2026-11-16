@@ -261,6 +261,8 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 101: `AgentTalk` hands the room back before a last choice's `pick` runs (`released`), so what it opens keeps
+  `busy`; `StoryBox` choices scroll (`ROWS` = 3, `scroll` follows the highlight, reset for a new list, ▲ / ▼, count).
   Round 100: `cityArt.ts` `LIP` + `creekX(y)` (the creek's centre line, eased to vertical at the lip) shared by the
   creek, the cleft and `drawFalls`; the lip curl is the creek's width, the sheet's edge line fades in; textures `_v8`.
   Round 99: the iso grid (`cityIso` / `cityWorld`, `CITY_BLOCK` / `CITY_ROAD`) and `PLACE_LOT` moved to

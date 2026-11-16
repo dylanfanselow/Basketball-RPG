@@ -40,6 +40,8 @@ export class AgentTalk {
   /** round 84: a screen-space position (the backyard, outside the room's floor) */
   private scr: { x: number; y: number } | null = null;
   private hopT = -1;
+  /** round 101: the room was handed back already (a last choice: what it opens keeps the room held) */
+  private released = false;
 
   /** `phone` (round 82): he's on the phone, not in the room (no figure; the lines and the room's busy work the same). */
   constructor(private room: RoomScene & { inp: { pressed(k: string): boolean } }, start: V, private steps: AgentStep[], opts: { phone?: boolean } = {}) {
@@ -71,7 +73,13 @@ export class AgentTalk {
         if (room.inp.pressed('down')) { this.choice = (this.choice + 1) % ch.options.length; sfx.blip(true); }
         if (room.inp.pressed('up')) { this.choice = (this.choice + ch.options.length - 1) % ch.options.length; sfx.blip(true); }
         this.box.show({ who: ch.who, text: '', blocking: true, choices: ch.options, choice: this.choice });
-        if (room.inp.pressed('a')) { const k = this.choice; this.choice = 0; sfx.blip(true); this.next(); ch.pick(k); }
+        if (room.inp.pressed('a')) {
+          const k = this.choice; this.choice = 0; sfx.blip(true); this.next();
+          // round 101 (owner: you could walk around with the TV's film list up): the last choice hands the room back
+          // before it runs, so whatever it opens (a list, a call) keeps the room held until that closes
+          if (this.done) { this.box.hide(); room.busy = false; this.released = true; }
+          ch.pick(k);
+        }
       } else if ('say' in step) {
         const l = step.say;
         this.box.show({ who: l.who, text: l.text, name: l.name, blocking: true });
@@ -123,7 +131,7 @@ export class AgentTalk {
     if (this.sprite.active && this.scr) this.sprite.setFrame(0).setPosition(this.scr.x, this.scr.y - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(-500);
     else if (this.sprite.active) this.sprite.setFrame(talking ? 4 : 0).setPosition(sxOf(this.at.x), syOf(this.at.y) - (walking ? Math.abs(Math.sin(this.t * 9)) * 3 : 0)).setDepth(syOf(this.at.y));
     // round 82: a scene can end on a line (a phone call): put the box away with it
-    if (this.done) { this.box.hide(); room.busy = false; return false; }
+    if (this.done) { this.box.hide(); if (!this.released) room.busy = false; return false; }
     return true;
   }
 

@@ -38,6 +38,10 @@ export class StoryBox {
   private shown: BoxContent | null = null;
   private startAt = 0;
   private flashAt = -1e9;
+  /** round 101: the first option in view (long choice lists scroll) */
+  private scroll = 0;
+  /** the most option rows the box holds */
+  static ROWS = 3;
   visible = false;
 
   /** depth (round 81): the box's layer; above the apartment calendar (9600) when a scene needs it */
@@ -64,6 +68,7 @@ export class StoryBox {
   show(c: BoxContent) {
     const same = this.shown && this.shown.text === c.text && this.shown.who === c.who && !!this.shown.choices === !!c.choices;
     if (!same) this.startAt = c.blocking ? this.scene.time.now : -1e9; // prompts appear at once
+    if (!this.shown?.choices || !c.choices || this.shown.choices.join('\n') !== c.choices.join('\n')) this.scroll = 0; // a new list starts at the top
     this.shown = c;
     this.visible = true;
     for (const o of [this.g, this.body, this.tag, this.hint, this.head]) o.setVisible(true);
@@ -94,11 +99,23 @@ export class StoryBox {
     if (flash > 0) { g.fillStyle(0x5fe08a, 0.18 * flash); g.fillRoundedRect(X, Y, W, H, 12); }
     if (c.choices) {
       // round 80: the options, the highlighted one marked and bright
-      this.body.setText(c.choices.map((o, i) => `${i === c.choice ? '▶' : '  '} ${o}`).join('\n')).setFontStyle('bold').setColor('#ffe9a8');
+      // round 101 (owner: the options ran out of the box): show what fits, the window follows the highlighted option
+      const n = c.choices.length, rows = StoryBox.ROWS, sel = Math.max(0, Math.min(n - 1, c.choice ?? 0));
+      if (sel < this.scroll) this.scroll = sel;
+      if (sel >= this.scroll + rows) this.scroll = sel - rows + 1;
+      this.scroll = Math.max(0, Math.min(Math.max(0, n - rows), this.scroll));
+      const view = c.choices.slice(this.scroll, this.scroll + rows);
+      this.body.setText(view.map((o, i) => `${i + this.scroll === sel ? '▶' : '  '} ${o}`).join('\n')).setFontStyle('bold').setColor('#ffe9a8');
+      if (n > rows) {
+        // more above / below: little arrows at the box's right edge
+        const ax = X + W - 26;
+        if (this.scroll > 0) g.fillStyle(0xffe9a8, 0.9).fillTriangle(ax - 7, Y + 26, ax + 7, Y + 26, ax, Y + 16);
+        if (this.scroll + rows < n) g.fillStyle(0xffe9a8, 0.9).fillTriangle(ax - 7, Y + H - 40, ax + 7, Y + H - 40, ax, Y + H - 30);
+      }
       if (t) this.tag.setText((c.name ?? t.name).toUpperCase()).setBackgroundColor(Phaser.Display.Color.IntegerToColor(t.color).rgba).setColor(t.text).setVisible(true);
       else this.tag.setVisible(false);
       this.head.setVisible(false);
-      this.hint.setText('↑↓ choose  ✕ answer').setVisible(true).setAlpha(0.55 + 0.45 * Math.abs(Math.sin(now / 380)));
+      this.hint.setText(`${c.choices.length > StoryBox.ROWS ? `${(c.choice ?? 0) + 1}/${c.choices.length}   ` : ''}↑↓ choose  ✕ answer`).setVisible(true).setAlpha(0.55 + 0.45 * Math.abs(Math.sin(now / 380)));
       return;
     }
     this.hint.setText('✕ next');

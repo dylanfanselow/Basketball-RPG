@@ -188,6 +188,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 101 (owner): a menu holds the room.** While the TV menu, or anything it opens (film study, the draft board,
+  Look yourself up), the phone or any other choice is up, you can't walk and only that menu's buttons work; the room
+  is yours again when it closes. A choice list longer than the box (3 rows) scrolls with the highlight, with ▲ / ▼
+  marks and a "2/6" count.
 - **Round 100 (owner): the creek and the falls are one stream.** The mountain creek curves round to run straight
   down over its last rows, turns to white water just above the lip and tips over at exactly its own width, so the
   falls start where the creek ends (no pale bar wider than the stream, no hard-edged pillar). The wet cleft in the
