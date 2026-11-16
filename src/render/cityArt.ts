@@ -43,6 +43,19 @@ const RIVER: [number, number, number][] = [
 /** Below the dam the river runs on off the bottom of the map. */
 const OUTFLOW: [number, number, number][] = [[722, 516, 5], [714, 532, 6], [706, 548, 6]];
 const POOL = { x: 214, y: 214, r: 17 };
+/** Where the creek tips over the falls (art px), and how wide it is there (half width). */
+const LIP = { x: 214, y: 127, w: 3.2 };
+/**
+ * Round 100 (owner: the falls were a beam that didn't line up with the creek): the creek's centre line down the flank
+ * (y 98 to the lip). It winds down from the snow, then straightens over its last rows so it arrives at the lip going
+ * straight down, right where the falls start; the cleft and the falls use the same line.
+ */
+function creekX(y: number): number {
+  if (y >= LIP.y) return LIP.x;
+  // eased in: the sideways run fades out toward the lip (no slope left at the lip), the wiggle with it
+  const t = Math.min(1, Math.max(0, (y - 98) / (LIP.y - 4 - 98))), r = (1 - t) * (1 - t);
+  return LIP.x - 36 * r + Math.sin(y / 3.2) * 3 * r;
+}
 const RES = { x: 842, y: 464, rx: 150, ry: 66 };
 const ISLAND = { x: 682, y: 402, rx: 13, ry: 5 };
 /** Where the road and the rail cross the river. */
@@ -498,16 +511,23 @@ function paintMountain(c: C) {
   }
   c.putImageData(img, 0, 0);
   // the creek off the snow: it winds down the flank in little cascades and spills over the lip of the falls
-  for (let y = 98; y < 128; y++) {
-    const t = (y - 98) / 30, cx = 178 + t * 36 + Math.sin(y / 3.2) * 3 * (1 - t), w = 1 + t * 2.2;
+  for (let y = 98; y < LIP.y; y++) {
+    const t = (y - 98) / (LIP.y - 98), cx = creekX(y), w = 1 + t * (LIP.w - 1);
     c.globalAlpha = 0.5; R(c, Math.round(cx - w - 2), y, Math.round(w * 2 + 5), 1, '#3e3a36'); c.globalAlpha = 1;
-    for (let x = Math.round(cx - w); x <= Math.round(cx + w); x++) P(c, x, y, y % 6 === 0 || hn(x, y, 73) < 0.2 ? '#d8eef0' : hn(x, y, 74) < 0.4 ? COL.glint : COL.water[1]);
+    // round 100: the last rows are white water, the falls' own colours, so the creek and the falls are one stream
+    const rapids = Math.max(0, (y - (LIP.y - 8)) / 8);
+    for (let x = Math.round(cx - w); x <= Math.round(cx + w); x++) {
+      const k = hn(x, y, 74);
+      P(c, x, y, hn(x, y, 75) < rapids ? (k > 0.6 ? '#f4fbfc' : k > 0.25 ? '#bfe3ea' : '#8ccbd6')
+        : y % 6 === 0 || hn(x, y, 73) < 0.2 ? '#d8eef0' : k < 0.4 ? COL.glint : COL.water[1]);
+    }
   }
   // round 93 (owner): the falls run down a cleft in the slope instead of a notch: the rock darkens and gets wet toward
   // the water (blended over the flank, so there are no hard edges), moss and ferns low down, boulders at the pool
   for (let y = 108; y < 218; y++) for (let x = 170; x < 258; x++) {
-    const t = (y - 108) / 108, half = 6 + t * 14 + (vnoise(x, y, 5, 70) - 0.5) * 5, dx = Math.abs(x - 214) - half;
+    const t = (y - 108) / 108, half = 6 + t * 14 + (vnoise(x, y, 5, 70) - 0.5) * 5, dx = Math.abs(x - creekX(y)) - half; // round 100: the groove follows the creek
     if (dx > 16 || !onMountain(x, y) || waterDist(x, y) < 2) continue; // round 95: the pool below stays water
+    if (y < LIP.y && y >= 98 && Math.abs(x - creekX(y)) < 1.5 + ((y - 98) / (LIP.y - 98)) * (LIP.w - 1)) continue; // round 100: the creek stays bright
     const n = hn(x, y, 71), k = (dx < 0 ? 0.85 : 0.85 * (1 - dx / 16)) * Math.min(1, (y - 108) / 26) * (1 - 0.35 * Math.max(0, dx) / 16);
     c.globalAlpha = Math.max(0, k * (0.7 + n * 0.3));
     P(c, x, y, y > 186 && n < 0.45 ? (n < 0.2 ? '#4f8a3a' : '#3f6a3a') : n < 0.35 ? '#2f2c29' : n < 0.75 ? '#3e3a36' : '#55504a');
@@ -1006,12 +1026,18 @@ function paintHighway(c: C) {
 // ---------------------------------------------------------------- the waterfall (animated)
 function drawFalls(c: C, f: number) {
   // the sheet of water widens as it drops; streaks slide down frame by frame; spray off its edges
-  // the lip: the creek spills over in a bright curl
-  for (let x = 209; x <= 219; x++) { P(c, x, 125, '#7fc0cc'); P(c, x, 126, x % 2 ? '#ffffff' : '#d8eef0'); }
-  for (let y = 127; y < 206; y++) {
-    const t = (y - 127) / 79, w = 3 + t * 8 + (vnoise(f * 3, y, 3, 72) - 0.5) * 1.6, x0 = Math.round(214 - w), x1 = Math.round(214 + w);
+  // the lip (round 100): the creek tips over in a bright curl exactly its own width (no bar wider than the stream)
+  for (let x = Math.round(LIP.x - LIP.w); x <= Math.round(LIP.x + LIP.w); x++) {
+    const end = Math.abs(x - LIP.x) > LIP.w - 1;
+    if (!end) P(c, x, LIP.y - 2, '#bfe3ea');
+    P(c, x, LIP.y - 1, end ? '#bfe3ea' : (x + f) % 2 ? '#ffffff' : '#d8eef0');
+  }
+  for (let y = LIP.y; y < 206; y++) {
+    const t = (y - LIP.y) / (206 - LIP.y), w = LIP.w + t * 8 + (vnoise(f * 3, y, 3, 72) - 0.5) * 1.6 * t;
+    const x0 = Math.round(LIP.x - w), x1 = Math.round(LIP.x + w);
     for (let x = x0; x <= x1; x++) {
-      const k = hn(x, Math.floor((y - f * 5) / 3), 51), side = x === x0 || x === x1;
+      // the edge line fades in as the sheet widens (dithered), so the top isn't a hard-edged pillar
+      const k = hn(x, Math.floor((y - f * 5) / 3), 51), side = (x === x0 || x === x1) && hn(x, y, 50) < t * 3;
       P(c, x, y, side ? '#7fc0cc' : k > 0.72 ? '#f4fbfc' : k > 0.3 ? '#bfe3ea' : '#8ccbd6');
     }
     if (hn(y, f, 56) < 0.25 * t) P(c, x0 - 1 - Math.floor(hn(y, f, 57) * 2), y, '#d8eef0');
@@ -1066,7 +1092,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v7';
+export const CITY_BG = 'city_bg_v8';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -1078,12 +1104,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v7`;
+    const key = `city_${p.id}_v8`;
     // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v7';
+  const fk = 'city_falls_v8';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

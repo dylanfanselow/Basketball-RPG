@@ -188,6 +188,10 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 100 (owner): the creek and the falls are one stream.** The mountain creek curves round to run straight
+  down over its last rows, turns to white water just above the lip and tips over at exactly its own width, so the
+  falls start where the creek ends (no pale bar wider than the stream, no hard-edged pillar). The wet cleft in the
+  rock follows the creek.
 - **Round 99 (owner): every place sits inside one block, the arena fills a whole one.** No street runs under any
   place's lot (the gym moved left off its road, Burger Barn nudged off its). The arena's lot is exactly its block, so
   the streets run all the way round it; the three blocks in front of it (toward the river) are its parking lots
