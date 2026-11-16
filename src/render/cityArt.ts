@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ART_W, ART_H, C, R, P, hn, mix, bake, canvas, text3 } from './roomArt';
 import { shade, tint } from './sprites';
-import { PLACES, PLACE, PlaceId } from '../world/city';
+import { PLACES, PLACE, PlaceId, PLACE_LOT, CITY_BLOCK, CITY_ROAD, cityIso, cityWorld } from '../world/city';
 
 /**
  * Round 92 (owner): the city map, drawn in code on the room art's pixel grid (960x540 art px). An isometric town
@@ -15,13 +15,9 @@ import { PLACES, PLACE, PlaceId } from '../world/city';
  */
 
 // ---------------------------------------------------------------- the iso grid
-const OX = 480, OY = 0;
-/** World (u, v) → art px. u runs down-right, v down-left (2:1). */
-export const iso = (u: number, v: number) => ({ x: OX + (u - v) * 2, y: OY + (u + v) });
-/** Art px → world. */
-export const world = (x: number, y: number) => ({ u: ((x - OX) / 2 + (y - OY)) / 2, v: ((y - OY) - (x - OX) / 2) / 2 });
-/** A block is BLOCK world units on a side; ROAD of it is road. */
-const BLOCK = 36, ROAD = 4;
+// (the grid itself lives in world/city.ts: the places' lots are fitted to its blocks)
+export const iso = cityIso, world = cityWorld;
+const BLOCK = CITY_BLOCK, ROAD = CITY_ROAD;
 /** The rail line runs along u in this band (and its yard widens it); north of the river it ends at a little station. */
 const RAIL: [number, number] = [156, 164], RAIL_END_V = 136;
 
@@ -116,15 +112,6 @@ const onMountain = (x: number, y: number) => peakAt(x, y) >= 0;
 
 /** The places' ground: nothing else is built here (art px radius). */
 const KEEP_CLEAR: Partial<Record<PlaceId, number>> = { cabin: 22 };
-/**
- * Round 95 (owner: the arena, the gym and Burger Barn looked like they sat on top of buildings): each place's real
- * footprint in world units around its anchor [du0, dv0, du1, dv1] (the extents its art draws its lot and buildings
- * with); the generated town keeps out of it (plus a margin), so the lot sits flush with the streets around it.
- */
-const PLACE_LOT: Partial<Record<PlaceId, [number, number, number, number]>> = {
-  home: [-12, -12, 8, 6], arena: [-28, -28, 28, 28], gym: [-15, -12, 11, 8], trailer: [-8, -4, 9, 5],
-  lincoln: [-18, -18, 10, 8], burger: [-12, -10, 10, 8], park: [-13, -11, 13, 11], gas: [-12, -10, 12, 9],
-};
 const LOT_ANCHORS = PLACES.map((p) => ({ id: p.id, w: world(p.at.x, p.at.y), at: p.at }));
 /** Scenery with its own drawing (the trailhead at the mountain foot). */
 const TRAILHEAD = { x: 150, y: 262 };
@@ -145,7 +132,7 @@ function nearPlace(x: number, y: number, pad = 0): boolean {
 type Zone = 'down' | 'shop' | 'rich' | 'trailer' | 'res' | 'park' | 'forest' | 'field';
 function zoneAt(x: number, y: number): Zone {
   const f = footY(x);
-  if ((f >= 0 && y < f + 26 + vnoise(x, y, 18, 5) * 26) || (x < 110 && y < 410) || (x > 860 && y < 120 && vnoise(x, y, 30, 6) > 0.4)) return 'forest';
+  if ((f >= 0 && y < f + 26 + vnoise(x, y, 18, 5) * 26) || (x < 110 + (vnoise(0, y, 55, 13) - 0.5) * 90 + Math.sin(y / 47) * 16 + (vnoise(x, y, 13, 17) - 0.5) * 26 && y < 410 + (vnoise(x, 0, 50, 14) - 0.5) * 70) || (x > 860 + (vnoise(0, y, 40, 15) - 0.5) * 70 && y < 120 + (vnoise(x, 0, 40, 16) - 0.5) * 60 && vnoise(x, y, 30, 6) > 0.4)) return 'forest';
   if (x < 236 && y > 476) return 'field';
   if (Math.hypot(x - 470, (y - 244) * 1.5) < 52) return 'park';
   if (waterDist(x, y) < 18) return 'park';
@@ -227,6 +214,65 @@ function roadNet() {
   NET = { segU, segV, degree };
   return NET;
 }
+/** Round 99: does block (iu, iv) have a street on any side? */
+function blockHasStreet(iu: number, iv: number): boolean {
+  const n = roadNet();
+  return n.segU.has(`${iu},${iv}`) || n.segU.has(`${iu + 1},${iv}`) || n.segV.has(`${iu},${iv}`) || n.segV.has(`${iu},${iv + 1}`);
+}
+/**
+ * Round 99 (owner: a strange light-green patch in the forest): a house block with no street on any side has no houses;
+ * next to the forest it's forest (ground + pines), else plain grass with a few trees.
+ */
+const ORPHAN = new Map<number, 'forest' | 'grass' | null>();
+function orphanBlock(iu: number, iv: number): 'forest' | 'grass' | null {
+  const k = iu * 1000 + iv;
+  if (ORPHAN.has(k)) return ORPHAN.get(k)!;
+  let r: 'forest' | 'grass' | null = null;
+  const z = blockZone(iu * BLOCK + ROAD, iv * BLOCK + ROAD);
+  if ((z === 'res' || z === 'rich' || z === 'shop') && !blockHasStreet(iu, iv)) {
+    const pts = [[0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9], [0.5, 0.5], [-0.4, 0.5], [1.4, 0.5], [0.5, -0.4], [0.5, 1.4]];
+    r = pts.some(([a, b]) => { const p = iso((iu + a) * BLOCK, (iv + b) * BLOCK); return zoneAt(p.x, p.y) === 'forest' || onMountain(p.x, p.y); }) ? 'forest' : 'grass';
+  }
+  ORPHAN.set(k, r);
+  return r;
+}
+const orphanAt = (u: number, v: number) => orphanBlock(Math.floor(u / BLOCK), Math.floor(v / BLOCK));
+/** Is this block woods (a forest block, or a streetless block grown over)? */
+const woodsBlock = (iu: number, iv: number) => orphanBlock(iu, iv) === 'forest' || blockZone(iu * BLOCK + ROAD, iv * BLOCK + ROAD) === 'forest';
+/**
+ * A grown-over block's trees: everywhere in it, except a wavy fringe along a side that faces town (so its edge curves
+ * like the forest's instead of following the block's straight sides).
+ */
+function orphanWoods(x: number, y: number): boolean {
+  const { u, v } = world(x, y), iu = Math.floor(u / BLOCK), iv = Math.floor(v / BLOCK);
+  if (orphanBlock(iu, iv) !== 'forest') return false;
+  const mu = mod(u, BLOCK), mv = mod(v, BLOCK);
+  let d = 99;
+  if (!woodsBlock(iu - 1, iv)) d = Math.min(d, mu);
+  if (!woodsBlock(iu + 1, iv)) d = Math.min(d, BLOCK - mu);
+  if (!woodsBlock(iu, iv - 1)) d = Math.min(d, mv);
+  if (!woodsBlock(iu, iv + 1)) d = Math.min(d, BLOCK - mv);
+  return d > 2 + vnoise(x, y, 11, 33) * 9;
+}
+const PINE_PTS = [[0, -11], [0, -8], [-1, -5], [2, -5], [-3, -2], [3, -2], [0, -2], [-4, 0], [4, 0], [0, 1]];
+/** Would a pine standing here cover a street of the network? (trees don't hide the road) */
+function nearStreet(x: number, y: number, k = 1): boolean {
+  // points of the pine's triangle (tip ~11 px up, ±4 at the foot), scaled for a smaller tree
+  for (const [px, py] of PINE_PTS) {
+    const w = world(x + Math.round(px * k), y + Math.round(py * k));
+    if (isRoad(w.u, w.v) && roadKept(w.u, w.v)) return true;
+  }
+  return false;
+}
+/**
+ * Round 99: the arena fills one block; the blocks in front of it (toward the river) are its parking lots, so the dome
+ * stands in the open like before, and the block in front of the gym is low shops (no tower hiding it).
+ */
+const blockOf = (id: PlaceId) => { const p = PLACES.find((q) => q.id === id)!.at, w = world(p.x, p.y); return [Math.floor(w.u / BLOCK), Math.floor(w.v / BLOCK)]; };
+const FRONT = (id: PlaceId) => { const [a, b] = blockOf(id); return [`${a + 1},${b}`, `${a},${b + 1}`, `${a + 1},${b + 1}`]; };
+const ARENA_PARKING = new Set(FRONT('arena'));
+const GYM_FRONT = new Set(FRONT('gym').filter((k) => !ARENA_PARKING.has(k) && k !== blockOf('arena').join(',')));
+const arenaParking = (u: number, v: number) => ARENA_PARKING.has(`${Math.floor(u / BLOCK)},${Math.floor(v / BLOCK)}`);
 const isRail = (u: number, v: number) => {
   if (v < RAIL_END_V) return false;
   const yard = v > 168 && v < 236;
@@ -366,7 +412,10 @@ function groundColor(x: number, y: number): string {
   }
   if (wd < 3) return wd < 1 ? COL.mud : COL.sand[Math.floor(n * 3)];
   const z = zoneAt(x, y);
-  if (z === 'forest' || onMountain(x, y)) return COL.forest[Math.floor(n * 3)];
+  if (onMountain(x, y)) return COL.forest[Math.floor(n * 3)];
+  // round 99 (owner): a street keeps showing where it runs through a patch of trees
+  if (z === 'forest' && !(roadHere && !nearPlace(x, y, -6))) return COL.forest[Math.floor(n * 3)];
+  if (!roadHere && !isRail(u, v)) { const o = orphanAt(u, v); if (o === 'forest') return orphanWoods(x, y) ? COL.forest[Math.floor(n * 3)] : COL.grass[Math.floor(n * 4)]; if (o === 'grass') return COL.grass[Math.floor(n * 4)]; }
   if (isRail(u, v)) {
     const k = mod(u - RAIL[0] + 8, 4);
     if (k < 0.55 || (k > 2.2 && k < 2.75)) return COL.rail;
@@ -395,13 +444,25 @@ function groundColor(x: number, y: number): string {
     roadKept(iu * BLOCK + 1, v) ? mu : far, roadKept((iu + 1) * BLOCK + 1, v) ? inner - mu : far,
     roadKept(u, iv * BLOCK + 1) ? mv : far, roadKept(u, (iv + 1) * BLOCK + 1) ? inner - mv : far);
   void edge0;
+  if ((bz === 'down' || bz === 'shop') && arenaParking(u, v)) {
+    // the arena's parking: asphalt, rows of white stalls
+    if (edge < 1.2) return COL.walk;
+    const ru = mod(mu - 2, 9), sv = mod(mv, 2.5);
+    if (mu > 2 && mu < inner - 2 && mv > 2 && mv < inner - 2 && ru < 6 && sv < 0.45) return '#e8e4d8';
+    return n > 0.9 ? '#74787c' : '#6a6e72';
+  }
   if (bz === 'down' || bz === 'shop') return edge < 2 ? COL.walk : COL.concrete[Math.floor(n * 3)];
   if (bz === 'rich') return edge < 1.2 ? COL.walk : COL.lush[Math.floor(n * 4)];
   if (bz === 'trailer') return edge < 0.8 ? '#8a7a56' : hn(x, y, 63) < 0.06 ? COL.grass[1] : COL.dirt[Math.floor(n * 4)];
   if (bz === 'park') return COL.park[Math.floor(n * 3)]; // round 97: no footpaths running into the river
   if (bz === 'field') { const f = COL.field[Math.floor(hn(Math.floor(u / BLOCK), Math.floor(v / BLOCK), 4) * 3)]; return f[mod(u + v, 4) < 2 ? 0 : 1]; }
-  if (bz === 'forest') return COL.forest[Math.floor(n * 3)];
-  return edge < 1.2 ? COL.walk : COL.grass[Math.floor(n * 4)];
+  if (bz === 'forest') return forestFringe(x, y) ? COL.forest[Math.floor(n * 3)] : COL.grass[Math.floor(n * 4)]; // round 99: the forest's edge is per pixel (curvy), not the block's
+  return edge < 1.2 ? COL.walk : forestFringe(x, y) ? COL.forest[Math.floor(n * 3)] : COL.grass[Math.floor(n * 4)];
+}
+/** Round 99 (owner: the dark-to-light edge was too sharp): a speckle of forest floor just outside the woods. */
+function forestFringe(x: number, y: number): boolean {
+  const near = zoneAt(x - 3, y) === 'forest' || zoneAt(x + 3, y) === 'forest' || zoneAt(x, y - 2) === 'forest' || zoneAt(x, y + 2) === 'forest';
+  return near && hn(x, y, 71) < 0.5;
 }
 
 function paintGround(c: C) {
@@ -501,7 +562,22 @@ function cityObjects(): Obj[] {
   // blocks covering the screen
   for (let iu = -2; iu < 16; iu++) for (let iv = -8; iv < 12; iv++) {
     const u0 = iu * BLOCK + ROAD, v0 = iv * BLOCK + ROAD, inner = BLOCK - ROAD;
-    const z = blockZone(u0, v0), r = rng(iu * 131 + iv * 977 + 7);
+    const orphan = orphanBlock(iu, iv), r = rng(iu * 131 + iv * 977 + 7);
+    if (orphan === 'forest') continue; // round 99: no houses on a block without a street (forest, or grass and trees)
+    const key = `${iu},${iv}`;
+    if (ARENA_PARKING.has(key)) {
+      // round 99: the arena's parking lots: a few cars in the stalls, a light pole or two
+      const cols = ['#8a3a2a', '#3a5a7a', '#6a6a5a', '#9a7a3a', '#d8d8d0', '#2a2a2e'];
+      for (let row = 0; row < 3; row++) for (let k = 0; k < 9; k++) {
+        if (r() > 0.4) continue;
+        const pu = u0 + 3 + row * 9, pv = v0 + 3 + k * 2.5;
+        if (pu + 4 > u0 + inner - 2 || pv + 2 > v0 + inner - 2 || !free(pu, pv, pu + 4, pv + 2)) continue;
+        const col = cols[Math.floor(r() * cols.length)];
+        out.push({ y: iso(pu + 4, pv + 2).y, draw: (c) => isoBox(c, pu, pv, pu + 4, pv + 2, 2, { wall: col, roof: shade(col, 1.12) }) });
+      }
+      continue;
+    }
+    const z: Zone = orphan ? 'park' : GYM_FRONT.has(key) && blockZone(u0, v0) === 'down' ? 'shop' : blockZone(u0, v0);
     if (z === 'down') {
       // towers on a 2x2, a plaza now and then
       for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
@@ -533,9 +609,10 @@ function cityObjects(): Obj[] {
       }
     } else if (z === 'rich') {
       // round 93 (owner): the hills: big houses on 2x2 lots with pools and hedges, a mansion on some blocks
-      if (hn(iu, iv, 77) < 0.45) {
+      if (hn(iu, iv, 77) < 0.45 && free(u0 + 3, v0 + 3, u0 + 29, v0 + 29)) {
+        // round 99: a mansion where it fits (at the map's edge it doesn't: big houses instead, not an empty lawn)
         const pu = u0 + 3, pv = v0 + 3, seed = iu * 5 + iv * 3;
-        if (free(pu, pv, pu + 26, pv + 26)) out.push({ y: iso(pu + 26, pv + 26).y, draw: (c) => mansion(c, pu, pv, seed) });
+        out.push({ y: iso(pu + 26, pv + 26).y, draw: (c) => mansion(c, pu, pv, seed) });
         continue;
       }
       for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
@@ -616,9 +693,14 @@ function cityObjects(): Obj[] {
     const jx = x + Math.floor(hn(x, y, 21) * 5), jy = y + Math.floor(hn(x, y, 22) * 4);
     if (waterDist(jx, jy) < 3 || nearPlace(jx, jy, 4)) continue;
     const f = footY(jx), onSlope = f >= 0 && jy < f && jy > f - 46 && onMountain(jx, jy);
-    const inForest = !onMountain(jx, jy) && zoneAt(jx, jy) === 'forest' && !(isRoad(world(jx, jy).u, world(jx, jy).v) && roadKept(world(jx, jy).u, world(jx, jy).v)) && trailDist(jx, jy) > 3;
-    if ((onSlope && hn(jx, jy, 23) < 0.55) || (inForest && hn(jx, jy, 24) < 0.8)) {
-      const h = 7 + Math.floor(hn(jx, jy, 25) * 5), s = Math.floor(hn(jx, jy, 26) * 3);
+    const woods = !onMountain(jx, jy) && (zoneAt(jx, jy) === 'forest' || orphanWoods(jx, jy)) && trailDist(jx, jy) > 3;
+    // round 99: a pine that would cover a street is a small one beside it (or none), so the road shows through the trees
+    const big = woods && !nearStreet(jx, jy), small = woods && !big && !nearStreet(jx, jy, 0.5), inForest = big || small;
+    // round 99: a few strays out in the meadow past the forest's edge (no houses there: a forest block, or a grown-over one)
+    const wj = world(jx, jy), meadow = !woods && !onMountain(jx, jy) && !isRoad(wj.u, wj.v) && (blockZone(wj.u, wj.v) === 'forest' || orphanAt(wj.u, wj.v) === 'grass')
+      && (zoneAt(jx - 9, jy) === 'forest' || zoneAt(jx + 9, jy) === 'forest' || zoneAt(jx, jy - 6) === 'forest') && trailDist(jx, jy) > 4 && !nearStreet(jx, jy);
+    if ((onSlope && hn(jx, jy, 23) < 0.55) || (inForest && hn(jx, jy, 24) < 0.8) || (meadow && hn(jx, jy, 27) < 0.3)) {
+      const h = small && !onSlope ? 5 : 7 + Math.floor(hn(jx, jy, 25) * 5), s = Math.floor(hn(jx, jy, 26) * 3);
       out.push({ y: jy, draw: (c) => pine(c, jx, jy, h, s) });
     }
   }
@@ -704,11 +786,13 @@ const PLACE_ART: Record<PlaceId, (c: C, part: Part) => void> = {
   arena: (c, part) => {
     const G = part === 'ground', Rz = part === 'raised';
     const { u, v } = placeWorld('arena'), cen = iso(u, v);
-    const rx = 44, ry = 22, wall = 11, dome = 18, cx = cen.x, cy = cen.y - 4;
+    const rx = 40, ry = 20, wall = 11, dome = 18, cx = cen.x, cy = cen.y - 3;
     if (G) {
-      lot(c, u - 28, v - 28, u + 28, v + 28, '#8a8e92', '#6a6e72');
-      for (let k = -24; k <= 24; k += 4) { line(c, iso(u - 26, v + k), iso(u - 20, v + k), '#e8e4d8'); line(c, iso(u + k, v + 20), iso(u + k, v + 26), '#e8e4d8'); }
-      c.globalAlpha = 0.3; fillEllipse(c, cx + 8, cy + 4, rx + 2, ry + 1, '#1c1a14'); c.globalAlpha = 1;
+      // round 99 (owner: the streets stopped at the arena): it fills exactly one block, the streets run all the way
+      // round it, the parking is in the corners round the dome
+      lot(c, u - 16, v - 16, u + 16, v + 16, '#8a8e92', '#6a6e72');
+      for (let k = -14; k <= 14; k += 3) { line(c, iso(u - 15, v + k), iso(u - 12, v + k), '#e8e4d8'); line(c, iso(u + k, v + 12), iso(u + k, v + 15), '#e8e4d8'); }
+      c.globalAlpha = 0.3; fillEllipse(c, cx + 5, cy + 3, rx + 1, ry + 1, '#1c1a14'); c.globalAlpha = 1;
       return;
     }
     if (!Rz) return;
@@ -733,7 +817,7 @@ const PLACE_ART: Record<PlaceId, (c: C, part: Part) => void> = {
     fillEllipse(c, cx - 2, cy - wall - dome - 1, 9, 4, '#3a4658'); fillEllipse(c, cx - 2, cy - wall - dome - 1, 8, 3, '#9ec8e0');
     fillEllipse(c, cx - 4, cy - wall - dome - 2, 3, 1, '#e8f6ff');
     // the jumbotron sign at the entrance
-    const s = { x: Math.round(cx - 30), y: Math.round(cy + ry - 2) };
+    const s = { x: Math.round(cx - 27), y: Math.round(cy + ry - 3) };
     R(c, s.x + 5, s.y - 4, 1, 8, '#3a3a3a'); R(c, s.x - 1, s.y - 13, 14, 10, '#141c2c'); R(c, s.x, s.y - 12, 12, 8, '#e0b33a'); R(c, s.x + 2, s.y - 10, 8, 4, '#25365a');
   },
   // Pine Flats: a row of trailers by the tracks, Mom's at the end with its generator
@@ -982,7 +1066,7 @@ export function drawCityCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-export const CITY_BG = 'city_bg_v6';
+export const CITY_BG = 'city_bg_v7';
 /** Where each baked sprite sits on the map (art px), kept with the textures. */
 const OFFSETS = new Map<string, { x: number; y: number }>();
 /** The map's textures (built once, kept across visits): the background, one per place, the falls (3 frames). */
@@ -994,12 +1078,12 @@ export function buildCityArt(tm: Phaser.Textures.TextureManager): { places: Reco
   }
   const places = {} as Record<PlaceId, { key: string; x: number; y: number }>;
   for (const p of PLACES) {
-    const key = `city_${p.id}_v6`;
+    const key = `city_${p.id}_v7`;
     // round 98: the places are part of the background now; this sprite only gives the scene its bounds (the name tag)
     if (!tm.exists(key) || !OFFSETS.has(key)) { const b = bake(tm, key, 1, (c) => { PLACE_ART[p.id](c, 'ground'); PLACE_ART[p.id](c, 'raised'); }); OFFSETS.set(key, { x: b.x, y: b.y }); }
     places[p.id] = { key, ...OFFSETS.get(key)! };
   }
-  const fk = 'city_falls_v6';
+  const fk = 'city_falls_v7';
   if (!tm.exists(fk) || !OFFSETS.has(fk)) { const b = bake(tm, fk, 3, drawFalls); OFFSETS.set(fk, { x: b.x, y: b.y }); }
   const falls = { key: fk, ...OFFSETS.get(fk)! };
   return { places, falls };

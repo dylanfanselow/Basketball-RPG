@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLACES, PLACE, placeToward, travelCost, canTravel, TRIP_ENERGY, PlaceId, gymPass, buyGymPass, GYM_DAY_PASS, GYM_XP_MULT } from '../src/world/city';
+import { PLACES, PLACE, placeToward, travelCost, canTravel, TRIP_ENERGY, PlaceId, gymPass, buyGymPass, GYM_DAY_PASS, GYM_XP_MULT, PLACE_LOT, CITY_BLOCK, CITY_ROAD, cityWorld, cityIso } from '../src/world/city';
 
 describe('round 92 city map', () => {
   it('every place is on the map, below the stat bar, with a name and a blurb', () => {
@@ -59,5 +59,30 @@ describe('round 92 city map', () => {
     expect(buyGymPass(c)).toBe(false);
     expect(c.life.money).toBe(GYM_DAY_PASS - 1);
     expect(GYM_XP_MULT).toBeGreaterThan(1);
+  });
+});
+
+describe('round 99 places fit their blocks', () => {
+  const lots = PLACES.filter((p) => PLACE_LOT[p.id]).map((p) => {
+    const w = cityWorld(p.at.x, p.at.y), l = PLACE_LOT[p.id]!;
+    return { id: p.id, u0: w.u + l[0], v0: w.v + l[1], u1: w.u + l[2], v1: w.v + l[3] };
+  });
+  it('the grid round-trips', () => {
+    const w = cityWorld(612, 292), p = cityIso(w.u, w.v);
+    expect(p.x).toBeCloseTo(612); expect(p.y).toBeCloseTo(292);
+  });
+  it('no street runs under any lot (each lies inside one block)', () => {
+    for (const l of lots) {
+      const iu = Math.floor(l.u0 / CITY_BLOCK), iv = Math.floor(l.v0 / CITY_BLOCK);
+      expect(Math.floor((l.u1 - 1e-6) / CITY_BLOCK), l.id).toBe(iu);
+      expect(Math.floor((l.v1 - 1e-6) / CITY_BLOCK), l.id).toBe(iv);
+      expect(l.u0 - iu * CITY_BLOCK, l.id).toBeGreaterThanOrEqual(CITY_ROAD);
+      expect(l.v0 - iv * CITY_BLOCK, l.id).toBeGreaterThanOrEqual(CITY_ROAD);
+    }
+  });
+  it('the arena fills its block exactly (the streets run all the way round it)', () => {
+    const a = lots.find((l) => l.id === 'arena')!, iu = Math.floor(a.u0 / CITY_BLOCK), iv = Math.floor(a.v0 / CITY_BLOCK);
+    expect(a.u0).toBeCloseTo(iu * CITY_BLOCK + CITY_ROAD); expect(a.u1).toBeCloseTo((iu + 1) * CITY_BLOCK);
+    expect(a.v0).toBeCloseTo(iv * CITY_BLOCK + CITY_ROAD); expect(a.v1).toBeCloseTo((iv + 1) * CITY_BLOCK);
   });
 });

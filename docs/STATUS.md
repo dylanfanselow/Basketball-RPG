@@ -261,6 +261,11 @@ options, result screen with rematch), **Career** (hub, level up, perk trees, ult
   'ones' = every node in `NODES`.
   Round 60e: `GameSim.settle(dt)` (after the final whistle: land, idle, velocities out, ball to the floor; GameScene
   calls it every frame while `over`); StoryRun waits 1.3 s before the 1s goodbye; trailer pieces `_v3`.
+  Round 99: the iso grid (`cityIso` / `cityWorld`, `CITY_BLOCK` / `CITY_ROAD`) and `PLACE_LOT` moved to
+  `world/city.ts` (tests check every lot lies in one block, the arena's equals its block); `cityArt.ts`
+  `orphanBlock` / `orphanWoods` (streetless house blocks → woods or meadow), `ARENA_PARKING` / `GYM_FRONT`,
+  `nearStreet` (the pine's triangle over a kept street → a small pine or none), `forestFringe`, the mansion falls back
+  to houses where it doesn't fit; textures `_v7`.
   Round 98: `cityArt.ts` places split into `ground` / `raised` (`PLACE_ART(c, part)`), grounds painted after the
   ground pass, raised parts sorted with the buildings by `placeKey`; the scene's place images are invisible (tag bounds).
   Round 97: `cityArt.ts` `roadNet()` (segments `segU` / `segV` between crossings: town on either side via memoized

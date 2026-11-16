@@ -188,6 +188,14 @@ Chronological. "Superseded" marks decisions later changed by the owner.
   - Draft week this round = **calendar + talk only** (owner); the combine, scrimmage and draft come later. Later the
     story reveals Hale made the generator fail, and you choose to fire or keep him.
   - Newspaper photo: headroom above tall hair, only the jersey and the wall are dithered (hair and face stay clean).
+- **Round 99 (owner): every place sits inside one block, the arena fills a whole one.** No street runs under any
+  place's lot (the gym moved left off its road, Burger Barn nudged off its). The arena's lot is exactly its block, so
+  the streets run all the way round it; the three blocks in front of it (toward the river) are its parking lots
+  (stalls, a few cars) and the block in front of the gym is low shops, so neither is hidden behind towers. A house
+  block with no street on any side has no houses: it's grown over (forest with a wavy edge) next to the woods, else a
+  meadow. The far-left forest edge wanders (big bulges plus a finer wobble) with a speckled fringe and a few stray
+  pines out in the meadow. A street through a patch of woods stays visible: pines that would cover it are small ones
+  beside it, or none.
 - **Round 98 (owner): places layer like everything else.** A place's flat ground (lot, parking, court) goes down with
   the rest of the ground, and its buildings are drawn in depth order with every other building, so a house in front
   of the arena draws over its parking lot instead of under it. The places are part of the map's background now (the
